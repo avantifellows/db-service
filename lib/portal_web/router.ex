@@ -8,7 +8,7 @@ defmodule PortalWeb.Router do
   scope "/api", PortalWeb do
     pipe_through :api
 
-    resources "/user", UserController, except: [:delete]
+    resources "/user", UserController, only: [:index, :create, :update, :show]
   end
 
   # Enables LiveDashboard only for development
