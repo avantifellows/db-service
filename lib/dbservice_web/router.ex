@@ -8,6 +8,7 @@ defmodule DbserviceWeb.Router do
   scope "/api", DbserviceWeb do
     pipe_through :api
 
+    resources "/group", GroupController, except: [:new, :edit]
     resources "/user", UserController, only: [:create, :update, :show]
   end
 
