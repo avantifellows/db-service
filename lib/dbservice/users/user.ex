@@ -22,6 +22,6 @@ defmodule Dbservice.Users.User do
   def changeset(user, attrs) do
     user
     |> cast(attrs, [:first_name, :last_name, :email, :phone, :gender, :address, :city, :district, :state, :pincode, :role])
-    |> validate_required([:first_name, :last_name, :email, :phone, :gender, :address, :city, :district, :state, :pincode, :role])
+    |> validate_required([:first_name, :last_name, :email, :phone])
   end
 end

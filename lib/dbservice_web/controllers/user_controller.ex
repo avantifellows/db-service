@@ -7,7 +7,7 @@ defmodule DbserviceWeb.UserController do
   action_fallback DbserviceWeb.FallbackController
 
   def index(conn, _params) do
-    user = Users.list_user()
+    user = Users.list_all_users()
     render(conn, "index.json", user: user)
   end
 

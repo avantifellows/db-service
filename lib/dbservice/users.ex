@@ -17,7 +17,7 @@ defmodule Dbservice.Users do
       [%User{}, ...]
 
   """
-  def list_user do
+  def list_all_users do
     Repo.all(User)
   end
 
