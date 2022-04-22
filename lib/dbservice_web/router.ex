@@ -8,7 +8,7 @@ defmodule DbserviceWeb.Router do
   scope "/api", DbserviceWeb do
     pipe_through :api
 
-    resources "/user", UserController, only: [:index, :create, :update, :show]
+    resources "/user", UserController, only: [:create, :update, :show]
   end
 
   # Enables LiveDashboard only for development
