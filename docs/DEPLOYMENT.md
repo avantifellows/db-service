@@ -5,7 +5,11 @@ This guide covers steps on setting up this repository on various cloud hosting p
 ## Gigalixir
 
 ### Pre-requisites
-1. Install Gigalixir CLI
+1. Install [Gigalixir CLI](https://gigalixir.readthedocs.io/en/latest/getting-started-guide.html#install-the-command-line-interface)
+2. Verify installation using:
+    ```sh
+    gigalixir version
+    ```
 
 
 ### Production
@@ -19,7 +23,7 @@ This guide covers steps on setting up this repository on various cloud hosting p
     ```
 4. Creating new gigalixir app (not needed if already done)
     ```sh
-    gigalixir create -n "af-db"
+    gigalixir create -n "my-app"
     ```
 5. Scale up the application
     ```sh
@@ -29,7 +33,7 @@ This guide covers steps on setting up this repository on various cloud hosting p
     ```sh
     POOL_SIZE=2
     DB_HOST='ecto://your-db-host/db-name'
-    PHX_HOST='af-db.gigalixirapp.com'
+    PHX_HOST='my-app.gigalixirapp.com'
     ```
 7. Run migrations
     ```sh
@@ -45,7 +49,7 @@ This guide covers steps on setting up this repository on various cloud hosting p
     ```
 10. Create a custom domain name
     ```sh
-    gigalixir domains:add af-db.gigalixirapp.com
+    gigalixir domains:add my-app.my-domain.com
     # replace with your domain name
     ```
 11. Check domain name has been properly added
