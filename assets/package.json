@@ -1,0 +1,5 @@
+{
+  "scripts": {
+    "deploy": "cd .. && rm -f _build/esbuild*"
+  }
+}
