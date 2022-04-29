@@ -25,4 +25,19 @@ defmodule Dbservice.SessionsFixtures do
 
     session
   end
+
+  @doc """
+  Generate a session_occurence.
+  """
+  def session_occurence_fixture(attrs \\ %{}) do
+    {:ok, session_occurence} =
+      attrs
+      |> Enum.into(%{
+        end_time: ~U[2022-04-28 14:05:00Z],
+        start_time: ~U[2022-04-28 14:05:00Z]
+      })
+      |> Dbservice.Sessions.create_session_occurence()
+
+    session_occurence
+  end
 end
