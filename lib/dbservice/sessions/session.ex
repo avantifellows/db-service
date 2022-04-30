@@ -16,6 +16,9 @@ defmodule Dbservice.Sessions.Session do
     field :created_by_id, :id
 
     timestamps()
+
+    many_to_many(:user, User, join_through: "user_session")
+    many_to_many(:batch, Batch, join_through: "batch_session")
   end
 
   @doc false

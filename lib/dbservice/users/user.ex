@@ -2,6 +2,9 @@ defmodule Dbservice.Users.User do
   use Ecto.Schema
   import Ecto.Changeset
 
+  alias Dbservice.Sessions.SessionOccurence
+  alias Dbservice.Batches.Batch
+
   schema "user" do
     field :address, :string
     field :city, :string
@@ -16,6 +19,9 @@ defmodule Dbservice.Users.User do
     field :state, :string
 
     timestamps()
+
+    many_to_many(:session, SessionOccurence, join_through: "user_session")
+    many_to_many(:batch, Batch, join_through: "batch_user")
   end
 
   @doc false
