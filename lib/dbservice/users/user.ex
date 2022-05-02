@@ -2,7 +2,7 @@ defmodule Dbservice.Users.User do
   use Ecto.Schema
   import Ecto.Changeset
 
-  alias Dbservice.Sessions.SessionOccurence
+  # alias Dbservice.Sessions.SessionOccurence
   alias Dbservice.Batches.Batch
 
   schema "user" do
@@ -20,8 +20,8 @@ defmodule Dbservice.Users.User do
 
     timestamps()
 
-    many_to_many(:session, SessionOccurence, join_through: "user_session")
-    many_to_many(:batch, Batch, join_through: "batch_user")
+    # many_to_many :sessions, SessionOccurence, join_through: "user_session"
+    many_to_many :batches, Batch, join_through: "batch_user"
   end
 
   @doc false
@@ -30,4 +30,11 @@ defmodule Dbservice.Users.User do
     |> cast(attrs, [:first_name, :last_name, :email, :phone, :gender, :address, :city, :district, :state, :pincode, :role])
     |> validate_required([:first_name, :last_name, :email, :phone])
   end
+
+  def changeset_update_batches(user, batches) do
+    user
+    |> change()
+    |> put_assoc(:batches, batches)
+  end
+
 end
