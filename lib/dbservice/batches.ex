@@ -102,7 +102,7 @@ defmodule Dbservice.Batches do
     Batch.changeset(batch, attrs)
   end
 
-  def add_users(batch_id, user_ids) when is_list(user_ids) do
+  def update_users(batch_id, user_ids) when is_list(user_ids) do
     batch = get_batch!(batch_id)
 
     users =

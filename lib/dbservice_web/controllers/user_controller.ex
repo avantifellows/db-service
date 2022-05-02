@@ -40,8 +40,8 @@ defmodule DbserviceWeb.UserController do
     end
   end
 
-  def add_to_batches(conn, %{"id" => user_id, "batch_ids" => batch_ids}) when is_list(batch_ids) do
-    with {:ok, %User{} = user} <- Users.add_to_batches(user_id, batch_ids) do
+  def update_batches(conn, %{"id" => user_id, "batch_ids" => batch_ids}) when is_list(batch_ids) do
+    with {:ok, %User{} = user} <- Users.update_batches(user_id, batch_ids) do
       render(conn, "show.json", user: user)
     end
   end

@@ -10,9 +10,9 @@ defmodule DbserviceWeb.Router do
 
     resources "/group", GroupController, except: [:new, :edit]
     resources "/batch", BatchController, except: [:new, :edit]
-    post "/batch/:id/add_users", BatchController, :add_users
+    post "/batch/:id/update_users", BatchController, :update_users
     resources "/user", UserController, only: [:index, :create, :update, :show]
-    post "/user/:id/add_to_batches", UserController, :add_to_batches
+    post "/user/:id/update_batches", UserController, :update_batches
     resources "/session", SessionController, only: [:create, :update, :show]
     resources "/session_occurence", SessionOccurenceController, except: [:new, :edit]
   end
