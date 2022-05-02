@@ -101,4 +101,18 @@ defmodule Dbservice.Batches do
   def change_batch(%Batch{} = batch, attrs \\ %{}) do
     Batch.changeset(batch, attrs)
   end
+
+  def add_users(batch_id, user_ids) when is_list(user_ids) do
+    batch = get_batch!(batch_id)
+
+    users =
+      Dbservice.Users.User
+      |> where([user], user.id in ^user_ids)
+      |> Repo.all()
+
+    batch
+    |> Repo.preload(:users)
+    |> Batch.changeset_update_users(users)
+    |> Repo.update()
+  end
 end

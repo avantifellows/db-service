@@ -2,7 +2,7 @@ defmodule Dbservice.Users.User do
   use Ecto.Schema
   import Ecto.Changeset
 
-  # alias Dbservice.Sessions.SessionOccurence
+  alias Dbservice.Sessions.SessionOccurence
   alias Dbservice.Batches.Batch
 
   schema "user" do
