@@ -102,6 +102,9 @@ defmodule Dbservice.Users do
     User.changeset(user, attrs)
   end
 
+  @doc """
+  Updates the users mapped to a batch.
+  """
   def update_batches(user_id, batch_ids) when is_list(batch_ids) do
     user = get_user!(user_id)
 
