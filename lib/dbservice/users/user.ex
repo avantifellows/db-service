@@ -20,8 +20,8 @@ defmodule Dbservice.Users.User do
 
     timestamps()
 
-    # many_to_many :sessions, SessionOccurence, join_through: "user_session"
-    many_to_many :batches, Batch, join_through: "batch_user"
+    many_to_many :sessions, SessionOccurence, join_through: "user_session", on_replace: :delete
+    many_to_many :batches, Batch, join_through: "batch_user", on_replace: :delete
   end
 
   @doc false

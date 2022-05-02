@@ -2,8 +2,8 @@ defmodule Dbservice.Sessions.Session do
   use Ecto.Schema
   import Ecto.Changeset
 
-  # alias Dbservice.Users.User
-  # alias Dbservice.Batches.Batch
+  alias Dbservice.Users.User
+  alias Dbservice.Batches.Batch
 
   schema "session" do
     field :end_time, :utc_datetime
@@ -20,8 +20,8 @@ defmodule Dbservice.Sessions.Session do
 
     timestamps()
 
-    # many_to_many :user, User, join_through: "user_session"
-    # many_to_many :batch, Batch, join_through: "batch_session"
+    many_to_many :user, User, join_through: "user_session", on_replace: :delete
+    many_to_many :batch, Batch, join_through: "batch_session", on_replace: :delete
   end
 
   @doc false
