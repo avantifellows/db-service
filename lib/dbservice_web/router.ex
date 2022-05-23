@@ -1,5 +1,6 @@
 defmodule DbserviceWeb.Router do
   use DbserviceWeb, :router
+  use PhoenixSwagger
 
   pipeline :api do
     plug :accepts, ["json"]
@@ -15,7 +16,24 @@ defmodule DbserviceWeb.Router do
     post "/user/:id/update_batches", UserController, :update_batches
     resources "/session", SessionController, only: [:create, :update, :show]
     resources "/session_occurence", SessionOccurenceController, except: [:new, :edit]
+
+    def swagger_info do
+      %{
+        info: %{
+          version: "1.0",
+          title: "Dbservice"
+        }
+      }
+    end
   end
+
+  scope "/docs/swagger" do
+    forward "/", PhoenixSwagger.Plug.SwaggerUI,
+      otp_app: :dbservice,
+      swagger_file: "swagger.json",
+      opts: [disable_validator: true]
+  end
+
 
   # Enables LiveDashboard only for development
   #

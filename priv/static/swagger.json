@@ -1,0 +1,10 @@
+{
+  "definitions": {},
+  "host": "localhost:4000",
+  "info": {
+    "title": "Dbservice",
+    "version": "1.0"
+  },
+  "paths": {},
+  "swagger": "2.0"
+}
