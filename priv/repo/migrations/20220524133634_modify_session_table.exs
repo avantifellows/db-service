@@ -4,7 +4,7 @@ defmodule Dbservice.Repo.Migrations.ModifySessionTable do
   def change do
     alter table("session") do
       add :is_active, :boolean, default: true, null: false
-      add :session_uuid, :string
+      add :uuid, :string
     end
   end
 end
