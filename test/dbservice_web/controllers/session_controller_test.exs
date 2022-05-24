@@ -13,8 +13,8 @@ defmodule DbserviceWeb.SessionControllerTest do
     repeat_till_date: ~U[2022-04-28 13:58:00Z],
     repeat_type: "some repeat_type",
     start_time: ~U[2022-04-28 13:58:00Z],
-    type: "some type",
-    type_uid: "some type_uid"
+    platform: "some platform",
+    platform_link: "some platform_link"
   }
   @update_attrs %{
     end_time: ~U[2022-04-29 13:58:00Z],
@@ -24,10 +24,10 @@ defmodule DbserviceWeb.SessionControllerTest do
     repeat_till_date: ~U[2022-04-29 13:58:00Z],
     repeat_type: "some updated repeat_type",
     start_time: ~U[2022-04-29 13:58:00Z],
-    type: "some updated type",
-    type_uid: "some updated type_uid"
+    platform: "some updated platform",
+    platform_link: "some updated platform_link"
   }
-  @invalid_attrs %{end_time: nil, meta_data: nil, name: nil, portal_link: nil, repeat_till_date: nil, repeat_type: nil, start_time: nil, type: nil, type_uid: nil}
+  @invalid_attrs %{end_time: nil, meta_data: nil, name: nil, portal_link: nil, repeat_till_date: nil, repeat_type: nil, start_time: nil, platform: nil, platform_link: nil}
 
   setup %{conn: conn} do
     {:ok, conn: put_req_header(conn, "accept", "application/json")}
@@ -56,8 +56,8 @@ defmodule DbserviceWeb.SessionControllerTest do
                "repeat_till_date" => "2022-04-28T13:58:00Z",
                "repeat_type" => "some repeat_type",
                "start_time" => "2022-04-28T13:58:00Z",
-               "type" => "some type",
-               "type_uid" => "some type_uid"
+               "platform" => "some platform",
+               "platform_link" => "some platform_link"
              } = json_response(conn, 200)["data"]
     end
 
@@ -85,8 +85,8 @@ defmodule DbserviceWeb.SessionControllerTest do
                "repeat_till_date" => "2022-04-29T13:58:00Z",
                "repeat_type" => "some updated repeat_type",
                "start_time" => "2022-04-29T13:58:00Z",
-               "type" => "some updated type",
-               "type_uid" => "some updated type_uid"
+               "platform" => "some updated platform",
+               "platform_link" => "some updated platform_link"
              } = json_response(conn, 200)["data"]
     end
 

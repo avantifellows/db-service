@@ -18,8 +18,8 @@ defmodule Dbservice.SessionsFixtures do
         repeat_till_date: ~U[2022-04-28 13:58:00Z],
         repeat_type: "some repeat_type",
         start_time: ~U[2022-04-28 13:58:00Z],
-        type: "some type",
-        type_uid: "some type_uid"
+        platform: "some platform",
+        platform_link: "some platform_link"
       })
       |> Dbservice.Sessions.create_session()
 

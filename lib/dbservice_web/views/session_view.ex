@@ -14,8 +14,8 @@ defmodule DbserviceWeb.SessionView do
     %{
       id: session.id,
       name: session.name,
-      type: session.type,
-      type_uid: session.type_uid,
+      platform: session.platform,
+      platform_link: session.platform_link,
       portal_link: session.portal_link,
       start_time: session.start_time,
       end_time: session.end_time,
