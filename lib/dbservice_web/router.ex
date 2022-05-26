@@ -8,7 +8,13 @@ defmodule DbserviceWeb.Router do
   scope "/api", DbserviceWeb do
     pipe_through :api
 
-    resources "/user", UserController, only: [:create, :update, :show]
+    resources "/group", GroupController, except: [:new, :edit]
+    resources "/batch", BatchController, except: [:new, :edit]
+    post "/batch/:id/update_users", BatchController, :update_users
+    resources "/user", UserController, only: [:index, :create, :update, :show]
+    post "/user/:id/update_batches", UserController, :update_batches
+    resources "/session", SessionController, only: [:index, :create, :update, :show]
+    resources "/session_occurence", SessionOccurenceController, except: [:new, :edit]
   end
 
   # Enables LiveDashboard only for development

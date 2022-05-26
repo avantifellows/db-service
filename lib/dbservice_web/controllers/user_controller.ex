@@ -27,7 +27,6 @@ defmodule DbserviceWeb.UserController do
 
   def update(conn, %{"id" => id, "user" => user_params}) do
     user = Users.get_user!(id)
-
     with {:ok, %User{} = user} <- Users.update_user(user, user_params) do
       render(conn, "show.json", user: user)
     end
@@ -38,6 +37,12 @@ defmodule DbserviceWeb.UserController do
 
     with {:ok, %User{}} <- Users.delete_user(user) do
       send_resp(conn, :no_content, "")
+    end
+  end
+
+  def update_batches(conn, %{"id" => user_id, "batch_ids" => batch_ids}) when is_list(batch_ids) do
+    with {:ok, %User{} = user} <- Users.update_batches(user_id, batch_ids) do
+      render(conn, "show.json", user: user)
     end
   end
 end
