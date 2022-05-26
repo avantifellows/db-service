@@ -60,4 +60,62 @@ defmodule Dbservice.SchoolsTest do
       assert %Ecto.Changeset{} = Schools.change_school(school)
     end
   end
+
+  describe "enrollment_record" do
+    alias Dbservice.Schools.EnrollmentRecord
+
+    import Dbservice.SchoolsFixtures
+
+    @invalid_attrs %{academic_year: nil, grade: nil, is_current: nil}
+
+    test "list_enrollment_record/0 returns all enrollment_record" do
+      enrollment_record = enrollment_record_fixture()
+      assert Schools.list_enrollment_record() == [enrollment_record]
+    end
+
+    test "get_enrollment_record!/1 returns the enrollment_record with given id" do
+      enrollment_record = enrollment_record_fixture()
+      assert Schools.get_enrollment_record!(enrollment_record.id) == enrollment_record
+    end
+
+    test "create_enrollment_record/1 with valid data creates a enrollment_record" do
+      valid_attrs = %{academic_year: "some academic_year", grade: "some grade", is_current: true}
+
+      assert {:ok, %EnrollmentRecord{} = enrollment_record} = Schools.create_enrollment_record(valid_attrs)
+      assert enrollment_record.academic_year == "some academic_year"
+      assert enrollment_record.grade == "some grade"
+      assert enrollment_record.is_current == true
+    end
+
+    test "create_enrollment_record/1 with invalid data returns error changeset" do
+      assert {:error, %Ecto.Changeset{}} = Schools.create_enrollment_record(@invalid_attrs)
+    end
+
+    test "update_enrollment_record/2 with valid data updates the enrollment_record" do
+      enrollment_record = enrollment_record_fixture()
+      update_attrs = %{academic_year: "some updated academic_year", grade: "some updated grade", is_current: false}
+
+      assert {:ok, %EnrollmentRecord{} = enrollment_record} = Schools.update_enrollment_record(enrollment_record, update_attrs)
+      assert enrollment_record.academic_year == "some updated academic_year"
+      assert enrollment_record.grade == "some updated grade"
+      assert enrollment_record.is_current == false
+    end
+
+    test "update_enrollment_record/2 with invalid data returns error changeset" do
+      enrollment_record = enrollment_record_fixture()
+      assert {:error, %Ecto.Changeset{}} = Schools.update_enrollment_record(enrollment_record, @invalid_attrs)
+      assert enrollment_record == Schools.get_enrollment_record!(enrollment_record.id)
+    end
+
+    test "delete_enrollment_record/1 deletes the enrollment_record" do
+      enrollment_record = enrollment_record_fixture()
+      assert {:ok, %EnrollmentRecord{}} = Schools.delete_enrollment_record(enrollment_record)
+      assert_raise Ecto.NoResultsError, fn -> Schools.get_enrollment_record!(enrollment_record.id) end
+    end
+
+    test "change_enrollment_record/1 returns a enrollment_record changeset" do
+      enrollment_record = enrollment_record_fixture()
+      assert %Ecto.Changeset{} = Schools.change_enrollment_record(enrollment_record)
+    end
+  end
 end

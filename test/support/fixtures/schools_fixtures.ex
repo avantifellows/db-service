@@ -19,4 +19,20 @@ defmodule Dbservice.SchoolsFixtures do
 
     school
   end
+
+  @doc """
+  Generate a enrollment_record.
+  """
+  def enrollment_record_fixture(attrs \\ %{}) do
+    {:ok, enrollment_record} =
+      attrs
+      |> Enum.into(%{
+        academic_year: "some academic_year",
+        grade: "some grade",
+        is_current: true
+      })
+      |> Dbservice.Schools.create_enrollment_record()
+
+    enrollment_record
+  end
 end
