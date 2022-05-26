@@ -76,4 +76,128 @@ defmodule Dbservice.UsersTest do
       assert %Ecto.Changeset{} = Users.change_user(user)
     end
   end
+
+  describe "student" do
+    alias Dbservice.Users.Student
+
+    import Dbservice.UsersFixtures
+
+    @invalid_attrs %{category: nil, father_name: nil, father_phone: nil, mother_name: nil, mother_phone: nil, stream: nil, uuid: nil}
+
+    test "list_student/0 returns all student" do
+      student = student_fixture()
+      assert Users.list_student() == [student]
+    end
+
+    test "get_student!/1 returns the student with given id" do
+      student = student_fixture()
+      assert Users.get_student!(student.id) == student
+    end
+
+    test "create_student/1 with valid data creates a student" do
+      valid_attrs = %{category: "some category", father_name: "some father_name", father_phone: "some father_phone", mother_name: "some mother_name", mother_phone: "some mother_phone", stream: "some stream", uuid: "some uuid"}
+
+      assert {:ok, %Student{} = student} = Users.create_student(valid_attrs)
+      assert student.category == "some category"
+      assert student.father_name == "some father_name"
+      assert student.father_phone == "some father_phone"
+      assert student.mother_name == "some mother_name"
+      assert student.mother_phone == "some mother_phone"
+      assert student.stream == "some stream"
+      assert student.uuid == "some uuid"
+    end
+
+    test "create_student/1 with invalid data returns error changeset" do
+      assert {:error, %Ecto.Changeset{}} = Users.create_student(@invalid_attrs)
+    end
+
+    test "update_student/2 with valid data updates the student" do
+      student = student_fixture()
+      update_attrs = %{category: "some updated category", father_name: "some updated father_name", father_phone: "some updated father_phone", mother_name: "some updated mother_name", mother_phone: "some updated mother_phone", stream: "some updated stream", uuid: "some updated uuid"}
+
+      assert {:ok, %Student{} = student} = Users.update_student(student, update_attrs)
+      assert student.category == "some updated category"
+      assert student.father_name == "some updated father_name"
+      assert student.father_phone == "some updated father_phone"
+      assert student.mother_name == "some updated mother_name"
+      assert student.mother_phone == "some updated mother_phone"
+      assert student.stream == "some updated stream"
+      assert student.uuid == "some updated uuid"
+    end
+
+    test "update_student/2 with invalid data returns error changeset" do
+      student = student_fixture()
+      assert {:error, %Ecto.Changeset{}} = Users.update_student(student, @invalid_attrs)
+      assert student == Users.get_student!(student.id)
+    end
+
+    test "delete_student/1 deletes the student" do
+      student = student_fixture()
+      assert {:ok, %Student{}} = Users.delete_student(student)
+      assert_raise Ecto.NoResultsError, fn -> Users.get_student!(student.id) end
+    end
+
+    test "change_student/1 returns a student changeset" do
+      student = student_fixture()
+      assert %Ecto.Changeset{} = Users.change_student(student)
+    end
+  end
+
+  describe "teacher" do
+    alias Dbservice.Users.Teacher
+
+    import Dbservice.UsersFixtures
+
+    @invalid_attrs %{designation: nil, grade: nil, subject: nil}
+
+    test "list_teacher/0 returns all teacher" do
+      teacher = teacher_fixture()
+      assert Users.list_teacher() == [teacher]
+    end
+
+    test "get_teacher!/1 returns the teacher with given id" do
+      teacher = teacher_fixture()
+      assert Users.get_teacher!(teacher.id) == teacher
+    end
+
+    test "create_teacher/1 with valid data creates a teacher" do
+      valid_attrs = %{designation: "some designation", grade: "some grade", subject: "some subject"}
+
+      assert {:ok, %Teacher{} = teacher} = Users.create_teacher(valid_attrs)
+      assert teacher.designation == "some designation"
+      assert teacher.grade == "some grade"
+      assert teacher.subject == "some subject"
+    end
+
+    test "create_teacher/1 with invalid data returns error changeset" do
+      assert {:error, %Ecto.Changeset{}} = Users.create_teacher(@invalid_attrs)
+    end
+
+    test "update_teacher/2 with valid data updates the teacher" do
+      teacher = teacher_fixture()
+      update_attrs = %{designation: "some updated designation", grade: "some updated grade", subject: "some updated subject"}
+
+      assert {:ok, %Teacher{} = teacher} = Users.update_teacher(teacher, update_attrs)
+      assert teacher.designation == "some updated designation"
+      assert teacher.grade == "some updated grade"
+      assert teacher.subject == "some updated subject"
+    end
+
+    test "update_teacher/2 with invalid data returns error changeset" do
+      teacher = teacher_fixture()
+      assert {:error, %Ecto.Changeset{}} = Users.update_teacher(teacher, @invalid_attrs)
+      assert teacher == Users.get_teacher!(teacher.id)
+    end
+
+    test "delete_teacher/1 deletes the teacher" do
+      teacher = teacher_fixture()
+      assert {:ok, %Teacher{}} = Users.delete_teacher(teacher)
+      assert_raise Ecto.NoResultsError, fn -> Users.get_teacher!(teacher.id) end
+    end
+
+    test "change_teacher/1 returns a teacher changeset" do
+      teacher = teacher_fixture()
+      assert %Ecto.Changeset{} = Users.change_teacher(teacher)
+    end
+  end
 end
