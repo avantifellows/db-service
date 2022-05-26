@@ -10,16 +10,17 @@ defmodule Dbservice.Users.Student do
     field :mother_phone, :string
     field :stream, :string
     field :uuid, :string
-    field :user_id, :id
-    field :group_id, :id
+    belongs_to :user, Users.User
+    belongs_to :group, Groups.Group
 
     timestamps()
+
   end
 
   @doc false
   def changeset(student, attrs) do
     student
-    |> cast(attrs, [:uuid, :father_name, :father_phone, :mother_name, :mother_phone, :category, :stream])
-    |> validate_required([:uuid, :father_name, :father_phone, :mother_name, :mother_phone, :category, :stream])
+    |> cast(attrs, [:user_id, :group_id, :uuid, :father_name, :father_phone, :mother_name, :mother_phone, :category, :stream])
+    |> validate_required([:user_id, :group_id, :uuid])
   end
 end

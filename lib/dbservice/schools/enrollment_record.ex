@@ -6,8 +6,8 @@ defmodule Dbservice.Schools.EnrollmentRecord do
     field :academic_year, :string
     field :grade, :string
     field :is_current, :boolean, default: false
-    field :student_id, :id
-    field :school_id, :id
+    belongs_to :student, Users.Student
+    belongs_to :school, Schools.School
 
     timestamps()
   end
@@ -15,7 +15,7 @@ defmodule Dbservice.Schools.EnrollmentRecord do
   @doc false
   def changeset(enrollment_record, attrs) do
     enrollment_record
-    |> cast(attrs, [:grade, :academic_year, :is_current])
-    |> validate_required([:grade, :academic_year, :is_current])
+    |> cast(attrs, [:student_id, :school_id, :grade, :academic_year, :is_current])
+    |> validate_required([:student_id, :school_id])
   end
 end

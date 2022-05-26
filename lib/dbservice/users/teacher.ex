@@ -6,9 +6,9 @@ defmodule Dbservice.Users.Teacher do
     field :designation, :string
     field :grade, :string
     field :subject, :string
-    field :user_id, :id
-    field :school_id, :id
-    field :program_manager_id, :id
+    belongs_to :user, Users.User
+    belongs_to :school, Schools.School
+    belongs_to :program_manager, Users.User
 
     timestamps()
   end
@@ -16,7 +16,7 @@ defmodule Dbservice.Users.Teacher do
   @doc false
   def changeset(teacher, attrs) do
     teacher
-    |> cast(attrs, [:designation, :subject, :grade])
-    |> validate_required([:designation, :subject, :grade])
+    |> cast(attrs, [:user_id, :school_id, :program_manager_id, :designation, :subject, :grade])
+    |> validate_required([:user_id, :school_id])
   end
 end
