@@ -20,7 +20,7 @@ defmodule DbserviceWeb.Router do
     resources "/enrollment-record", EnrollmentRecordController, except: [:new, :edit]
     resources "/session", SessionController, only: [:index, :create, :update, :show]
     post "/session/:id/update_batches", SessionController, :update_batches
-    resources "/session_occurence", SessionOccurenceController, except: [:new, :edit]
+    resources "/session-occurence", SessionOccurenceController, except: [:new, :edit]
   end
 
   # Enables LiveDashboard only for development
