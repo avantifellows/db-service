@@ -27,4 +27,40 @@ defmodule Dbservice.UsersFixtures do
 
     user
   end
+
+  @doc """
+  Generate a student.
+  """
+  def student_fixture(attrs \\ %{}) do
+    {:ok, student} =
+      attrs
+      |> Enum.into(%{
+        category: "some category",
+        father_name: "some father_name",
+        father_phone: "some father_phone",
+        mother_name: "some mother_name",
+        mother_phone: "some mother_phone",
+        stream: "some stream",
+        uuid: "some uuid"
+      })
+      |> Dbservice.Users.create_student()
+
+    student
+  end
+
+  @doc """
+  Generate a teacher.
+  """
+  def teacher_fixture(attrs \\ %{}) do
+    {:ok, teacher} =
+      attrs
+      |> Enum.into(%{
+        designation: "some designation",
+        grade: "some grade",
+        subject: "some subject"
+      })
+      |> Dbservice.Users.create_teacher()
+
+    teacher
+  end
 end
