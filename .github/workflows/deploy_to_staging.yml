@@ -75,13 +75,18 @@ jobs:
     environment: staging
 
     steps:
+      - name: Checkout code
       - uses: actions/checkout@v2
-
         # actions/checkout@v2 only checks out the latest commit,
         # so we need to tell it to check out the entire main branch
         with:
           ref: main
           fetch-depth: 0
+
+      - name: Set up Python dependency
+        uses: actions/setup-python@v2
+        with:
+          python-version: 3.8.1
 
       # configure the gigalixir-actions with our credentials and app name
       - uses: mhanberg/gigalixir-action@v0.6.1
