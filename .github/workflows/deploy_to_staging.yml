@@ -68,7 +68,7 @@ jobs:
     # only run this job if the verify job succeeds
     needs: verify
 
-    # only run this job if the workflow is running on the master branch
+    # only run this job if the workflow is running on the main branch
     # if: github.ref == 'refs/heads/main'
 
     runs-on: ubuntu-18.04
@@ -78,9 +78,9 @@ jobs:
       - uses: actions/checkout@v2
 
         # actions/checkout@v2 only checks out the latest commit,
-        # so we need to tell it to check out the entire master branch
+        # so we need to tell it to check out the entire main branch
         with:
-          ref: master
+          ref: main
           fetch-depth: 0
 
       # configure the gigalixir-actions with our credentials and app name
