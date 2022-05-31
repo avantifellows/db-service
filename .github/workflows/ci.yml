@@ -18,7 +18,7 @@ jobs:
         env:
           POSTGRES_USER: postgres
           POSTGRES_PASSWORD: postgres
-          POSTGRES_DB: pipsqueak_test
+          POSTGRES_DB: dbservice_ci
         ports: ['5432:5432']
         options: --health-cmd pg_isready --health-interval 10s --health-timeout 5s --health-retries 5
 
@@ -62,5 +62,8 @@ jobs:
           mix deps.get
           (cd assets && yarn)
 
-      - run: mix format --check-formatted
-      # - run: mix test
+      - name: Check formatting
+        run: mix format --check-formatted
+
+      # - name: Run tests
+      #   run: mix test
