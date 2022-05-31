@@ -84,7 +84,7 @@ jobs:
           fetch-depth: 0
 
       - name: Set up Python dependency
-        uses: actions/setup-python@v2
+      - uses: actions/setup-python@v2
         with:
           python-version: 3.8.1
 
