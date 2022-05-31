@@ -62,4 +62,4 @@ jobs:
           (cd assets && yarn)
 
       - run: mix format --check-formatted
-      - run: mix test
+      # - run: mix test
