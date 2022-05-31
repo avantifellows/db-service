@@ -27,7 +27,19 @@ defmodule Dbservice.Users.User do
   @doc false
   def changeset(user, attrs) do
     user
-    |> cast(attrs, [:first_name, :last_name, :email, :phone, :gender, :address, :city, :district, :state, :pincode, :role])
+    |> cast(attrs, [
+      :first_name,
+      :last_name,
+      :email,
+      :phone,
+      :gender,
+      :address,
+      :city,
+      :district,
+      :state,
+      :pincode,
+      :role
+    ])
     |> validate_required([:first_name, :last_name, :email, :phone])
   end
 
@@ -36,5 +48,4 @@ defmodule Dbservice.Users.User do
     |> change()
     |> put_assoc(:batches, batches)
   end
-
 end

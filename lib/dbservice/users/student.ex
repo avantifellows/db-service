@@ -14,13 +14,22 @@ defmodule Dbservice.Users.Student do
     belongs_to :group, Groups.Group
 
     timestamps()
-
   end
 
   @doc false
   def changeset(student, attrs) do
     student
-    |> cast(attrs, [:user_id, :group_id, :uuid, :father_name, :father_phone, :mother_name, :mother_phone, :category, :stream])
+    |> cast(attrs, [
+      :user_id,
+      :group_id,
+      :uuid,
+      :father_name,
+      :father_phone,
+      :mother_name,
+      :mother_phone,
+      :category,
+      :stream
+    ])
     |> validate_required([:user_id, :group_id, :uuid])
   end
 end

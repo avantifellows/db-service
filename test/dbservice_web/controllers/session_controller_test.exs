@@ -27,7 +27,17 @@ defmodule DbserviceWeb.SessionControllerTest do
     platform: "some updated platform",
     platform_link: "some updated platform_link"
   }
-  @invalid_attrs %{end_time: nil, meta_data: nil, name: nil, portal_link: nil, repeat_till_date: nil, repeat_type: nil, start_time: nil, platform: nil, platform_link: nil}
+  @invalid_attrs %{
+    end_time: nil,
+    meta_data: nil,
+    name: nil,
+    portal_link: nil,
+    repeat_till_date: nil,
+    repeat_type: nil,
+    start_time: nil,
+    platform: nil,
+    platform_link: nil
+  }
 
   setup %{conn: conn} do
     {:ok, conn: put_req_header(conn, "accept", "application/json")}
