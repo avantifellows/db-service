@@ -69,7 +69,7 @@ jobs:
     needs: verify
 
     # only run this job if the workflow is running on the main branch
-    # if: github.ref == 'refs/heads/main'
+    if: github.ref == 'refs/heads/main'
 
     runs-on: ubuntu-18.04
     environment: staging
