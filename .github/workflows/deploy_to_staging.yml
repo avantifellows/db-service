@@ -76,12 +76,10 @@ jobs:
 
     steps:
       - name: Checkout code
-      - uses: actions/checkout@v2
-        # actions/checkout@v2 only checks out the latest commit,
-        # so we need to tell it to check out the entire main branch
+        uses: actions/checkout@v2
         with:
-          ref: main
-          fetch-depth: 0
+          ref: main # Check out main instead of the latest commit.
+          fetch-depth: 0 # Fetch all history, since deploy is Git based.
 
       - name: Set up Python dependency
         uses: actions/setup-python@v2
