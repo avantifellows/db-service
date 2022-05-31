@@ -1,7 +1,7 @@
 name: Staging Deployment
 on:
   push:
-    branches: [feature/cd]
+    branches: [main]
 
 jobs:
   verify:
@@ -67,9 +67,6 @@ jobs:
   deploy:
     # only run this job if the verify job succeeds
     needs: verify
-
-    # only run this job if the workflow is running on the main branch
-    if: github.ref == 'refs/heads/main'
 
     runs-on: ubuntu-18.04
     environment: staging
