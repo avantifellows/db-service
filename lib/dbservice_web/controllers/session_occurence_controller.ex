@@ -12,10 +12,14 @@ defmodule DbserviceWeb.SessionOccurenceController do
   end
 
   def create(conn, %{"session_occurence" => session_occurence_params}) do
-    with {:ok, %SessionOccurence{} = session_occurence} <- Sessions.create_session_occurence(session_occurence_params) do
+    with {:ok, %SessionOccurence{} = session_occurence} <-
+           Sessions.create_session_occurence(session_occurence_params) do
       conn
       |> put_status(:created)
-      |> put_resp_header("location", Routes.session_occurence_path(conn, :show, session_occurence))
+      |> put_resp_header(
+        "location",
+        Routes.session_occurence_path(conn, :show, session_occurence)
+      )
       |> render("show.json", session_occurence: session_occurence)
     end
   end
@@ -28,7 +32,8 @@ defmodule DbserviceWeb.SessionOccurenceController do
   def update(conn, %{"id" => id, "session_occurence" => session_occurence_params}) do
     session_occurence = Sessions.get_session_occurence!(id)
 
-    with {:ok, %SessionOccurence{} = session_occurence} <- Sessions.update_session_occurence(session_occurence, session_occurence_params) do
+    with {:ok, %SessionOccurence{} = session_occurence} <-
+           Sessions.update_session_occurence(session_occurence, session_occurence_params) do
       render(conn, "show.json", session_occurence: session_occurence)
     end
   end

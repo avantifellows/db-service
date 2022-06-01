@@ -31,7 +31,19 @@ defmodule DbserviceWeb.UserControllerTest do
     role: "some updated role",
     state: "some updated state"
   }
-  @invalid_attrs %{address: nil, city: nil, district: nil, email: nil, first_name: nil, gender: nil, last_name: nil, phone: nil, pincode: nil, role: nil, state: nil}
+  @invalid_attrs %{
+    address: nil,
+    city: nil,
+    district: nil,
+    email: nil,
+    first_name: nil,
+    gender: nil,
+    last_name: nil,
+    phone: nil,
+    pincode: nil,
+    role: nil,
+    state: nil
+  }
 
   setup %{conn: conn} do
     {:ok, conn: put_req_header(conn, "accept", "application/json")}

@@ -30,7 +30,9 @@ defmodule DbserviceWeb.EnrollmentRecordControllerTest do
 
   describe "create enrollment_record" do
     test "renders enrollment_record when data is valid", %{conn: conn} do
-      conn = post(conn, Routes.enrollment_record_path(conn, :create), enrollment_record: @create_attrs)
+      conn =
+        post(conn, Routes.enrollment_record_path(conn, :create), enrollment_record: @create_attrs)
+
       assert %{"id" => id} = json_response(conn, 201)["data"]
 
       conn = get(conn, Routes.enrollment_record_path(conn, :show, id))
@@ -44,7 +46,9 @@ defmodule DbserviceWeb.EnrollmentRecordControllerTest do
     end
 
     test "renders errors when data is invalid", %{conn: conn} do
-      conn = post(conn, Routes.enrollment_record_path(conn, :create), enrollment_record: @invalid_attrs)
+      conn =
+        post(conn, Routes.enrollment_record_path(conn, :create), enrollment_record: @invalid_attrs)
+
       assert json_response(conn, 422)["errors"] != %{}
     end
   end
@@ -52,8 +56,15 @@ defmodule DbserviceWeb.EnrollmentRecordControllerTest do
   describe "update enrollment_record" do
     setup [:create_enrollment_record]
 
-    test "renders enrollment_record when data is valid", %{conn: conn, enrollment_record: %EnrollmentRecord{id: id} = enrollment_record} do
-      conn = put(conn, Routes.enrollment_record_path(conn, :update, enrollment_record), enrollment_record: @update_attrs)
+    test "renders enrollment_record when data is valid", %{
+      conn: conn,
+      enrollment_record: %EnrollmentRecord{id: id} = enrollment_record
+    } do
+      conn =
+        put(conn, Routes.enrollment_record_path(conn, :update, enrollment_record),
+          enrollment_record: @update_attrs
+        )
+
       assert %{"id" => ^id} = json_response(conn, 200)["data"]
 
       conn = get(conn, Routes.enrollment_record_path(conn, :show, id))
@@ -66,8 +77,15 @@ defmodule DbserviceWeb.EnrollmentRecordControllerTest do
              } = json_response(conn, 200)["data"]
     end
 
-    test "renders errors when data is invalid", %{conn: conn, enrollment_record: enrollment_record} do
-      conn = put(conn, Routes.enrollment_record_path(conn, :update, enrollment_record), enrollment_record: @invalid_attrs)
+    test "renders errors when data is invalid", %{
+      conn: conn,
+      enrollment_record: enrollment_record
+    } do
+      conn =
+        put(conn, Routes.enrollment_record_path(conn, :update, enrollment_record),
+          enrollment_record: @invalid_attrs
+        )
+
       assert json_response(conn, 422)["errors"] != %{}
     end
   end
