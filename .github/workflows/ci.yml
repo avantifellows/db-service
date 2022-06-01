@@ -9,7 +9,7 @@ jobs:
     runs-on: ubuntu-latest
     strategy:
       matrix:
-        otp: [22.2.7]
+        otp: [24.3.4]
         elixir: [1.13.3]
 
     services:
@@ -28,7 +28,6 @@ jobs:
         with:
           otp-version: ${{ matrix.otp }}
           elixir-version: ${{ matrix.elixir }}
-          experimental-otp: true
 
       - name: Setup Node
         uses: actions/setup-node@v1
