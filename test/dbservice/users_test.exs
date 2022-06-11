@@ -8,7 +8,19 @@ defmodule Dbservice.UsersTest do
 
     import Dbservice.UsersFixtures
 
-    @invalid_attrs %{address: nil, city: nil, district: nil, email: nil, first_name: nil, gender: nil, last_name: nil, phone: nil, pincode: nil, role: nil, state: nil}
+    @invalid_attrs %{
+      address: nil,
+      city: nil,
+      district: nil,
+      email: nil,
+      first_name: nil,
+      gender: nil,
+      last_name: nil,
+      phone: nil,
+      pincode: nil,
+      role: nil,
+      state: nil
+    }
 
     test "list_user/0 returns all user" do
       user = user_fixture()
@@ -21,7 +33,19 @@ defmodule Dbservice.UsersTest do
     end
 
     test "create_user/1 with valid data creates a user" do
-      valid_attrs = %{address: "some address", city: "some city", district: "some district", email: "some email", first_name: "some first_name", gender: "some gender", last_name: "some last_name", phone: "some phone", pincode: "some pincode", role: "some role", state: "some state"}
+      valid_attrs = %{
+        address: "some address",
+        city: "some city",
+        district: "some district",
+        email: "some email",
+        first_name: "some first_name",
+        gender: "some gender",
+        last_name: "some last_name",
+        phone: "some phone",
+        pincode: "some pincode",
+        role: "some role",
+        state: "some state"
+      }
 
       assert {:ok, %User{} = user} = Users.create_user(valid_attrs)
       assert user.address == "some address"
@@ -43,7 +67,20 @@ defmodule Dbservice.UsersTest do
 
     test "update_user/2 with valid data updates the user" do
       user = user_fixture()
-      update_attrs = %{address: "some updated address", city: "some updated city", district: "some updated district", email: "some updated email", first_name: "some updated first_name", gender: "some updated gender", last_name: "some updated last_name", phone: "some updated phone", pincode: "some updated pincode", role: "some updated role", state: "some updated state"}
+
+      update_attrs = %{
+        address: "some updated address",
+        city: "some updated city",
+        district: "some updated district",
+        email: "some updated email",
+        first_name: "some updated first_name",
+        gender: "some updated gender",
+        last_name: "some updated last_name",
+        phone: "some updated phone",
+        pincode: "some updated pincode",
+        role: "some updated role",
+        state: "some updated state"
+      }
 
       assert {:ok, %User{} = user} = Users.update_user(user, update_attrs)
       assert user.address == "some updated address"
@@ -82,7 +119,15 @@ defmodule Dbservice.UsersTest do
 
     import Dbservice.UsersFixtures
 
-    @invalid_attrs %{category: nil, father_name: nil, father_phone: nil, mother_name: nil, mother_phone: nil, stream: nil, uuid: nil}
+    @invalid_attrs %{
+      category: nil,
+      father_name: nil,
+      father_phone: nil,
+      mother_name: nil,
+      mother_phone: nil,
+      stream: nil,
+      uuid: nil
+    }
 
     test "list_student/0 returns all student" do
       student = student_fixture()
@@ -95,7 +140,15 @@ defmodule Dbservice.UsersTest do
     end
 
     test "create_student/1 with valid data creates a student" do
-      valid_attrs = %{category: "some category", father_name: "some father_name", father_phone: "some father_phone", mother_name: "some mother_name", mother_phone: "some mother_phone", stream: "some stream", uuid: "some uuid"}
+      valid_attrs = %{
+        category: "some category",
+        father_name: "some father_name",
+        father_phone: "some father_phone",
+        mother_name: "some mother_name",
+        mother_phone: "some mother_phone",
+        stream: "some stream",
+        uuid: "some uuid"
+      }
 
       assert {:ok, %Student{} = student} = Users.create_student(valid_attrs)
       assert student.category == "some category"
@@ -113,7 +166,16 @@ defmodule Dbservice.UsersTest do
 
     test "update_student/2 with valid data updates the student" do
       student = student_fixture()
-      update_attrs = %{category: "some updated category", father_name: "some updated father_name", father_phone: "some updated father_phone", mother_name: "some updated mother_name", mother_phone: "some updated mother_phone", stream: "some updated stream", uuid: "some updated uuid"}
+
+      update_attrs = %{
+        category: "some updated category",
+        father_name: "some updated father_name",
+        father_phone: "some updated father_phone",
+        mother_name: "some updated mother_name",
+        mother_phone: "some updated mother_phone",
+        stream: "some updated stream",
+        uuid: "some updated uuid"
+      }
 
       assert {:ok, %Student{} = student} = Users.update_student(student, update_attrs)
       assert student.category == "some updated category"
@@ -161,7 +223,11 @@ defmodule Dbservice.UsersTest do
     end
 
     test "create_teacher/1 with valid data creates a teacher" do
-      valid_attrs = %{designation: "some designation", grade: "some grade", subject: "some subject"}
+      valid_attrs = %{
+        designation: "some designation",
+        grade: "some grade",
+        subject: "some subject"
+      }
 
       assert {:ok, %Teacher{} = teacher} = Users.create_teacher(valid_attrs)
       assert teacher.designation == "some designation"
@@ -175,7 +241,12 @@ defmodule Dbservice.UsersTest do
 
     test "update_teacher/2 with valid data updates the teacher" do
       teacher = teacher_fixture()
-      update_attrs = %{designation: "some updated designation", grade: "some updated grade", subject: "some updated subject"}
+
+      update_attrs = %{
+        designation: "some updated designation",
+        grade: "some updated grade",
+        subject: "some updated subject"
+      }
 
       assert {:ok, %Teacher{} = teacher} = Users.update_teacher(teacher, update_attrs)
       assert teacher.designation == "some updated designation"

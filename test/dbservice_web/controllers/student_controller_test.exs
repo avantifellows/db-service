@@ -23,7 +23,15 @@ defmodule DbserviceWeb.StudentControllerTest do
     stream: "some updated stream",
     uuid: "some updated uuid"
   }
-  @invalid_attrs %{category: nil, father_name: nil, father_phone: nil, mother_name: nil, mother_phone: nil, stream: nil, uuid: nil}
+  @invalid_attrs %{
+    category: nil,
+    father_name: nil,
+    father_phone: nil,
+    mother_name: nil,
+    mother_phone: nil,
+    stream: nil,
+    uuid: nil
+  }
 
   setup %{conn: conn} do
     {:ok, conn: put_req_header(conn, "accept", "application/json")}

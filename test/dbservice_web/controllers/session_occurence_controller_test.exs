@@ -28,7 +28,9 @@ defmodule DbserviceWeb.SessionOccurenceControllerTest do
 
   describe "create session_occurence" do
     test "renders session_occurence when data is valid", %{conn: conn} do
-      conn = post(conn, Routes.session_occurence_path(conn, :create), session_occurence: @create_attrs)
+      conn =
+        post(conn, Routes.session_occurence_path(conn, :create), session_occurence: @create_attrs)
+
       assert %{"id" => id} = json_response(conn, 201)["data"]
 
       conn = get(conn, Routes.session_occurence_path(conn, :show, id))
@@ -41,7 +43,9 @@ defmodule DbserviceWeb.SessionOccurenceControllerTest do
     end
 
     test "renders errors when data is invalid", %{conn: conn} do
-      conn = post(conn, Routes.session_occurence_path(conn, :create), session_occurence: @invalid_attrs)
+      conn =
+        post(conn, Routes.session_occurence_path(conn, :create), session_occurence: @invalid_attrs)
+
       assert json_response(conn, 422)["errors"] != %{}
     end
   end
@@ -49,8 +53,15 @@ defmodule DbserviceWeb.SessionOccurenceControllerTest do
   describe "update session_occurence" do
     setup [:create_session_occurence]
 
-    test "renders session_occurence when data is valid", %{conn: conn, session_occurence: %SessionOccurence{id: id} = session_occurence} do
-      conn = put(conn, Routes.session_occurence_path(conn, :update, session_occurence), session_occurence: @update_attrs)
+    test "renders session_occurence when data is valid", %{
+      conn: conn,
+      session_occurence: %SessionOccurence{id: id} = session_occurence
+    } do
+      conn =
+        put(conn, Routes.session_occurence_path(conn, :update, session_occurence),
+          session_occurence: @update_attrs
+        )
+
       assert %{"id" => ^id} = json_response(conn, 200)["data"]
 
       conn = get(conn, Routes.session_occurence_path(conn, :show, id))
@@ -62,8 +73,15 @@ defmodule DbserviceWeb.SessionOccurenceControllerTest do
              } = json_response(conn, 200)["data"]
     end
 
-    test "renders errors when data is invalid", %{conn: conn, session_occurence: session_occurence} do
-      conn = put(conn, Routes.session_occurence_path(conn, :update, session_occurence), session_occurence: @invalid_attrs)
+    test "renders errors when data is invalid", %{
+      conn: conn,
+      session_occurence: session_occurence
+    } do
+      conn =
+        put(conn, Routes.session_occurence_path(conn, :update, session_occurence),
+          session_occurence: @invalid_attrs
+        )
+
       assert json_response(conn, 422)["errors"] != %{}
     end
   end

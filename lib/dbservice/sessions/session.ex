@@ -28,8 +28,30 @@ defmodule Dbservice.Sessions.Session do
   @doc false
   def changeset(session, attrs) do
     session
-    |> cast(attrs, [:name, :is_active, :platform, :platform_link, :portal_link, :start_time, :end_time, :repeat_type, :repeat_till_date, :meta_data])
-    |> validate_required([:name, :is_active, :platform, :platform_link, :portal_link, :start_time, :end_time, :repeat_type, :repeat_till_date, :meta_data])
+    |> cast(attrs, [
+      :name,
+      :is_active,
+      :platform,
+      :platform_link,
+      :portal_link,
+      :start_time,
+      :end_time,
+      :repeat_type,
+      :repeat_till_date,
+      :meta_data
+    ])
+    |> validate_required([
+      :name,
+      :is_active,
+      :platform,
+      :platform_link,
+      :portal_link,
+      :start_time,
+      :end_time,
+      :repeat_type,
+      :repeat_till_date,
+      :meta_data
+    ])
   end
 
   def changeset_update_batches(session, batches) do
