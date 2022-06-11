@@ -17,6 +17,6 @@ defmodule Dbservice.Sessions.UserSession do
   def changeset(user_session, attrs) do
     user_session
     |> cast(attrs, [:start_time, :end_time, :data, :user_id, :session_occurence_id])
-    |> validate_required([:user_id, :session_occurence_id, :start_time, :end_time])
+    |> validate_required([:user_id, :session_occurence_id, :start_time])
   end
 end

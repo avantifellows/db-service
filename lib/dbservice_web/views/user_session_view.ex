@@ -16,7 +16,8 @@ defmodule DbserviceWeb.UserSessionView do
       start_time: user_session.start_time,
       end_time: user_session.end_time,
       user_id: user_session.user_id,
-      session_occurence_id: user_session.session_occurence_id
+      session_occurence_id: user_session.session_occurence_id,
+      data: user_session.data
     }
   end
 end
