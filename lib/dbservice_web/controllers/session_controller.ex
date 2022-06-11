@@ -41,7 +41,8 @@ defmodule DbserviceWeb.SessionController do
     end
   end
 
-  def update_batches(conn, %{"id" => session_id, "batch_ids" => batch_ids}) when is_list(batch_ids) do
+  def update_batches(conn, %{"id" => session_id, "batch_ids" => batch_ids})
+      when is_list(batch_ids) do
     with {:ok, %Session{} = session} <- Sessions.update_batches(session_id, batch_ids) do
       render(conn, "show.json", session: session)
     end
