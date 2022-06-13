@@ -4,8 +4,8 @@ defmodule Dbservice.Repo.Migrations.CreateSession do
   def change do
     create table(:session) do
       add :name, :string
-      add :type, :string
-      add :type_uid, :string
+      add :platform, :string
+      add :platform_link, :string
       add :portal_link, :text
       add :start_time, :utc_datetime
       add :end_time, :utc_datetime

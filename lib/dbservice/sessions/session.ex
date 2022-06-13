@@ -7,14 +7,15 @@ defmodule Dbservice.Sessions.Session do
 
   schema "session" do
     field :end_time, :utc_datetime
+    field :is_active, :boolean
     field :meta_data, :map
     field :name, :string
+    field :platform, :string
+    field :platform_link, :string
     field :portal_link, :string
     field :repeat_till_date, :utc_datetime
     field :repeat_type, :string
     field :start_time, :utc_datetime
-    field :type, :string
-    field :type_uid, :string
     field :owner_id, :id
     field :created_by_id, :id
 
@@ -27,7 +28,29 @@ defmodule Dbservice.Sessions.Session do
   @doc false
   def changeset(session, attrs) do
     session
-    |> cast(attrs, [:name, :type, :type_uid, :portal_link, :start_time, :end_time, :repeat_type, :repeat_till_date, :meta_data])
-    |> validate_required([:name, :type, :type_uid, :portal_link, :start_time, :end_time, :repeat_type, :repeat_till_date, :meta_data])
+    |> cast(attrs, [
+      :name,
+      :is_active,
+      :platform,
+      :platform_link,
+      :portal_link,
+      :start_time,
+      :end_time,
+      :repeat_type,
+      :repeat_till_date,
+      :meta_data
+    ])
+    |> validate_required([
+      :name,
+      :is_active,
+      :platform,
+      :platform_link,
+      :portal_link,
+      :start_time,
+      :end_time,
+      :repeat_type,
+      :repeat_till_date,
+      :meta_data
+    ])
   end
 end
