@@ -131,7 +131,10 @@ defmodule Dbservice.Sessions do
       ** (Ecto.NoResultsError)
 
   """
-  def get_session_occurence!(id), do: Repo.get!(SessionOccurence, id)
+  def get_session_occurence!(id) do
+    Repo.get!(SessionOccurence, id)
+      |> Repo.preload(:users)
+  end
 
   @doc """
   Creates a session_occurence.
