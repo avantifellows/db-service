@@ -11,8 +11,8 @@ defmodule DbserviceWeb.StudentController do
     render(conn, "index.json", student: student)
   end
 
-  def create(conn, %{"student" => student_params}) do
-    with {:ok, %Student{} = student} <- Users.create_student(student_params) do
+  def create(conn, params) do
+    with {:ok, %Student{} = student} <- Users.create_student(params) do
       conn
       |> put_status(:created)
       |> put_resp_header("location", Routes.student_path(conn, :show, student))
@@ -25,10 +25,10 @@ defmodule DbserviceWeb.StudentController do
     render(conn, "show.json", student: student)
   end
 
-  def update(conn, %{"id" => id, "student" => student_params}) do
-    student = Users.get_student!(id)
+  def update(conn, params) do
+    student = Users.get_student!(params["id"])
 
-    with {:ok, %Student{} = student} <- Users.update_student(student, student_params) do
+    with {:ok, %Student{} = student} <- Users.update_student(student, params) do
       render(conn, "show.json", student: student)
     end
   end
