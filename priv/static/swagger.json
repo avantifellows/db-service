@@ -1,10 +1,181 @@
 {
-  "definitions": {},
+  "definitions": {
+    "User": {
+      "description": "A user in the application",
+      "properties": {
+        "data": {
+          "$ref": "#/definitions/UserSingle"
+        }
+      },
+      "title": "Users",
+      "type": "object"
+    },
+    "UserSingle": {
+      "description": "A user in the application",
+      "example": {
+        "address": "Address",
+        "city": "City",
+        "district": "District",
+        "email": "Email",
+        "first_name": "First name",
+        "gender": "Gender",
+        "last_name": "Last name",
+        "phone": "Phone number",
+        "pincode": "Pin code",
+        "role": "User role",
+        "state": "State"
+      },
+      "properties": {
+        "address": {
+          "description": "Address",
+          "type": "string"
+        },
+        "city": {
+          "description": "City",
+          "type": "string"
+        },
+        "district": {
+          "description": "District",
+          "type": "string"
+        },
+        "email": {
+          "description": "Email",
+          "type": "string"
+        },
+        "first_name": {
+          "description": "First name",
+          "type": "string"
+        },
+        "gender": {
+          "description": "Gender",
+          "type": "string"
+        },
+        "last_name": {
+          "description": "Last name",
+          "type": "string"
+        },
+        "phone": {
+          "description": "Phone number",
+          "type": "string"
+        },
+        "pincode": {
+          "description": "Pin code",
+          "type": "string"
+        },
+        "role": {
+          "description": "User role",
+          "type": "string"
+        },
+        "state": {
+          "description": "State",
+          "type": "string"
+        }
+      },
+      "title": "User",
+      "type": "object"
+    },
+    "Users": {
+      "description": "All users in the application",
+      "items": {
+        "$ref": "#/definitions/UserSingle"
+      },
+      "title": "Users",
+      "type": "array"
+    }
+  },
   "host": "localhost:4000",
   "info": {
-    "title": "Dbservice",
+    "title": "DB Service application",
     "version": "1.0"
   },
-  "paths": {},
+  "paths": {
+    "/api/user": {
+      "get": {
+        "description": "",
+        "operationId": "DbserviceWeb.UserController.index",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "schema": {
+              "$ref": "#/definitions/Users"
+            }
+          }
+        },
+        "summary": "",
+        "tags": [
+          "User"
+        ]
+      },
+      "post": {
+        "description": "",
+        "operationId": "DbserviceWeb.UserController.create",
+        "parameters": [
+          {
+            "description": "User to create",
+            "in": "body",
+            "name": "data",
+            "required": true,
+            "schema": {
+              "$ref": "#/definitions/UserSingle"
+            }
+          }
+        ],
+        "responses": {
+          "201": {
+            "description": "Created",
+            "schema": {
+              "$ref": "#/definitions/User"
+            }
+          }
+        },
+        "summary": "",
+        "tags": [
+          "User"
+        ]
+      }
+    },
+    "/api/user/{userId}": {
+      "get": {
+        "description": "",
+        "operationId": "DbserviceWeb.UserController.show",
+        "parameters": [
+          {
+            "description": "The id of the user",
+            "in": "path",
+            "name": "userId",
+            "required": true,
+            "type": "integer"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "schema": {
+              "$ref": "#/definitions/User"
+            }
+          }
+        },
+        "summary": "",
+        "tags": [
+          "User"
+        ]
+      },
+      "patch": {
+        "description": "",
+        "operationId": "DbserviceWeb.UserController.update",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        },
+        "summary": "",
+        "tags": [
+          "User"
+        ]
+      }
+    }
+  },
   "swagger": "2.0"
 }

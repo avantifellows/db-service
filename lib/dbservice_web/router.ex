@@ -25,7 +25,7 @@ defmodule DbserviceWeb.Router do
       %{
         info: %{
           version: "1.0",
-          title: "Dbservice"
+          title: "DB Service application"
         }
       }
     end
