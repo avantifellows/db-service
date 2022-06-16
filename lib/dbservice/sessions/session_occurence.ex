@@ -2,12 +2,16 @@ defmodule Dbservice.Sessions.SessionOccurence do
   use Ecto.Schema
   import Ecto.Changeset
 
+  alias Dbservice.Users.User
+
   schema "session_occurence" do
     field :end_time, :utc_datetime
     field :start_time, :utc_datetime
     field :session_id, :id
 
     timestamps()
+
+    many_to_many :users, User, join_through: "user_session", on_replace: :delete
   end
 
   @doc false
