@@ -3,11 +3,11 @@ defmodule DbserviceWeb.SchoolView do
   alias DbserviceWeb.SchoolView
 
   def render("index.json", %{school: school}) do
-    %{data: render_many(school, SchoolView, "school.json")}
+    render_many(school, SchoolView, "school.json")
   end
 
   def render("show.json", %{school: school}) do
-    %{data: render_one(school, SchoolView, "school.json")}
+    render_one(school, SchoolView, "school.json")
   end
 
   def render("school.json", %{school: school}) do
