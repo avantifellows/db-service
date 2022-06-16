@@ -3,11 +3,11 @@ defmodule DbserviceWeb.GroupView do
   alias DbserviceWeb.GroupView
 
   def render("index.json", %{group: group}) do
-    %{data: render_many(group, GroupView, "group.json")}
+    render_many(group, GroupView, "group.json")
   end
 
   def render("show.json", %{group: group}) do
-    %{data: render_one(group, GroupView, "group.json")}
+    render_one(group, GroupView, "group.json")
   end
 
   def render("group.json", %{group: group}) do

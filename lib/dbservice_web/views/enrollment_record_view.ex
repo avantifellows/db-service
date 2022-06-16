@@ -3,11 +3,11 @@ defmodule DbserviceWeb.EnrollmentRecordView do
   alias DbserviceWeb.EnrollmentRecordView
 
   def render("index.json", %{enrollment_record: enrollment_record}) do
-    %{data: render_many(enrollment_record, EnrollmentRecordView, "enrollment_record.json")}
+    render_many(enrollment_record, EnrollmentRecordView, "enrollment_record.json")
   end
 
   def render("show.json", %{enrollment_record: enrollment_record}) do
-    %{data: render_one(enrollment_record, EnrollmentRecordView, "enrollment_record.json")}
+    render_one(enrollment_record, EnrollmentRecordView, "enrollment_record.json")
   end
 
   def render("enrollment_record.json", %{enrollment_record: enrollment_record}) do

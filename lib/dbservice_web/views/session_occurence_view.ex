@@ -3,11 +3,11 @@ defmodule DbserviceWeb.SessionOccurenceView do
   alias DbserviceWeb.SessionOccurenceView
 
   def render("index.json", %{session_occurence: session_occurence}) do
-    %{data: render_many(session_occurence, SessionOccurenceView, "session_occurence.json")}
+    render_many(session_occurence, SessionOccurenceView, "session_occurence.json")
   end
 
   def render("show.json", %{session_occurence: session_occurence}) do
-    %{data: render_one(session_occurence, SessionOccurenceView, "session_occurence.json")}
+    render_one(session_occurence, SessionOccurenceView, "session_occurence.json")
   end
 
   def render("session_occurence.json", %{session_occurence: session_occurence}) do
