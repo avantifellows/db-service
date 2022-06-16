@@ -2,16 +2,6 @@
   "definitions": {
     "User": {
       "description": "A user in the application",
-      "properties": {
-        "data": {
-          "$ref": "#/definitions/UserSingle"
-        }
-      },
-      "title": "Users",
-      "type": "object"
-    },
-    "UserSingle": {
-      "description": "A user in the application",
       "example": {
         "address": "Address",
         "city": "City",
@@ -77,7 +67,7 @@
     "Users": {
       "description": "All users in the application",
       "items": {
-        "$ref": "#/definitions/UserSingle"
+        "$ref": "#/definitions/User"
       },
       "title": "Users",
       "type": "array"
@@ -114,10 +104,10 @@
           {
             "description": "User to create",
             "in": "body",
-            "name": "data",
+            "name": "body",
             "required": true,
             "schema": {
-              "$ref": "#/definitions/UserSingle"
+              "$ref": "#/definitions/User"
             }
           }
         ],
@@ -164,10 +154,30 @@
       "patch": {
         "description": "",
         "operationId": "DbserviceWeb.UserController.update",
-        "parameters": [],
+        "parameters": [
+          {
+            "description": "The id of the user",
+            "in": "path",
+            "name": "userId",
+            "required": true,
+            "type": "integer"
+          },
+          {
+            "description": "User to create",
+            "in": "body",
+            "name": "body",
+            "required": true,
+            "schema": {
+              "$ref": "#/definitions/User"
+            }
+          }
+        ],
         "responses": {
-          "200": {
-            "description": "OK"
+          "201": {
+            "description": "Updated",
+            "schema": {
+              "$ref": "#/definitions/User"
+            }
           }
         },
         "summary": "",

@@ -10,7 +10,7 @@ defmodule DbserviceWeb.UserController do
 
   def swagger_definitions do
     %{
-      UserSingle:
+      User:
         swagger_schema do
           title("User")
           description("A user in the application")
@@ -43,21 +43,12 @@ defmodule DbserviceWeb.UserController do
             role: "User role"
           })
         end,
-      User:
-        swagger_schema do
-          title("Users")
-          description("A user in the application")
-
-          properties do
-            data(Schema.ref(:UserSingle))
-          end
-        end,
       Users:
         swagger_schema do
           title("Users")
           description("All users in the application")
           type(:array)
-          items(Schema.ref(:UserSingle))
+          items(Schema.ref(:User))
         end
     }
   end
@@ -76,7 +67,7 @@ defmodule DbserviceWeb.UserController do
     post("/api/user")
 
     parameters do
-      data(:body, Schema.ref(:UserSingle), "User to create", required: true)
+      body(:body, Schema.ref(:User), "User to create", required: true)
     end
 
     response(201, "Created", Schema.ref(:User))
@@ -108,7 +99,13 @@ defmodule DbserviceWeb.UserController do
 
   swagger_path :update do
     patch("/api/user/{userId}")
-    response(200, "OK")
+
+    parameters do
+      userId(:path, :integer, "The id of the user", required: true)
+      body(:body, Schema.ref(:User), "User to create", required: true)
+    end
+
+    response(201, "Updated", Schema.ref(:User))
   end
 
   def update(conn, %{"id" => id, "user" => user_params}) do
