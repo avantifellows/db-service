@@ -103,7 +103,7 @@ defmodule Dbservice.Sessions do
   end
 
   @doc """
-  Updates the users mapped to a batch.
+  Updates the batches mapped to a session.
   """
   def update_batches(session_id, batch_ids) when is_list(batch_ids) do
     session = get_session!(session_id)
