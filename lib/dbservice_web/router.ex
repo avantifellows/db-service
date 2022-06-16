@@ -19,7 +19,8 @@ defmodule DbserviceWeb.Router do
     resources "/school", SchoolController, except: [:new, :edit]
     resources "/enrollment-record", EnrollmentRecordController, except: [:new, :edit]
     resources "/session", SessionController, only: [:index, :create, :update, :show]
-    resources "/session_occurence", SessionOccurenceController, except: [:new, :edit]
+    resources "/session-occurence", SessionOccurenceController, except: [:new, :edit]
+    resources "/user-session", UserSessionController, except: [:new, :edit]
 
     def swagger_info do
       %{
