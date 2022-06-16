@@ -40,8 +40,10 @@ config :phoenix, :json_library, Jason
 config :dbservice, :phoenix_swagger,
   swagger_files: %{
     "priv/static/swagger.json" => [
-      router: DbserviceWeb.Router,     # phoenix routes will be converted to swagger paths
-      endpoint: DbserviceWeb.Endpoint  # (optional) endpoint config used to set host, port and https schemes.
+      # phoenix routes will be converted to swagger paths
+      router: DbserviceWeb.Router,
+      # (optional) endpoint config used to set host, port and https schemes.
+      endpoint: DbserviceWeb.Endpoint
     ]
   }
 

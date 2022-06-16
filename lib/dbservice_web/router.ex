@@ -39,7 +39,6 @@ defmodule DbserviceWeb.Router do
       opts: [disable_validator: true]
   end
 
-
   # Enables LiveDashboard only for development
   #
   # If you want to use the LiveDashboard in production, you should put
