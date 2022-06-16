@@ -21,6 +21,7 @@ defmodule DbserviceWeb.Router do
     resources "/session", SessionController, only: [:index, :create, :update, :show]
     post "/session/:id/update-batches", SessionController, :update_batches
     resources "/session-occurence", SessionOccurenceController, except: [:new, :edit]
+    resources "/user-session", UserSessionController, except: [:new, :edit]
   end
 
   # Enables LiveDashboard only for development
