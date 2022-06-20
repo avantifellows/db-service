@@ -105,7 +105,7 @@ defmodule DbserviceWeb.UserController do
       body(:body, Schema.ref(:User), "User to create", required: true)
     end
 
-    response(201, "Updated", Schema.ref(:User))
+    response(200, "Updated", Schema.ref(:User))
   end
 
   def update(conn, params) do

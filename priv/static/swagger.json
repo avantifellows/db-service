@@ -173,7 +173,7 @@
           }
         ],
         "responses": {
-          "201": {
+          "200": {
             "description": "Updated",
             "schema": {
               "$ref": "#/definitions/User"
