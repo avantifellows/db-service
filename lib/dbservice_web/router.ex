@@ -12,7 +12,7 @@ defmodule DbserviceWeb.Router do
     resources "/group", GroupController, except: [:new, :edit]
     resources "/batch", BatchController, except: [:new, :edit]
     post "/batch/:id/update_users", BatchController, :update_users
-    resources "/user", UserController, only: [:index, :create, :update, :show, :delete]
+    resources "/user", UserController, only: [:index, :create, :update, :show]
     post "/user/:id/update_batches", UserController, :update_batches
     resources "/student", StudentController, except: [:new, :edit]
     resources "/teacher", TeacherController, except: [:new, :edit]
