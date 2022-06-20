@@ -11,9 +11,9 @@ defmodule DbserviceWeb.SessionOccurenceController do
     render(conn, "index.json", session_occurence: session_occurence)
   end
 
-  def create(conn, %{"session_occurence" => session_occurence_params}) do
+  def create(conn, params) do
     with {:ok, %SessionOccurence{} = session_occurence} <-
-           Sessions.create_session_occurence(session_occurence_params) do
+           Sessions.create_session_occurence(params) do
       conn
       |> put_status(:created)
       |> put_resp_header(
@@ -29,11 +29,11 @@ defmodule DbserviceWeb.SessionOccurenceController do
     render(conn, "show.json", session_occurence: session_occurence)
   end
 
-  def update(conn, %{"id" => id, "session_occurence" => session_occurence_params}) do
-    session_occurence = Sessions.get_session_occurence!(id)
+  def update(conn, params) do
+    session_occurence = Sessions.get_session_occurence!(params["id"])
 
     with {:ok, %SessionOccurence{} = session_occurence} <-
-           Sessions.update_session_occurence(session_occurence, session_occurence_params) do
+           Sessions.update_session_occurence(session_occurence, params) do
       render(conn, "show.json", session_occurence: session_occurence)
     end
   end

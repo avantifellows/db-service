@@ -11,9 +11,9 @@ defmodule DbserviceWeb.EnrollmentRecordController do
     render(conn, "index.json", enrollment_record: enrollment_record)
   end
 
-  def create(conn, %{"enrollment_record" => enrollment_record_params}) do
+  def create(conn, params) do
     with {:ok, %EnrollmentRecord{} = enrollment_record} <-
-           Schools.create_enrollment_record(enrollment_record_params) do
+           Schools.create_enrollment_record(params) do
       conn
       |> put_status(:created)
       |> put_resp_header(
@@ -29,11 +29,11 @@ defmodule DbserviceWeb.EnrollmentRecordController do
     render(conn, "show.json", enrollment_record: enrollment_record)
   end
 
-  def update(conn, %{"id" => id, "enrollment_record" => enrollment_record_params}) do
-    enrollment_record = Schools.get_enrollment_record!(id)
+  def update(conn, params) do
+    enrollment_record = Schools.get_enrollment_record!(params["id"])
 
     with {:ok, %EnrollmentRecord{} = enrollment_record} <-
-           Schools.update_enrollment_record(enrollment_record, enrollment_record_params) do
+           Schools.update_enrollment_record(enrollment_record, params) do
       render(conn, "show.json", enrollment_record: enrollment_record)
     end
   end

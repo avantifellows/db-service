@@ -11,8 +11,8 @@ defmodule DbserviceWeb.SchoolController do
     render(conn, "index.json", school: school)
   end
 
-  def create(conn, %{"school" => school_params}) do
-    with {:ok, %School{} = school} <- Schools.create_school(school_params) do
+  def create(conn, params) do
+    with {:ok, %School{} = school} <- Schools.create_school(params) do
       conn
       |> put_status(:created)
       |> put_resp_header("location", Routes.school_path(conn, :show, school))
@@ -25,10 +25,10 @@ defmodule DbserviceWeb.SchoolController do
     render(conn, "show.json", school: school)
   end
 
-  def update(conn, %{"id" => id, "school" => school_params}) do
-    school = Schools.get_school!(id)
+  def update(conn, params) do
+    school = Schools.get_school!(params["id"])
 
-    with {:ok, %School{} = school} <- Schools.update_school(school, school_params) do
+    with {:ok, %School{} = school} <- Schools.update_school(school, params) do
       render(conn, "show.json", school: school)
     end
   end

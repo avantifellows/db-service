@@ -11,8 +11,8 @@ defmodule DbserviceWeb.BatchController do
     render(conn, "index.json", batch: batch)
   end
 
-  def create(conn, %{"batch" => batch_params}) do
-    with {:ok, %Batch{} = batch} <- Batches.create_batch(batch_params) do
+  def create(conn, params) do
+    with {:ok, %Batch{} = batch} <- Batches.create_batch(params) do
       conn
       |> put_status(:created)
       |> put_resp_header("location", Routes.batch_path(conn, :show, batch))
@@ -25,10 +25,10 @@ defmodule DbserviceWeb.BatchController do
     render(conn, "show.json", batch: batch)
   end
 
-  def update(conn, %{"id" => id, "batch" => batch_params}) do
-    batch = Batches.get_batch!(id)
+  def update(conn, params) do
+    batch = Batches.get_batch!(params["id"])
 
-    with {:ok, %Batch{} = batch} <- Batches.update_batch(batch, batch_params) do
+    with {:ok, %Batch{} = batch} <- Batches.update_batch(batch, params) do
       render(conn, "show.json", batch: batch)
     end
   end

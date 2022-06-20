@@ -11,8 +11,8 @@ defmodule DbserviceWeb.GroupController do
     render(conn, "index.json", group: group)
   end
 
-  def create(conn, %{"group" => group_params}) do
-    with {:ok, %Group{} = group} <- Groups.create_group(group_params) do
+  def create(conn, params) do
+    with {:ok, %Group{} = group} <- Groups.create_group(params) do
       conn
       |> put_status(:created)
       |> put_resp_header("location", Routes.group_path(conn, :show, group))
@@ -25,10 +25,10 @@ defmodule DbserviceWeb.GroupController do
     render(conn, "show.json", group: group)
   end
 
-  def update(conn, %{"id" => id, "group" => group_params}) do
-    group = Groups.get_group!(id)
+  def update(conn, params) do
+    group = Groups.get_group!(params["id"])
 
-    with {:ok, %Group{} = group} <- Groups.update_group(group, group_params) do
+    with {:ok, %Group{} = group} <- Groups.update_group(group, params) do
       render(conn, "show.json", group: group)
     end
   end
