@@ -126,6 +126,28 @@
       }
     },
     "/api/user/{userId}": {
+      "delete": {
+        "description": "",
+        "operationId": "DbserviceWeb.UserController.delete",
+        "parameters": [
+          {
+            "description": "The id of the user",
+            "in": "path",
+            "name": "userId",
+            "required": true,
+            "type": "integer"
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "No Content"
+          }
+        },
+        "summary": "",
+        "tags": [
+          "User"
+        ]
+      },
       "get": {
         "description": "",
         "operationId": "DbserviceWeb.UserController.show",

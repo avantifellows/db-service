@@ -116,10 +116,15 @@ defmodule DbserviceWeb.UserController do
     end
   end
 
-  # swagger_path :delete do
-  #   delete "/api/user/{userId}"
-  #   response 200, "OK"
-  # end
+  swagger_path :delete do
+    PhoenixSwagger.Path.delete("/api/user/{userId}")
+
+    parameters do
+      userId(:path, :integer, "The id of the user", required: true)
+    end
+
+    response(204, "No Content")
+  end
 
   def delete(conn, %{"id" => id}) do
     user = Users.get_user!(id)
