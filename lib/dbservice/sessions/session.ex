@@ -21,8 +21,8 @@ defmodule Dbservice.Sessions.Session do
 
     timestamps()
 
-    many_to_many :user, User, join_through: "user_session", on_replace: :delete
-    many_to_many :batch, Batch, join_through: "batch_session", on_replace: :delete
+    many_to_many :users, User, join_through: "user_session", on_replace: :delete
+    many_to_many :batches, Batch, join_through: "batch_session", on_replace: :delete
   end
 
   @doc false
@@ -52,5 +52,11 @@ defmodule Dbservice.Sessions.Session do
       :repeat_till_date,
       :meta_data
     ])
+  end
+
+  def changeset_update_batches(session, batches) do
+    session
+    |> change()
+    |> put_assoc(:batches, batches)
   end
 end
