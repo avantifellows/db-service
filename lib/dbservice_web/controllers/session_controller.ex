@@ -11,8 +11,8 @@ defmodule DbserviceWeb.SessionController do
     render(conn, "index.json", session: session)
   end
 
-  def create(conn, %{"session" => session_params}) do
-    with {:ok, %Session{} = session} <- Sessions.create_session(session_params) do
+  def create(conn, params) do
+    with {:ok, %Session{} = session} <- Sessions.create_session(params) do
       conn
       |> put_status(:created)
       |> put_resp_header("location", Routes.session_path(conn, :show, session))
@@ -25,10 +25,10 @@ defmodule DbserviceWeb.SessionController do
     render(conn, "show.json", session: session)
   end
 
-  def update(conn, %{"id" => id, "session" => session_params}) do
-    session = Sessions.get_session!(id)
+  def update(conn, params) do
+    session = Sessions.get_session!(params["id"])
 
-    with {:ok, %Session{} = session} <- Sessions.update_session(session, session_params) do
+    with {:ok, %Session{} = session} <- Sessions.update_session(session, params) do
       render(conn, "show.json", session: session)
     end
   end

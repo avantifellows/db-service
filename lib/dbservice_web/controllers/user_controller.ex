@@ -11,8 +11,8 @@ defmodule DbserviceWeb.UserController do
     render(conn, "index.json", user: user)
   end
 
-  def create(conn, %{"user" => user_params}) do
-    with {:ok, %User{} = user} <- Users.create_user(user_params) do
+  def create(conn, params) do
+    with {:ok, %User{} = user} <- Users.create_user(params) do
       conn
       |> put_status(:created)
       |> put_resp_header("location", Routes.user_path(conn, :show, user))
@@ -25,10 +25,10 @@ defmodule DbserviceWeb.UserController do
     render(conn, "show.json", user: user)
   end
 
-  def update(conn, %{"id" => id, "user" => user_params}) do
-    user = Users.get_user!(id)
+  def update(conn, params) do
+    user = Users.get_user!(params["id"])
 
-    with {:ok, %User{} = user} <- Users.update_user(user, user_params) do
+    with {:ok, %User{} = user} <- Users.update_user(user, params) do
       render(conn, "show.json", user: user)
     end
   end

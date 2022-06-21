@@ -3,11 +3,11 @@ defmodule DbserviceWeb.BatchView do
   alias DbserviceWeb.BatchView
 
   def render("index.json", %{batch: batch}) do
-    %{data: render_many(batch, BatchView, "batch.json")}
+    render_many(batch, BatchView, "batch.json")
   end
 
   def render("show.json", %{batch: batch}) do
-    %{data: render_one(batch, BatchView, "batch.json")}
+    render_one(batch, BatchView, "batch.json")
   end
 
   def render("batch.json", %{batch: batch}) do
