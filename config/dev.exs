@@ -5,7 +5,7 @@ config :dbservice, Dbservice.Repo,
   username: "postgres",
   password: "postgres",
   hostname: "localhost",
-  database: "dbservice_dev",
+  database: "dbservice_seed",
   show_sensitive_data_on_connection_error: true,
   pool_size: 10
 
