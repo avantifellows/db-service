@@ -22,6 +22,21 @@
       "title": "Batches",
       "type": "array"
     },
+    "SessionIds": {
+      "example": {
+        "session_ids": [
+          1,
+          2
+        ]
+      },
+      "properties": {
+        "session_ids": {
+          "description": "List of session ids",
+          "type": "array"
+        }
+      },
+      "type": "object"
+    },
     "User": {
       "description": "A user in the application",
       "example": {
@@ -84,6 +99,21 @@
         }
       },
       "title": "User",
+      "type": "object"
+    },
+    "UserIds": {
+      "example": {
+        "user_ids": [
+          1,
+          2
+        ]
+      },
+      "properties": {
+        "user_ids": {
+          "description": "List of user ids",
+          "type": "array"
+        }
+      },
       "type": "object"
     },
     "Users": {
@@ -219,6 +249,78 @@
         "responses": {
           "200": {
             "description": "Updated",
+            "schema": {
+              "$ref": "#/definitions/Batch"
+            }
+          }
+        },
+        "summary": "",
+        "tags": [
+          "Batch"
+        ]
+      }
+    },
+    "/api/batch/{batchId}/update-sessions": {
+      "post": {
+        "description": "",
+        "operationId": "DbserviceWeb.BatchController.update_sessions",
+        "parameters": [
+          {
+            "description": "The id of the batch",
+            "in": "path",
+            "name": "batchId",
+            "required": true,
+            "type": "integer"
+          },
+          {
+            "description": "List of session ids to update",
+            "in": "body",
+            "name": "body",
+            "required": true,
+            "schema": {
+              "$ref": "#/definitions/SessionIds"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "schema": {
+              "$ref": "#/definitions/Batch"
+            }
+          }
+        },
+        "summary": "",
+        "tags": [
+          "Batch"
+        ]
+      }
+    },
+    "/api/batch/{batchId}/update-users": {
+      "post": {
+        "description": "",
+        "operationId": "DbserviceWeb.BatchController.update_users",
+        "parameters": [
+          {
+            "description": "The id of the batch",
+            "in": "path",
+            "name": "batchId",
+            "required": true,
+            "type": "integer"
+          },
+          {
+            "description": "List of user ids to update",
+            "in": "body",
+            "name": "body",
+            "required": true,
+            "schema": {
+              "$ref": "#/definitions/UserIds"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
             "schema": {
               "$ref": "#/definitions/Batch"
             }
