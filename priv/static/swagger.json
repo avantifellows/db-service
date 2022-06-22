@@ -3,17 +3,17 @@
     "User": {
       "description": "A user in the application",
       "example": {
-        "address": "Address",
-        "city": "City",
-        "district": "District",
-        "email": "Email",
-        "first_name": "First name",
-        "gender": "Gender",
-        "last_name": "Last name",
-        "phone": "Phone number",
-        "pincode": "Pin code",
-        "role": "User role",
-        "state": "State"
+        "address": "Bandra Complex, Kurla Road",
+        "city": "Mumbai",
+        "district": "Mumbai",
+        "email": "rahul.sharma@example.com",
+        "first_name": "Rahul",
+        "gender": "Male",
+        "last_name": "Sharma",
+        "phone": "9998887777",
+        "pincode": "400011",
+        "role": "student",
+        "state": "Maharashtra"
       },
       "properties": {
         "address": {

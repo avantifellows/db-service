@@ -30,17 +30,17 @@ defmodule DbserviceWeb.UserController do
           end
 
           example(%{
-            first_name: "First name",
-            last_name: "Last name",
-            email: "Email",
-            phone: "Phone number",
-            gender: "Gender",
-            address: "Address",
-            city: "City",
-            district: "District",
-            state: "State",
-            pincode: "Pin code",
-            role: "User role"
+            first_name: "Rahul",
+            last_name: "Sharma",
+            email: "rahul.sharma@example.com",
+            phone: "9998887777",
+            gender: "Male",
+            address: "Bandra Complex, Kurla Road",
+            city: "Mumbai",
+            district: "Mumbai",
+            state: "Maharashtra",
+            pincode: "400011",
+            role: "student"
           })
         end,
       Users:
