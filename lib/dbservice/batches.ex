@@ -118,4 +118,21 @@ defmodule Dbservice.Batches do
     |> Batch.changeset_update_users(users)
     |> Repo.update()
   end
+
+  @doc """
+  Updates the sessions mapped to a batch.
+  """
+  def update_sessions(batch_id, session_ids) when is_list(session_ids) do
+    batch = get_batch!(batch_id)
+
+    sessions =
+      Dbservice.Sessions.Session
+      |> where([session], session.id in ^session_ids)
+      |> Repo.all()
+
+    batch
+    |> Repo.preload(:sessions)
+    |> Batch.changeset_update_sessions(sessions)
+    |> Repo.update()
+  end
 end
