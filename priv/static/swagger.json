@@ -1,5 +1,27 @@
 {
   "definitions": {
+    "Batch": {
+      "description": "A batch of students",
+      "example": {
+        "name": "Kendriya Vidyalaya - Class 12th"
+      },
+      "properties": {
+        "name": {
+          "description": "Batch name",
+          "type": "string"
+        }
+      },
+      "title": "Batch",
+      "type": "object"
+    },
+    "Batches": {
+      "description": "All the batches",
+      "items": {
+        "$ref": "#/definitions/Batch"
+      },
+      "title": "Batches",
+      "type": "array"
+    },
     "User": {
       "description": "A user in the application",
       "example": {
@@ -79,6 +101,135 @@
     "version": "1.0"
   },
   "paths": {
+    "/api/batch": {
+      "get": {
+        "description": "",
+        "operationId": "DbserviceWeb.BatchController.index",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "schema": {
+              "$ref": "#/definitions/Batches"
+            }
+          }
+        },
+        "summary": "",
+        "tags": [
+          "Batch"
+        ]
+      },
+      "post": {
+        "description": "",
+        "operationId": "DbserviceWeb.BatchController.create",
+        "parameters": [
+          {
+            "description": "Batch to create",
+            "in": "body",
+            "name": "body",
+            "required": true,
+            "schema": {
+              "$ref": "#/definitions/Batch"
+            }
+          }
+        ],
+        "responses": {
+          "201": {
+            "description": "Created",
+            "schema": {
+              "$ref": "#/definitions/Batch"
+            }
+          }
+        },
+        "summary": "",
+        "tags": [
+          "Batch"
+        ]
+      }
+    },
+    "/api/batch/{batchId}": {
+      "delete": {
+        "description": "",
+        "operationId": "DbserviceWeb.BatchController.delete",
+        "parameters": [
+          {
+            "description": "The id of the batch",
+            "in": "path",
+            "name": "batchId",
+            "required": true,
+            "type": "integer"
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "No Content"
+          }
+        },
+        "summary": "",
+        "tags": [
+          "Batch"
+        ]
+      },
+      "get": {
+        "description": "",
+        "operationId": "DbserviceWeb.BatchController.show",
+        "parameters": [
+          {
+            "description": "The id of the batch",
+            "in": "path",
+            "name": "batchId",
+            "required": true,
+            "type": "integer"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "schema": {
+              "$ref": "#/definitions/Batch"
+            }
+          }
+        },
+        "summary": "",
+        "tags": [
+          "Batch"
+        ]
+      },
+      "patch": {
+        "description": "",
+        "operationId": "DbserviceWeb.BatchController.update",
+        "parameters": [
+          {
+            "description": "The id of the batch",
+            "in": "path",
+            "name": "batchId",
+            "required": true,
+            "type": "integer"
+          },
+          {
+            "description": "batch to create",
+            "in": "body",
+            "name": "body",
+            "required": true,
+            "schema": {
+              "$ref": "#/definitions/Batch"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Updated",
+            "schema": {
+              "$ref": "#/definitions/Batch"
+            }
+          }
+        },
+        "summary": "",
+        "tags": [
+          "Batch"
+        ]
+      }
+    },
     "/api/user": {
       "get": {
         "description": "",
