@@ -367,6 +367,53 @@
       "title": "Students",
       "type": "array"
     },
+    "Teacher": {
+      "description": "A teacher in the application",
+      "example": {
+        "designation": "Vice Principal",
+        "grade": "12",
+        "program_manager_id": 3,
+        "school_id": 2,
+        "subject": "Mats",
+        "user_id": 1
+      },
+      "properties": {
+        "designation": {
+          "description": "Designation",
+          "type": "string"
+        },
+        "grade": {
+          "description": "Grade",
+          "type": "string"
+        },
+        "program_manager_id": {
+          "description": "Program manager user ID for the teacher",
+          "type": "integer"
+        },
+        "school_id": {
+          "description": "School ID for the teacher",
+          "type": "integer"
+        },
+        "subject": {
+          "description": "Core subject",
+          "type": "string"
+        },
+        "user_id": {
+          "description": "User ID for the teacher",
+          "type": "integer"
+        }
+      },
+      "title": "Teacher",
+      "type": "object"
+    },
+    "Teachers": {
+      "description": "All teachers in the application",
+      "items": {
+        "$ref": "#/definitions/Teacher"
+      },
+      "title": "Teachers",
+      "type": "array"
+    },
     "User": {
       "description": "A user in the application",
       "example": {
@@ -1447,6 +1494,135 @@
         "summary": "",
         "tags": [
           "Student"
+        ]
+      }
+    },
+    "/api/teacher": {
+      "get": {
+        "description": "",
+        "operationId": "DbserviceWeb.TeacherController.index",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "schema": {
+              "$ref": "#/definitions/Teachers"
+            }
+          }
+        },
+        "summary": "",
+        "tags": [
+          "Teacher"
+        ]
+      },
+      "post": {
+        "description": "",
+        "operationId": "DbserviceWeb.TeacherController.create",
+        "parameters": [
+          {
+            "description": "Teacher to create",
+            "in": "body",
+            "name": "body",
+            "required": true,
+            "schema": {
+              "$ref": "#/definitions/Teacher"
+            }
+          }
+        ],
+        "responses": {
+          "201": {
+            "description": "Created",
+            "schema": {
+              "$ref": "#/definitions/Teacher"
+            }
+          }
+        },
+        "summary": "",
+        "tags": [
+          "Teacher"
+        ]
+      }
+    },
+    "/api/teacher/{teacherId}": {
+      "delete": {
+        "description": "",
+        "operationId": "DbserviceWeb.TeacherController.delete",
+        "parameters": [
+          {
+            "description": "The id of the teacher",
+            "in": "path",
+            "name": "teacherId",
+            "required": true,
+            "type": "integer"
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "No Content"
+          }
+        },
+        "summary": "",
+        "tags": [
+          "Teacher"
+        ]
+      },
+      "get": {
+        "description": "",
+        "operationId": "DbserviceWeb.TeacherController.show",
+        "parameters": [
+          {
+            "description": "The id of the teacher",
+            "in": "path",
+            "name": "teacherId",
+            "required": true,
+            "type": "integer"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "schema": {
+              "$ref": "#/definitions/Teacher"
+            }
+          }
+        },
+        "summary": "",
+        "tags": [
+          "Teacher"
+        ]
+      },
+      "patch": {
+        "description": "",
+        "operationId": "DbserviceWeb.TeacherController.update",
+        "parameters": [
+          {
+            "description": "The id of the teacher",
+            "in": "path",
+            "name": "teacherId",
+            "required": true,
+            "type": "integer"
+          },
+          {
+            "description": "Teacher to create",
+            "in": "body",
+            "name": "body",
+            "required": true,
+            "schema": {
+              "$ref": "#/definitions/Teacher"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Updated",
+            "schema": {
+              "$ref": "#/definitions/Teacher"
+            }
+          }
+        },
+        "summary": "",
+        "tags": [
+          "Teacher"
         ]
       }
     },
