@@ -22,6 +22,45 @@
       "title": "Batches",
       "type": "array"
     },
+    "Group": {
+      "description": "A group in the application",
+      "example": {
+        "input_schema": {},
+        "locale": "hi",
+        "locale_data": {
+          "en": {
+            "title": "Register for session"
+          },
+          "hi": {
+            "title": "सत्र के लिए पंजीकरण करें"
+          }
+        }
+      },
+      "properties": {
+        "input_schema": {
+          "description": "Input schema",
+          "type": "map"
+        },
+        "locale": {
+          "description": "The configured locale for the group",
+          "type": "string"
+        },
+        "locale_data": {
+          "description": "Meta data about locale settings for the group",
+          "type": "map"
+        }
+      },
+      "title": "Group",
+      "type": "object"
+    },
+    "Groups": {
+      "description": "All the groups",
+      "items": {
+        "$ref": "#/definitions/Group"
+      },
+      "title": "Groups",
+      "type": "array"
+    },
     "SessionIds": {
       "example": {
         "session_ids": [
@@ -329,6 +368,135 @@
         "summary": "",
         "tags": [
           "Batch"
+        ]
+      }
+    },
+    "/api/group": {
+      "get": {
+        "description": "",
+        "operationId": "DbserviceWeb.GroupController.index",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "schema": {
+              "$ref": "#/definitions/Groups"
+            }
+          }
+        },
+        "summary": "",
+        "tags": [
+          "Group"
+        ]
+      },
+      "post": {
+        "description": "",
+        "operationId": "DbserviceWeb.GroupController.create",
+        "parameters": [
+          {
+            "description": "Group to create",
+            "in": "body",
+            "name": "body",
+            "required": true,
+            "schema": {
+              "$ref": "#/definitions/Group"
+            }
+          }
+        ],
+        "responses": {
+          "201": {
+            "description": "Created",
+            "schema": {
+              "$ref": "#/definitions/Group"
+            }
+          }
+        },
+        "summary": "",
+        "tags": [
+          "Group"
+        ]
+      }
+    },
+    "/api/group/{groupId}": {
+      "delete": {
+        "description": "",
+        "operationId": "DbserviceWeb.GroupController.delete",
+        "parameters": [
+          {
+            "description": "The id of the group",
+            "in": "path",
+            "name": "groupId",
+            "required": true,
+            "type": "integer"
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "No Content"
+          }
+        },
+        "summary": "",
+        "tags": [
+          "Group"
+        ]
+      },
+      "get": {
+        "description": "",
+        "operationId": "DbserviceWeb.GroupController.show",
+        "parameters": [
+          {
+            "description": "The id of the group",
+            "in": "path",
+            "name": "groupId",
+            "required": true,
+            "type": "integer"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "schema": {
+              "$ref": "#/definitions/Group"
+            }
+          }
+        },
+        "summary": "",
+        "tags": [
+          "Group"
+        ]
+      },
+      "patch": {
+        "description": "",
+        "operationId": "DbserviceWeb.GroupController.update",
+        "parameters": [
+          {
+            "description": "The id of the group",
+            "in": "path",
+            "name": "groupId",
+            "required": true,
+            "type": "integer"
+          },
+          {
+            "description": "Group to create",
+            "in": "body",
+            "name": "body",
+            "required": true,
+            "schema": {
+              "$ref": "#/definitions/Group"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Updated",
+            "schema": {
+              "$ref": "#/definitions/Group"
+            }
+          }
+        },
+        "summary": "",
+        "tags": [
+          "Group"
         ]
       }
     },
