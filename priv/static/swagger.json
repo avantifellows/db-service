@@ -493,6 +493,50 @@
       },
       "type": "object"
     },
+    "UserSession": {
+      "description": "A mapping between user and sesssion-occurence",
+      "example": {
+        "data": {
+          "substitute-teacher-name": "Ms. Poonam"
+        },
+        "end_time": "2022-02-02T11:30:00Z",
+        "session_occurence_id": 2,
+        "start_time": "2022-02-02T11:00:00Z",
+        "user_id": 1
+      },
+      "properties": {
+        "data": {
+          "description": "Additional data for user session",
+          "type": "map"
+        },
+        "end_time": {
+          "description": "User session end time",
+          "type": "timestamp"
+        },
+        "session_occurence_id": {
+          "description": "The id of the session occurence",
+          "type": "integer"
+        },
+        "start_time": {
+          "description": "User session start time",
+          "type": "timestamp"
+        },
+        "user_id": {
+          "description": "The id of the user",
+          "type": "integer"
+        }
+      },
+      "title": "UserSession",
+      "type": "object"
+    },
+    "UserSessions": {
+      "description": "All user and session occurence mappings",
+      "items": {
+        "$ref": "#/definitions/UserSession"
+      },
+      "title": "UserSessions",
+      "type": "array"
+    },
     "Users": {
       "description": "All users in the application",
       "items": {
@@ -1669,6 +1713,135 @@
         "summary": "",
         "tags": [
           "User"
+        ]
+      }
+    },
+    "/api/user-session": {
+      "get": {
+        "description": "",
+        "operationId": "DbserviceWeb.UserSessionController.index",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "schema": {
+              "$ref": "#/definitions/UserSessions"
+            }
+          }
+        },
+        "summary": "",
+        "tags": [
+          "UserSession"
+        ]
+      },
+      "post": {
+        "description": "",
+        "operationId": "DbserviceWeb.UserSessionController.create",
+        "parameters": [
+          {
+            "description": "User session to create",
+            "in": "body",
+            "name": "body",
+            "required": true,
+            "schema": {
+              "$ref": "#/definitions/UserSession"
+            }
+          }
+        ],
+        "responses": {
+          "201": {
+            "description": "Created",
+            "schema": {
+              "$ref": "#/definitions/UserSession"
+            }
+          }
+        },
+        "summary": "",
+        "tags": [
+          "UserSession"
+        ]
+      }
+    },
+    "/api/user-session/{userSessionId}": {
+      "delete": {
+        "description": "",
+        "operationId": "DbserviceWeb.UserSessionController.delete",
+        "parameters": [
+          {
+            "description": "The id of the user session",
+            "in": "path",
+            "name": "userSessionId",
+            "required": true,
+            "type": "integer"
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "No Content"
+          }
+        },
+        "summary": "",
+        "tags": [
+          "UserSession"
+        ]
+      },
+      "get": {
+        "description": "",
+        "operationId": "DbserviceWeb.UserSessionController.show",
+        "parameters": [
+          {
+            "description": "The id of the user session",
+            "in": "path",
+            "name": "userSessionId",
+            "required": true,
+            "type": "integer"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "schema": {
+              "$ref": "#/definitions/UserSession"
+            }
+          }
+        },
+        "summary": "",
+        "tags": [
+          "UserSession"
+        ]
+      },
+      "patch": {
+        "description": "",
+        "operationId": "DbserviceWeb.UserSessionController.update",
+        "parameters": [
+          {
+            "description": "The id of the session",
+            "in": "path",
+            "name": "userSessionId",
+            "required": true,
+            "type": "integer"
+          },
+          {
+            "description": "User session to create",
+            "in": "body",
+            "name": "body",
+            "required": true,
+            "schema": {
+              "$ref": "#/definitions/UserSession"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Updated",
+            "schema": {
+              "$ref": "#/definitions/UserSession"
+            }
+          }
+        },
+        "summary": "",
+        "tags": [
+          "UserSession"
         ]
       }
     },
