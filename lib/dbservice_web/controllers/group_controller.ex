@@ -30,7 +30,7 @@ defmodule DbserviceWeb.GroupController do
               },
               "en" => %{
                 "title" => "Register for session"
-              },
+              }
             }
           })
         end,
@@ -40,7 +40,7 @@ defmodule DbserviceWeb.GroupController do
           description("All the groups")
           type(:array)
           items(Schema.ref(:Group))
-        end,
+        end
     }
   end
 

@@ -20,7 +20,7 @@ defmodule DbserviceWeb.BatchController do
           end
 
           example(%{
-            name: "Kendriya Vidyalaya - Class 12th",
+            name: "Kendriya Vidyalaya - Class 12th"
           })
         end,
       Batches:
@@ -35,8 +35,9 @@ defmodule DbserviceWeb.BatchController do
           properties do
             user_ids(:array, "List of user ids")
           end
+
           example(%{
-            user_ids: [1, 2],
+            user_ids: [1, 2]
           })
         end,
       SessionIds:
@@ -44,10 +45,11 @@ defmodule DbserviceWeb.BatchController do
           properties do
             session_ids(:array, "List of session ids")
           end
+
           example(%{
-            session_ids: [1, 2],
+            session_ids: [1, 2]
           })
-        end,
+        end
     }
   end
 
