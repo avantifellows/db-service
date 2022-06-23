@@ -241,6 +241,62 @@
       },
       "type": "object"
     },
+    "SessionOccurence": {
+      "description": "A session occurence for a session",
+      "example": {
+        "end_time": "2022-02-02T11:30:00Z",
+        "session_id": 1,
+        "start_time": "2022-02-02T11:00:00Z"
+      },
+      "properties": {
+        "end_time": {
+          "description": "Session occurence finish time",
+          "type": "timestamp"
+        },
+        "session_id": {
+          "description": "Session ID",
+          "type": "integer"
+        },
+        "start_time": {
+          "description": "Session occurence start time",
+          "type": "timestamp"
+        }
+      },
+      "title": "SessionOccurence",
+      "type": "object"
+    },
+    "SessionOccurenceWithUser": {
+      "description": "A single session occurence with user details",
+      "example": {
+        "end_time": "2022-02-02T11:30:00Z",
+        "session_id": 1,
+        "start_time": "2022-02-02T11:00:00Z"
+      },
+      "properties": {
+        "end_time": {
+          "description": "Session occurence finish time",
+          "type": "timestamp"
+        },
+        "session_id": {
+          "description": "Session ID",
+          "type": "integer"
+        },
+        "start_time": {
+          "description": "Session occurence start time",
+          "type": "timestamp"
+        }
+      },
+      "title": "SessionOccurenceWithUser",
+      "type": "object"
+    },
+    "SessionOccurences": {
+      "description": "All the session occurences ",
+      "items": {
+        "$ref": "#/definitions/SessionOccurence"
+      },
+      "title": "SessionOccurences",
+      "type": "array"
+    },
     "Sessions": {
       "description": "All the sessions",
       "items": {
@@ -974,6 +1030,135 @@
         "summary": "",
         "tags": [
           "Session"
+        ]
+      }
+    },
+    "/api/session-occurence": {
+      "get": {
+        "description": "",
+        "operationId": "DbserviceWeb.SessionOccurenceController.index",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "schema": {
+              "$ref": "#/definitions/SessionOccurences"
+            }
+          }
+        },
+        "summary": "",
+        "tags": [
+          "SessionOccurence"
+        ]
+      },
+      "post": {
+        "description": "",
+        "operationId": "DbserviceWeb.SessionOccurenceController.create",
+        "parameters": [
+          {
+            "description": "Session occurence to create",
+            "in": "body",
+            "name": "body",
+            "required": true,
+            "schema": {
+              "$ref": "#/definitions/SessionOccurence"
+            }
+          }
+        ],
+        "responses": {
+          "201": {
+            "description": "Created",
+            "schema": {
+              "$ref": "#/definitions/SessionOccurence"
+            }
+          }
+        },
+        "summary": "",
+        "tags": [
+          "SessionOccurence"
+        ]
+      }
+    },
+    "/api/session-occurence/{sessionOccurenceId}": {
+      "delete": {
+        "description": "",
+        "operationId": "DbserviceWeb.SessionOccurenceController.delete",
+        "parameters": [
+          {
+            "description": "The id of the session occurence",
+            "in": "path",
+            "name": "sessionOccurenceId",
+            "required": true,
+            "type": "integer"
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "No Content"
+          }
+        },
+        "summary": "",
+        "tags": [
+          "SessionOccurence"
+        ]
+      },
+      "get": {
+        "description": "",
+        "operationId": "DbserviceWeb.SessionOccurenceController.show",
+        "parameters": [
+          {
+            "description": "The id of the session occurence",
+            "in": "path",
+            "name": "sessionOccurenceId",
+            "required": true,
+            "type": "integer"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "schema": {
+              "$ref": "#/definitions/SessionOccurenceWithUser"
+            }
+          }
+        },
+        "summary": "",
+        "tags": [
+          "SessionOccurence"
+        ]
+      },
+      "patch": {
+        "description": "",
+        "operationId": "DbserviceWeb.SessionOccurenceController.update",
+        "parameters": [
+          {
+            "description": "The id of the session occurence",
+            "in": "path",
+            "name": "sessionOccurenceId",
+            "required": true,
+            "type": "integer"
+          },
+          {
+            "description": "Session occurence to create",
+            "in": "body",
+            "name": "body",
+            "required": true,
+            "schema": {
+              "$ref": "#/definitions/SessionOccurence"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Updated",
+            "schema": {
+              "$ref": "#/definitions/SessionOccurence"
+            }
+          }
+        },
+        "summary": "",
+        "tags": [
+          "SessionOccurence"
         ]
       }
     },
