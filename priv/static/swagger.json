@@ -22,6 +22,48 @@
       "title": "Batches",
       "type": "array"
     },
+    "EnrollmentRecord": {
+      "description": "An enrollment record for the student",
+      "example": {
+        "academic_year": "2022",
+        "grade": "7",
+        "is_current": true,
+        "school_id": 1,
+        "student_id": 1
+      },
+      "properties": {
+        "academic_year": {
+          "description": "Academic Year",
+          "type": "string"
+        },
+        "grade": {
+          "description": "Grade",
+          "type": "string"
+        },
+        "is_current": {
+          "description": "Is current enrollment record for student",
+          "type": "boolean"
+        },
+        "school_id": {
+          "description": "School ID that the program enrollment belongs to",
+          "type": "integer"
+        },
+        "student_id": {
+          "description": "Student ID that the program enrollment belongs to",
+          "type": "integer"
+        }
+      },
+      "title": "EnrollmentRecord",
+      "type": "object"
+    },
+    "EnrollmentRecords": {
+      "description": "All enrollment records",
+      "items": {
+        "$ref": "#/definitions/EnrollmentRecord"
+      },
+      "title": "EnrollmentRecords",
+      "type": "array"
+    },
     "Group": {
       "description": "A group in the application",
       "example": {
@@ -368,6 +410,135 @@
         "summary": "",
         "tags": [
           "Batch"
+        ]
+      }
+    },
+    "/api/enrollment-record": {
+      "get": {
+        "description": "",
+        "operationId": "DbserviceWeb.EnrollmentRecordController.index",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "schema": {
+              "$ref": "#/definitions/EnrollmentRecords"
+            }
+          }
+        },
+        "summary": "",
+        "tags": [
+          "EnrollmentRecord"
+        ]
+      },
+      "post": {
+        "description": "",
+        "operationId": "DbserviceWeb.EnrollmentRecordController.create",
+        "parameters": [
+          {
+            "description": "Enrollment record to create",
+            "in": "body",
+            "name": "body",
+            "required": true,
+            "schema": {
+              "$ref": "#/definitions/EnrollmentRecord"
+            }
+          }
+        ],
+        "responses": {
+          "201": {
+            "description": "Created",
+            "schema": {
+              "$ref": "#/definitions/EnrollmentRecord"
+            }
+          }
+        },
+        "summary": "",
+        "tags": [
+          "EnrollmentRecord"
+        ]
+      }
+    },
+    "/api/enrollment-record/{enrollmentRecordId}": {
+      "delete": {
+        "description": "",
+        "operationId": "DbserviceWeb.EnrollmentRecordController.delete",
+        "parameters": [
+          {
+            "description": "The id of the enrollment record",
+            "in": "path",
+            "name": "enrollmentRecordId",
+            "required": true,
+            "type": "integer"
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "No Content"
+          }
+        },
+        "summary": "",
+        "tags": [
+          "EnrollmentRecord"
+        ]
+      },
+      "get": {
+        "description": "",
+        "operationId": "DbserviceWeb.EnrollmentRecordController.show",
+        "parameters": [
+          {
+            "description": "The id of the enrollment record",
+            "in": "path",
+            "name": "enrollmentRecordId",
+            "required": true,
+            "type": "integer"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "schema": {
+              "$ref": "#/definitions/EnrollmentRecord"
+            }
+          }
+        },
+        "summary": "",
+        "tags": [
+          "EnrollmentRecord"
+        ]
+      },
+      "patch": {
+        "description": "",
+        "operationId": "DbserviceWeb.EnrollmentRecordController.update",
+        "parameters": [
+          {
+            "description": "The id of the enrollment record",
+            "in": "path",
+            "name": "enrollmentRecordId",
+            "required": true,
+            "type": "integer"
+          },
+          {
+            "description": "Enrollment record to create",
+            "in": "body",
+            "name": "body",
+            "required": true,
+            "schema": {
+              "$ref": "#/definitions/EnrollmentRecord"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Updated",
+            "schema": {
+              "$ref": "#/definitions/EnrollmentRecord"
+            }
+          }
+        },
+        "summary": "",
+        "tags": [
+          "EnrollmentRecord"
         ]
       }
     },
