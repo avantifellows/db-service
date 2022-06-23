@@ -149,7 +149,10 @@ defmodule DbserviceWeb.UserController do
 
     parameters do
       userId(:path, :integer, "The id of the user", required: true)
-      body(:body, Schema.ref(:BatchIds), "List of batch ids to update for the user", required: true)
+
+      body(:body, Schema.ref(:BatchIds), "List of batch ids to update for the user",
+        required: true
+      )
     end
 
     response(200, "OK", Schema.ref(:User))

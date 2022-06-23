@@ -30,7 +30,7 @@ defmodule DbserviceWeb.TeacherController do
             grade: "12",
             user_id: 1,
             school_id: 2,
-            program_manager_id: 3,
+            program_manager_id: 3
           })
         end,
       Teachers:

@@ -36,7 +36,7 @@ defmodule DbserviceWeb.StudentController do
             category: "general",
             stream: "PCB",
             user_id: 1,
-            group_id: 2,
+            group_id: 2
           })
         end,
       Students:

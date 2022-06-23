@@ -41,12 +41,12 @@ defmodule DbserviceWeb.SessionController do
             repeat_type: "weekly",
             repeat_till_date: "2022-12-31T11:59:59Z",
             meta_data: %{
-              "substitute-teacher-name" => "Ms. Poonam",
+              "substitute-teacher-name" => "Ms. Poonam"
             },
             owner_id: 2,
             created_by_id: 1,
             is_active: true,
-            uuid: "uiqweopasdflkasdfj",
+            uuid: "uiqweopasdflkasdfj"
           })
         end,
       Sessions:
@@ -155,7 +155,10 @@ defmodule DbserviceWeb.SessionController do
 
     parameters do
       sessionId(:path, :integer, "The id of the session", required: true)
-      body(:body, Schema.ref(:BatchIds), "List of batch ids to update for the session", required: true)
+
+      body(:body, Schema.ref(:BatchIds), "List of batch ids to update for the session",
+        required: true
+      )
     end
 
     response(200, "OK", Schema.ref(:Session))

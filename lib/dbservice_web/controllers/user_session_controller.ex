@@ -27,10 +27,10 @@ defmodule DbserviceWeb.UserSessionController do
             start_time: "2022-02-02T11:00:00Z",
             end_time: "2022-02-02T11:30:00Z",
             data: %{
-              "substitute-teacher-name" => "Ms. Poonam",
+              "substitute-teacher-name" => "Ms. Poonam"
             },
             user_id: 1,
-            session_occurence_id: 2,
+            session_occurence_id: 2
           })
         end,
       UserSessions:

@@ -24,7 +24,7 @@ defmodule DbserviceWeb.SessionOccurenceController do
           example(%{
             session_id: 1,
             start_time: "2022-02-02T11:00:00Z",
-            end_time: "2022-02-02T11:30:00Z",
+            end_time: "2022-02-02T11:30:00Z"
           })
         end,
       SessionOccurenceWithUser:
@@ -42,7 +42,7 @@ defmodule DbserviceWeb.SessionOccurenceController do
           example(%{
             session_id: 1,
             start_time: "2022-02-02T11:00:00Z",
-            end_time: "2022-02-02T11:30:00Z",
+            end_time: "2022-02-02T11:30:00Z"
             # TODO: users: [Schema.ref(:Users).items]
           })
         end,

@@ -24,7 +24,7 @@ defmodule DbserviceWeb.SchoolController do
           example(%{
             code: "872931",
             name: "Kendriya Vidyalaya - Rajori Garden",
-            medium: "en",
+            medium: "en"
           })
         end,
       Schools:
