@@ -14,6 +14,21 @@
       "title": "Batch",
       "type": "object"
     },
+    "BatchIds": {
+      "example": {
+        "batch_ids": [
+          1,
+          2
+        ]
+      },
+      "properties": {
+        "batch_ids": {
+          "description": "List of batch ids",
+          "type": "array"
+        }
+      },
+      "type": "object"
+    },
     "Batches": {
       "description": "All the batches",
       "items": {
@@ -101,6 +116,38 @@
         "$ref": "#/definitions/Group"
       },
       "title": "Groups",
+      "type": "array"
+    },
+    "School": {
+      "description": "A school in the application",
+      "example": {
+        "code": "872931",
+        "medium": "en",
+        "name": "Kendriya Vidyalaya - Rajori Garden"
+      },
+      "properties": {
+        "code": {
+          "description": "Code",
+          "type": "string"
+        },
+        "medium": {
+          "description": "Medium",
+          "type": "string"
+        },
+        "name": {
+          "description": "Name",
+          "type": "string"
+        }
+      },
+      "title": "School",
+      "type": "object"
+    },
+    "Schools": {
+      "description": "All schools in the application",
+      "items": {
+        "$ref": "#/definitions/School"
+      },
+      "title": "Schools",
       "type": "array"
     },
     "SessionIds": {
@@ -671,6 +718,135 @@
         ]
       }
     },
+    "/api/school": {
+      "get": {
+        "description": "",
+        "operationId": "DbserviceWeb.SchoolController.index",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "schema": {
+              "$ref": "#/definitions/Schools"
+            }
+          }
+        },
+        "summary": "",
+        "tags": [
+          "School"
+        ]
+      },
+      "post": {
+        "description": "",
+        "operationId": "DbserviceWeb.SchoolController.create",
+        "parameters": [
+          {
+            "description": "School to create",
+            "in": "body",
+            "name": "body",
+            "required": true,
+            "schema": {
+              "$ref": "#/definitions/School"
+            }
+          }
+        ],
+        "responses": {
+          "201": {
+            "description": "Created",
+            "schema": {
+              "$ref": "#/definitions/School"
+            }
+          }
+        },
+        "summary": "",
+        "tags": [
+          "School"
+        ]
+      }
+    },
+    "/api/school/{schoolId}": {
+      "delete": {
+        "description": "",
+        "operationId": "DbserviceWeb.SchoolController.delete",
+        "parameters": [
+          {
+            "description": "The id of the school",
+            "in": "path",
+            "name": "schoolId",
+            "required": true,
+            "type": "integer"
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "No Content"
+          }
+        },
+        "summary": "",
+        "tags": [
+          "School"
+        ]
+      },
+      "get": {
+        "description": "",
+        "operationId": "DbserviceWeb.SchoolController.show",
+        "parameters": [
+          {
+            "description": "The id of the school",
+            "in": "path",
+            "name": "schoolId",
+            "required": true,
+            "type": "integer"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "schema": {
+              "$ref": "#/definitions/School"
+            }
+          }
+        },
+        "summary": "",
+        "tags": [
+          "School"
+        ]
+      },
+      "patch": {
+        "description": "",
+        "operationId": "DbserviceWeb.SchoolController.update",
+        "parameters": [
+          {
+            "description": "The id of the school",
+            "in": "path",
+            "name": "schoolId",
+            "required": true,
+            "type": "integer"
+          },
+          {
+            "description": "School to create",
+            "in": "body",
+            "name": "body",
+            "required": true,
+            "schema": {
+              "$ref": "#/definitions/School"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Updated",
+            "schema": {
+              "$ref": "#/definitions/School"
+            }
+          }
+        },
+        "summary": "",
+        "tags": [
+          "School"
+        ]
+      }
+    },
     "/api/user": {
       "get": {
         "description": "",
@@ -767,6 +943,42 @@
         "responses": {
           "200": {
             "description": "Updated",
+            "schema": {
+              "$ref": "#/definitions/User"
+            }
+          }
+        },
+        "summary": "",
+        "tags": [
+          "User"
+        ]
+      }
+    },
+    "/api/user/{userId}/update-batches": {
+      "post": {
+        "description": "",
+        "operationId": "DbserviceWeb.UserController.update_batches",
+        "parameters": [
+          {
+            "description": "The id of the user",
+            "in": "path",
+            "name": "userId",
+            "required": true,
+            "type": "integer"
+          },
+          {
+            "description": "List of batch ids to update for the user",
+            "in": "body",
+            "name": "body",
+            "required": true,
+            "schema": {
+              "$ref": "#/definitions/BatchIds"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
             "schema": {
               "$ref": "#/definitions/User"
             }
