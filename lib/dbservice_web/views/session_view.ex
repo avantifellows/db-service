@@ -21,7 +21,11 @@ defmodule DbserviceWeb.SessionView do
       end_time: session.end_time,
       repeat_type: session.repeat_type,
       repeat_till_date: session.repeat_till_date,
-      meta_data: session.meta_data
+      meta_data: session.meta_data,
+      owner_id: session.owner_id,
+      created_by_id: session.created_by_id,
+      is_active: session.is_active,
+      uuid: session.uuid
     }
   end
 end
