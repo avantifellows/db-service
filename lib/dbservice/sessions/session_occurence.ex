@@ -17,7 +17,7 @@ defmodule Dbservice.Sessions.SessionOccurence do
   @doc false
   def changeset(session_occurence, attrs) do
     session_occurence
-    |> cast(attrs, [:start_time, :end_time])
-    |> validate_required([:start_time, :end_time])
+    |> cast(attrs, [:session_id, :start_time, :end_time])
+    |> validate_required([:session_id, :start_time, :end_time])
   end
 end
