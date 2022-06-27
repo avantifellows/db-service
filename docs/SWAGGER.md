@@ -11,7 +11,7 @@ Swagger JSON schema compilation has been added to the in-built Phoenix compiler,
 mix phx.swagger.generate
 ```
 
-### Adding/Modifying swagger documentation
+### Adding/modifying Swagger documentation
 All the swagger definitions are placed in controllers. Two important things to take care of:
 1. Swagger definitions at the starting of the controller
 2. Docs for each endpoint function using `swagger_path` just above function definition
