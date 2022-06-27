@@ -6,8 +6,10 @@ To set up this project, visit the [installation steps](./docs/INSTALLATION.md).
 ### Deployment
 Visit our [deployment guideline](./docs/DEPLOYMENT.md) for setting up this repository on a production environment.
 
-## Learn more
+### Contributing
+- [REST API documentation with Phoenix Swagger](./docs/SWAGGER.md)
 
+## Learn more
   * Official website: https://www.phoenixframework.org/
   * Guides: https://hexdocs.pm/phoenix/overview.html
   * Docs: https://hexdocs.pm/phoenix
