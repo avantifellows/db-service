@@ -15,7 +15,10 @@ defmodule DbserviceWeb.TeacherView do
       id: teacher.id,
       designation: teacher.designation,
       subject: teacher.subject,
-      grade: teacher.grade
+      grade: teacher.grade,
+      user_id: teacher.user_id,
+      school_id: teacher.school_id,
+      program_manager_id: teacher.program_manager_id,
     }
   end
 end
