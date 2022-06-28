@@ -19,7 +19,9 @@ defmodule DbserviceWeb.StudentView do
       mother_name: student.mother_name,
       mother_phone: student.mother_phone,
       category: student.category,
-      stream: student.stream
+      stream: student.stream,
+      user_id: student.user_id,
+      group_id: student.group_id,
     }
   end
 end
