@@ -18,6 +18,7 @@ defmodule Dbservice.Sessions.Session do
     field :start_time, :utc_datetime
     field :owner_id, :id
     field :created_by_id, :id
+    field :uuid, :string
 
     timestamps()
 
@@ -38,7 +39,10 @@ defmodule Dbservice.Sessions.Session do
       :end_time,
       :repeat_type,
       :repeat_till_date,
-      :meta_data
+      :meta_data,
+      :owner_id,
+      :created_by_id,
+      :uuid
     ])
     |> validate_required([
       :name,
