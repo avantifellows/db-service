@@ -21,7 +21,7 @@ defmodule DbserviceWeb.StudentView do
       category: student.category,
       stream: student.stream,
       user_id: student.user_id,
-      group_id: student.group_id,
+      group_id: student.group_id
     }
   end
 end
