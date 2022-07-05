@@ -12,6 +12,7 @@ config :dbservice,
 
 # Configures the endpoint
 config :dbservice, DbserviceWeb.Endpoint,
+  load_from_system_env: true,
   url: [host: "localhost"],
   render_errors: [view: DbserviceWeb.ErrorView, accepts: ~w(json), layout: false],
   pubsub_server: Dbservice.PubSub,

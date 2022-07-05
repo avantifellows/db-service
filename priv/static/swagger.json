@@ -546,7 +546,6 @@
       "type": "array"
     }
   },
-  "host": "localhost:4000",
   "info": {
     "title": "DB Service application",
     "version": "1.0"
