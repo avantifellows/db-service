@@ -26,4 +26,10 @@ defmodule Dbservice.Batches.Batch do
     |> change()
     |> put_assoc(:users, users)
   end
+
+  def changeset_update_sessions(batch, sessions) do
+    batch
+    |> change()
+    |> put_assoc(:sessions, sessions)
+  end
 end

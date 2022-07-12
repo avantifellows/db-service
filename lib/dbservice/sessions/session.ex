@@ -18,11 +18,12 @@ defmodule Dbservice.Sessions.Session do
     field :start_time, :utc_datetime
     field :owner_id, :id
     field :created_by_id, :id
+    field :uuid, :string
 
     timestamps()
 
-    many_to_many :user, User, join_through: "user_session", on_replace: :delete
-    many_to_many :batch, Batch, join_through: "batch_session", on_replace: :delete
+    many_to_many :users, User, join_through: "user_session", on_replace: :delete
+    many_to_many :batches, Batch, join_through: "batch_session", on_replace: :delete
   end
 
   @doc false
@@ -38,7 +39,10 @@ defmodule Dbservice.Sessions.Session do
       :end_time,
       :repeat_type,
       :repeat_till_date,
-      :meta_data
+      :meta_data,
+      :owner_id,
+      :created_by_id,
+      :uuid
     ])
     |> validate_required([
       :name,
@@ -52,5 +56,11 @@ defmodule Dbservice.Sessions.Session do
       :repeat_till_date,
       :meta_data
     ])
+  end
+
+  def changeset_update_batches(session, batches) do
+    session
+    |> change()
+    |> put_assoc(:batches, batches)
   end
 end

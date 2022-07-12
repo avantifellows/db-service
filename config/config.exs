@@ -12,6 +12,7 @@ config :dbservice,
 
 # Configures the endpoint
 config :dbservice, DbserviceWeb.Endpoint,
+  load_from_system_env: true,
   url: [host: "localhost"],
   render_errors: [view: DbserviceWeb.ErrorView, accepts: ~w(json), layout: false],
   pubsub_server: Dbservice.PubSub,
@@ -36,6 +37,19 @@ config :logger, :console,
 
 # Use Jason for JSON parsing in Phoenix
 config :phoenix, :json_library, Jason
+
+config :dbservice, :phoenix_swagger,
+  swagger_files: %{
+    "priv/static/swagger.json" => [
+      # phoenix routes will be converted to swagger paths
+      router: DbserviceWeb.Router,
+      # (optional) endpoint config used to set host, port and https schemes.
+      endpoint: DbserviceWeb.Endpoint
+    ]
+  }
+
+# Use Jason for JSON parsing in Phoenix
+config :phoenix_swagger, :json_library, Jason
 
 # Import environment specific config. This must remain at the bottom
 # of this file so it overrides the configuration defined above.

@@ -3,11 +3,11 @@ defmodule DbserviceWeb.SessionView do
   alias DbserviceWeb.SessionView
 
   def render("index.json", %{session: session}) do
-    %{data: render_many(session, SessionView, "session.json")}
+    render_many(session, SessionView, "session.json")
   end
 
   def render("show.json", %{session: session}) do
-    %{data: render_one(session, SessionView, "session.json")}
+    render_one(session, SessionView, "session.json")
   end
 
   def render("session.json", %{session: session}) do
@@ -21,7 +21,11 @@ defmodule DbserviceWeb.SessionView do
       end_time: session.end_time,
       repeat_type: session.repeat_type,
       repeat_till_date: session.repeat_till_date,
-      meta_data: session.meta_data
+      meta_data: session.meta_data,
+      owner_id: session.owner_id,
+      created_by_id: session.created_by_id,
+      is_active: session.is_active,
+      uuid: session.uuid
     }
   end
 end

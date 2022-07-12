@@ -1,0 +1,1946 @@
+{
+  "definitions": {
+    "Batch": {
+      "description": "A batch of students",
+      "example": {
+        "name": "Kendriya Vidyalaya - Class 12th"
+      },
+      "properties": {
+        "name": {
+          "description": "Batch name",
+          "type": "string"
+        }
+      },
+      "title": "Batch",
+      "type": "object"
+    },
+    "BatchIds": {
+      "example": {
+        "batch_ids": [
+          1,
+          2
+        ]
+      },
+      "properties": {
+        "batch_ids": {
+          "description": "List of batch ids",
+          "type": "array"
+        }
+      },
+      "type": "object"
+    },
+    "Batches": {
+      "description": "All the batches",
+      "items": {
+        "$ref": "#/definitions/Batch"
+      },
+      "title": "Batches",
+      "type": "array"
+    },
+    "EnrollmentRecord": {
+      "description": "An enrollment record for the student",
+      "example": {
+        "academic_year": "2022",
+        "grade": "7",
+        "is_current": true,
+        "school_id": 1,
+        "student_id": 1
+      },
+      "properties": {
+        "academic_year": {
+          "description": "Academic Year",
+          "type": "string"
+        },
+        "grade": {
+          "description": "Grade",
+          "type": "string"
+        },
+        "is_current": {
+          "description": "Is current enrollment record for student",
+          "type": "boolean"
+        },
+        "school_id": {
+          "description": "School ID that the program enrollment belongs to",
+          "type": "integer"
+        },
+        "student_id": {
+          "description": "Student ID that the program enrollment belongs to",
+          "type": "integer"
+        }
+      },
+      "title": "EnrollmentRecord",
+      "type": "object"
+    },
+    "EnrollmentRecords": {
+      "description": "All enrollment records",
+      "items": {
+        "$ref": "#/definitions/EnrollmentRecord"
+      },
+      "title": "EnrollmentRecords",
+      "type": "array"
+    },
+    "Group": {
+      "description": "A group in the application",
+      "example": {
+        "input_schema": {},
+        "locale": "hi",
+        "locale_data": {
+          "en": {
+            "title": "Register for session"
+          },
+          "hi": {
+            "title": "सत्र के लिए पंजीकरण करें"
+          }
+        }
+      },
+      "properties": {
+        "input_schema": {
+          "description": "Input schema",
+          "type": "map"
+        },
+        "locale": {
+          "description": "The configured locale for the group",
+          "type": "string"
+        },
+        "locale_data": {
+          "description": "Meta data about locale settings for the group",
+          "type": "map"
+        }
+      },
+      "title": "Group",
+      "type": "object"
+    },
+    "Groups": {
+      "description": "All the groups",
+      "items": {
+        "$ref": "#/definitions/Group"
+      },
+      "title": "Groups",
+      "type": "array"
+    },
+    "School": {
+      "description": "A school in the application",
+      "example": {
+        "code": "872931",
+        "medium": "en",
+        "name": "Kendriya Vidyalaya - Rajori Garden"
+      },
+      "properties": {
+        "code": {
+          "description": "Code",
+          "type": "string"
+        },
+        "medium": {
+          "description": "Medium",
+          "type": "string"
+        },
+        "name": {
+          "description": "Name",
+          "type": "string"
+        }
+      },
+      "title": "School",
+      "type": "object"
+    },
+    "Schools": {
+      "description": "All schools in the application",
+      "items": {
+        "$ref": "#/definitions/School"
+      },
+      "title": "Schools",
+      "type": "array"
+    },
+    "Session": {
+      "description": "A session in the application",
+      "example": {
+        "created_by_id": 1,
+        "end_time": "2022-02-02T11:30:00Z",
+        "is_active": true,
+        "meta_data": {
+          "substitute-teacher-name": "Ms. Poonam"
+        },
+        "name": "Kendriya Vidyalaya - Weekly Maths class 7",
+        "owner_id": 2,
+        "platform": "meet",
+        "platform_link": "https://meet.google.com/asl-skas-qwe",
+        "portal_link": "https://links.af.org/kv-wmc7",
+        "repeat_till_date": "2022-12-31T11:59:59Z",
+        "repeat_type": "weekly",
+        "start_time": "2022-02-02T11:00:00Z",
+        "uuid": "uiqweopasdflkasdfj"
+      },
+      "properties": {
+        "created_by_id": {
+          "description": "User ID for the session creator",
+          "type": "integer"
+        },
+        "end_time": {
+          "description": "Session finish time",
+          "type": "timestamp"
+        },
+        "is_active": {
+          "description": "Tells whether session is active or not",
+          "type": "boolean"
+        },
+        "meta_data": {
+          "description": "Additional meta data for the session",
+          "type": "map"
+        },
+        "name": {
+          "description": "First name",
+          "type": "string"
+        },
+        "owner_id": {
+          "description": "User ID for the session owner",
+          "type": "integer"
+        },
+        "platform": {
+          "description": "Platform where session being hosted",
+          "type": "string"
+        },
+        "platform_link": {
+          "description": "Link for the platform",
+          "type": "string"
+        },
+        "portal_link": {
+          "description": "Link generated by the portal",
+          "type": "text"
+        },
+        "repeat_till_date": {
+          "description": "Date till ",
+          "type": "timestamp"
+        },
+        "repeat_type": {
+          "description": "Repeat type for the session",
+          "type": "string"
+        },
+        "start_time": {
+          "description": "Session start time",
+          "type": "timestamp"
+        },
+        "uuid": {
+          "description": "Uuid for the session",
+          "type": "string"
+        }
+      },
+      "title": "Session",
+      "type": "object"
+    },
+    "SessionIds": {
+      "example": {
+        "session_ids": [
+          1,
+          2
+        ]
+      },
+      "properties": {
+        "session_ids": {
+          "description": "List of session ids",
+          "type": "array"
+        }
+      },
+      "type": "object"
+    },
+    "SessionOccurence": {
+      "description": "A session occurence for a session",
+      "example": {
+        "end_time": "2022-02-02T11:30:00Z",
+        "session_id": 1,
+        "start_time": "2022-02-02T11:00:00Z"
+      },
+      "properties": {
+        "end_time": {
+          "description": "Session occurence finish time",
+          "type": "timestamp"
+        },
+        "session_id": {
+          "description": "Session ID",
+          "type": "integer"
+        },
+        "start_time": {
+          "description": "Session occurence start time",
+          "type": "timestamp"
+        }
+      },
+      "title": "SessionOccurence",
+      "type": "object"
+    },
+    "SessionOccurenceWithUser": {
+      "description": "A single session occurence with user details",
+      "example": {
+        "end_time": "2022-02-02T11:30:00Z",
+        "session_id": 1,
+        "start_time": "2022-02-02T11:00:00Z"
+      },
+      "properties": {
+        "end_time": {
+          "description": "Session occurence finish time",
+          "type": "timestamp"
+        },
+        "session_id": {
+          "description": "Session ID",
+          "type": "integer"
+        },
+        "start_time": {
+          "description": "Session occurence start time",
+          "type": "timestamp"
+        }
+      },
+      "title": "SessionOccurenceWithUser",
+      "type": "object"
+    },
+    "SessionOccurences": {
+      "description": "All the session occurences ",
+      "items": {
+        "$ref": "#/definitions/SessionOccurence"
+      },
+      "title": "SessionOccurences",
+      "type": "array"
+    },
+    "Sessions": {
+      "description": "All the sessions",
+      "items": {
+        "$ref": "#/definitions/Session"
+      },
+      "title": "Sessions",
+      "type": "array"
+    },
+    "Student": {
+      "description": "A student in the application",
+      "example": {
+        "category": "general",
+        "father_name": "Narayan Pandey",
+        "father_phone": "8989898989",
+        "group_id": 2,
+        "mother_name": "Lakshmi Pandey",
+        "mother_phone": "9998887777",
+        "stream": "PCB",
+        "user_id": 1,
+        "uuid": "120180101057"
+      },
+      "properties": {
+        "category": {
+          "description": "Category",
+          "type": "string"
+        },
+        "father_name": {
+          "description": "Father's name",
+          "type": "string"
+        },
+        "father_phone": {
+          "description": "Father's phone number",
+          "type": "string"
+        },
+        "group_id": {
+          "description": "Group ID for the student",
+          "type": "integer"
+        },
+        "mother_name": {
+          "description": "Mother's name",
+          "type": "string"
+        },
+        "mother_phone": {
+          "description": "Mother's phone number",
+          "type": "string"
+        },
+        "stream": {
+          "description": "Stream",
+          "type": "string"
+        },
+        "user_id": {
+          "description": "User ID for the student",
+          "type": "integer"
+        },
+        "uuid": {
+          "description": "UUID for the student",
+          "type": "string"
+        }
+      },
+      "title": "Student",
+      "type": "object"
+    },
+    "Students": {
+      "description": "All students in the application",
+      "items": {
+        "$ref": "#/definitions/Student"
+      },
+      "title": "Students",
+      "type": "array"
+    },
+    "Teacher": {
+      "description": "A teacher in the application",
+      "example": {
+        "designation": "Vice Principal",
+        "grade": "12",
+        "program_manager_id": 3,
+        "school_id": 2,
+        "subject": "Mats",
+        "user_id": 1
+      },
+      "properties": {
+        "designation": {
+          "description": "Designation",
+          "type": "string"
+        },
+        "grade": {
+          "description": "Grade",
+          "type": "string"
+        },
+        "program_manager_id": {
+          "description": "Program manager user ID for the teacher",
+          "type": "integer"
+        },
+        "school_id": {
+          "description": "School ID for the teacher",
+          "type": "integer"
+        },
+        "subject": {
+          "description": "Core subject",
+          "type": "string"
+        },
+        "user_id": {
+          "description": "User ID for the teacher",
+          "type": "integer"
+        }
+      },
+      "title": "Teacher",
+      "type": "object"
+    },
+    "Teachers": {
+      "description": "All teachers in the application",
+      "items": {
+        "$ref": "#/definitions/Teacher"
+      },
+      "title": "Teachers",
+      "type": "array"
+    },
+    "User": {
+      "description": "A user in the application",
+      "example": {
+        "address": "Bandra Complex, Kurla Road",
+        "city": "Mumbai",
+        "district": "Mumbai",
+        "email": "rahul.sharma@example.com",
+        "first_name": "Rahul",
+        "gender": "Male",
+        "last_name": "Sharma",
+        "phone": "9998887777",
+        "pincode": "400011",
+        "role": "student",
+        "state": "Maharashtra"
+      },
+      "properties": {
+        "address": {
+          "description": "Address",
+          "type": "string"
+        },
+        "city": {
+          "description": "City",
+          "type": "string"
+        },
+        "district": {
+          "description": "District",
+          "type": "string"
+        },
+        "email": {
+          "description": "Email",
+          "type": "string"
+        },
+        "first_name": {
+          "description": "First name",
+          "type": "string"
+        },
+        "gender": {
+          "description": "Gender",
+          "type": "string"
+        },
+        "last_name": {
+          "description": "Last name",
+          "type": "string"
+        },
+        "phone": {
+          "description": "Phone number",
+          "type": "string"
+        },
+        "pincode": {
+          "description": "Pin code",
+          "type": "string"
+        },
+        "role": {
+          "description": "User role",
+          "type": "string"
+        },
+        "state": {
+          "description": "State",
+          "type": "string"
+        }
+      },
+      "title": "User",
+      "type": "object"
+    },
+    "UserIds": {
+      "example": {
+        "user_ids": [
+          1,
+          2
+        ]
+      },
+      "properties": {
+        "user_ids": {
+          "description": "List of user ids",
+          "type": "array"
+        }
+      },
+      "type": "object"
+    },
+    "UserSession": {
+      "description": "A mapping between user and sesssion-occurence",
+      "example": {
+        "data": {
+          "substitute-teacher-name": "Ms. Poonam"
+        },
+        "end_time": "2022-02-02T11:30:00Z",
+        "session_occurence_id": 2,
+        "start_time": "2022-02-02T11:00:00Z",
+        "user_id": 1
+      },
+      "properties": {
+        "data": {
+          "description": "Additional data for user session",
+          "type": "map"
+        },
+        "end_time": {
+          "description": "User session end time",
+          "type": "timestamp"
+        },
+        "session_occurence_id": {
+          "description": "The id of the session occurence",
+          "type": "integer"
+        },
+        "start_time": {
+          "description": "User session start time",
+          "type": "timestamp"
+        },
+        "user_id": {
+          "description": "The id of the user",
+          "type": "integer"
+        }
+      },
+      "title": "UserSession",
+      "type": "object"
+    },
+    "UserSessions": {
+      "description": "All user and session occurence mappings",
+      "items": {
+        "$ref": "#/definitions/UserSession"
+      },
+      "title": "UserSessions",
+      "type": "array"
+    },
+    "Users": {
+      "description": "All users in the application",
+      "items": {
+        "$ref": "#/definitions/User"
+      },
+      "title": "Users",
+      "type": "array"
+    }
+  },
+  "info": {
+    "title": "DB Service application",
+    "version": "1.0"
+  },
+  "paths": {
+    "/api/batch": {
+      "get": {
+        "description": "",
+        "operationId": "DbserviceWeb.BatchController.index",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "schema": {
+              "$ref": "#/definitions/Batches"
+            }
+          }
+        },
+        "summary": "",
+        "tags": [
+          "Batch"
+        ]
+      },
+      "post": {
+        "description": "",
+        "operationId": "DbserviceWeb.BatchController.create",
+        "parameters": [
+          {
+            "description": "Batch to create",
+            "in": "body",
+            "name": "body",
+            "required": true,
+            "schema": {
+              "$ref": "#/definitions/Batch"
+            }
+          }
+        ],
+        "responses": {
+          "201": {
+            "description": "Created",
+            "schema": {
+              "$ref": "#/definitions/Batch"
+            }
+          }
+        },
+        "summary": "",
+        "tags": [
+          "Batch"
+        ]
+      }
+    },
+    "/api/batch/{batchId}": {
+      "delete": {
+        "description": "",
+        "operationId": "DbserviceWeb.BatchController.delete",
+        "parameters": [
+          {
+            "description": "The id of the batch",
+            "in": "path",
+            "name": "batchId",
+            "required": true,
+            "type": "integer"
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "No Content"
+          }
+        },
+        "summary": "",
+        "tags": [
+          "Batch"
+        ]
+      },
+      "get": {
+        "description": "",
+        "operationId": "DbserviceWeb.BatchController.show",
+        "parameters": [
+          {
+            "description": "The id of the batch",
+            "in": "path",
+            "name": "batchId",
+            "required": true,
+            "type": "integer"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "schema": {
+              "$ref": "#/definitions/Batch"
+            }
+          }
+        },
+        "summary": "",
+        "tags": [
+          "Batch"
+        ]
+      },
+      "patch": {
+        "description": "",
+        "operationId": "DbserviceWeb.BatchController.update",
+        "parameters": [
+          {
+            "description": "The id of the batch",
+            "in": "path",
+            "name": "batchId",
+            "required": true,
+            "type": "integer"
+          },
+          {
+            "description": "batch to create",
+            "in": "body",
+            "name": "body",
+            "required": true,
+            "schema": {
+              "$ref": "#/definitions/Batch"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Updated",
+            "schema": {
+              "$ref": "#/definitions/Batch"
+            }
+          }
+        },
+        "summary": "",
+        "tags": [
+          "Batch"
+        ]
+      }
+    },
+    "/api/batch/{batchId}/update-sessions": {
+      "post": {
+        "description": "",
+        "operationId": "DbserviceWeb.BatchController.update_sessions",
+        "parameters": [
+          {
+            "description": "The id of the batch",
+            "in": "path",
+            "name": "batchId",
+            "required": true,
+            "type": "integer"
+          },
+          {
+            "description": "List of session ids to update",
+            "in": "body",
+            "name": "body",
+            "required": true,
+            "schema": {
+              "$ref": "#/definitions/SessionIds"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "schema": {
+              "$ref": "#/definitions/Batch"
+            }
+          }
+        },
+        "summary": "",
+        "tags": [
+          "Batch"
+        ]
+      }
+    },
+    "/api/batch/{batchId}/update-users": {
+      "post": {
+        "description": "",
+        "operationId": "DbserviceWeb.BatchController.update_users",
+        "parameters": [
+          {
+            "description": "The id of the batch",
+            "in": "path",
+            "name": "batchId",
+            "required": true,
+            "type": "integer"
+          },
+          {
+            "description": "List of user ids to update",
+            "in": "body",
+            "name": "body",
+            "required": true,
+            "schema": {
+              "$ref": "#/definitions/UserIds"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "schema": {
+              "$ref": "#/definitions/Batch"
+            }
+          }
+        },
+        "summary": "",
+        "tags": [
+          "Batch"
+        ]
+      }
+    },
+    "/api/enrollment-record": {
+      "get": {
+        "description": "",
+        "operationId": "DbserviceWeb.EnrollmentRecordController.index",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "schema": {
+              "$ref": "#/definitions/EnrollmentRecords"
+            }
+          }
+        },
+        "summary": "",
+        "tags": [
+          "EnrollmentRecord"
+        ]
+      },
+      "post": {
+        "description": "",
+        "operationId": "DbserviceWeb.EnrollmentRecordController.create",
+        "parameters": [
+          {
+            "description": "Enrollment record to create",
+            "in": "body",
+            "name": "body",
+            "required": true,
+            "schema": {
+              "$ref": "#/definitions/EnrollmentRecord"
+            }
+          }
+        ],
+        "responses": {
+          "201": {
+            "description": "Created",
+            "schema": {
+              "$ref": "#/definitions/EnrollmentRecord"
+            }
+          }
+        },
+        "summary": "",
+        "tags": [
+          "EnrollmentRecord"
+        ]
+      }
+    },
+    "/api/enrollment-record/{enrollmentRecordId}": {
+      "delete": {
+        "description": "",
+        "operationId": "DbserviceWeb.EnrollmentRecordController.delete",
+        "parameters": [
+          {
+            "description": "The id of the enrollment record",
+            "in": "path",
+            "name": "enrollmentRecordId",
+            "required": true,
+            "type": "integer"
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "No Content"
+          }
+        },
+        "summary": "",
+        "tags": [
+          "EnrollmentRecord"
+        ]
+      },
+      "get": {
+        "description": "",
+        "operationId": "DbserviceWeb.EnrollmentRecordController.show",
+        "parameters": [
+          {
+            "description": "The id of the enrollment record",
+            "in": "path",
+            "name": "enrollmentRecordId",
+            "required": true,
+            "type": "integer"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "schema": {
+              "$ref": "#/definitions/EnrollmentRecord"
+            }
+          }
+        },
+        "summary": "",
+        "tags": [
+          "EnrollmentRecord"
+        ]
+      },
+      "patch": {
+        "description": "",
+        "operationId": "DbserviceWeb.EnrollmentRecordController.update",
+        "parameters": [
+          {
+            "description": "The id of the enrollment record",
+            "in": "path",
+            "name": "enrollmentRecordId",
+            "required": true,
+            "type": "integer"
+          },
+          {
+            "description": "Enrollment record to create",
+            "in": "body",
+            "name": "body",
+            "required": true,
+            "schema": {
+              "$ref": "#/definitions/EnrollmentRecord"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Updated",
+            "schema": {
+              "$ref": "#/definitions/EnrollmentRecord"
+            }
+          }
+        },
+        "summary": "",
+        "tags": [
+          "EnrollmentRecord"
+        ]
+      }
+    },
+    "/api/group": {
+      "get": {
+        "description": "",
+        "operationId": "DbserviceWeb.GroupController.index",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "schema": {
+              "$ref": "#/definitions/Groups"
+            }
+          }
+        },
+        "summary": "",
+        "tags": [
+          "Group"
+        ]
+      },
+      "post": {
+        "description": "",
+        "operationId": "DbserviceWeb.GroupController.create",
+        "parameters": [
+          {
+            "description": "Group to create",
+            "in": "body",
+            "name": "body",
+            "required": true,
+            "schema": {
+              "$ref": "#/definitions/Group"
+            }
+          }
+        ],
+        "responses": {
+          "201": {
+            "description": "Created",
+            "schema": {
+              "$ref": "#/definitions/Group"
+            }
+          }
+        },
+        "summary": "",
+        "tags": [
+          "Group"
+        ]
+      }
+    },
+    "/api/group/{groupId}": {
+      "delete": {
+        "description": "",
+        "operationId": "DbserviceWeb.GroupController.delete",
+        "parameters": [
+          {
+            "description": "The id of the group",
+            "in": "path",
+            "name": "groupId",
+            "required": true,
+            "type": "integer"
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "No Content"
+          }
+        },
+        "summary": "",
+        "tags": [
+          "Group"
+        ]
+      },
+      "get": {
+        "description": "",
+        "operationId": "DbserviceWeb.GroupController.show",
+        "parameters": [
+          {
+            "description": "The id of the group",
+            "in": "path",
+            "name": "groupId",
+            "required": true,
+            "type": "integer"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "schema": {
+              "$ref": "#/definitions/Group"
+            }
+          }
+        },
+        "summary": "",
+        "tags": [
+          "Group"
+        ]
+      },
+      "patch": {
+        "description": "",
+        "operationId": "DbserviceWeb.GroupController.update",
+        "parameters": [
+          {
+            "description": "The id of the group",
+            "in": "path",
+            "name": "groupId",
+            "required": true,
+            "type": "integer"
+          },
+          {
+            "description": "Group to create",
+            "in": "body",
+            "name": "body",
+            "required": true,
+            "schema": {
+              "$ref": "#/definitions/Group"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Updated",
+            "schema": {
+              "$ref": "#/definitions/Group"
+            }
+          }
+        },
+        "summary": "",
+        "tags": [
+          "Group"
+        ]
+      }
+    },
+    "/api/school": {
+      "get": {
+        "description": "",
+        "operationId": "DbserviceWeb.SchoolController.index",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "schema": {
+              "$ref": "#/definitions/Schools"
+            }
+          }
+        },
+        "summary": "",
+        "tags": [
+          "School"
+        ]
+      },
+      "post": {
+        "description": "",
+        "operationId": "DbserviceWeb.SchoolController.create",
+        "parameters": [
+          {
+            "description": "School to create",
+            "in": "body",
+            "name": "body",
+            "required": true,
+            "schema": {
+              "$ref": "#/definitions/School"
+            }
+          }
+        ],
+        "responses": {
+          "201": {
+            "description": "Created",
+            "schema": {
+              "$ref": "#/definitions/School"
+            }
+          }
+        },
+        "summary": "",
+        "tags": [
+          "School"
+        ]
+      }
+    },
+    "/api/school/{schoolId}": {
+      "delete": {
+        "description": "",
+        "operationId": "DbserviceWeb.SchoolController.delete",
+        "parameters": [
+          {
+            "description": "The id of the school",
+            "in": "path",
+            "name": "schoolId",
+            "required": true,
+            "type": "integer"
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "No Content"
+          }
+        },
+        "summary": "",
+        "tags": [
+          "School"
+        ]
+      },
+      "get": {
+        "description": "",
+        "operationId": "DbserviceWeb.SchoolController.show",
+        "parameters": [
+          {
+            "description": "The id of the school",
+            "in": "path",
+            "name": "schoolId",
+            "required": true,
+            "type": "integer"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "schema": {
+              "$ref": "#/definitions/School"
+            }
+          }
+        },
+        "summary": "",
+        "tags": [
+          "School"
+        ]
+      },
+      "patch": {
+        "description": "",
+        "operationId": "DbserviceWeb.SchoolController.update",
+        "parameters": [
+          {
+            "description": "The id of the school",
+            "in": "path",
+            "name": "schoolId",
+            "required": true,
+            "type": "integer"
+          },
+          {
+            "description": "School to create",
+            "in": "body",
+            "name": "body",
+            "required": true,
+            "schema": {
+              "$ref": "#/definitions/School"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Updated",
+            "schema": {
+              "$ref": "#/definitions/School"
+            }
+          }
+        },
+        "summary": "",
+        "tags": [
+          "School"
+        ]
+      }
+    },
+    "/api/session": {
+      "get": {
+        "description": "",
+        "operationId": "DbserviceWeb.SessionController.index",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "schema": {
+              "$ref": "#/definitions/Sessions"
+            }
+          }
+        },
+        "summary": "",
+        "tags": [
+          "Session"
+        ]
+      },
+      "post": {
+        "description": "",
+        "operationId": "DbserviceWeb.SessionController.create",
+        "parameters": [
+          {
+            "description": "Session to create",
+            "in": "body",
+            "name": "body",
+            "required": true,
+            "schema": {
+              "$ref": "#/definitions/Session"
+            }
+          }
+        ],
+        "responses": {
+          "201": {
+            "description": "Created",
+            "schema": {
+              "$ref": "#/definitions/Session"
+            }
+          }
+        },
+        "summary": "",
+        "tags": [
+          "Session"
+        ]
+      }
+    },
+    "/api/session-occurence": {
+      "get": {
+        "description": "",
+        "operationId": "DbserviceWeb.SessionOccurenceController.index",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "schema": {
+              "$ref": "#/definitions/SessionOccurences"
+            }
+          }
+        },
+        "summary": "",
+        "tags": [
+          "SessionOccurence"
+        ]
+      },
+      "post": {
+        "description": "",
+        "operationId": "DbserviceWeb.SessionOccurenceController.create",
+        "parameters": [
+          {
+            "description": "Session occurence to create",
+            "in": "body",
+            "name": "body",
+            "required": true,
+            "schema": {
+              "$ref": "#/definitions/SessionOccurence"
+            }
+          }
+        ],
+        "responses": {
+          "201": {
+            "description": "Created",
+            "schema": {
+              "$ref": "#/definitions/SessionOccurence"
+            }
+          }
+        },
+        "summary": "",
+        "tags": [
+          "SessionOccurence"
+        ]
+      }
+    },
+    "/api/session-occurence/{sessionOccurenceId}": {
+      "delete": {
+        "description": "",
+        "operationId": "DbserviceWeb.SessionOccurenceController.delete",
+        "parameters": [
+          {
+            "description": "The id of the session occurence",
+            "in": "path",
+            "name": "sessionOccurenceId",
+            "required": true,
+            "type": "integer"
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "No Content"
+          }
+        },
+        "summary": "",
+        "tags": [
+          "SessionOccurence"
+        ]
+      },
+      "get": {
+        "description": "",
+        "operationId": "DbserviceWeb.SessionOccurenceController.show",
+        "parameters": [
+          {
+            "description": "The id of the session occurence",
+            "in": "path",
+            "name": "sessionOccurenceId",
+            "required": true,
+            "type": "integer"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "schema": {
+              "$ref": "#/definitions/SessionOccurenceWithUser"
+            }
+          }
+        },
+        "summary": "",
+        "tags": [
+          "SessionOccurence"
+        ]
+      },
+      "patch": {
+        "description": "",
+        "operationId": "DbserviceWeb.SessionOccurenceController.update",
+        "parameters": [
+          {
+            "description": "The id of the session occurence",
+            "in": "path",
+            "name": "sessionOccurenceId",
+            "required": true,
+            "type": "integer"
+          },
+          {
+            "description": "Session occurence to create",
+            "in": "body",
+            "name": "body",
+            "required": true,
+            "schema": {
+              "$ref": "#/definitions/SessionOccurence"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Updated",
+            "schema": {
+              "$ref": "#/definitions/SessionOccurence"
+            }
+          }
+        },
+        "summary": "",
+        "tags": [
+          "SessionOccurence"
+        ]
+      }
+    },
+    "/api/session/{sessionId}": {
+      "get": {
+        "description": "",
+        "operationId": "DbserviceWeb.SessionController.show",
+        "parameters": [
+          {
+            "description": "The id of the session",
+            "in": "path",
+            "name": "sessionId",
+            "required": true,
+            "type": "integer"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "schema": {
+              "$ref": "#/definitions/Session"
+            }
+          }
+        },
+        "summary": "",
+        "tags": [
+          "Session"
+        ]
+      },
+      "patch": {
+        "description": "",
+        "operationId": "DbserviceWeb.SessionController.update",
+        "parameters": [
+          {
+            "description": "The id of the session",
+            "in": "path",
+            "name": "sessionId",
+            "required": true,
+            "type": "integer"
+          },
+          {
+            "description": "Session to create",
+            "in": "body",
+            "name": "body",
+            "required": true,
+            "schema": {
+              "$ref": "#/definitions/Session"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Updated",
+            "schema": {
+              "$ref": "#/definitions/Session"
+            }
+          }
+        },
+        "summary": "",
+        "tags": [
+          "Session"
+        ]
+      }
+    },
+    "/api/session/{sessionId}/update-batches": {
+      "post": {
+        "description": "",
+        "operationId": "DbserviceWeb.SessionController.update_batches",
+        "parameters": [
+          {
+            "description": "The id of the session",
+            "in": "path",
+            "name": "sessionId",
+            "required": true,
+            "type": "integer"
+          },
+          {
+            "description": "List of batch ids to update for the session",
+            "in": "body",
+            "name": "body",
+            "required": true,
+            "schema": {
+              "$ref": "#/definitions/BatchIds"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "schema": {
+              "$ref": "#/definitions/Session"
+            }
+          }
+        },
+        "summary": "",
+        "tags": [
+          "Session"
+        ]
+      }
+    },
+    "/api/student": {
+      "get": {
+        "description": "",
+        "operationId": "DbserviceWeb.StudentController.index",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "schema": {
+              "$ref": "#/definitions/Students"
+            }
+          }
+        },
+        "summary": "",
+        "tags": [
+          "Student"
+        ]
+      },
+      "post": {
+        "description": "",
+        "operationId": "DbserviceWeb.StudentController.create",
+        "parameters": [
+          {
+            "description": "Student to create",
+            "in": "body",
+            "name": "body",
+            "required": true,
+            "schema": {
+              "$ref": "#/definitions/Student"
+            }
+          }
+        ],
+        "responses": {
+          "201": {
+            "description": "Created",
+            "schema": {
+              "$ref": "#/definitions/Student"
+            }
+          }
+        },
+        "summary": "",
+        "tags": [
+          "Student"
+        ]
+      }
+    },
+    "/api/student/{studentId}": {
+      "delete": {
+        "description": "",
+        "operationId": "DbserviceWeb.StudentController.delete",
+        "parameters": [
+          {
+            "description": "The id of the student",
+            "in": "path",
+            "name": "studentId",
+            "required": true,
+            "type": "integer"
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "No Content"
+          }
+        },
+        "summary": "",
+        "tags": [
+          "Student"
+        ]
+      },
+      "get": {
+        "description": "",
+        "operationId": "DbserviceWeb.StudentController.show",
+        "parameters": [
+          {
+            "description": "The id of the student",
+            "in": "path",
+            "name": "studentId",
+            "required": true,
+            "type": "integer"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "schema": {
+              "$ref": "#/definitions/Student"
+            }
+          }
+        },
+        "summary": "",
+        "tags": [
+          "Student"
+        ]
+      },
+      "patch": {
+        "description": "",
+        "operationId": "DbserviceWeb.StudentController.update",
+        "parameters": [
+          {
+            "description": "The id of the student",
+            "in": "path",
+            "name": "studentId",
+            "required": true,
+            "type": "integer"
+          },
+          {
+            "description": "Student to create",
+            "in": "body",
+            "name": "body",
+            "required": true,
+            "schema": {
+              "$ref": "#/definitions/Student"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Updated",
+            "schema": {
+              "$ref": "#/definitions/Student"
+            }
+          }
+        },
+        "summary": "",
+        "tags": [
+          "Student"
+        ]
+      }
+    },
+    "/api/teacher": {
+      "get": {
+        "description": "",
+        "operationId": "DbserviceWeb.TeacherController.index",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "schema": {
+              "$ref": "#/definitions/Teachers"
+            }
+          }
+        },
+        "summary": "",
+        "tags": [
+          "Teacher"
+        ]
+      },
+      "post": {
+        "description": "",
+        "operationId": "DbserviceWeb.TeacherController.create",
+        "parameters": [
+          {
+            "description": "Teacher to create",
+            "in": "body",
+            "name": "body",
+            "required": true,
+            "schema": {
+              "$ref": "#/definitions/Teacher"
+            }
+          }
+        ],
+        "responses": {
+          "201": {
+            "description": "Created",
+            "schema": {
+              "$ref": "#/definitions/Teacher"
+            }
+          }
+        },
+        "summary": "",
+        "tags": [
+          "Teacher"
+        ]
+      }
+    },
+    "/api/teacher/{teacherId}": {
+      "delete": {
+        "description": "",
+        "operationId": "DbserviceWeb.TeacherController.delete",
+        "parameters": [
+          {
+            "description": "The id of the teacher",
+            "in": "path",
+            "name": "teacherId",
+            "required": true,
+            "type": "integer"
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "No Content"
+          }
+        },
+        "summary": "",
+        "tags": [
+          "Teacher"
+        ]
+      },
+      "get": {
+        "description": "",
+        "operationId": "DbserviceWeb.TeacherController.show",
+        "parameters": [
+          {
+            "description": "The id of the teacher",
+            "in": "path",
+            "name": "teacherId",
+            "required": true,
+            "type": "integer"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "schema": {
+              "$ref": "#/definitions/Teacher"
+            }
+          }
+        },
+        "summary": "",
+        "tags": [
+          "Teacher"
+        ]
+      },
+      "patch": {
+        "description": "",
+        "operationId": "DbserviceWeb.TeacherController.update",
+        "parameters": [
+          {
+            "description": "The id of the teacher",
+            "in": "path",
+            "name": "teacherId",
+            "required": true,
+            "type": "integer"
+          },
+          {
+            "description": "Teacher to create",
+            "in": "body",
+            "name": "body",
+            "required": true,
+            "schema": {
+              "$ref": "#/definitions/Teacher"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Updated",
+            "schema": {
+              "$ref": "#/definitions/Teacher"
+            }
+          }
+        },
+        "summary": "",
+        "tags": [
+          "Teacher"
+        ]
+      }
+    },
+    "/api/user": {
+      "get": {
+        "description": "",
+        "operationId": "DbserviceWeb.UserController.index",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "schema": {
+              "$ref": "#/definitions/Users"
+            }
+          }
+        },
+        "summary": "",
+        "tags": [
+          "User"
+        ]
+      },
+      "post": {
+        "description": "",
+        "operationId": "DbserviceWeb.UserController.create",
+        "parameters": [
+          {
+            "description": "User to create",
+            "in": "body",
+            "name": "body",
+            "required": true,
+            "schema": {
+              "$ref": "#/definitions/User"
+            }
+          }
+        ],
+        "responses": {
+          "201": {
+            "description": "Created",
+            "schema": {
+              "$ref": "#/definitions/User"
+            }
+          }
+        },
+        "summary": "",
+        "tags": [
+          "User"
+        ]
+      }
+    },
+    "/api/user-session": {
+      "get": {
+        "description": "",
+        "operationId": "DbserviceWeb.UserSessionController.index",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "schema": {
+              "$ref": "#/definitions/UserSessions"
+            }
+          }
+        },
+        "summary": "",
+        "tags": [
+          "UserSession"
+        ]
+      },
+      "post": {
+        "description": "",
+        "operationId": "DbserviceWeb.UserSessionController.create",
+        "parameters": [
+          {
+            "description": "User session to create",
+            "in": "body",
+            "name": "body",
+            "required": true,
+            "schema": {
+              "$ref": "#/definitions/UserSession"
+            }
+          }
+        ],
+        "responses": {
+          "201": {
+            "description": "Created",
+            "schema": {
+              "$ref": "#/definitions/UserSession"
+            }
+          }
+        },
+        "summary": "",
+        "tags": [
+          "UserSession"
+        ]
+      }
+    },
+    "/api/user-session/{userSessionId}": {
+      "delete": {
+        "description": "",
+        "operationId": "DbserviceWeb.UserSessionController.delete",
+        "parameters": [
+          {
+            "description": "The id of the user session",
+            "in": "path",
+            "name": "userSessionId",
+            "required": true,
+            "type": "integer"
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "No Content"
+          }
+        },
+        "summary": "",
+        "tags": [
+          "UserSession"
+        ]
+      },
+      "get": {
+        "description": "",
+        "operationId": "DbserviceWeb.UserSessionController.show",
+        "parameters": [
+          {
+            "description": "The id of the user session",
+            "in": "path",
+            "name": "userSessionId",
+            "required": true,
+            "type": "integer"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "schema": {
+              "$ref": "#/definitions/UserSession"
+            }
+          }
+        },
+        "summary": "",
+        "tags": [
+          "UserSession"
+        ]
+      },
+      "patch": {
+        "description": "",
+        "operationId": "DbserviceWeb.UserSessionController.update",
+        "parameters": [
+          {
+            "description": "The id of the session",
+            "in": "path",
+            "name": "userSessionId",
+            "required": true,
+            "type": "integer"
+          },
+          {
+            "description": "User session to create",
+            "in": "body",
+            "name": "body",
+            "required": true,
+            "schema": {
+              "$ref": "#/definitions/UserSession"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Updated",
+            "schema": {
+              "$ref": "#/definitions/UserSession"
+            }
+          }
+        },
+        "summary": "",
+        "tags": [
+          "UserSession"
+        ]
+      }
+    },
+    "/api/user/{userId}": {
+      "get": {
+        "description": "",
+        "operationId": "DbserviceWeb.UserController.show",
+        "parameters": [
+          {
+            "description": "The id of the user",
+            "in": "path",
+            "name": "userId",
+            "required": true,
+            "type": "integer"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "schema": {
+              "$ref": "#/definitions/User"
+            }
+          }
+        },
+        "summary": "",
+        "tags": [
+          "User"
+        ]
+      },
+      "patch": {
+        "description": "",
+        "operationId": "DbserviceWeb.UserController.update",
+        "parameters": [
+          {
+            "description": "The id of the user",
+            "in": "path",
+            "name": "userId",
+            "required": true,
+            "type": "integer"
+          },
+          {
+            "description": "User to create",
+            "in": "body",
+            "name": "body",
+            "required": true,
+            "schema": {
+              "$ref": "#/definitions/User"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Updated",
+            "schema": {
+              "$ref": "#/definitions/User"
+            }
+          }
+        },
+        "summary": "",
+        "tags": [
+          "User"
+        ]
+      }
+    },
+    "/api/user/{userId}/update-batches": {
+      "post": {
+        "description": "",
+        "operationId": "DbserviceWeb.UserController.update_batches",
+        "parameters": [
+          {
+            "description": "The id of the user",
+            "in": "path",
+            "name": "userId",
+            "required": true,
+            "type": "integer"
+          },
+          {
+            "description": "List of batch ids to update for the user",
+            "in": "body",
+            "name": "body",
+            "required": true,
+            "schema": {
+              "$ref": "#/definitions/BatchIds"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "schema": {
+              "$ref": "#/definitions/User"
+            }
+          }
+        },
+        "summary": "",
+        "tags": [
+          "User"
+        ]
+      }
+    }
+  },
+  "swagger": "2.0"
+}
