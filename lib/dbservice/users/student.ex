@@ -2,6 +2,9 @@ defmodule Dbservice.Users.Student do
   use Ecto.Schema
   import Ecto.Changeset
 
+  alias Dbservice.Users
+  alias Dbservice.Groups
+
   schema "student" do
     field :category, :string
     field :father_name, :string
