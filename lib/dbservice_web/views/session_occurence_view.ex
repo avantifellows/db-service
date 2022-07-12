@@ -2,6 +2,7 @@ defmodule DbserviceWeb.SessionOccurenceView do
   use DbserviceWeb, :view
   alias DbserviceWeb.SessionOccurenceView
   alias DbserviceWeb.UserView
+  alias Dbservice.Repo
 
   def render("index.json", %{session_occurence: session_occurence}) do
     render_many(session_occurence, SessionOccurenceView, "session_occurence.json")
@@ -20,6 +21,7 @@ defmodule DbserviceWeb.SessionOccurenceView do
   end
 
   def render("session_occurence_with_users.json", %{session_occurence: session_occurence}) do
+    session_occurence = session_occurence |> Repo.preload(:users)
     %{
       id: session_occurence.id,
       start_time: session_occurence.start_time,

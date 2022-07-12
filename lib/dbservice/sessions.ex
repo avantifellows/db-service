@@ -150,7 +150,6 @@ defmodule Dbservice.Sessions do
   """
   def get_session_occurence!(id) do
     Repo.get!(SessionOccurence, id)
-    |> Repo.preload(:users)
   end
 
   @doc """
