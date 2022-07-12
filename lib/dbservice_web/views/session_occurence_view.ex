@@ -22,6 +22,7 @@ defmodule DbserviceWeb.SessionOccurenceView do
 
   def render("session_occurence_with_users.json", %{session_occurence: session_occurence}) do
     session_occurence = session_occurence |> Repo.preload(:users)
+
     %{
       id: session_occurence.id,
       start_time: session_occurence.start_time,
