@@ -13,6 +13,7 @@
 alias Dbservice.Repo
 alias Dbservice.Users
 alias Dbservice.Batches
+alias Dbservice.Groups
 
 alias Faker.Person
 alias Faker.Internet
@@ -21,7 +22,7 @@ alias Faker.Address
 
 defmodule Seed do
   def create_user() do
-    Users.create_user(%{
+    {:ok, user} = Users.create_user(%{
       first_name: Person.first_name(),
       last_name: Person.last_name(),
       email: Internet.safe_email(),
@@ -32,41 +33,44 @@ defmodule Seed do
       pincode: Address.postcode(),
       role: "admin"
     })
+    user
   end
 
   def create_batch() do
-    batch = Batches.create_batch(%{
+    {:ok, batch} = Batches.create_batch(%{
       name: Address.city() <> " " <> "Batch"
     })
+    batch
+  end
+
+  def create_group() do
+    {:ok, group} = Groups.create_group(%{
+      input_schema: %{},
+      locale: Enum.random(["hi", "en"]),
+      locale_data: %{}
+    })
+    group
   end
 end
 
+Repo.query("TRUNCATE batch_user", [])
 Repo.delete_all(Users.User)
 Repo.delete_all(Batches.Batch)
+Repo.delete_all(Groups.Group)
 
 if Mix.env() == :dev do
   # create some groups
   for count <- 1..5 do
-    {:ok, group} = Groups.create_group(%{
-      name: Address.city() <> " " <> "Batch"
-    })
-
-    user_ids = for num <- 1..10 do
-      {:ok, user} = Seed.create_user()
-      user.id
-    end
-    Batches.update_users(group.id, user_ids)
+    group = Seed.create_group()
   end
 
   # create some batches
   for count <- 1..10 do
-    {:ok, batch} = Batches.create_batch(%{
-      name: Address.city() <> " " <> "Batch"
-    })
+    batch = Seed.create_batch()
 
     # create users for the batches
     user_ids = for num <- 1..10 do
-      {:ok, user} = Seed.create_user()
+      user = Seed.create_user()
       user.id
     end
     Batches.update_users(batch.id, user_ids)
