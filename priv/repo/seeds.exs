@@ -11,16 +11,36 @@
 # and so on) as they will fail if something goes wrong.
 
 alias Dbservice.Repo
+alias Dbservice.Users
 alias Dbservice.Batches
-alias Dbservice.Batches.Batch
+
+alias Faker.Person
+alias Faker.Internet
+alias Faker.Phone
 alias Faker.Address
 
-import Dbservice.BatchesFixtures
+Repo.delete_all(Users.User)
+Repo.delete_all(Batches.Batch)
 
-Repo.delete_all(Batch)
+IO.inspect(Mix.env())
+if Mix.env() == :dev do
+  for count <- 1..50 do
+    Users.create_user(%{
+      first_name: Person.first_name(),
+      last_name: Person.last_name(),
+      email: Internet.safe_email(),
+      phone: Phone.PtPt.number(),
+      gender: Enum.random(["male", "female"]),
+      city: Address.city(),
+      state: Address.state(),
+      pincode: Address.postcode(),
+      role: "admin"
+    })
+  end
 
-# create some batches
-# for count <- 1..50 do
-batch = batch_fixture()
-IO.inspect(batch)
-# end
+  for count <- 1..10 do
+    Batches.create_batch(%{
+      name: Address.city() <> " " <> "Batch"
+    })
+  end
+end
