@@ -19,12 +19,8 @@ alias Faker.Internet
 alias Faker.Phone
 alias Faker.Address
 
-Repo.delete_all(Users.User)
-Repo.delete_all(Batches.Batch)
-
-IO.inspect(Mix.env())
-if Mix.env() == :dev do
-  for count <- 1..50 do
+defmodule Seed do
+  def create_user() do
     Users.create_user(%{
       first_name: Person.first_name(),
       last_name: Person.last_name(),
@@ -38,9 +34,41 @@ if Mix.env() == :dev do
     })
   end
 
-  for count <- 1..10 do
-    Batches.create_batch(%{
+  def create_batch() do
+    batch = Batches.create_batch(%{
       name: Address.city() <> " " <> "Batch"
     })
+  end
+end
+
+Repo.delete_all(Users.User)
+Repo.delete_all(Batches.Batch)
+
+if Mix.env() == :dev do
+  # create some groups
+  for count <- 1..5 do
+    {:ok, group} = Groups.create_group(%{
+      name: Address.city() <> " " <> "Batch"
+    })
+
+    user_ids = for num <- 1..10 do
+      {:ok, user} = Seed.create_user()
+      user.id
+    end
+    Batches.update_users(group.id, user_ids)
+  end
+
+  # create some batches
+  for count <- 1..10 do
+    {:ok, batch} = Batches.create_batch(%{
+      name: Address.city() <> " " <> "Batch"
+    })
+
+    # create users for the batches
+    user_ids = for num <- 1..10 do
+      {:ok, user} = Seed.create_user()
+      user.id
+    end
+    Batches.update_users(batch.id, user_ids)
   end
 end
