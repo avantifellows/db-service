@@ -78,12 +78,13 @@ defmodule Seed do
   end
 
   def create_session_occurence() do
-    {:ok, group} = Sessions.create_session_occurence(%{
-      input_schema: %{},
-      locale: Enum.random(["hi", "en"]),
-      locale_data: %{}
+    session = Sessions.Session |> offset(^Enum.random(1..49)) |> limit(1) |> Repo.one()
+    {:ok, session_occurence} = Sessions.create_session_occurence(%{
+      session_id: session.id,
+      start_time: session.start_time,
+      end_time: session.end_time
     })
-    group
+    session_occurence
   end
 
   def create_student() do
@@ -108,6 +109,7 @@ end
 Repo.query("TRUNCATE batch_user", [])
 Repo.delete_all(Batches.Batch)
 Repo.delete_all(Groups.Group)
+Repo.delete_all(Sessions.SessionOccurence)
 Repo.delete_all(Sessions.Session)
 Repo.delete_all(Users.User)
 
@@ -141,12 +143,11 @@ if Mix.env() == :dev do
 
   # create some sessions
   for count <- 1..50 do
-    session = Seed.create_session()
-    # # create users for the batches
-    # user_ids = for num <- 1..10 do
-    #   user = Seed.create_user()
-    #   user.id
-    # end
-    # Batches.update_users(batch.id, user_ids)
+    Seed.create_session()
+  end
+
+  # create some sessions occurences
+  for count <- 1..100 do
+    Seed.create_session_occurence()
   end
 end
