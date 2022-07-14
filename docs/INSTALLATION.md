@@ -12,7 +12,14 @@ Install the following packages using your favorite package manager. Links are pr
     ```
 - [Install Postgres](https://www.postgresql.org/download/)
   - For Postgres, this app defaults to `postgres` as both the username and password. This can be edited in `config/dev.exs` file.
-
+  - Open the Postgres CLI and check the enabled extensions:
+    ```sql
+    SELECT * FROM pg_extension;
+    ```
+  - If the `uuid-ossp` module isn't showing up, then run the following command. We require this extension in order to support the Postgres' `uuid_generate_v4` function that auto-generate UUIDs.
+    ```sql
+    CREATE EXTENSION "uuid-ossp";
+    ```
 ## Installation steps
 Follow the steps below to set up the repo for development
 1. Clone the repository and change the working directory
