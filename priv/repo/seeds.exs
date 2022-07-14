@@ -60,7 +60,6 @@ defmodule Seed do
     owner = Users.User |> offset(^Enum.random(1..99)) |> limit(1) |> Repo.one()
     creator = Users.User |> offset(^Enum.random(1..99)) |> limit(1) |> Repo.one()
 
-    IO.inspect(owner)
     {:ok, session} = Sessions.create_session(%{
       name: "Kendriya Vidyalaya - Weekly Maths class 7",
       platform: Enum.random(["meet", "zoom", "teams"]),
@@ -73,8 +72,7 @@ defmodule Seed do
       meta_data: %{},
       owner_id: owner.id,
       created_by_id: creator.id,
-      is_active: Enum.random([true, false]),
-      uuid: "uiqweopasdflkasdfj"
+      is_active: Enum.random([true, false])
     })
     session
   end
@@ -108,10 +106,10 @@ defmodule Seed do
 end
 
 Repo.query("TRUNCATE batch_user", [])
-Repo.delete_all(Users.User)
 Repo.delete_all(Batches.Batch)
 Repo.delete_all(Groups.Group)
 Repo.delete_all(Sessions.Session)
+Repo.delete_all(Users.User)
 
 for num <- 1..10 do
   Seed.create_user()
