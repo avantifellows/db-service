@@ -87,6 +87,20 @@ defmodule Seed do
     session_occurence
   end
 
+  def create_user_session() do
+    session_occurence = Sessions.SessionOccurence |> offset(^Enum.random(1..99)) |> limit(1) |> Repo.one()
+    user = Users.User |> offset(^Enum.random(1..99)) |> limit(1) |> Repo.one()
+
+    {:ok, user_session} = Sessions.create_user_session(%{
+      session_occurence_id: session_occurence.id,
+      user_id: user.id,
+      start_time: session_occurence.start_time,
+      end_time: session_occurence.end_time,
+      data: %{}
+    })
+    user_session
+  end
+
   def create_student() do
     {:ok, group} = Users.create_student(%{
       input_schema: %{},
@@ -146,8 +160,14 @@ if Mix.env() == :dev do
     Seed.create_session()
   end
 
-  # create some sessions occurences
+  # create some sessions occurences and user-session mappings
   for count <- 1..100 do
     Seed.create_session_occurence()
   end
+
+  # create some user session-occurence mappings
+  for count <- 1..200 do
+    Seed.create_user_session()
+  end
+
 end
