@@ -32,3 +32,12 @@ Follow the steps below to set up the repo for development
    2. Create and migrate your database with `mix ecto.setup`
    3. Start Phoenix endpoint with `mix phx.server` or inside IEx with `iex -S mix phx.server`
 3. Now you can visit [`localhost:4000`](http://localhost:4000) from your browser.
+
+
+## Seeding fake data
+If you want to seed your local database with random fake data, you can run this command:
+```sh
+mix run priv/repo/seeds.exs
+```
+
+If you want to modify how this random fake data is getting seeded, you can modify this file `priv/repo/seeds.exs`.
