@@ -177,10 +177,28 @@ defmodule Seed do
 
     teacher
   end
+
+  def create_enrollment_record() do
+    school = Schools.School |> offset(^Enum.random(1..9)) |> limit(1) |> Repo.one()
+    student = Users.Student |> offset(^Enum.random(1..99)) |> limit(1) |> Repo.one()
+
+    {:ok, enrollment_record} =
+      Schools.create_enrollment_record(%{
+        grade: Enum.random(["KG", "1", "2", "3", "4", "5", "6", "7", "8", "9", "10"]),
+        academic_year: Enum.random(["2010-11", "2011-12", "2012-13", "2013-14", "2014-15", "2015-16", "2016-17", "2017-18", "2018-19", "2019-20", "2020-21", "2020-22"]),
+        is_current: Enum.random([true, false]),
+        student_id: student.id,
+        school_id: school.id,
+      })
+
+    enrollment_record
+  end
 end
 
 Repo.query("TRUNCATE batch_user", [])
+Repo.query("TRUNCATE batch_session", [])
 Repo.delete_all(Users.Teacher)
+Repo.delete_all(Schools.EnrollmentRecord)
 Repo.delete_all(Users.Student)
 Repo.delete_all(Schools.School)
 Repo.delete_all(Sessions.UserSession)
@@ -245,8 +263,13 @@ if Mix.env() == :dev do
   end
 
   # create some students
-  for count <- 1..99 do
+  for count <- 1..100 do
     Seed.create_student()
+  end
+
+  # create some enrollment records for students
+  for count <- 1..200 do
+    Seed.create_enrollment_record()
   end
 
   # create some teachers
