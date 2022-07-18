@@ -220,13 +220,13 @@ if Mix.env() == :dev do
     Batches.update_users(batch.id, user_ids)
 
     # get some random sessions and assign them batch
-    session_ides =
+    session_ids =
       for num <- 1..10 do
         session = Sessions.Session |> offset(^Enum.random(1..49)) |> limit(1) |> Repo.one()
         session.id
       end
 
-    Batches.update_sessions(batch.id, session_ides)
+    Batches.update_sessions(batch.id, session_ids)
   end
 
   # create some sessions occurences and user-session mappings
