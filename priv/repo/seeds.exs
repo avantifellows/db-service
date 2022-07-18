@@ -25,111 +25,138 @@ alias Faker.Address
 import Ecto.Query
 
 defmodule Seed do
-
   def random_alphanumeric(length \\ 20) do
-    for _ <- 1..length, into: "", do: << Enum.random('0123456789abcdef') >>
+    for _ <- 1..length, into: "", do: <<Enum.random('0123456789abcdef')>>
   end
 
   def create_user() do
-    {:ok, user} = Users.create_user(%{
-      first_name: Person.first_name(),
-      last_name: Person.last_name(),
-      email: Internet.safe_email(),
-      phone: Phone.PtPt.number(),
-      gender: Enum.random(["male", "female"]),
-      city: Address.city(),
-      state: Address.state(),
-      pincode: Address.postcode(),
-      role: "admin"
-    })
+    {:ok, user} =
+      Users.create_user(%{
+        first_name: Person.first_name(),
+        last_name: Person.last_name(),
+        email: Internet.safe_email(),
+        phone: Phone.PtPt.number(),
+        gender: Enum.random(["male", "female"]),
+        city: Address.city(),
+        state: Address.state(),
+        pincode: Address.postcode(),
+        role: "admin"
+      })
+
     user
   end
 
   def create_batch() do
-    {:ok, batch} = Batches.create_batch(%{
-      name: Address.city() <> " " <> "Batch"
-    })
+    {:ok, batch} =
+      Batches.create_batch(%{
+        name: Address.city() <> " " <> "Batch"
+      })
+
     batch
   end
 
   def create_group() do
-    {:ok, group} = Groups.create_group(%{
-      input_schema: %{},
-      locale: Enum.random(["hi", "en"]),
-      locale_data: %{}
-    })
+    {:ok, group} =
+      Groups.create_group(%{
+        input_schema: %{},
+        locale: Enum.random(["hi", "en"]),
+        locale_data: %{}
+      })
+
     group
   end
 
   def create_session() do
-
     owner = Users.User |> offset(^Enum.random(1..99)) |> limit(1) |> Repo.one()
     creator = Users.User |> offset(^Enum.random(1..99)) |> limit(1) |> Repo.one()
 
-    {:ok, session} = Sessions.create_session(%{
-      name: "Kendriya Vidyalaya - Weekly Maths class 7",
-      platform: Enum.random(["meet", "zoom", "teams"]),
-      platform_link: Enum.random(["https://meet.google.com/asl-skas-qwe", "https://meet.google.com/oep-susi-iop"]),
-      portal_link: Enum.random(["https://links.af.org/kv-wmc7", "https://links.af.org/io-zmks", "https://links.af.org/po-dan"]),
-      start_time: Faker.DateTime.backward(Enum.random(1..10)),
-      end_time: Faker.DateTime.backward(Enum.random(1..9)),
-      repeat_type: Enum.random(["weekly", "daily", "monthly"]),
-      repeat_till_date: Faker.DateTime.forward(Enum.random(1..10)),
-      meta_data: %{},
-      owner_id: owner.id,
-      created_by_id: creator.id,
-      is_active: Enum.random([true, false])
-    })
+    {:ok, session} =
+      Sessions.create_session(%{
+        name: "Kendriya Vidyalaya - Weekly Maths class 7",
+        platform: Enum.random(["meet", "zoom", "teams"]),
+        platform_link:
+          Enum.random([
+            "https://meet.google.com/asl-skas-qwe",
+            "https://meet.google.com/oep-susi-iop"
+          ]),
+        portal_link:
+          Enum.random([
+            "https://links.af.org/kv-wmc7",
+            "https://links.af.org/io-zmks",
+            "https://links.af.org/po-dan"
+          ]),
+        start_time: Faker.DateTime.backward(Enum.random(1..10)),
+        end_time: Faker.DateTime.backward(Enum.random(1..9)),
+        repeat_type: Enum.random(["weekly", "daily", "monthly"]),
+        repeat_till_date: Faker.DateTime.forward(Enum.random(1..10)),
+        meta_data: %{},
+        owner_id: owner.id,
+        created_by_id: creator.id,
+        is_active: Enum.random([true, false])
+      })
+
     session
   end
 
   def create_session_occurence() do
     session = Sessions.Session |> offset(^Enum.random(1..49)) |> limit(1) |> Repo.one()
-    {:ok, session_occurence} = Sessions.create_session_occurence(%{
-      session_id: session.id,
-      start_time: session.start_time,
-      end_time: session.end_time
-    })
+
+    {:ok, session_occurence} =
+      Sessions.create_session_occurence(%{
+        session_id: session.id,
+        start_time: session.start_time,
+        end_time: session.end_time
+      })
+
     session_occurence
   end
 
   def create_user_session() do
-    session_occurence = Sessions.SessionOccurence |> offset(^Enum.random(1..99)) |> limit(1) |> Repo.one()
+    session_occurence =
+      Sessions.SessionOccurence |> offset(^Enum.random(1..99)) |> limit(1) |> Repo.one()
+
     user = Users.User |> offset(^Enum.random(1..99)) |> limit(1) |> Repo.one()
 
-    {:ok, user_session} = Sessions.create_user_session(%{
-      session_occurence_id: session_occurence.id,
-      user_id: user.id,
-      start_time: session_occurence.start_time,
-      end_time: session_occurence.end_time,
-      data: %{}
-    })
+    {:ok, user_session} =
+      Sessions.create_user_session(%{
+        session_occurence_id: session_occurence.id,
+        user_id: user.id,
+        start_time: session_occurence.start_time,
+        end_time: session_occurence.end_time,
+        data: %{}
+      })
+
     user_session
   end
 
   def create_student() do
     group = Groups.Group |> offset(^Enum.random(1..4)) |> limit(1) |> Repo.one()
     user = Seed.create_user()
-    {:ok, student} = Users.create_student(%{
-      uuid: Seed.random_alphanumeric(),
-      father_name: Person.name(),
-      father_phone: Phone.PtPt.number(),
-      mother_name: Person.name(),
-      mother_phone: Phone.PtPt.number(),
-      category: Enum.random(["General", "OBC", "SC", "ST"]),
-      stream: Enum.random(["Science", "Commerce", "Arts"]),
-      user_id: user.id,
-      group_id: group.id,
-    })
+
+    {:ok, student} =
+      Users.create_student(%{
+        uuid: Seed.random_alphanumeric(),
+        father_name: Person.name(),
+        father_phone: Phone.PtPt.number(),
+        mother_name: Person.name(),
+        mother_phone: Phone.PtPt.number(),
+        category: Enum.random(["General", "OBC", "SC", "ST"]),
+        stream: Enum.random(["Science", "Commerce", "Arts"]),
+        user_id: user.id,
+        group_id: group.id
+      })
+
     student
   end
 
   def create_school() do
-    {:ok, school} = Schools.create_school(%{
-      code: Enum.random(["KV", "DAV", "Navodaya"]),
-      name: Enum.random(["Kendriya Vidyalaya", "Dayanand Anglo Vedic", "Navodaya"]),
-      medium: Enum.random(["English", "Hindi"]),
-    })
+    {:ok, school} =
+      Schools.create_school(%{
+        code: Enum.random(["KV", "DAV", "Navodaya"]),
+        name: Enum.random(["Kendriya Vidyalaya", "Dayanand Anglo Vedic", "Navodaya"]),
+        medium: Enum.random(["English", "Hindi"])
+      })
+
     school
   end
 
@@ -137,14 +164,17 @@ defmodule Seed do
     school = Schools.School |> offset(^Enum.random(1..9)) |> limit(1) |> Repo.one()
     user = Seed.create_user()
     program_manager = Users.User |> offset(^Enum.random(1..99)) |> limit(1) |> Repo.one()
-    {:ok, teacher} = Users.create_teacher(%{
-      designation: Enum.random(["Teacher", "Principal", "Headmaster"]),
-      subject: Enum.random(["Maths", "Science", "Commerce", "Arts"]),
-      grade: Enum.random(["KG", "1", "2", "3", "4", "5", "6", "7", "8", "9", "10"]),
-      user_id: user.id,
-      school_id: school.id,
-      program_manager_id: program_manager.id
-    })
+
+    {:ok, teacher} =
+      Users.create_teacher(%{
+        designation: Enum.random(["Teacher", "Principal", "Headmaster"]),
+        subject: Enum.random(["Maths", "Science", "Commerce", "Arts"]),
+        grade: Enum.random(["KG", "1", "2", "3", "4", "5", "6", "7", "8", "9", "10"]),
+        user_id: user.id,
+        school_id: school.id,
+        program_manager_id: program_manager.id
+      })
+
     teacher
   end
 end
@@ -159,7 +189,6 @@ Repo.delete_all(Sessions.Session)
 Repo.delete_all(Batches.Batch)
 Repo.delete_all(Groups.Group)
 Repo.delete_all(Users.User)
-
 
 if Mix.env() == :dev do
   # create some users
@@ -177,10 +206,12 @@ if Mix.env() == :dev do
     batch = Seed.create_batch()
 
     # create users for the batches
-    user_ids = for num <- 1..10 do
-      user = Seed.create_user()
-      user.id
-    end
+    user_ids =
+      for num <- 1..10 do
+        user = Seed.create_user()
+        user.id
+      end
+
     Batches.update_users(batch.id, user_ids)
   end
 
@@ -213,5 +244,4 @@ if Mix.env() == :dev do
   for count <- 1..9 do
     Seed.create_teacher()
   end
-
 end
