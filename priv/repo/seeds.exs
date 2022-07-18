@@ -15,6 +15,7 @@ alias Dbservice.Users
 alias Dbservice.Batches
 alias Dbservice.Groups
 alias Dbservice.Sessions
+alias Dbservice.Schools
 
 alias Faker.Person
 alias Faker.Internet
@@ -24,6 +25,11 @@ alias Faker.Address
 import Ecto.Query
 
 defmodule Seed do
+
+  def random_alphanumeric(length \\ 20) do
+    for _ <- 1..length, into: "", do: << Enum.random('0123456789abcdef') >>
+  end
+
   def create_user() do
     {:ok, user} = Users.create_user(%{
       first_name: Person.first_name(),
@@ -102,34 +108,57 @@ defmodule Seed do
   end
 
   def create_student() do
-    {:ok, group} = Users.create_student(%{
-      input_schema: %{},
-      locale: Enum.random(["hi", "en"]),
-      locale_data: %{}
+    group = Groups.Group |> offset(^Enum.random(1..4)) |> limit(1) |> Repo.one()
+    user = Seed.create_user()
+    {:ok, student} = Users.create_student(%{
+      uuid: Seed.random_alphanumeric(),
+      father_name: Person.name(),
+      father_phone: Phone.PtPt.number(),
+      mother_name: Person.name(),
+      mother_phone: Phone.PtPt.number(),
+      category: Enum.random(["General", "OBC", "SC", "ST"]),
+      stream: Enum.random(["Science", "Commerce", "Arts"]),
+      user_id: user.id,
+      group_id: group.id,
     })
-    group
+    student
+  end
+
+  def create_school() do
+    {:ok, school} = Schools.create_school(%{
+      code: Enum.random(["KV", "DAV", "Navodaya"]),
+      name: Enum.random(["Kendriya Vidyalaya", "Dayanand Anglo Vedic", "Navodaya"]),
+      medium: Enum.random(["English", "Hindi"]),
+    })
+    school
   end
 
   def create_teacher() do
-    {:ok, group} = Users.create_teacher(%{
-      input_schema: %{},
-      locale: Enum.random(["hi", "en"]),
-      locale_data: %{}
+    school = Schools.School |> offset(^Enum.random(1..9)) |> limit(1) |> Repo.one()
+    user = Seed.create_user()
+    program_manager = Users.User |> offset(^Enum.random(1..99)) |> limit(1) |> Repo.one()
+    {:ok, teacher} = Users.create_teacher(%{
+      designation: Enum.random(["Teacher", "Principal", "Headmaster"]),
+      subject: Enum.random(["Maths", "Science", "Commerce", "Arts"]),
+      grade: Enum.random(["KG", "1", "2", "3", "4", "5", "6", "7", "8", "9", "10"]),
+      user_id: user.id,
+      school_id: school.id,
+      program_manager_id: program_manager.id
     })
-    group
+    teacher
   end
 end
 
 Repo.query("TRUNCATE batch_user", [])
-Repo.delete_all(Batches.Batch)
-Repo.delete_all(Groups.Group)
+Repo.delete_all(Users.Teacher)
+Repo.delete_all(Users.Student)
+Repo.delete_all(Schools.School)
+Repo.delete_all(Sessions.UserSession)
 Repo.delete_all(Sessions.SessionOccurence)
 Repo.delete_all(Sessions.Session)
+Repo.delete_all(Batches.Batch)
+Repo.delete_all(Groups.Group)
 Repo.delete_all(Users.User)
-
-for num <- 1..10 do
-  Seed.create_user()
-end
 
 
 if Mix.env() == :dev do
@@ -138,22 +167,22 @@ if Mix.env() == :dev do
     Seed.create_user()
   end
 
-  # # create some groups
-  # for count <- 1..5 do
-  #   group = Seed.create_group()
-  # end
+  # create some groups
+  for count <- 1..5 do
+    group = Seed.create_group()
+  end
 
-  # # create some batches
-  # for count <- 1..10 do
-  #   batch = Seed.create_batch()
+  # create some batches
+  for count <- 1..10 do
+    batch = Seed.create_batch()
 
-  #   # create users for the batches
-  #   user_ids = for num <- 1..10 do
-  #     user = Seed.create_user()
-  #     user.id
-  #   end
-  #   Batches.update_users(batch.id, user_ids)
-  # end
+    # create users for the batches
+    user_ids = for num <- 1..10 do
+      user = Seed.create_user()
+      user.id
+    end
+    Batches.update_users(batch.id, user_ids)
+  end
 
   # create some sessions
   for count <- 1..50 do
@@ -168,6 +197,21 @@ if Mix.env() == :dev do
   # create some user session-occurence mappings
   for count <- 1..200 do
     Seed.create_user_session()
+  end
+
+  # create some user session-occurence mappings
+  for count <- 1..10 do
+    Seed.create_school()
+  end
+
+  # create some students
+  for count <- 1..99 do
+    Seed.create_student()
+  end
+
+  # create some teachers
+  for count <- 1..9 do
+    Seed.create_teacher()
   end
 
 end
