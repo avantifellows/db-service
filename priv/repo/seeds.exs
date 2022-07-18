@@ -201,23 +201,32 @@ if Mix.env() == :dev do
     group = Seed.create_group()
   end
 
+  # create some sessions
+  for count <- 1..50 do
+    Seed.create_session()
+  end
+
   # create some batches
   for count <- 1..10 do
     batch = Seed.create_batch()
 
-    # create users for the batches
+    # get some random users and assign them batch
     user_ids =
       for num <- 1..10 do
-        user = Seed.create_user()
+        user = Users.User |> offset(^Enum.random(1..99)) |> limit(1) |> Repo.one()
         user.id
       end
 
     Batches.update_users(batch.id, user_ids)
-  end
 
-  # create some sessions
-  for count <- 1..50 do
-    Seed.create_session()
+    # get some random sessions and assign them batch
+    session_ides =
+      for num <- 1..10 do
+        session = Sessions.Session |> offset(^Enum.random(1..49)) |> limit(1) |> Repo.one()
+        session.id
+      end
+
+    Batches.update_sessions(batch.id, session_ides)
   end
 
   # create some sessions occurences and user-session mappings
