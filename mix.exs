@@ -46,7 +46,6 @@ defmodule Dbservice.MixProject do
       {:plug_cowboy, "~> 2.5"},
       {:phoenix_swagger, "~> 0.8"},
       {:ex_json_schema, "~> 0.5"},
-      # {:ex_machina, "~> 2.7.0", only: [:test, :dev]},
       {:faker, "~> 0.17", only: [:test, :dev]}
     ]
   end
