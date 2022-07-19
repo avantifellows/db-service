@@ -1,6 +1,8 @@
 defmodule Dbservice.Users.Student do
   use Ecto.Schema
   import Ecto.Changeset
+  alias Dbservice.Users.User
+  alias Dbservice.Groups.Group
 
   schema "student" do
     field :category, :string
@@ -10,8 +12,8 @@ defmodule Dbservice.Users.Student do
     field :mother_phone, :string
     field :stream, :string
     field :uuid, :string
-    belongs_to :user, Users.User
-    belongs_to :group, Groups.Group
+    belongs_to :user, User
+    belongs_to :group, Group
 
     timestamps()
   end
