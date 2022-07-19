@@ -207,22 +207,22 @@ defmodule Dbservice.Users do
 
   ## Examples
 
-      iex> create_student(%{field: value})
+      iex> create_student_with_user(%{field: value})
       {:ok, %Student{}}
 
-      iex> create_student(%{field: bad_value})
+      iex> create_student_with_user(%{field: bad_value})
       {:error, %Ecto.Changeset{}}
 
   """
   def create_student_with_user(attrs \\ %{}) do
     alias Dbservice.Users
 
-    {:ok, user} = Users.create_user(attrs)
-    student_attrs = Map.merge(attrs, %{"user_id" => user.id})
-
-    %Student{}
-    |> Student.changeset(student_attrs)
-    |> Repo.insert()
+    with {:ok, %User{} = user} <- Users.create_user(attrs) do
+      student_attrs = Map.merge(attrs, %{"user_id" => user.id})
+      %Student{}
+      |> Student.changeset(student_attrs)
+      |> Repo.insert()
+    end
   end
 
   @doc """
