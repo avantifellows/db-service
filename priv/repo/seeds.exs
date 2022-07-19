@@ -185,10 +185,24 @@ defmodule Seed do
     {:ok, enrollment_record} =
       Schools.create_enrollment_record(%{
         grade: Enum.random(["KG", "1", "2", "3", "4", "5", "6", "7", "8", "9", "10"]),
-        academic_year: Enum.random(["2010-11", "2011-12", "2012-13", "2013-14", "2014-15", "2015-16", "2016-17", "2017-18", "2018-19", "2019-20", "2020-21", "2020-22"]),
+        academic_year:
+          Enum.random([
+            "2010-11",
+            "2011-12",
+            "2012-13",
+            "2013-14",
+            "2014-15",
+            "2015-16",
+            "2016-17",
+            "2017-18",
+            "2018-19",
+            "2019-20",
+            "2020-21",
+            "2020-22"
+          ]),
         is_current: Enum.random([true, false]),
         student_id: student.id,
-        school_id: school.id,
+        school_id: school.id
       })
 
     enrollment_record
