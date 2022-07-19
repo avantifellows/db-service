@@ -217,11 +217,10 @@ defmodule Dbservice.Users do
   def create_student_with_user(attrs \\ %{}) do
     alias Dbservice.Users
 
-    with {:ok, %User{} = user} <- Users.create_user(attrs) do
-      student_attrs = Map.merge(attrs, %{"user_id" => user.id})
-      %Student{}
-      |> Student.changeset(student_attrs)
-      |> Repo.insert()
+    with {:ok, %User{} = user} <- Users.create_user(attrs),
+         {:ok, %Student{} = student} <-
+           Users.create_student(Map.merge(attrs, %{"user_id" => user.id})) do
+      {:ok, student}
     end
   end
 

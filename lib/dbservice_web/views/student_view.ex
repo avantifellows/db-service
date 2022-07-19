@@ -33,6 +33,7 @@ defmodule DbserviceWeb.StudentView do
 
   def render("student_with_user.json", %{student: student}) do
     student = Repo.preload(student, :user)
+
     %{
       id: student.id,
       uuid: student.uuid,
