@@ -12,6 +12,8 @@ Install the following packages using your favorite package manager. Links are pr
     ```
 - [Install Postgres](https://www.postgresql.org/download/)
   - For Postgres, this app defaults to `postgres` as both the username and password. This can be edited in `config/dev.exs` file.
+  - Create a new database for the application called `dbservice_dev`.
+  - Log into the database created.
   - Open the Postgres CLI and check the enabled extensions:
     ```sql
     SELECT * FROM pg_extension;
@@ -34,7 +36,7 @@ Follow the steps below to set up the repo for development
 3. Now you can visit [`localhost:4000`](http://localhost:4000) from your browser.
 
 
-## Seeding fake data
+### Seeding fake data (optional)
 If you want to seed your local database with random fake data, you can run this command:
 ```sh
 mix run priv/repo/seeds.exs
