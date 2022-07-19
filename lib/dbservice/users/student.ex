@@ -1,6 +1,7 @@
 defmodule Dbservice.Users.Student do
   use Ecto.Schema
   import Ecto.Changeset
+
   alias Dbservice.Users.User
   alias Dbservice.Groups.Group
 

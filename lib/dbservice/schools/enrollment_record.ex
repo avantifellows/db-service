@@ -2,12 +2,15 @@ defmodule Dbservice.Schools.EnrollmentRecord do
   use Ecto.Schema
   import Ecto.Changeset
 
+  alias Dbservice.Users.Student
+  alias Dbservice.Schools.School
+
   schema "enrollment_record" do
     field :academic_year, :string
     field :grade, :string
     field :is_current, :boolean, default: false
-    belongs_to :student, Users.Student
-    belongs_to :school, Schools.School
+    belongs_to :student, Student
+    belongs_to :school, School
 
     timestamps()
   end
