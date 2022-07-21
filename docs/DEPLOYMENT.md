@@ -10,7 +10,16 @@ This guide covers steps on setting up this repository on various cloud hosting p
     ```sh
     gigalixir version
     ```
-
+3. Configure your database server.
+   - Create a new database for the application and log into the database.
+   - Open the Postgres CLI and check the enabled extensions:
+        ```sql
+        SELECT * FROM pg_extension;
+        ```
+    - If the `uuid-ossp` module isn't showing up, then run the following command. We require this extension in order to support the Postgres' `uuid_generate_v4` function that auto-generate UUIDs.
+        ```sql
+        CREATE EXTENSION "uuid-ossp";
+        ```
 
 ### Production
 1. Login to Gigalixir account
