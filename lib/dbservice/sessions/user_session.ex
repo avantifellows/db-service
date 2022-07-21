@@ -2,6 +2,9 @@ defmodule Dbservice.Sessions.UserSession do
   use Ecto.Schema
   import Ecto.Changeset
 
+  alias Dbservice.Users.User
+  alias Dbservice.Sessions.SessionOccurence
+
   schema "user_session" do
     field :end_time, :utc_datetime
     field :start_time, :utc_datetime
@@ -9,8 +12,8 @@ defmodule Dbservice.Sessions.UserSession do
 
     timestamps()
 
-    belongs_to :user, Users.User
-    belongs_to :session_occurence, Sessions.SessionOccurence
+    belongs_to :user, User
+    belongs_to :session_occurence, SessionOccurence
   end
 
   @doc false
