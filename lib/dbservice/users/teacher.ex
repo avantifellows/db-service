@@ -2,6 +2,9 @@ defmodule Dbservice.Users.Teacher do
   use Ecto.Schema
   import Ecto.Changeset
 
+  alias Dbservice.Users
+  alias Dbservice.Schools
+
   schema "teacher" do
     field :designation, :string
     field :grade, :string
