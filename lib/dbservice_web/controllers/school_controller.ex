@@ -8,12 +8,12 @@ defmodule DbserviceWeb.SchoolController do
 
   use PhoenixSwagger
 
-  alias DbserviceWeb.SwaggerSchema.School, as: SwaggerSchool
+  alias DbserviceWeb.SwaggerSchema.School, as: SwaggerSchemaSchool
 
   def swagger_definitions do
     Map.merge(
-      SwaggerSchool.school(),
-      SwaggerSchool.schools()
+      SwaggerSchemaSchool.school(),
+      SwaggerSchemaSchool.schools()
     )
   end
 
