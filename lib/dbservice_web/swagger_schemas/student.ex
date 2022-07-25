@@ -31,7 +31,7 @@ defmodule DbserviceWeb.SwaggerSchema.Student do
             user_id: 1,
             group_id: 2
           })
-        end,
+        end
     }
   end
 
@@ -97,7 +97,7 @@ defmodule DbserviceWeb.SwaggerSchema.Student do
             pincode: "400011",
             role: "student"
           })
-        end,
+        end
     }
   end
 
@@ -141,9 +141,9 @@ defmodule DbserviceWeb.SwaggerSchema.Student do
               state: "Maharashtra",
               pincode: "400011",
               role: "student"
-            },
+            }
           })
-        end,
+        end
     }
   end
 end

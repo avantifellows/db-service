@@ -109,7 +109,9 @@ defmodule DbserviceWeb.StudentController do
     post("/api/student/register")
 
     parameters do
-      body(:body, Schema.ref(:StudentRegistration), "Student to create along with user", required: true)
+      body(:body, Schema.ref(:StudentRegistration), "Student to create along with user",
+        required: true
+      )
     end
 
     response(201, "Created", Schema.ref(:StudentWithUser))

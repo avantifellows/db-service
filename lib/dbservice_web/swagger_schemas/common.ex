@@ -27,7 +27,7 @@ defmodule DbserviceWeb.SwaggerSchema.Common do
           example(%{
             user_ids: [1, 2]
           })
-        end,
+        end
     }
   end
 

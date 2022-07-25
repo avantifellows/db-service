@@ -25,7 +25,7 @@ defmodule DbserviceWeb.SwaggerSchema.Teacher do
             school_id: 2,
             program_manager_id: 3
           })
-        end,
+        end
     }
   end
 

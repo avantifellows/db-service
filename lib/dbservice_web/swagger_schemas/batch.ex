@@ -15,7 +15,7 @@ defmodule DbserviceWeb.SwaggerSchema.Batch do
           example(%{
             name: "Kendriya Vidyalaya - Class 12th"
           })
-        end,
+        end
     }
   end
 
@@ -27,7 +27,7 @@ defmodule DbserviceWeb.SwaggerSchema.Batch do
           description("All the batches")
           type(:array)
           items(Schema.ref(:Batch))
-        end,
+        end
     }
   end
 end

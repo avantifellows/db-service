@@ -41,7 +41,7 @@ defmodule DbserviceWeb.SwaggerSchema.Session do
             is_active: true,
             uuid: "uiqweopasdflkasdfj"
           })
-        end,
+        end
     }
   end
 
@@ -53,7 +53,7 @@ defmodule DbserviceWeb.SwaggerSchema.Session do
           description("All the sessions")
           type(:array)
           items(Schema.ref(:Session))
-        end,
+        end
     }
   end
 end

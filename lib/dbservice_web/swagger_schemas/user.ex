@@ -35,7 +35,7 @@ defmodule DbserviceWeb.SwaggerSchema.User do
             pincode: "400011",
             role: "student"
           })
-        end,
+        end
     }
   end
 
@@ -47,7 +47,7 @@ defmodule DbserviceWeb.SwaggerSchema.User do
           description("All users in the application")
           type(:array)
           items(Schema.ref(:User))
-        end,
+        end
     }
   end
 end

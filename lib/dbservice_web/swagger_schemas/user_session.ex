@@ -25,7 +25,7 @@ defmodule DbserviceWeb.SwaggerSchema.UserSession do
             user_id: 1,
             session_occurence_id: 2
           })
-        end,
+        end
     }
   end
 

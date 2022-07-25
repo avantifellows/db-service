@@ -12,8 +12,8 @@ defmodule DbserviceWeb.EnrollmentRecordController do
 
   def swagger_definitions do
     Map.merge(
-      SwaggerSchemaEnrollmentRecord.enrollment_record,
-      SwaggerSchemaEnrollmentRecord.enrollment_records
+      SwaggerSchemaEnrollmentRecord.enrollment_record(),
+      SwaggerSchemaEnrollmentRecord.enrollment_records()
     )
   end
 

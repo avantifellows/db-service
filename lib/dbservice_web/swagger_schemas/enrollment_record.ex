@@ -23,7 +23,7 @@ defmodule DbserviceWeb.SwaggerSchema.EnrollmentRecord do
             student_id: 1,
             school_id: 1
           })
-        end,
+        end
     }
   end
 
