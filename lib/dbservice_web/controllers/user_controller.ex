@@ -8,59 +8,16 @@ defmodule DbserviceWeb.UserController do
 
   use PhoenixSwagger
 
+  alias DbserviceWeb.SwaggerSchema.User, as: SwaggerSchemaUser
+
   def swagger_definitions do
-    %{
-      User:
-        swagger_schema do
-          title("User")
-          description("A user in the application")
-
-          properties do
-            first_name(:string, "First name")
-            last_name(:string, "Last name")
-            email(:string, "Email")
-            phone(:string, "Phone number")
-            gender(:string, "Gender")
-            address(:string, "Address")
-            city(:string, "City")
-            district(:string, "District")
-            state(:string, "State")
-            pincode(:string, "Pin code")
-            role(:string, "User role")
-          end
-
-          example(%{
-            first_name: "Rahul",
-            last_name: "Sharma",
-            email: "rahul.sharma@example.com",
-            phone: "9998887777",
-            gender: "Male",
-            address: "Bandra Complex, Kurla Road",
-            city: "Mumbai",
-            district: "Mumbai",
-            state: "Maharashtra",
-            pincode: "400011",
-            role: "student"
-          })
-        end,
-      Users:
-        swagger_schema do
-          title("Users")
-          description("All users in the application")
-          type(:array)
-          items(Schema.ref(:User))
-        end,
-      BatchIds:
-        swagger_schema do
-          properties do
-            batch_ids(:array, "List of batch ids")
-          end
-
-          example(%{
-            batch_ids: [1, 2]
-          })
-        end
-    }
+    Map.merge(
+      Map.merge(
+        SwaggerSchemaUser.user(),
+        SwaggerSchemaUser.users()
+      ),
+      SwaggerSchemaUser.batch_ids()
+    )
   end
 
   swagger_path :index do

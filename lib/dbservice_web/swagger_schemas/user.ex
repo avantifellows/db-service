@@ -1,0 +1,68 @@
+defmodule DbserviceWeb.SwaggerSchema.User do
+  use PhoenixSwagger
+
+  def user do
+    %{
+      User:
+        swagger_schema do
+          title("User")
+          description("A user in the application")
+
+          properties do
+            first_name(:string, "First name")
+            last_name(:string, "Last name")
+            email(:string, "Email")
+            phone(:string, "Phone number")
+            gender(:string, "Gender")
+            address(:string, "Address")
+            city(:string, "City")
+            district(:string, "District")
+            state(:string, "State")
+            pincode(:string, "Pin code")
+            role(:string, "User role")
+          end
+
+          example(%{
+            first_name: "Rahul",
+            last_name: "Sharma",
+            email: "rahul.sharma@example.com",
+            phone: "9998887777",
+            gender: "Male",
+            address: "Bandra Complex, Kurla Road",
+            city: "Mumbai",
+            district: "Mumbai",
+            state: "Maharashtra",
+            pincode: "400011",
+            role: "student"
+          })
+        end,
+    }
+  end
+
+  def users do
+    %{
+      Users:
+        swagger_schema do
+          title("Users")
+          description("All users in the application")
+          type(:array)
+          items(Schema.ref(:User))
+        end,
+    }
+  end
+
+  def batch_ids do
+    %{
+      BatchIds:
+        swagger_schema do
+          properties do
+            batch_ids(:array, "List of batch ids")
+          end
+
+          example(%{
+            batch_ids: [1, 2]
+          })
+        end
+    }
+  end
+end
