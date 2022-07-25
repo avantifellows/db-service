@@ -9,6 +9,7 @@ defmodule DbserviceWeb.BatchController do
   use PhoenixSwagger
 
   alias DbserviceWeb.SwaggerSchema.Batch, as: SwaggerSchemaBatch
+  alias DbserviceWeb.SwaggerSchema.Common, as: SwaggerSchemaCommon
 
   def swagger_definitions do
     # merge the required definitions in a pair at a time using the Map.merge/2 function
@@ -18,8 +19,8 @@ defmodule DbserviceWeb.BatchController do
         SwaggerSchemaBatch.batches()
       ),
       Map.merge(
-        SwaggerSchemaBatch.user_ids(),
-        SwaggerSchemaBatch.session_ids()
+        SwaggerSchemaCommon.user_ids(),
+        SwaggerSchemaCommon.session_ids()
       )
     )
   end

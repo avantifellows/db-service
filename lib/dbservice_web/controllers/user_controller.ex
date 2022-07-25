@@ -9,6 +9,7 @@ defmodule DbserviceWeb.UserController do
   use PhoenixSwagger
 
   alias DbserviceWeb.SwaggerSchema.User, as: SwaggerSchemaUser
+  alias DbserviceWeb.SwaggerSchema.Common, as: SwaggerSchemaCommon
 
   def swagger_definitions do
     Map.merge(
@@ -16,7 +17,7 @@ defmodule DbserviceWeb.UserController do
         SwaggerSchemaUser.user(),
         SwaggerSchemaUser.users()
       ),
-      SwaggerSchemaUser.batch_ids()
+      SwaggerSchemaCommon.batch_ids()
     )
   end
 

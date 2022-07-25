@@ -50,19 +50,4 @@ defmodule DbserviceWeb.SwaggerSchema.User do
         end,
     }
   end
-
-  def batch_ids do
-    %{
-      BatchIds:
-        swagger_schema do
-          properties do
-            batch_ids(:array, "List of batch ids")
-          end
-
-          example(%{
-            batch_ids: [1, 2]
-          })
-        end
-    }
-  end
 end
