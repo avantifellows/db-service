@@ -359,6 +359,176 @@
       "title": "Student",
       "type": "object"
     },
+    "StudentRegistration": {
+      "description": "A student in the application along with user info",
+      "example": {
+        "address": "Bandra Complex, Kurla Road",
+        "category": "general",
+        "city": "Mumbai",
+        "district": "Mumbai",
+        "email": "rahul.sharma@example.com",
+        "father_name": "Narayan Pandey",
+        "father_phone": "8989898989",
+        "first_name": "Rahul",
+        "gender": "Male",
+        "group_id": 2,
+        "last_name": "Sharma",
+        "mother_name": "Lakshmi Pandey",
+        "mother_phone": "9998887777",
+        "phone": "9998887777",
+        "pincode": "400011",
+        "role": "student",
+        "state": "Maharashtra",
+        "stream": "PCB",
+        "uuid": "120180101057"
+      },
+      "properties": {
+        "address": {
+          "description": "Address",
+          "type": "string"
+        },
+        "category": {
+          "description": "Category",
+          "type": "string"
+        },
+        "city": {
+          "description": "City",
+          "type": "string"
+        },
+        "district": {
+          "description": "District",
+          "type": "string"
+        },
+        "email": {
+          "description": "Email",
+          "type": "string"
+        },
+        "father_name": {
+          "description": "Father's name",
+          "type": "string"
+        },
+        "father_phone": {
+          "description": "Father's phone number",
+          "type": "string"
+        },
+        "first_name": {
+          "description": "First name",
+          "type": "string"
+        },
+        "gender": {
+          "description": "Gender",
+          "type": "string"
+        },
+        "group_id": {
+          "description": "Group ID for the student",
+          "type": "integer"
+        },
+        "last_name": {
+          "description": "Last name",
+          "type": "string"
+        },
+        "mother_name": {
+          "description": "Mother's name",
+          "type": "string"
+        },
+        "mother_phone": {
+          "description": "Mother's phone number",
+          "type": "string"
+        },
+        "phone": {
+          "description": "Phone number",
+          "type": "string"
+        },
+        "pincode": {
+          "description": "Pin code",
+          "type": "string"
+        },
+        "role": {
+          "description": "User role",
+          "type": "string"
+        },
+        "state": {
+          "description": "State",
+          "type": "string"
+        },
+        "stream": {
+          "description": "Stream",
+          "type": "string"
+        },
+        "uuid": {
+          "description": "UUID for the student",
+          "type": "string"
+        }
+      },
+      "title": "Student Registration",
+      "type": "object"
+    },
+    "StudentWithUser": {
+      "description": "A student in the application along with user info",
+      "example": {
+        "category": "general",
+        "father_name": "Narayan Pandey",
+        "father_phone": "8989898989",
+        "group_id": 2,
+        "mother_name": "Lakshmi Pandey",
+        "mother_phone": "9998887777",
+        "stream": "PCB",
+        "user": {
+          "address": "Bandra Complex, Kurla Road",
+          "city": "Mumbai",
+          "district": "Mumbai",
+          "email": "rahul.sharma@example.com",
+          "first_name": "Rahul",
+          "gender": "Male",
+          "last_name": "Sharma",
+          "phone": "9998887777",
+          "pincode": "400011",
+          "role": "student",
+          "state": "Maharashtra"
+        },
+        "uuid": "120180101057"
+      },
+      "properties": {
+        "category": {
+          "description": "Category",
+          "type": "string"
+        },
+        "father_name": {
+          "description": "Father's name",
+          "type": "string"
+        },
+        "father_phone": {
+          "description": "Father's phone number",
+          "type": "string"
+        },
+        "group_id": {
+          "description": "Group ID for the student",
+          "type": "integer"
+        },
+        "mother_name": {
+          "description": "Mother's name",
+          "type": "string"
+        },
+        "mother_phone": {
+          "description": "Mother's phone number",
+          "type": "string"
+        },
+        "stream": {
+          "description": "Stream",
+          "type": "string"
+        },
+        "user": {
+          "description": "User details associated with the student",
+          "type": "map"
+        },
+        "uuid": {
+          "description": "UUID for the student",
+          "type": "string"
+        }
+      },
+      "title": "Student with User",
+      "type": "object"
+    },
     "Students": {
       "description": "All students in the application",
       "items": {
@@ -1448,6 +1618,35 @@
             "description": "Created",
             "schema": {
               "$ref": "#/definitions/Student"
+            }
+          }
+        },
+        "summary": "",
+        "tags": [
+          "Student"
+        ]
+      }
+    },
+    "/api/student/register": {
+      "post": {
+        "description": "",
+        "operationId": "DbserviceWeb.StudentController.register",
+        "parameters": [
+          {
+            "description": "Student to create along with user",
+            "in": "body",
+            "name": "body",
+            "required": true,
+            "schema": {
+              "$ref": "#/definitions/StudentRegistration"
+            }
+          }
+        ],
+        "responses": {
+          "201": {
+            "description": "Created",
+            "schema": {
+              "$ref": "#/definitions/StudentWithUser"
             }
           }
         },

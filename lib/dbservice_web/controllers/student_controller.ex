@@ -8,45 +8,20 @@ defmodule DbserviceWeb.StudentController do
 
   use PhoenixSwagger
 
+  alias DbserviceWeb.SwaggerSchema.Student, as: SwaggerSchemaStudent
+
   def swagger_definitions do
-    %{
-      Student:
-        swagger_schema do
-          title("Student")
-          description("A student in the application")
-
-          properties do
-            uuid(:string, "UUID for the student")
-            father_name(:string, "Father's name")
-            father_phone(:string, "Father's phone number")
-            mother_name(:string, "Mother's name")
-            mother_phone(:string, "Mother's phone number")
-            category(:string, "Category")
-            stream(:string, "Stream")
-            user_id(:integer, "User ID for the student")
-            group_id(:integer, "Group ID for the student")
-          end
-
-          example(%{
-            uuid: "120180101057",
-            father_name: "Narayan Pandey",
-            father_phone: "8989898989",
-            mother_name: "Lakshmi Pandey",
-            mother_phone: "9998887777",
-            category: "general",
-            stream: "PCB",
-            user_id: 1,
-            group_id: 2
-          })
-        end,
-      Students:
-        swagger_schema do
-          title("Students")
-          description("All students in the application")
-          type(:array)
-          items(Schema.ref(:Student))
-        end
-    }
+    # merge the required definitions in a pair at a time using the Map.merge/2 function
+    Map.merge(
+      Map.merge(
+        SwaggerSchemaStudent.student(),
+        SwaggerSchemaStudent.students()
+      ),
+      Map.merge(
+        SwaggerSchemaStudent.student_registration(),
+        SwaggerSchemaStudent.student_with_user()
+      )
+    )
   end
 
   swagger_path :index do
@@ -128,6 +103,18 @@ defmodule DbserviceWeb.StudentController do
     with {:ok, %Student{}} <- Users.delete_student(student) do
       send_resp(conn, :no_content, "")
     end
+  end
+
+  swagger_path :register do
+    post("/api/student/register")
+
+    parameters do
+      body(:body, Schema.ref(:StudentRegistration), "Student to create along with user",
+        required: true
+      )
+    end
+
+    response(201, "Created", Schema.ref(:StudentWithUser))
   end
 
   def register(conn, params) do

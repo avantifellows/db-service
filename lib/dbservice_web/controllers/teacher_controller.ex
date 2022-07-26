@@ -8,39 +8,13 @@ defmodule DbserviceWeb.TeacherController do
 
   use PhoenixSwagger
 
+  alias DbserviceWeb.SwaggerSchema.Teacher, as: SwaggerSchemaTeacher
+
   def swagger_definitions do
-    %{
-      Teacher:
-        swagger_schema do
-          title("Teacher")
-          description("A teacher in the application")
-
-          properties do
-            designation(:string, "Designation")
-            subject(:string, "Core subject")
-            grade(:string, "Grade")
-            user_id(:integer, "User ID for the teacher")
-            school_id(:integer, "School ID for the teacher")
-            program_manager_id(:integer, "Program manager user ID for the teacher")
-          end
-
-          example(%{
-            designation: "Vice Principal",
-            subject: "Mats",
-            grade: "12",
-            user_id: 1,
-            school_id: 2,
-            program_manager_id: 3
-          })
-        end,
-      Teachers:
-        swagger_schema do
-          title("Teachers")
-          description("All teachers in the application")
-          type(:array)
-          items(Schema.ref(:Teacher))
-        end
-    }
+    Map.merge(
+      SwaggerSchemaTeacher.teacher(),
+      SwaggerSchemaTeacher.teachers()
+    )
   end
 
   swagger_path :index do
