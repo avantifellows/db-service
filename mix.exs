@@ -47,7 +47,8 @@ defmodule Dbservice.MixProject do
       {:phoenix_swagger, "~> 0.8"},
       {:ex_json_schema, "~> 0.5"},
       {:faker, "~> 0.17", only: [:test, :dev]},
-      {:ex_check, "~> 0.14.0", only: [:dev], runtime: false}
+      {:ex_check, "~> 0.14.0", only: [:dev], runtime: false},
+      {:dialyxir, ">= 0.0.0", only: [:dev], runtime: false}
     ]
   end
 
