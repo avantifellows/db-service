@@ -9,7 +9,7 @@
   # fix: true,
 
   ## don't retry automatically even if last run resulted in failures
-  retry: false,
+  # retry: false,
 
   ## list of tools (see `mix check` docs for a list of default curated tools)
   tools: [
