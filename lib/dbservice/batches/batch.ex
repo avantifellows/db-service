@@ -1,4 +1,6 @@
 defmodule Dbservice.Batches.Batch do
+  @moduledoc false
+
   use Ecto.Schema
   import Ecto.Changeset
 

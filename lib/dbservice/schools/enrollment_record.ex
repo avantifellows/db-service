@@ -1,4 +1,6 @@
 defmodule Dbservice.Schools.EnrollmentRecord do
+  @moduledoc false
+
   use Ecto.Schema
   import Ecto.Changeset
 
