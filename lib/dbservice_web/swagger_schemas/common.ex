@@ -1,4 +1,6 @@
 defmodule DbserviceWeb.SwaggerSchema.Common do
+  @moduledoc false
+
   use PhoenixSwagger
 
   def batch_ids do

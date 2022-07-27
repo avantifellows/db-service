@@ -1,4 +1,6 @@
 defmodule DbserviceWeb.SwaggerSchema.Session do
+  @moduledoc false
+
   use PhoenixSwagger
 
   def session do

@@ -1,4 +1,6 @@
 defmodule DbserviceWeb.SwaggerSchema.User do
+  @moduledoc false
+
   use PhoenixSwagger
 
   def user do
