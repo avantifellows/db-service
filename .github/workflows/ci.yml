@@ -66,5 +66,8 @@ jobs:
       - name: Check formatting
         run: mix format --check-formatted
 
+      - name: Run check
+        run: mix check
+
       # - name: Run tests
       #   run: mix test
