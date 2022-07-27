@@ -8,49 +8,21 @@ defmodule DbserviceWeb.BatchController do
 
   use PhoenixSwagger
 
+  alias DbserviceWeb.SwaggerSchema.Batch, as: SwaggerSchemaBatch
+  alias DbserviceWeb.SwaggerSchema.Common, as: SwaggerSchemaCommon
+
   def swagger_definitions do
-    %{
-      Batch:
-        swagger_schema do
-          title("Batch")
-          description("A batch of students")
-
-          properties do
-            name(:string, "Batch name")
-          end
-
-          example(%{
-            name: "Kendriya Vidyalaya - Class 12th"
-          })
-        end,
-      Batches:
-        swagger_schema do
-          title("Batches")
-          description("All the batches")
-          type(:array)
-          items(Schema.ref(:Batch))
-        end,
-      UserIds:
-        swagger_schema do
-          properties do
-            user_ids(:array, "List of user ids")
-          end
-
-          example(%{
-            user_ids: [1, 2]
-          })
-        end,
-      SessionIds:
-        swagger_schema do
-          properties do
-            session_ids(:array, "List of session ids")
-          end
-
-          example(%{
-            session_ids: [1, 2]
-          })
-        end
-    }
+    # merge the required definitions in a pair at a time using the Map.merge/2 function
+    Map.merge(
+      Map.merge(
+        SwaggerSchemaBatch.batch(),
+        SwaggerSchemaBatch.batches()
+      ),
+      Map.merge(
+        SwaggerSchemaCommon.user_ids(),
+        SwaggerSchemaCommon.session_ids()
+      )
+    )
   end
 
   swagger_path :index do
