@@ -2,6 +2,8 @@ defmodule Dbservice.Users.User do
   @moduledoc false
 
   use Ecto.Schema
+  use Pow.Ecto.Schema
+
   import Ecto.Changeset
 
   alias Dbservice.Sessions.SessionOccurence
@@ -20,6 +22,7 @@ defmodule Dbservice.Users.User do
     field :role, :string
     field :state, :string
 
+    pow_user_fields()
     timestamps()
 
     many_to_many :sessions, SessionOccurence, join_through: "user_session", on_replace: :delete
