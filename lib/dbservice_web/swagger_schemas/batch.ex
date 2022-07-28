@@ -1,4 +1,6 @@
 defmodule DbserviceWeb.SwaggerSchema.Batch do
+  @moduledoc false
+
   use PhoenixSwagger
 
   def batch do

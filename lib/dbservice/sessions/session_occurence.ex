@@ -1,4 +1,6 @@
 defmodule Dbservice.Sessions.SessionOccurence do
+  @moduledoc false
+
   use Ecto.Schema
   import Ecto.Changeset
 

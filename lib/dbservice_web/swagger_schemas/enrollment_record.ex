@@ -1,4 +1,6 @@
 defmodule DbserviceWeb.SwaggerSchema.EnrollmentRecord do
+  @moduledoc false
+
   use PhoenixSwagger
 
   def enrollment_record do

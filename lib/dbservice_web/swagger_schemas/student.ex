@@ -1,4 +1,6 @@
 defmodule DbserviceWeb.SwaggerSchema.Student do
+  @moduledoc false
+
   use PhoenixSwagger
 
   def student do
