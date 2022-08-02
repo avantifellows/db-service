@@ -51,6 +51,11 @@ config :dbservice, :phoenix_swagger,
 # Use Jason for JSON parsing in Phoenix
 config :phoenix_swagger, :json_library, Jason
 
+# pow config
+config :dbservice, :pow,
+  user: Dbservice.Users.User,
+  repo: Dbservice.Repo
+
 # Import environment specific config. This must remain at the bottom
 # of this file so it overrides the configuration defined above.
 import_config "#{config_env()}.exs"

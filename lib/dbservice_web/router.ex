@@ -1,6 +1,12 @@
 defmodule DbserviceWeb.Router do
   use DbserviceWeb, :router
+  use Pow.Phoenix.Router
   use PhoenixSwagger
+
+  pipeline :protected do
+    plug Pow.Plug.RequireAuthenticated,
+      error_handler: Pow.Phoenix.PlugErrorHandler
+  end
 
   pipeline :api do
     plug :accepts, ["json"]
@@ -9,7 +15,6 @@ defmodule DbserviceWeb.Router do
   scope "/api", DbserviceWeb do
     pipe_through :api
 
-    resources "/group", GroupController, except: [:new, :edit]
     resources "/batch", BatchController, except: [:new, :edit]
     post "/batch/:id/update-users", BatchController, :update_users
     post "/batch/:id/update-sessions", BatchController, :update_sessions
@@ -33,6 +38,12 @@ defmodule DbserviceWeb.Router do
         }
       }
     end
+  end
+
+  scope "/api/protected", DbserviceWeb do
+    pipe_through [:api, :protected]
+
+    resources "/group", GroupController, except: [:new, :edit]
   end
 
   scope "/docs/swagger" do
