@@ -16,6 +16,8 @@ alias Dbservice.Batches
 alias Dbservice.Groups
 alias Dbservice.Sessions
 alias Dbservice.Schools
+alias Dbservice.Programs
+alias Dbservice.StudentPrograms
 
 alias Faker.Person
 alias Faker.Internet
@@ -40,16 +42,22 @@ defmodule Seed do
         city: Address.city(),
         state: Address.state(),
         pincode: Address.postcode(),
-        role: "admin"
+        role: "admin",
+        whatsapp_phone: Phone.PtPt.number(),
+        date_of_birth: Faker.Date.date_of_birth(Enum.random(1..10))
       })
 
     user
   end
 
   def create_batch() do
+    program = Seed.create_program()
+
     {:ok, batch} =
       Batches.create_batch(%{
-        name: Address.city() <> " " <> "Batch"
+        name: Address.city() <> " " <> "Batch",
+        contact_hours_per_week: Enum.random(1..50),
+        program_id: program.id
       })
 
     batch
@@ -143,7 +151,20 @@ defmodule Seed do
         category: Enum.random(["General", "OBC", "SC", "ST"]),
         stream: Enum.random(["Science", "Commerce", "Arts"]),
         user_id: user.id,
-        group_id: group.id
+        group_id: group.id,
+        physically_handicapped: Enum.random([true, false]),
+        course: Enum.random(["JEE", "NEET", "NDA"]),
+        cohort: Enum.random(["YES", "NO"]),
+        academic_level: Enum.random(["Poor", "Moderate", "Good"]),
+        family_income: Enum.random(["1LPA-3LPA", "3LPA-6LPA", ">6LPA"]),
+        father_profession: Enum.random(["Labour", "Private", "Government"]),
+        father_education_level: Enum.random(["UG", "PG", "NA"]),
+        mother_profession: Enum.random(["Housewife", "Private", "Government"]),
+        mother_education_level: Enum.random(["UG", "PG", "NA"]),
+        time_of_device_availability: Faker.DateTime.forward(Enum.random(1..10)),
+        has_internet_access: Enum.random([true, false]),
+        primary_smartphone_owner: Enum.random(["Yes", "No"]),
+        primary_smartphone_owner_profession: Enum.random(["Yes", "No"])
       })
 
     student
@@ -154,7 +175,19 @@ defmodule Seed do
       Schools.create_school(%{
         code: Enum.random(["KV", "DAV", "Navodaya"]),
         name: Enum.random(["Kendriya Vidyalaya", "Dayanand Anglo Vedic", "Navodaya"]),
-        medium: Enum.random(["English", "Hindi"])
+        medium: Enum.random(["English", "Hindi"]),
+        udise_code: Enum.random(["a", "b", "c", "d", "e", "f", "g", "h", "i", "j"]),
+        type: Enum.random(["Open", "Full-time"]),
+        category: Enum.random(["Private", "Government", "Semi-government"]),
+        region: Enum.random(["Urban", "Rural"]),
+        state_code: Enum.random(["a", "b", "c", "d", "e", "f", "g", "h", "i", "j"]),
+        state: Enum.random(["UK", "UP", "MP", "HP", "PB"]),
+        district_code: Enum.random(["a", "b", "c", "d", "e", "f", "g", "h", "i", "j"]),
+        district: Enum.random(["TG", "PG"]),
+        block_code: Enum.random(["a", "b", "c", "d", "e", "f", "g", "h", "i", "j"]),
+        block_name: Enum.random(["a", "b", "c", "d", "e", "f", "g", "h", "i", "j"]),
+        board: Enum.random(["ICSE", "CBSE", "State Board"]),
+        board_mediums: Enum.random(["English", "Hindi"])
       })
 
     school
@@ -202,10 +235,45 @@ defmodule Seed do
           ]),
         is_current: Enum.random([true, false]),
         student_id: student.id,
-        school_id: school.id
+        school_id: school.id,
+        course_language: Enum.random(["ENG", "HIN"]),
+        date_of_enrollment: Faker.DateTime.forward(Enum.random(1..10))
       })
 
     enrollment_record
+  end
+
+  def create_program() do
+    {:ok, program} =
+      Programs.create_program(%{
+        name: Enum.random(["P1", "P2", "P3"]),
+        type: Enum.random(["Competitive", "Non Competitive"]),
+        sub_type: Enum.random(["Easy", "Moderate", "High"]),
+        mode: Enum.random(["Online", "Offline"]),
+        start_date: Faker.DateTime.backward(Enum.random(1..10)),
+        target_outreach: Enum.random(["1", "2", "3", "4", "5", "6", "7", "8", "9", "10"]),
+        products_used: Enum.random(["One", "Less than 5", "More than 5"]),
+        donor: Enum.random(["YES", "NO"]),
+        state: Enum.random(["UK", "UP", "MP", "HP", "PB"]),
+        engagement_level: Enum.random(["Low", "Moderate", "High"])
+      })
+
+    program
+  end
+
+  def create_studentprogram() do
+    student = Seed.create_student()
+    program = Seed.create_program()
+    program_manager = Users.User |> offset(^Enum.random(1..99)) |> limit(1) |> Repo.one()
+
+    {:ok, student_program} =
+      StudentPrograms.create_studentprogram(%{
+        student_id: student.id,
+        program_id: program.id,
+        program_manager_id: program_manager.id,
+        is_high_touch: Enum.random(["YES", "NO"])
+      })
+    student_program
   end
 end
 
@@ -223,17 +291,17 @@ Repo.delete_all(Groups.Group)
 Repo.delete_all(Users.User)
 
 if Mix.env() == :dev do
-  # create some users
+   # create some users
   for num <- 1..100 do
     Seed.create_user()
   end
 
-  # create some groups
+   # create some groups
   for count <- 1..5 do
     group = Seed.create_group()
   end
 
-  # create some sessions
+   # create some sessions
   for count <- 1..50 do
     Seed.create_session()
   end
@@ -242,6 +310,7 @@ if Mix.env() == :dev do
   for count <- 1..10 do
     batch = Seed.create_batch()
 
+
     # get some random users and assign them batch
     user_ids =
       for num <- 1..10 do
@@ -249,19 +318,19 @@ if Mix.env() == :dev do
         user.id
       end
 
-    Batches.update_users(batch.id, user_ids)
+      Batches.update_users(batch.id, user_ids)
 
-    # get some random sessions and assign them batch
-    session_ids =
-      for num <- 1..10 do
-        session = Sessions.Session |> offset(^Enum.random(1..49)) |> limit(1) |> Repo.one()
-        session.id
-      end
+      # get some random sessions and assign them batch
+      session_ids =
+        for num <- 1..10 do
+          session = Sessions.Session |> offset(^Enum.random(1..49)) |> limit(1) |> Repo.one()
+          session.id
+        end
 
-    Batches.update_sessions(batch.id, session_ids)
+        Batches.update_sessions(batch.id, session_ids)
   end
 
-  # create some sessions occurences and user-session mappings
+   # create some sessions occurences and user-session mappings
   for count <- 1..100 do
     Seed.create_session_occurence()
   end
@@ -271,7 +340,12 @@ if Mix.env() == :dev do
     Seed.create_user_session()
   end
 
-  # create some user session-occurence mappings
+  # create some student_program
+  for count <- 1..100 do
+    Seed.create_studentprogram()
+  end
+
+   # create some user session-occurence mappings
   for count <- 1..10 do
     Seed.create_school()
   end
@@ -286,7 +360,7 @@ if Mix.env() == :dev do
     Seed.create_enrollment_record()
   end
 
-  # create some teachers
+   # create some teachers
   for count <- 1..9 do
     Seed.create_teacher()
   end

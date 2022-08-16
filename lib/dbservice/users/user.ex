@@ -6,6 +6,7 @@ defmodule Dbservice.Users.User do
 
   alias Dbservice.Sessions.SessionOccurence
   alias Dbservice.Batches.Batch
+  alias Dbservice.StudentPrograms.StudentProgram
 
   schema "user" do
     field :address, :string
@@ -19,11 +20,14 @@ defmodule Dbservice.Users.User do
     field :pincode, :string
     field :role, :string
     field :state, :string
+    field :whatsapp_phone, :string
+    field :date_of_birth, :date
 
     timestamps()
 
     many_to_many :sessions, SessionOccurence, join_through: "user_session", on_replace: :delete
     many_to_many :batches, Batch, join_through: "batch_user", on_replace: :delete
+    has_many :student_program, StudentProgram
   end
 
   @doc false
@@ -40,7 +44,9 @@ defmodule Dbservice.Users.User do
       :district,
       :state,
       :pincode,
-      :role
+      :role,
+      :whatsapp_phone,
+      :date_of_birth
     ])
     |> validate_required([:first_name, :last_name, :email, :phone])
   end
