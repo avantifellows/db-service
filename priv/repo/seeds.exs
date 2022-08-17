@@ -273,6 +273,7 @@ defmodule Seed do
         program_manager_id: program_manager.id,
         is_high_touch: Enum.random(["YES", "NO"])
       })
+
     student_program
   end
 end
@@ -291,17 +292,17 @@ Repo.delete_all(Groups.Group)
 Repo.delete_all(Users.User)
 
 if Mix.env() == :dev do
-   # create some users
+  # create some users
   for num <- 1..100 do
     Seed.create_user()
   end
 
-   # create some groups
+  # create some groups
   for count <- 1..5 do
     group = Seed.create_group()
   end
 
-   # create some sessions
+  # create some sessions
   for count <- 1..50 do
     Seed.create_session()
   end
@@ -310,7 +311,6 @@ if Mix.env() == :dev do
   for count <- 1..10 do
     batch = Seed.create_batch()
 
-
     # get some random users and assign them batch
     user_ids =
       for num <- 1..10 do
@@ -318,19 +318,19 @@ if Mix.env() == :dev do
         user.id
       end
 
-      Batches.update_users(batch.id, user_ids)
+    Batches.update_users(batch.id, user_ids)
 
-      # get some random sessions and assign them batch
-      session_ids =
-        for num <- 1..10 do
-          session = Sessions.Session |> offset(^Enum.random(1..49)) |> limit(1) |> Repo.one()
-          session.id
-        end
+    # get some random sessions and assign them batch
+    session_ids =
+      for num <- 1..10 do
+        session = Sessions.Session |> offset(^Enum.random(1..49)) |> limit(1) |> Repo.one()
+        session.id
+      end
 
-        Batches.update_sessions(batch.id, session_ids)
+    Batches.update_sessions(batch.id, session_ids)
   end
 
-   # create some sessions occurences and user-session mappings
+  # create some sessions occurences and user-session mappings
   for count <- 1..100 do
     Seed.create_session_occurence()
   end
@@ -345,7 +345,7 @@ if Mix.env() == :dev do
     Seed.create_studentprogram()
   end
 
-   # create some user session-occurence mappings
+  # create some user session-occurence mappings
   for count <- 1..10 do
     Seed.create_school()
   end
@@ -360,7 +360,7 @@ if Mix.env() == :dev do
     Seed.create_enrollment_record()
   end
 
-   # create some teachers
+  # create some teachers
   for count <- 1..9 do
     Seed.create_teacher()
   end
