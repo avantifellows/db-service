@@ -97,7 +97,7 @@ defmodule Dbservice.StudentPrograms do
       %Ecto.Changeset{data: %student_program{}}
 
   """
-  def change_studentProgram(%StudentProgram{} = student_program, attrs \\ %{}) do
+  def change_studentprogram(%StudentProgram{} = student_program, attrs \\ %{}) do
     StudentProgram.changeset(student_program, attrs)
   end
 end
