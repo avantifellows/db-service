@@ -5,7 +5,6 @@ defmodule Dbservice.Programs do
 
   import Ecto.Query, warn: false
   alias Dbservice.Repo
-
   alias Dbservice.Programs.Program
 
   @doc """
