@@ -4,6 +4,7 @@ defmodule Dbservice.Repo.Migrations.AddPasswordHashToUser do
   def change do
     alter table(:user) do
       add :password_hash, :string
+      add :password_confirmation, :string
     end
   end
 end

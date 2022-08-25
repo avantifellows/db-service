@@ -5,11 +5,12 @@ defmodule DbserviceWeb.Router do
 
   pipeline :protected do
     plug Pow.Plug.RequireAuthenticated,
-      error_handler: Pow.Phoenix.PlugErrorHandler
+      error_handler: DbserviceWeb.APIAuthErrorHandler
   end
 
   pipeline :api do
     plug :accepts, ["json"]
+    plug DbserviceWeb.APIAuthPlug, otp_app: :dbservice
   end
 
   scope "/api", DbserviceWeb do
@@ -29,6 +30,9 @@ defmodule DbserviceWeb.Router do
     post "/session/:id/update-batches", SessionController, :update_batches
     resources "/session-occurence", SessionOccurenceController, except: [:new, :edit]
     resources "/user-session", UserSessionController, except: [:new, :edit]
+    resources "/registration", RegistrationController, singleton: true, only: [:create]
+    resources "/login", LoginController, singleton: true, only: [:create, :delete]
+    post "/login/renew", LoginController, :renew
 
     def swagger_info do
       %{

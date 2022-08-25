@@ -21,6 +21,8 @@ defmodule Dbservice.Users.User do
     field :pincode, :string
     field :role, :string
     field :state, :string
+    field :password_hash, :string
+    field :password_confirmation, :string
 
     pow_user_fields()
     timestamps()
@@ -43,11 +45,21 @@ defmodule Dbservice.Users.User do
       :district,
       :state,
       :pincode,
-      :role
+      :role,
+      :password_hash,
+      :password_confirmation
     ])
-    |> validate_required([:first_name, :last_name, :email, :phone])
+    |> validate_required([:first_name, :last_name, :email, :phone, :password_hash])
   end
 
+  @spec changeset_update_batches(
+          {map, any}
+          | %{
+              :__struct__ => atom | %{:__changeset__ => any, optional(any) => any},
+              optional(any) => any
+            },
+          any
+        ) :: Ecto.Changeset.t()
   def changeset_update_batches(user, batches) do
     user
     |> change()
