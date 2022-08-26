@@ -10,9 +10,6 @@ defmodule DbserviceWeb.LoginController do
     |> Pow.Plug.authenticate_user(user_params)
     |> case do
       {:ok, conn} ->
-        IO.inspect(conn.private.api_access_token)
-        IO.inspect(conn.private.api_renewal_token)
-
         json(conn, %{
           data: %{
             access_token: conn.private.api_access_token,
