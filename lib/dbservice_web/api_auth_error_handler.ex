@@ -1,4 +1,5 @@
 defmodule DbserviceWeb.APIAuthErrorHandler do
+  @moduledoc false
   use DbserviceWeb, :controller
   alias Plug.Conn
 
