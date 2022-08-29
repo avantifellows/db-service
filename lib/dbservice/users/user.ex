@@ -46,7 +46,7 @@ defmodule Dbservice.Users.User do
       :role
     ])
     |> pow_user_id_field_changeset(attrs)
-    |> validate_required([:first_name, :last_name, :phone])
+    |> validate_required([:first_name, :last_name, :email, :phone])
   end
 
   def changeset_update_batches(user, batches) do

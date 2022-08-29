@@ -40,7 +40,9 @@ defmodule Seed do
         city: Address.city(),
         state: Address.state(),
         pincode: Address.postcode(),
-        role: "admin"
+        role: "admin",
+        password: "$pbkdf2-sha512",
+        password_confirmation: "$pbkdf2-sha512"
       })
 
     user
