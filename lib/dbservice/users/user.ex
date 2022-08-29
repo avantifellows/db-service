@@ -2,16 +2,18 @@ defmodule Dbservice.Users.User do
   @moduledoc false
 
   use Ecto.Schema
+  use Pow.Ecto.Schema
   import Ecto.Changeset
 
   alias Dbservice.Sessions.SessionOccurence
   alias Dbservice.Batches.Batch
 
   schema "user" do
+    pow_user_fields()
+
     field :address, :string
     field :city, :string
     field :district, :string
-    field :email, :string
     field :first_name, :string
     field :gender, :string
     field :last_name, :string
@@ -29,6 +31,7 @@ defmodule Dbservice.Users.User do
   @doc false
   def changeset(user, attrs) do
     user
+    |> pow_changeset(attrs)
     |> cast(attrs, [
       :first_name,
       :last_name,
@@ -42,7 +45,8 @@ defmodule Dbservice.Users.User do
       :pincode,
       :role
     ])
-    |> validate_required([:first_name, :last_name, :email, :phone])
+    |> pow_user_id_field_changeset(attrs)
+    |> validate_required([:first_name, :last_name, :phone])
   end
 
   def changeset_update_batches(user, batches) do

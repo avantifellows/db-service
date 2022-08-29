@@ -2,8 +2,13 @@ defmodule DbserviceWeb.Router do
   use DbserviceWeb, :router
   use PhoenixSwagger
 
+  pipeline :protected do
+    plug Pow.Plug.RequireAuthenticated, error_handler: DbserviceWeb.APIAuthErrorHandler
+  end
+
   pipeline :api do
     plug :accepts, ["json"]
+    plug DbserviceWeb.APIAuthPlug, otp_app: :dbservice
   end
 
   scope "/api", DbserviceWeb do
@@ -24,6 +29,7 @@ defmodule DbserviceWeb.Router do
     post "/session/:id/update-batches", SessionController, :update_batches
     resources "/session-occurence", SessionOccurenceController, except: [:new, :edit]
     resources "/user-session", UserSessionController, except: [:new, :edit]
+    resources "/registration", RegistrationController, singleton: true, only: [:create]
 
     def swagger_info do
       %{
@@ -40,6 +46,14 @@ defmodule DbserviceWeb.Router do
       otp_app: :dbservice,
       swagger_file: "swagger.json",
       opts: [disable_validator: true]
+  end
+
+  scope "/api/protected", DbserviceWeb do
+    pipe_through [:api, :protected]
+
+    resources "/login", LoginController, singleton: true, only: [:create, :delete]
+    post "/login/renew", LoginController, :renew
+    resources "/group", GroupController, except: [:new, :edit]
   end
 
   # Enables LiveDashboard only for development
