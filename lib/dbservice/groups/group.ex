@@ -4,18 +4,55 @@ defmodule Dbservice.Groups.Group do
   use Ecto.Schema
   import Ecto.Changeset
 
+  alias Dbservice.Users.Student
+  alias Dbservice.Groups.GroupStudent
+
   schema "group" do
-    field :input_schema, :map
-    field :locale, :string
-    field :locale_data, :map
+    field :name, :string
+    field :parent_id, :integer
+    field :type, :string
+    field :program_type, :string
+    field :program_sub_type, :string
+    field :program_mode, :string
+    field :program_start_date, :date
+    field :program_target_outreach, :integer
+    field :program_product_used, :string
+    field :program_donor, :string
+    field :program_state, :string
+    field :batch_contact_hours_per_week, :integer
+    field :group_input_schema, :map
+    field :group_locale, :string
+    field :group_locale_data, :map
+
+    has_many :student, Student
+    has_many :group_student, GroupStudent
+    many_to_many :user, User, join_through: "group_user", on_replace: :delete
+    many_to_many :session, Session, join_through: "group_session", on_replace: :delete
 
     timestamps()
+
   end
 
   @doc false
   def changeset(group, attrs) do
     group
-    |> cast(attrs, [:input_schema, :locale, :locale_data])
-    |> validate_required([:input_schema, :locale, :locale_data])
+    |> cast(attrs, [
+      :name,
+      :parent_id,
+      :type,
+      :program_type,
+      :program_sub_type,
+      :program_mode,
+      :program_start_date,
+      :program_target_outreach,
+      :program_product_used,
+      :program_donor,
+      :program_state,
+      :batch_contact_hours_per_week,
+      :group_input_schema,
+      :group_locale,
+      :group_locale_data
+    ])
+    |> validate_required([:group_input_schema, :group_locale, :group_locale_data])
   end
 end

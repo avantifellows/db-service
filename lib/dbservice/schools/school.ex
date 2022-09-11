@@ -6,8 +6,20 @@ defmodule Dbservice.Schools.School do
 
   schema "school" do
     field :code, :string
-    field :medium, :string
     field :name, :string
+    field :udise_code, :string
+    field :type, :string
+    field :category, :string
+    field :region, :string
+    field :state_code, :string
+    field :state, :string
+    field :district_code, :string
+    field :district, :string
+    field :block_code, :string
+    field :block_name, :string
+    field :board, :string
+    field :board_medium, :string
+    
 
     timestamps()
   end

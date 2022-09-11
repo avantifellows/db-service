@@ -6,6 +6,7 @@ defmodule Dbservice.Users.Student do
 
   alias Dbservice.Users.User
   alias Dbservice.Groups.Group
+  alias Dbservice.Schools.EnrollmentRecord
 
   schema "student" do
     field :category, :string
@@ -15,8 +16,20 @@ defmodule Dbservice.Users.Student do
     field :mother_phone, :string
     field :stream, :string
     field :uuid, :string
+    field :physically_handicapped, :boolean
+    field :cohort, :string
+    field :family_income, :string
+    field :father_profession, :string
+    field :father_education_level, :string
+    field :mother_profession, :string
+    field :mother_education_level, :string
+    field :time_of_device_availability, :date
+    field :has_internet_access, :boolean
+    field :primary_smartphone_owner, :string
+    field :primary_smartphone_owner_profession, :string
     belongs_to :user, User
     belongs_to :group, Group
+    has_one :enrollment_record, EnrollmentRecord
 
     timestamps()
   end
