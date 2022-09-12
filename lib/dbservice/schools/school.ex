@@ -26,7 +26,22 @@ defmodule Dbservice.Schools.School do
   @doc false
   def changeset(school, attrs) do
     school
-    |> cast(attrs, [:code, :name, :medium])
+    |> cast(attrs, [
+      :code,
+      :name,
+      :udise_code,
+      :type,
+      :category,
+      :region,
+      :state_code,
+      :state,
+      :district_code,
+      :district,
+      :block_code,
+      :block_name,
+      :board,
+      :board_medium
+    ])
     |> validate_required([:code, :name])
   end
 end

@@ -10,7 +10,7 @@ defmodule Dbservice.Repo.Migrations.ModifyGroup do
 
     alter table("group") do
       add :name, :string
-      add :parent_id, :integer
+      add :parent_id, references(:group, on_delete: :nothing)
       add :type, :string
       add :program_type, :string
       add :program_sub_type, :string

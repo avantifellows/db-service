@@ -9,6 +9,7 @@ defmodule Dbservice.Users.User do
   alias Dbservice.Users.Teacher
   alias Dbservice.Users.Student
   alias Dbservice.Groups.GroupStudent
+  alias Dbservice.Groups.Group
 
   schema "user" do
     field :address, :string

@@ -46,7 +46,18 @@ defmodule Dbservice.Users.Student do
       :mother_name,
       :mother_phone,
       :category,
-      :stream
+      :stream,
+      :physically_handicapped,
+      :cohort,
+      :family_income,
+      :father_profession,
+      :father_education_level,
+      :mother_profession,
+      :mother_education_level,
+      :time_of_device_availability,
+      :has_internet_access,
+      :primary_smartphone_owner,
+      :primary_smartphone_owner_profession
     ])
     |> validate_required([:user_id, :group_id, :uuid])
   end
