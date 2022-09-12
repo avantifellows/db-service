@@ -13,11 +13,8 @@ defmodule DbserviceWeb.UserController do
 
   def swagger_definitions do
     Map.merge(
-      Map.merge(
-        SwaggerSchemaUser.user(),
-        SwaggerSchemaUser.users()
-      ),
-      SwaggerSchemaCommon.batch_ids()
+      SwaggerSchemaUser.user(),
+      SwaggerSchemaUser.users()
     )
   end
 

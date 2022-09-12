@@ -9,15 +9,12 @@ defmodule DbserviceWeb.SessionController do
   use PhoenixSwagger
 
   alias DbserviceWeb.SwaggerSchema.Session, as: SwaggerSchemaSession
-  alias DbserviceWeb.SwaggerSchema.Common, as: SwaggerSchemaCommon
 
   def swagger_definitions do
     # merge the required definitions in a pair at a time using the Map.merge/2 function
     Map.merge(
-      Map.merge(
-        SwaggerSchemaSession.session(),
-        SwaggerSchemaSession.sessions()
-      )
+      SwaggerSchemaSession.session(),
+      SwaggerSchemaSession.sessions()
     )
   end
 
