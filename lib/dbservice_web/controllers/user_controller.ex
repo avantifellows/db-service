@@ -9,7 +9,6 @@ defmodule DbserviceWeb.UserController do
   use PhoenixSwagger
 
   alias DbserviceWeb.SwaggerSchema.User, as: SwaggerSchemaUser
-  alias DbserviceWeb.SwaggerSchema.Common, as: SwaggerSchemaCommon
 
   def swagger_definitions do
     Map.merge(
