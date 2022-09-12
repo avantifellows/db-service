@@ -25,7 +25,5 @@ defmodule Dbservice.Repo.Migrations.ModifyGroup do
       add :group_locale, :string
       add :group_locale_data, :map
     end
-
   end
 end
-

@@ -3,6 +3,5 @@ defmodule Dbservice.Repo.Migrations.DropBatch do
 
   def change do
     drop table("batch")
-
   end
 end

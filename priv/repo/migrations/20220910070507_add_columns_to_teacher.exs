@@ -5,6 +5,5 @@ defmodule Dbservice.Repo.Migrations.AddColumnsToTeacher do
     alter table(:teacher) do
       add :uuid, :string
     end
-
   end
 end

@@ -10,7 +10,7 @@ defmodule DbserviceWeb.Router do
     pipe_through :api
 
     resources "/group", GroupController, except: [:new, :edit]
-  
+
     resources "/user", UserController, only: [:index, :create, :update, :show]
     post "/user/:id/update-batches", UserController, :update_batches
     resources "/student", StudentController, except: [:new, :edit]

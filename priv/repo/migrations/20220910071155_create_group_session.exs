@@ -8,6 +8,5 @@ defmodule Dbservice.Repo.Migrations.CreateGroupSession do
 
       timestamps()
     end
-
   end
 end

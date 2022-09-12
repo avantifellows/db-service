@@ -12,9 +12,5 @@ defmodule Dbservice.Repo.Migrations.ModifySession do
       add :purpose, :map
       add :repeat_schedule, :map
     end
-
-
-
-
   end
 end

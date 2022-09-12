@@ -3,6 +3,5 @@ defmodule Dbservice.Repo.Migrations.DropBatchUser do
 
   def change do
     drop table("batch_user")
-
   end
 end

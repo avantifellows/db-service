@@ -15,6 +15,5 @@ defmodule Dbservice.Repo.Migrations.AddColumnsToStudent do
       add :primary_smartphone_owner, :string
       add :primary_smartphone_owner_profession, :string
     end
-
   end
 end

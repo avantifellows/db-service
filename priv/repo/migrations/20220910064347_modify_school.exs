@@ -20,6 +20,5 @@ defmodule Dbservice.Repo.Migrations.ModifySchool do
       add :board, :string
       add :board_medium, :string
     end
-
   end
 end

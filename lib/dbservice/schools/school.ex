@@ -19,7 +19,6 @@ defmodule Dbservice.Schools.School do
     field :block_name, :string
     field :board, :string
     field :board_medium, :string
-    
 
     timestamps()
   end

@@ -6,6 +6,5 @@ defmodule Dbservice.Repo.Migrations.AddColumnsToUser do
       add :whatsapp_phone, :string
       add :date_of_birth, :date
     end
-
   end
 end
