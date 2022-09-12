@@ -101,25 +101,4 @@ defmodule DbserviceWeb.UserController do
       send_resp(conn, :no_content, "")
     end
   end
-
-  swagger_path :update_batches do
-    post("/api/user/{userId}/update-batches")
-
-    parameters do
-      userId(:path, :integer, "The id of the user", required: true)
-
-      body(:body, Schema.ref(:BatchIds), "List of batch ids to update for the user",
-        required: true
-      )
-    end
-
-    response(200, "OK", Schema.ref(:User))
-  end
-
-  def update_batches(conn, %{"id" => user_id, "batch_ids" => batch_ids})
-      when is_list(batch_ids) do
-    with {:ok, %User{} = user} <- Users.update_batches(user_id, batch_ids) do
-      render(conn, "show.json", user: user)
-    end
-  end
 end

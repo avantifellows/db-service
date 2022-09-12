@@ -55,10 +55,4 @@ defmodule Dbservice.Users.User do
     ])
     |> validate_required([:first_name, :last_name, :email, :phone])
   end
-
-  def changeset_update_batches(user, batches) do
-    user
-    |> change()
-    |> put_assoc(:batches, batches)
-  end
 end

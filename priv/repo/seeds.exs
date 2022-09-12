@@ -12,7 +12,6 @@
 
 alias Dbservice.Repo
 alias Dbservice.Users
-alias Dbservice.Batches
 alias Dbservice.Groups
 alias Dbservice.Sessions
 alias Dbservice.Schools
@@ -44,15 +43,6 @@ defmodule Seed do
       })
 
     user
-  end
-
-  def create_batch() do
-    {:ok, batch} =
-      Batches.create_batch(%{
-        name: Address.city() <> " " <> "Batch"
-      })
-
-    batch
   end
 
   def create_group() do
@@ -218,7 +208,6 @@ Repo.delete_all(Schools.School)
 Repo.delete_all(Sessions.UserSession)
 Repo.delete_all(Sessions.SessionOccurence)
 Repo.delete_all(Sessions.Session)
-Repo.delete_all(Batches.Batch)
 Repo.delete_all(Groups.Group)
 Repo.delete_all(Users.User)
 
@@ -236,29 +225,6 @@ if Mix.env() == :dev do
   # create some sessions
   for count <- 1..50 do
     Seed.create_session()
-  end
-
-  # create some batches
-  for count <- 1..10 do
-    batch = Seed.create_batch()
-
-    # get some random users and assign them batch
-    user_ids =
-      for num <- 1..10 do
-        user = Users.User |> offset(^Enum.random(1..99)) |> limit(1) |> Repo.one()
-        user.id
-      end
-
-    Batches.update_users(batch.id, user_ids)
-
-    # get some random sessions and assign them batch
-    session_ids =
-      for num <- 1..10 do
-        session = Sessions.Session |> offset(^Enum.random(1..49)) |> limit(1) |> Repo.one()
-        session.id
-      end
-
-    Batches.update_sessions(batch.id, session_ids)
   end
 
   # create some sessions occurences and user-session mappings
