@@ -5,7 +5,7 @@ defmodule Dbservice.Sessions.Session do
   import Ecto.Changeset
 
   alias Dbservice.Users.User
-  alias Dbservice.Batches.Batch
+  alias Dbservice.Groups.Group
 
   schema "session" do
     field :end_time, :utc_datetime
@@ -25,7 +25,6 @@ defmodule Dbservice.Sessions.Session do
     timestamps()
 
     many_to_many :users, User, join_through: "user_session", on_replace: :delete
-    many_to_many :batches, Batch, join_through: "batch_session", on_replace: :delete
     many_to_many :group, Group, join_through: "group_session", on_replace: :delete
   end
 
@@ -57,11 +56,5 @@ defmodule Dbservice.Sessions.Session do
       :end_time,
       :meta_data
     ])
-  end
-
-  def changeset_update_batches(session, batches) do
-    session
-    |> change()
-    |> put_assoc(:batches, batches)
   end
 end
