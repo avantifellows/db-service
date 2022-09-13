@@ -8,7 +8,6 @@ defmodule Dbservice.Users.User do
   alias Dbservice.Sessions.UserSession
   alias Dbservice.Users.Teacher
   alias Dbservice.Users.Student
-  alias Dbservice.Groups.GroupStudent
   alias Dbservice.Groups.Group
 
   schema "user" do
@@ -32,7 +31,6 @@ defmodule Dbservice.Users.User do
     has_many :user_session, UserSession
     has_one :teacher, Teacher
     has_one :student, Student
-    has_many :group_student, GroupStudent
     many_to_many :group, Group, join_through: "group_user", on_replace: :delete
   end
 

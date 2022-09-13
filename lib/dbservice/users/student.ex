@@ -29,7 +29,7 @@ defmodule Dbservice.Users.Student do
     field :primary_smartphone_owner_profession, :string
     belongs_to :user, User
     belongs_to :group, Group
-    has_one :enrollment_record, EnrollmentRecord
+    has_many :enrollment_record, EnrollmentRecord
 
     timestamps()
   end

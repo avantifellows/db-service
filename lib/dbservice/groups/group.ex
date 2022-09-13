@@ -5,7 +5,6 @@ defmodule Dbservice.Groups.Group do
   import Ecto.Changeset
 
   alias Dbservice.Users.Student
-  alias Dbservice.Groups.GroupStudent
   alias Dbservice.Users.User
   alias Dbservice.Sessions.Session
 
@@ -27,7 +26,6 @@ defmodule Dbservice.Groups.Group do
     field :group_locale_data, :map
 
     has_many :student, Student
-    has_many :group_student, GroupStudent
     many_to_many :user, User, join_through: "group_user", on_replace: :delete
     many_to_many :session, Session, join_through: "group_session", on_replace: :delete
 
@@ -54,6 +52,6 @@ defmodule Dbservice.Groups.Group do
       :group_locale,
       :group_locale_data
     ])
-    |> validate_required([:group_input_schema, :group_locale, :group_locale_data])
+    |> validate_required([:name, :type])
   end
 end

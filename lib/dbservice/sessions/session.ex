@@ -57,10 +57,4 @@ defmodule Dbservice.Sessions.Session do
       :meta_data
     ])
   end
-
-  def changeset_update_batches(session, batches) do
-    session
-    |> change()
-    |> put_assoc(:batches, batches)
-  end
 end
