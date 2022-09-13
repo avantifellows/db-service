@@ -11,7 +11,7 @@ defmodule Dbservice.Groups.Group do
   schema "group" do
     field :name, :string
     field :parent_id, :integer
-    field :type, :string
+    field :type, Ecto.Enum, values: [:batch, :group, :cohort, :program]
     field :program_type, :string
     field :program_sub_type, :string
     field :program_mode, :string
