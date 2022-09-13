@@ -15,6 +15,8 @@ alias Dbservice.Users
 alias Dbservice.Groups
 alias Dbservice.Sessions
 alias Dbservice.Schools
+alias Dbservice.GroupUsers
+alias Dbservice.GroupSessions
 
 alias Faker.Person
 alias Faker.Internet
@@ -39,7 +41,9 @@ defmodule Seed do
         city: Address.city(),
         state: Address.state(),
         pincode: Address.postcode(),
-        role: "admin"
+        role: "admin",
+        whatsapp_phone: Phone.PtPt.number(),
+        date_of_birth: Faker.Date.date_of_birth(Enum.random(1..10))
       })
 
     user
@@ -48,9 +52,20 @@ defmodule Seed do
   def create_group() do
     {:ok, group} =
       Groups.create_group(%{
-        input_schema: %{},
-        locale: Enum.random(["hi", "en"]),
-        locale_data: %{}
+        name: Person.name(),
+        type: Enum.random(["Type A", "Type B", "Type C"]),
+        program_type: Enum.random(["Competitive", "Non Competitive"]),
+        program_sub_type: Enum.random(["Easy", "Moderate", "High"]),
+        program_mode: Enum.random(["Online", "Offline"]),
+        program_start_date: Faker.DateTime.backward(Enum.random(1..10)),
+        program_target_outreach: Enum.random(["1", "2", "3", "4", "5", "6", "7", "8", "9", "10"]),
+        program_product_used: Enum.random(["One", "Less than 5", "More than 5"]),
+        program_donor: Enum.random(["YES", "NO"]),
+        program_state: Enum.random(["UK", "UP", "MP", "HP", "PB"]),
+        batch_contact_hours_per_week: Enum.random(["32", "40"]),
+        group_input_schema: %{},
+        group_locale: Enum.random(["hi", "en"]),
+        group_locale_data: %{}
       })
 
     group
@@ -82,7 +97,9 @@ defmodule Seed do
         meta_data: %{},
         owner_id: owner.id,
         created_by_id: creator.id,
-        is_active: Enum.random([true, false])
+        is_active: Enum.random([true, false]),
+        purpose: %{},
+        repeat_schedule: %{}
       })
 
     session
@@ -133,7 +150,19 @@ defmodule Seed do
         category: Enum.random(["General", "OBC", "SC", "ST"]),
         stream: Enum.random(["Science", "Commerce", "Arts"]),
         user_id: user.id,
-        group_id: group.id
+        group_id: group.id,
+        physically_handicapped: Enum.random([true, false]),
+        course: Enum.random(["JEE", "NEET", "NDA"]),
+        cohort: Enum.random(["YES", "NO"]),
+        family_income: Enum.random(["1LPA-3LPA", "3LPA-6LPA", ">6LPA"]),
+        father_profession: Enum.random(["Labour", "Private", "Government"]),
+        father_education_level: Enum.random(["UG", "PG", "NA"]),
+        mother_profession: Enum.random(["Housewife", "Private", "Government"]),
+        mother_education_level: Enum.random(["UG", "PG", "NA"]),
+        time_of_device_availability: Faker.DateTime.forward(Enum.random(1..10)),
+        has_internet_access: Enum.random([true, false]),
+        primary_smartphone_owner: Enum.random(["Yes", "No"]),
+        primary_smartphone_owner_profession: Enum.random(["Yes", "No"])
       })
 
     student
@@ -144,7 +173,18 @@ defmodule Seed do
       Schools.create_school(%{
         code: Enum.random(["KV", "DAV", "Navodaya"]),
         name: Enum.random(["Kendriya Vidyalaya", "Dayanand Anglo Vedic", "Navodaya"]),
-        medium: Enum.random(["English", "Hindi"])
+        udise_code: Enum.random(["a", "b", "c", "d", "e", "f", "g", "h", "i", "j"]),
+        type: Enum.random(["Open", "Full-time"]),
+        category: Enum.random(["Private", "Government", "Semi-government"]),
+        region: Enum.random(["Urban", "Rural"]),
+        state_code: Enum.random(["a", "b", "c", "d", "e", "f", "g", "h", "i", "j"]),
+        state: Enum.random(["UK", "UP", "MP", "HP", "PB"]),
+        district_code: Enum.random(["a", "b", "c", "d", "e", "f", "g", "h", "i", "j"]),
+        district: Enum.random(["TG", "PG"]),
+        block_code: Enum.random(["a", "b", "c", "d", "e", "f", "g", "h", "i", "j"]),
+        block_name: Enum.random(["a", "b", "c", "d", "e", "f", "g", "h", "i", "j"]),
+        board: Enum.random(["ICSE", "CBSE", "State Board"]),
+        board_medium: Enum.random(["English", "Hindi"])
       })
 
     school
@@ -162,7 +202,8 @@ defmodule Seed do
         grade: Enum.random(["KG", "1", "2", "3", "4", "5", "6", "7", "8", "9", "10"]),
         user_id: user.id,
         school_id: school.id,
-        program_manager_id: program_manager.id
+        program_manager_id: program_manager.id,
+        uuid: Seed.random_alphanumeric()
       })
 
     teacher
@@ -175,6 +216,8 @@ defmodule Seed do
     {:ok, enrollment_record} =
       Schools.create_enrollment_record(%{
         grade: Enum.random(["KG", "1", "2", "3", "4", "5", "6", "7", "8", "9", "10"]),
+        board_medium: Enum.random(["ICSE", "CBSE", "State Board"]),
+        date_of_enrollment: Faker.DateTime.forward(Enum.random(1..10)),
         academic_year:
           Enum.random([
             "2010-11",
@@ -197,6 +240,36 @@ defmodule Seed do
 
     enrollment_record
   end
+
+  def create_group_session() do
+    session = Sessions.Session |> offset(^Enum.random(1..49)) |> limit(1) |> Repo.one()
+    group = Seed.create_group()
+
+    {:ok, group_session} =
+      GroupSessions.create_group_session(%{
+        group_id: group.id,
+        session_id: session.id
+      })
+
+    group_session
+  end
+
+  def create_group_user() do
+    group = Seed.create_group()
+    user = Seed.create_user()
+    program_manager = Users.User |> offset(^Enum.random(1..99)) |> limit(1) |> Repo.one()
+
+    {:ok, group_user} =
+      GroupUsers.create_group_user(%{
+        group_id: group.id,
+        user_id: user.id,
+        program_manager_id: program_manager.id,
+        program_date_of_joining: Faker.DateTime.backward(Enum.random(1..10)),
+        program_student_language: Enum.random(["English", "Hindi"])
+      })
+
+    group_user
+  end
 end
 
 Repo.query("TRUNCATE batch_user", [])
@@ -210,6 +283,8 @@ Repo.delete_all(Sessions.SessionOccurence)
 Repo.delete_all(Sessions.Session)
 Repo.delete_all(Groups.Group)
 Repo.delete_all(Users.User)
+Repo.delete_all(Groups.GroupSession)
+Repo.delete_all(Groups.GroupUser)
 
 if Mix.env() == :dev do
   # create some users
@@ -255,5 +330,15 @@ if Mix.env() == :dev do
   # create some teachers
   for count <- 1..9 do
     Seed.create_teacher()
+  end
+
+  # create some group_user
+  for count <- 1..100 do
+    Seed.create_group_user()
+  end
+
+  # create some group_session
+  for count <- 1..100 do
+    Seed.create_group_session()
   end
 end
