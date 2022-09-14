@@ -2,6 +2,8 @@ defmodule DbserviceWeb.GroupController do
   use DbserviceWeb, :controller
 
   alias Dbservice.Groups
+  alias Dbservice.Groups.GroupUser
+  alias Dbservice.Groups.GroupSession
   alias Dbservice.Groups.Group
 
   action_fallback DbserviceWeb.FallbackController
@@ -122,6 +124,30 @@ defmodule DbserviceWeb.GroupController do
 
     with {:ok, %Group{}} <- Groups.delete_group(group) do
       send_resp(conn, :no_content, "")
+    end
+  end
+
+  def update_users(conn, %{"group_id" => group_id, "user_id" => user_id}) when is_list(user_id) do
+    with {:ok, %GroupUser{} = group_user} <- Groups.update_users(group_id, user_id) do
+      render(conn, "show.json", group_user: group_user)
+    end
+  end
+
+  swagger_path :update_sessions do
+    post("/api/batch/{batchId}/update-sessions")
+
+    parameters do
+      batchId(:path, :integer, "The id of the batch", required: true)
+      body(:body, Schema.ref(:SessionIds), "List of session ids to update", required: true)
+    end
+
+    response(200, "OK", Schema.ref(:Batch))
+  end
+
+  def update_sessions(conn, %{"group_id" => group_id, "session_id" => session_id})
+      when is_list(session_id) do
+    with {:ok, %GroupSession{} = group_sesion} <- Groups.update_sessions(group_id, session_id) do
+      render(conn, "show.json", group_sesion: group_sesion)
     end
   end
 end

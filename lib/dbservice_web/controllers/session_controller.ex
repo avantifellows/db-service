@@ -2,6 +2,7 @@ defmodule DbserviceWeb.SessionController do
   use DbserviceWeb, :controller
 
   alias Dbservice.Sessions
+  alias Dbservice.Groups.GroupSession
   alias Dbservice.Sessions.Session
 
   action_fallback DbserviceWeb.FallbackController
@@ -96,6 +97,13 @@ defmodule DbserviceWeb.SessionController do
 
     with {:ok, %Session{}} <- Sessions.delete_session(session) do
       send_resp(conn, :no_content, "")
+    end
+  end
+
+  def update_groups(conn, %{"session_id" => session_id, "group_id" => group_id})
+      when is_list(group_id) do
+    with {:ok, %GroupSession{} = session} <- Sessions.update_groups(session_id, group_id) do
+      render(conn, "show.json", session: session)
     end
   end
 end

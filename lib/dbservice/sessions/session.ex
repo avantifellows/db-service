@@ -57,4 +57,10 @@ defmodule Dbservice.Sessions.Session do
       :meta_data
     ])
   end
+
+  def changeset_update_groups(session, group) do
+    session
+    |> change()
+    |> put_assoc(:group, group)
+  end
 end

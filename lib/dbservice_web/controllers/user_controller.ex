@@ -2,6 +2,7 @@ defmodule DbserviceWeb.UserController do
   use DbserviceWeb, :controller
 
   alias Dbservice.Users
+  alias Dbservice.Groups.GroupUser
   alias Dbservice.Users.User
 
   action_fallback DbserviceWeb.FallbackController
@@ -95,6 +96,25 @@ defmodule DbserviceWeb.UserController do
 
     with {:ok, %User{}} <- Users.delete_user(user) do
       send_resp(conn, :no_content, "")
+    end
+  end
+
+  swagger_path :update_groups do
+    post("/api/user/{userId}/update_groups")
+
+    parameters do
+      userId(:path, :integer, "The id of the user", required: true)
+
+      body(:body, Schema.ref(:Group), "List of batch ids to update for the user", required: true)
+    end
+
+    response(200, "OK", Schema.ref(:User))
+  end
+
+  def update_groups(conn, %{"user_id" => user_id, "group_id" => group_id})
+      when is_list(group_id) do
+    with {:ok, %GroupUser{} = group_user} <- Users.update_groups(user_id, group_id) do
+      render(conn, "show.json", group_user: group_user)
     end
   end
 end

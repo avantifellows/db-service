@@ -54,4 +54,10 @@ defmodule Dbservice.Users.User do
     ])
     |> validate_required([:first_name, :last_name, :email, :phone])
   end
+
+  def changeset_update_groups(user, group) do
+    user
+    |> change()
+    |> put_assoc(:group, group)
+  end
 end
