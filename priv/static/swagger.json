@@ -1,6 +1,6 @@
 {
   "definitions": {
-     "EnrollmentRecord": {
+    "EnrollmentRecord": {
       "description": "An enrollment record for the student",
       "example": {
         "academic_year": "2022",
@@ -80,6 +80,21 @@
       },
       "title": "Groups",
       "type": "array"
+    },
+    "GroupIds": {
+      "example": {
+        "group_ids": [
+          1,
+          2
+        ]
+      },
+      "properties": {
+        "group_ids": {
+          "description": "List of group ids",
+          "type": "array"
+        }
+      },
+      "type": "object"
     },
     "School": {
       "description": "A school in the application",
@@ -942,6 +957,78 @@
         ]
       }
     },
+    "/api/group/{groupId}/update-sessions": {
+      "post": {
+        "description": "",
+        "operationId": "DbserviceWeb.GroupController.update_sessions",
+        "parameters": [
+          {
+            "description": "The id of the group",
+            "in": "path",
+            "name": "groupId",
+            "required": true,
+            "type": "integer"
+          },
+          {
+            "description": "List of session ids to update",
+            "in": "body",
+            "name": "body",
+            "required": true,
+            "schema": {
+              "$ref": "#/definitions/SessionIds"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "schema": {
+              "$ref": "#/definitions/Group"
+            }
+          }
+        },
+        "summary": "",
+        "tags": [
+          "Group"
+        ]
+      }
+    },
+    "/api/group/{groupId}/update-users": {
+      "post": {
+        "description": "",
+        "operationId": "DbserviceWeb.GroupController.update_users",
+        "parameters": [
+          {
+            "description": "The id of the group",
+            "in": "path",
+            "name": "groupId",
+            "required": true,
+            "type": "integer"
+          },
+          {
+            "description": "List of user ids to update",
+            "in": "body",
+            "name": "body",
+            "required": true,
+            "schema": {
+              "$ref": "#/definitions/UserIds"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "schema": {
+              "$ref": "#/definitions/Group"
+            }
+          }
+        },
+        "summary": "",
+        "tags": [
+          "Group"
+        ]
+      }
+    },
     "/api/school": {
       "get": {
         "description": "",
@@ -1296,6 +1383,42 @@
         "responses": {
           "200": {
             "description": "Updated",
+            "schema": {
+              "$ref": "#/definitions/Session"
+            }
+          }
+        },
+        "summary": "",
+        "tags": [
+          "Session"
+        ]
+      }
+    },
+    "/api/session/{sessionId}/update-groups": {
+      "post": {
+        "description": "",
+        "operationId": "DbserviceWeb.SessionController.update_groups",
+        "parameters": [
+          {
+            "description": "The id of the session",
+            "in": "path",
+            "name": "sessionId",
+            "required": true,
+            "type": "integer"
+          },
+          {
+            "description": "List of group ids to update for the session",
+            "in": "body",
+            "name": "body",
+            "required": true,
+            "schema": {
+              "$ref": "#/definitions/GroupIds"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
             "schema": {
               "$ref": "#/definitions/Session"
             }
@@ -1819,6 +1942,42 @@
         "responses": {
           "200": {
             "description": "Updated",
+            "schema": {
+              "$ref": "#/definitions/User"
+            }
+          }
+        },
+        "summary": "",
+        "tags": [
+          "User"
+        ]
+      }
+    },
+    "/api/user/{userId}/update-groups": {
+      "post": {
+        "description": "",
+        "operationId": "DbserviceWeb.UserController.update_groups",
+        "parameters": [
+          {
+            "description": "The id of the user",
+            "in": "path",
+            "name": "userId",
+            "required": true,
+            "type": "integer"
+          },
+          {
+            "description": "List of group ids to update for the user",
+            "in": "body",
+            "name": "body",
+            "required": true,
+            "schema": {
+              "$ref": "#/definitions/GroupIds"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
             "schema": {
               "$ref": "#/definitions/User"
             }

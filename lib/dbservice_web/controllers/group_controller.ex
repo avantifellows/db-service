@@ -127,6 +127,17 @@ defmodule DbserviceWeb.GroupController do
     end
   end
 
+  swagger_path :update_users do
+    post("/api/group/{groupId}/update-users")
+
+    parameters do
+      groupId(:path, :integer, "The id of the group", required: true)
+      body(:body, Schema.ref(:UserIds), "List of user ids to update", required: true)
+    end
+
+    response(200, "OK", Schema.ref(:Group))
+  end
+
   def update_users(conn, %{"group_id" => group_id, "user_id" => user_id}) when is_list(user_id) do
     with {:ok, %GroupUser{} = group_user} <- Groups.update_users(group_id, user_id) do
       render(conn, "show.json", group_user: group_user)
@@ -134,14 +145,14 @@ defmodule DbserviceWeb.GroupController do
   end
 
   swagger_path :update_sessions do
-    post("/api/batch/{batchId}/update-sessions")
+    post("/api/group/{groupId}/update-sessions")
 
     parameters do
-      batchId(:path, :integer, "The id of the batch", required: true)
+      groupId(:path, :integer, "The id of the group", required: true)
       body(:body, Schema.ref(:SessionIds), "List of session ids to update", required: true)
     end
 
-    response(200, "OK", Schema.ref(:Batch))
+    response(200, "OK", Schema.ref(:Group))
   end
 
   def update_sessions(conn, %{"group_id" => group_id, "session_id" => session_id})

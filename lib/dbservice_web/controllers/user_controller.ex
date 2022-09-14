@@ -100,12 +100,14 @@ defmodule DbserviceWeb.UserController do
   end
 
   swagger_path :update_groups do
-    post("/api/user/{userId}/update_groups")
+    post("/api/user/{userId}/update-groups")
 
     parameters do
       userId(:path, :integer, "The id of the user", required: true)
 
-      body(:body, Schema.ref(:Group), "List of batch ids to update for the user", required: true)
+      body(:body, Schema.ref(:GroupIds), "List of group ids to update for the user",
+        required: true
+      )
     end
 
     response(200, "OK", Schema.ref(:User))

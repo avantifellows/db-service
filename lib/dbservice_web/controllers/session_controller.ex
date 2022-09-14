@@ -100,6 +100,20 @@ defmodule DbserviceWeb.SessionController do
     end
   end
 
+  swagger_path :update_groups do
+    post("/api/session/{sessionId}/update-groups")
+
+    parameters do
+      sessionId(:path, :integer, "The id of the session", required: true)
+
+      body(:body, Schema.ref(:GroupIds), "List of group ids to update for the session",
+        required: true
+      )
+    end
+
+    response(200, "OK", Schema.ref(:Session))
+  end
+
   def update_groups(conn, %{"session_id" => session_id, "group_id" => group_id})
       when is_list(group_id) do
     with {:ok, %GroupSession{} = session} <- Sessions.update_groups(session_id, group_id) do
