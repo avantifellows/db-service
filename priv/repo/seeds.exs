@@ -271,19 +271,17 @@ defmodule Seed do
   end
 end
 
-Repo.query("TRUNCATE batch_user", [])
-Repo.query("TRUNCATE batch_session", [])
 Repo.delete_all(Users.Teacher)
 Repo.delete_all(Schools.EnrollmentRecord)
 Repo.delete_all(Users.Student)
 Repo.delete_all(Schools.School)
 Repo.delete_all(Sessions.UserSession)
 Repo.delete_all(Sessions.SessionOccurence)
+Repo.delete_all(Groups.GroupSession)
+Repo.delete_all(Groups.GroupUser)
 Repo.delete_all(Sessions.Session)
 Repo.delete_all(Groups.Group)
 Repo.delete_all(Users.User)
-Repo.delete_all(Groups.GroupSession)
-Repo.delete_all(Groups.GroupUser)
 
 if Mix.env() == :dev do
   # create some users
