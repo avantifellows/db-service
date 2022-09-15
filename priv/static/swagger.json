@@ -1,6 +1,6 @@
 {
   "definitions": {
-     "EnrollmentRecord": {
+    "EnrollmentRecord": {
       "description": "An enrollment record for the student",
       "example": {
         "academic_year": "2022",

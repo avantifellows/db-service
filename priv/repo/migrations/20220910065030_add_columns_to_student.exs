@@ -4,7 +4,6 @@ defmodule Dbservice.Repo.Migrations.AddColumnsToStudent do
   def change do
     alter table(:student) do
       add :physically_handicapped, :boolean
-      add :cohort, :string
       add :family_income, :string
       add :father_profession, :string
       add :father_education_level, :string

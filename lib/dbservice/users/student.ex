@@ -17,7 +17,6 @@ defmodule Dbservice.Users.Student do
     field :stream, :string
     field :uuid, :string
     field :physically_handicapped, :boolean
-    field :cohort, :string
     field :family_income, :string
     field :father_profession, :string
     field :father_education_level, :string
@@ -35,6 +34,14 @@ defmodule Dbservice.Users.Student do
   end
 
   @doc false
+  @spec changeset(
+          {map, map}
+          | %{
+              :__struct__ => atom | %{:__changeset__ => map, optional(any) => any},
+              optional(atom) => any
+            },
+          :invalid | %{optional(:__struct__) => none, optional(atom | binary) => any}
+        ) :: Ecto.Changeset.t()
   def changeset(student, attrs) do
     student
     |> cast(attrs, [
@@ -48,7 +55,6 @@ defmodule Dbservice.Users.Student do
       :category,
       :stream,
       :physically_handicapped,
-      :cohort,
       :family_income,
       :father_profession,
       :father_education_level,

@@ -153,7 +153,6 @@ defmodule Seed do
         group_id: group.id,
         physically_handicapped: Enum.random([true, false]),
         course: Enum.random(["JEE", "NEET", "NDA"]),
-        cohort: Enum.random(["YES", "NO"]),
         family_income: Enum.random(["1LPA-3LPA", "3LPA-6LPA", ">6LPA"]),
         father_profession: Enum.random(["Labour", "Private", "Government"]),
         father_education_level: Enum.random(["UG", "PG", "NA"]),
