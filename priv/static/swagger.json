@@ -45,32 +45,156 @@
     "Group": {
       "description": "A group in the application",
       "example": {
-        "input_schema": {},
-        "locale": "hi",
-        "locale_data": {
+        "batch_contact_hours_per_week": "48",
+        "group_input_schema": {},
+        "group_locale": "hi",
+        "group_locale_data": {
           "en": {
             "title": "Register for session"
           },
           "hi": {
             "title": "सत्र के लिए पंजीकरण करें"
           }
-        }
+        },
+        "name": "Abhinav Singh",
+        "parent_id": 1,
+        "program_donor": "",
+        "program_mode": "Offline",
+        "program_products_used": "",
+        "program_start_date": 4.950495049504951e-4,
+        "program_state": "Delhi",
+        "program_sub_type": "",
+        "program_target_outreach": 1000,
+        "program_type": "",
+        "type": "program"
       },
       "properties": {
-        "input_schema": {
+        "batch_contact_hours_per_week": {
+          "description": "Contact hours for a batch in a week",
+          "type": "integer"
+        },
+        "group_input_schema": {
           "description": "Input schema",
           "type": "map"
         },
-        "locale": {
+        "group_locale": {
           "description": "The configured locale for the group",
           "type": "string"
         },
-        "locale_data": {
+        "group_locale_data": {
           "description": "Meta data about locale settings for the group",
           "type": "map"
+        },
+        "name": {
+          "description": "Name of a group",
+          "type": "string"
+        },
+        "parent_id": {
+          "description": "ID of a parent",
+          "type": "integer"
+        },
+        "program_donor": {
+          "description": "Donor of a program",
+          "type": "string"
+        },
+        "program_mode": {
+          "description": "Mode of a program",
+          "type": "string"
+        },
+        "program_products_used": {
+          "description": "Products used in a program",
+          "type": "string"
+        },
+        "program_start_date": {
+          "description": "Starting date of a program",
+          "type": "date"
+        },
+        "program_sub_type": {
+          "description": "Sub-type of a program",
+          "type": "string"
+        },
+        "program_target_outreach": {
+          "description": "Target outreach for a particular program",
+          "type": "integer"
+        },
+        "program_type": {
+          "description": "Type of a program",
+          "type": "string"
+        },
+        "type": {
+          "description": "Type of a group",
+          "type": "string"
         }
       },
       "title": "Group",
+      "type": "object"
+    },
+    "GroupIds": {
+      "example": {
+        "group_id": [
+          1,
+          2
+        ]
+      },
+      "properties": {
+        "group_id": {
+          "description": "List of group ids",
+          "type": "array"
+        }
+      },
+      "type": "object"
+    },
+    "GroupSession": {
+      "description": "Relation between group and session",
+      "example": {
+        "group_id": 1,
+        "session_id": 1
+      },
+      "properties": {
+        "group_id": {
+          "description": "Id of a particular group",
+          "type": "integer"
+        },
+        "session_id": {
+          "description": "Id of a particular group",
+          "type": "integer"
+        }
+      },
+      "title": "Group Session",
+      "type": "object"
+    },
+    "GroupUser": {
+      "description": "Relation between group and user",
+      "example": {
+        "group_id": 1,
+        "program_date_of_joining": 4.950495049504951e-4,
+        "program_manager_id": 1,
+        "program_student_language": "English",
+        "user_id": 1
+      },
+      "properties": {
+        "group_id": {
+          "description": "Id of a particular group",
+          "type": "integer"
+        },
+        "program_date_of_joining": {
+          "description": "Date of joining a program",
+          "type": "utc_datetime"
+        },
+        "program_manager_id": {
+          "description": "ID of a program manager",
+          "type": "integer"
+        },
+        "program_student_language": {
+          "description": "Language used in an enrolled program",
+          "type": "string"
+        },
+        "user_id": {
+          "description": "Id of a particular group",
+          "type": "integer"
+        }
+      },
+      "title": "Group Session",
       "type": "object"
     },
     "Groups": {
@@ -80,21 +204,6 @@
       },
       "title": "Groups",
       "type": "array"
-    },
-    "GroupIds": {
-      "example": {
-        "group_ids": [
-          1,
-          2
-        ]
-      },
-      "properties": {
-        "group_ids": {
-          "description": "List of group ids",
-          "type": "array"
-        }
-      },
-      "type": "object"
     },
     "School": {
       "description": "A school in the application",
@@ -983,7 +1092,7 @@
           "200": {
             "description": "OK",
             "schema": {
-              "$ref": "#/definitions/Group"
+              "$ref": "#/definitions/GroupSession"
             }
           }
         },
@@ -1019,7 +1128,7 @@
           "200": {
             "description": "OK",
             "schema": {
-              "$ref": "#/definitions/Group"
+              "$ref": "#/definitions/GroupUser"
             }
           }
         },
