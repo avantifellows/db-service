@@ -41,7 +41,7 @@ defmodule DbserviceWeb.GroupController do
             program_type: "",
             program_sub_type: "",
             program_mode: "Offline",
-            program_start_date: 02/02/2020,
+            program_start_date: 02 / 02 / 2020,
             program_target_outreach: 1000,
             program_products_used: "",
             program_donor: "",
