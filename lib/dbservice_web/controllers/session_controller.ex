@@ -19,7 +19,7 @@ defmodule DbserviceWeb.SessionController do
         SwaggerSchemaSession.session(),
         SwaggerSchemaSession.sessions()
       ),
-      SwaggerSchemaCommon.group_id()
+      SwaggerSchemaCommon.group_ids()
     )
   end
 

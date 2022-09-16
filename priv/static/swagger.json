@@ -61,7 +61,7 @@
         "program_donor": "",
         "program_mode": "Offline",
         "program_products_used": "",
-        "program_start_date": "2020/0",
+        "program_start_date": "2020/02/03",
         "program_state": "Delhi",
         "program_sub_type": "",
         "program_target_outreach": 1000,
@@ -167,7 +167,7 @@
       "description": "Relation between group and user",
       "example": {
         "group_id": 1,
-        "program_date_of_joining": "01/01/2020",
+        "program_date_of_joining": "2020/01/06",
         "program_manager_id": 1,
         "program_student_language": "English",
         "user_id": 1

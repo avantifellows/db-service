@@ -10,7 +10,15 @@ defmodule DbserviceWeb.GroupController do
 
   use PhoenixSwagger
 
+  alias DbserviceWeb.SwaggerSchema.Common, as: SwaggerSchemaCommon
+
   def swagger_definitions do
+    # merge the required definitions in a pair at a time using the Map.merge/2 function
+    Map.merge(
+      SwaggerSchemaCommon.user_ids(),
+      SwaggerSchemaCommon.session_ids()
+    )
+
     %{
       Group:
         swagger_schema do

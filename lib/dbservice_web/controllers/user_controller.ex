@@ -18,7 +18,7 @@ defmodule DbserviceWeb.UserController do
         SwaggerSchemaUser.user(),
         SwaggerSchemaUser.users()
       ),
-      SwaggerSchemaCommon.group_id()
+      SwaggerSchemaCommon.group_ids()
     )
   end
 

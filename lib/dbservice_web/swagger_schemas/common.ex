@@ -33,16 +33,16 @@ defmodule DbserviceWeb.SwaggerSchema.Common do
     }
   end
 
-  def group_id do
+  def group_ids do
     %{
       GroupIds:
         swagger_schema do
           properties do
-            group_id(:array, "List of group ids")
+            group_ids(:array, "List of group ids")
           end
 
           example(%{
-            group_id: [1, 2]
+            group_ids: [1, 2]
           })
         end
     }
