@@ -33,15 +33,6 @@ defmodule Dbservice.Users.Student do
     timestamps()
   end
 
-  @doc false
-  @spec changeset(
-          {map, map}
-          | %{
-              :__struct__ => atom | %{:__changeset__ => map, optional(any) => any},
-              optional(atom) => any
-            },
-          :invalid | %{optional(:__struct__) => none, optional(atom | binary) => any}
-        ) :: Ecto.Changeset.t()
   def changeset(student, attrs) do
     student
     |> cast(attrs, [
