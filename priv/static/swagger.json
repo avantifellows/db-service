@@ -45,7 +45,7 @@
     "Group": {
       "description": "A group in the application",
       "example": {
-        "batch_contact_hours_per_week": "48",
+        "batch_contact_hours_per_week": 48,
         "group_input_schema": {},
         "group_locale": "hi",
         "group_locale_data": {
@@ -61,7 +61,7 @@
         "program_donor": "",
         "program_mode": "Offline",
         "program_products_used": "",
-        "program_start_date": 4.950495049504951e-4,
+        "program_start_date": "2020/0",
         "program_state": "Delhi",
         "program_sub_type": "",
         "program_target_outreach": 1000,
@@ -131,20 +131,20 @@
     },
     "GroupIds": {
       "example": {
-        "group_id": [
+        "group_ids": [
           1,
           2
         ]
       },
       "properties": {
-        "group_id": {
+        "group_ids": {
           "description": "List of group ids",
           "type": "array"
         }
       },
       "type": "object"
     },
-    "GroupSession": {
+    "GroupSessions": {
       "description": "Relation between group and session",
       "example": {
         "group_id": 1,
@@ -163,11 +163,11 @@
       "title": "Group Session",
       "type": "object"
     },
-    "GroupUser": {
+    "GroupUsers": {
       "description": "Relation between group and user",
       "example": {
         "group_id": 1,
-        "program_date_of_joining": 4.950495049504951e-4,
+        "program_date_of_joining": "01/01/2020",
         "program_manager_id": 1,
         "program_student_language": "English",
         "user_id": 1
@@ -1092,7 +1092,7 @@
           "200": {
             "description": "OK",
             "schema": {
-              "$ref": "#/definitions/GroupSession"
+              "$ref": "#/definitions/GroupSessions"
             }
           }
         },
@@ -1128,7 +1128,7 @@
           "200": {
             "description": "OK",
             "schema": {
-              "$ref": "#/definitions/GroupUser"
+              "$ref": "#/definitions/GroupUsers"
             }
           }
         },

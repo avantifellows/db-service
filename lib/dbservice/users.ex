@@ -105,17 +105,17 @@ defmodule Dbservice.Users do
   @doc """
   Updates the users mapped to a group.
   """
-  def update_groups(user_id, group_id) when is_list(group_id) do
+  def update_groups(user_id, group_ids) when is_list(group_ids) do
     user = get_user!(user_id)
 
-    group =
+    groups =
       Dbservice.Groups.Group
-      |> where([group], group.id in ^group_id)
+      |> where([group], group.id in ^group_ids)
       |> Repo.all()
 
     user
     |> Repo.preload(:batches)
-    |> User.changeset_update_groups(group)
+    |> User.changeset_update_groups(groups)
     |> Repo.update()
   end
 

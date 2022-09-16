@@ -107,12 +107,12 @@ defmodule Dbservice.Groups do
   @doc """
   Updates the users mapped to a batch.
   """
-  def update_users(group_id, user_id) when is_list(user_id) do
+  def update_users(group_id, user_ids) when is_list(user_ids) do
     group = get_group!(group_id)
 
     users =
       Dbservice.Users.User
-      |> where([user], user.id in ^user_id)
+      |> where([user], user.id in ^user_ids)
       |> Repo.all()
 
     group
@@ -124,12 +124,12 @@ defmodule Dbservice.Groups do
   @doc """
   Updates the sessions mapped to a batch.
   """
-  def update_sessions(group_id, session_id) when is_list(session_id) do
+  def update_sessions(group_id, session_ids) when is_list(session_ids) do
     group = get_group!(group_id)
 
     sessions =
       Dbservice.Sessions.Session
-      |> where([session], session.id in ^session_id)
+      |> where([session], session.id in ^session_ids)
       |> Repo.all()
 
     group

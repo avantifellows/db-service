@@ -41,12 +41,12 @@ defmodule DbserviceWeb.GroupController do
             program_type: "",
             program_sub_type: "",
             program_mode: "Offline",
-            program_start_date: 02 / 02 / 2020,
+            program_start_date: "2020/02/03",
             program_target_outreach: 1000,
             program_products_used: "",
             program_donor: "",
             program_state: "Delhi",
-            batch_contact_hours_per_week: "48",
+            batch_contact_hours_per_week: 48,
             group_input_schema: %{},
             group_locale: "hi",
             group_locale_data: %{
@@ -59,7 +59,7 @@ defmodule DbserviceWeb.GroupController do
             }
           })
         end,
-      GroupSession:
+      GroupSessions:
         swagger_schema do
           title("Group Session")
           description("Relation between group and session")
@@ -74,7 +74,7 @@ defmodule DbserviceWeb.GroupController do
             session_id: 1
           })
         end,
-      GroupUser:
+      GroupUsers:
         swagger_schema do
           title("Group Session")
           description("Relation between group and user")
@@ -91,7 +91,7 @@ defmodule DbserviceWeb.GroupController do
             group_id: 1,
             user_id: 1,
             program_manager_id: 1,
-            program_date_of_joining: 01 / 01 / 2020,
+            program_date_of_joining: "2020/01/06",
             program_student_language: "English"
           })
         end,
@@ -194,7 +194,7 @@ defmodule DbserviceWeb.GroupController do
       body(:body, Schema.ref(:UserIds), "List of user ids to update", required: true)
     end
 
-    response(200, "OK", Schema.ref(:GroupUser))
+    response(200, "OK", Schema.ref(:GroupUsers))
   end
 
   def update_users(conn, %{"group_id" => group_id, "user_id" => user_id}) when is_list(user_id) do
@@ -211,7 +211,7 @@ defmodule DbserviceWeb.GroupController do
       body(:body, Schema.ref(:SessionIds), "List of session ids to update", required: true)
     end
 
-    response(200, "OK", Schema.ref(:GroupSession))
+    response(200, "OK", Schema.ref(:GroupSessions))
   end
 
   def update_sessions(conn, %{"group_id" => group_id, "session_id" => session_id})
