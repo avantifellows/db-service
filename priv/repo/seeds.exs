@@ -58,11 +58,20 @@ defmodule Seed do
         program_sub_type: Enum.random(["Easy", "Moderate", "High"]),
         program_mode: Enum.random(["Online", "Offline"]),
         program_start_date: Faker.DateTime.backward(Enum.random(1..10)),
-        program_target_outreach: Enum.random(["1", "2", "3", "4", "5", "6", "7", "8", "9", "10"]),
+        program_target_outreach: Enum.random(3000..10000),
         program_product_used: Enum.random(["One", "Less than 5", "More than 5"]),
         program_donor: Enum.random(["YES", "NO"]),
-        program_state: Enum.random(["UK", "UP", "MP", "HP", "PB"]),
-        batch_contact_hours_per_week: Enum.random(["32", "40"]),
+        program_state:
+          Enum.random([
+            "HARYANA",
+            "ASSAM",
+            "CHATTISGARH",
+            "UTTARAKHAND",
+            "GUJRAT",
+            "DELHI",
+            "HIMACHAL PRADESH"
+          ]),
+        batch_contact_hours_per_week: Enum.random(20..48),
         group_input_schema: %{},
         group_locale: Enum.random(["hi", "en"]),
         group_locale_data: %{}
@@ -154,9 +163,17 @@ defmodule Seed do
         physically_handicapped: Enum.random([true, false]),
         course: Enum.random(["JEE", "NEET", "NDA"]),
         family_income: Enum.random(["1LPA-3LPA", "3LPA-6LPA", ">6LPA"]),
-        father_profession: Enum.random(["Labour", "Private", "Government"]),
+        father_profession:
+          Enum.random(["Self-employed", "Unemployed", "Private employee", "Government employee"]),
         father_education_level: Enum.random(["UG", "PG", "NA"]),
-        mother_profession: Enum.random(["Housewife", "Private", "Government"]),
+        mother_profession:
+          Enum.random([
+            "Housewife",
+            "Private employee",
+            "Government employee",
+            "Self-employed",
+            "Unemployed"
+          ]),
         mother_education_level: Enum.random(["UG", "PG", "NA"]),
         time_of_device_availability: Faker.DateTime.forward(Enum.random(1..10)),
         has_internet_access: Enum.random([true, false]),
@@ -172,16 +189,37 @@ defmodule Seed do
       Schools.create_school(%{
         code: Enum.random(["KV", "DAV", "Navodaya"]),
         name: Enum.random(["Kendriya Vidyalaya", "Dayanand Anglo Vedic", "Navodaya"]),
-        udise_code: Enum.random(["a", "b", "c", "d", "e", "f", "g", "h", "i", "j"]),
+        udise_code:
+          Enum.random([
+            "05040120901",
+            "05040112401",
+            "05040128901",
+            "05040106001",
+            "070501ND201",
+            "070503ND902",
+            "070512ND601",
+            "070511ND101",
+            "070507ND606",
+            "070507ND302"
+          ]),
         type: Enum.random(["Open", "Full-time"]),
         category: Enum.random(["Private", "Government", "Semi-government"]),
         region: Enum.random(["Urban", "Rural"]),
-        state_code: Enum.random(["a", "b", "c", "d", "e", "f", "g", "h", "i", "j"]),
-        state: Enum.random(["UK", "UP", "MP", "HP", "PB"]),
-        district_code: Enum.random(["a", "b", "c", "d", "e", "f", "g", "h", "i", "j"]),
-        district: Enum.random(["TG", "PG"]),
-        block_code: Enum.random(["a", "b", "c", "d", "e", "f", "g", "h", "i", "j"]),
-        block_name: Enum.random(["a", "b", "c", "d", "e", "f", "g", "h", "i", "j"]),
+        state_code: Enum.random(["HR", "AS", "CT", "UK", "GJ", "DL", "HP"]),
+        state:
+          Enum.random([
+            "HARYANA",
+            "ASSAM",
+            "CHATTISGARH",
+            "UTTARAKHAND",
+            "GUJRAT",
+            "DELHI",
+            "HIMACHAL PRADESH"
+          ]),
+        district_code: Enum.random(["0504", "0701", "0707"]),
+        district: Enum.random(["TEHRI GARHWAL", "NORTH WEST DELHI", "WEST DELHI"]),
+        block_code: Enum.random(["070501", "070502", "070503", "070507", "070104", "070106"]),
+        block_name: Enum.random(["DOE", "DOEAIDED", "DOEUNAIDED", "NDMC", "MCD", "MCDUNAIDED"]),
         board: Enum.random(["ICSE", "CBSE", "State Board"]),
         board_medium: Enum.random(["English", "Hindi"])
       })
