@@ -119,8 +119,9 @@ defmodule DbserviceWeb.GroupController do
     response(200, "OK", Schema.ref(:GroupUsers))
   end
 
-  def update_users(conn, %{"group_id" => group_id, "user_id" => user_id}) when is_list(user_id) do
-    with {:ok, %GroupUser{} = group_user} <- Groups.update_users(group_id, user_id) do
+  def update_users(conn, %{"group_id" => group_id, "user_ids" => user_ids})
+      when is_list(user_ids) do
+    with {:ok, %GroupUser{} = group_user} <- Groups.update_users(group_id, user_ids) do
       render(conn, "show.json", group_user: group_user)
     end
   end
@@ -136,10 +137,10 @@ defmodule DbserviceWeb.GroupController do
     response(200, "OK", Schema.ref(:GroupSessions))
   end
 
-  def update_sessions(conn, %{"group_id" => group_id, "session_id" => session_id})
-      when is_list(session_id) do
-    with {:ok, %GroupSession{} = group_sesion} <- Groups.update_sessions(group_id, session_id) do
-      render(conn, "show.json", group_sesion: group_sesion)
+  def update_sessions(conn, %{"group_id" => group_id, "session_ids" => session_ids})
+      when is_list(session_ids) do
+    with {:ok, %GroupSession{} = group_session} <- Groups.update_sessions(group_id, session_ids) do
+      render(conn, "show.json", group_session: group_session)
     end
   end
 end
