@@ -114,7 +114,7 @@ defmodule Dbservice.Users do
       |> Repo.all()
 
     user
-    |> Repo.preload(:batches)
+    |> Repo.preload(:groups)
     |> User.changeset_update_groups(groups)
     |> Repo.update()
   end

@@ -105,7 +105,7 @@ defmodule Dbservice.Groups do
   end
 
   @doc """
-  Updates the users mapped to a batch.
+  Updates the users mapped to a group.
   """
   def update_users(group_id, user_ids) when is_list(user_ids) do
     group = get_group!(group_id)
