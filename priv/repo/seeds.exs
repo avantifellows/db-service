@@ -12,10 +12,11 @@
 
 alias Dbservice.Repo
 alias Dbservice.Users
-alias Dbservice.Batches
 alias Dbservice.Groups
 alias Dbservice.Sessions
 alias Dbservice.Schools
+alias Dbservice.GroupUsers
+alias Dbservice.GroupSessions
 
 alias Faker.Person
 alias Faker.Internet
@@ -40,27 +41,40 @@ defmodule Seed do
         city: Address.city(),
         state: Address.state(),
         pincode: Address.postcode(),
-        role: "admin"
+        role: "admin",
+        whatsapp_phone: Phone.PtPt.number(),
+        date_of_birth: Faker.Date.date_of_birth(Enum.random(1..10))
       })
 
     user
   end
 
-  def create_batch() do
-    {:ok, batch} =
-      Batches.create_batch(%{
-        name: Address.city() <> " " <> "Batch"
-      })
-
-    batch
-  end
-
   def create_group() do
     {:ok, group} =
       Groups.create_group(%{
-        input_schema: %{},
-        locale: Enum.random(["hi", "en"]),
-        locale_data: %{}
+        name: Person.name(),
+        type: Enum.random(["batch", "group", "cohort", "program"]),
+        program_type: Enum.random(["Competitive", "Non Competitive"]),
+        program_sub_type: Enum.random(["Easy", "Moderate", "High"]),
+        program_mode: Enum.random(["Online", "Offline"]),
+        program_start_date: Faker.DateTime.backward(Enum.random(1..10)),
+        program_target_outreach: Enum.random(3000..10000),
+        program_product_used: Enum.random(["One", "Less than 5", "More than 5"]),
+        program_donor: Enum.random(["YES", "NO"]),
+        program_state:
+          Enum.random([
+            "HARYANA",
+            "ASSAM",
+            "CHATTISGARH",
+            "UTTARAKHAND",
+            "GUJRAT",
+            "DELHI",
+            "HIMACHAL PRADESH"
+          ]),
+        batch_contact_hours_per_week: Enum.random(20..48),
+        group_input_schema: %{},
+        group_locale: Enum.random(["hi", "en"]),
+        group_locale_data: %{}
       })
 
     group
@@ -92,7 +106,9 @@ defmodule Seed do
         meta_data: %{},
         owner_id: owner.id,
         created_by_id: creator.id,
-        is_active: Enum.random([true, false])
+        is_active: Enum.random([true, false]),
+        purpose: %{},
+        repeat_schedule: %{}
       })
 
     session
@@ -143,7 +159,26 @@ defmodule Seed do
         category: Enum.random(["General", "OBC", "SC", "ST"]),
         stream: Enum.random(["Science", "Commerce", "Arts"]),
         user_id: user.id,
-        group_id: group.id
+        group_id: group.id,
+        physically_handicapped: Enum.random([true, false]),
+        course: Enum.random(["JEE", "NEET", "NDA"]),
+        family_income: Enum.random(["1LPA-3LPA", "3LPA-6LPA", ">6LPA"]),
+        father_profession:
+          Enum.random(["Self-employed", "Unemployed", "Private employee", "Government employee"]),
+        father_education_level: Enum.random(["UG", "PG", "NA"]),
+        mother_profession:
+          Enum.random([
+            "Housewife",
+            "Private employee",
+            "Government employee",
+            "Self-employed",
+            "Unemployed"
+          ]),
+        mother_education_level: Enum.random(["UG", "PG", "NA"]),
+        time_of_device_availability: Faker.DateTime.forward(Enum.random(1..10)),
+        has_internet_access: Enum.random([true, false]),
+        primary_smartphone_owner: Enum.random(["Yes", "No"]),
+        primary_smartphone_owner_profession: Enum.random(["Yes", "No"])
       })
 
     student
@@ -154,7 +189,39 @@ defmodule Seed do
       Schools.create_school(%{
         code: Enum.random(["KV", "DAV", "Navodaya"]),
         name: Enum.random(["Kendriya Vidyalaya", "Dayanand Anglo Vedic", "Navodaya"]),
-        medium: Enum.random(["English", "Hindi"])
+        udise_code:
+          Enum.random([
+            "05040120901",
+            "05040112401",
+            "05040128901",
+            "05040106001",
+            "070501ND201",
+            "070503ND902",
+            "070512ND601",
+            "070511ND101",
+            "070507ND606",
+            "070507ND302"
+          ]),
+        type: Enum.random(["Open", "Full-time"]),
+        category: Enum.random(["Private", "Government", "Semi-government"]),
+        region: Enum.random(["Urban", "Rural"]),
+        state_code: Enum.random(["HR", "AS", "CT", "UK", "GJ", "DL", "HP"]),
+        state:
+          Enum.random([
+            "HARYANA",
+            "ASSAM",
+            "CHATTISGARH",
+            "UTTARAKHAND",
+            "GUJRAT",
+            "DELHI",
+            "HIMACHAL PRADESH"
+          ]),
+        district_code: Enum.random(["0504", "0701", "0707"]),
+        district: Enum.random(["TEHRI GARHWAL", "NORTH WEST DELHI", "WEST DELHI"]),
+        block_code: Enum.random(["070501", "070502", "070503", "070507", "070104", "070106"]),
+        block_name: Enum.random(["DOE", "DOEAIDED", "DOEUNAIDED", "NDMC", "MCD", "MCDUNAIDED"]),
+        board: Enum.random(["ICSE", "CBSE", "State Board"]),
+        board_medium: Enum.random(["English", "Hindi"])
       })
 
     school
@@ -172,7 +239,8 @@ defmodule Seed do
         grade: Enum.random(["KG", "1", "2", "3", "4", "5", "6", "7", "8", "9", "10"]),
         user_id: user.id,
         school_id: school.id,
-        program_manager_id: program_manager.id
+        program_manager_id: program_manager.id,
+        uuid: Seed.random_alphanumeric()
       })
 
     teacher
@@ -185,6 +253,8 @@ defmodule Seed do
     {:ok, enrollment_record} =
       Schools.create_enrollment_record(%{
         grade: Enum.random(["KG", "1", "2", "3", "4", "5", "6", "7", "8", "9", "10"]),
+        board_medium: Enum.random(["ICSE", "CBSE", "State Board"]),
+        date_of_enrollment: Faker.DateTime.forward(Enum.random(1..10)),
         academic_year:
           Enum.random([
             "2010-11",
@@ -207,18 +277,47 @@ defmodule Seed do
 
     enrollment_record
   end
+
+  def create_group_session() do
+    session = Sessions.Session |> offset(^Enum.random(1..49)) |> limit(1) |> Repo.one()
+    group = Seed.create_group()
+
+    {:ok, group_session} =
+      GroupSessions.create_group_session(%{
+        group_id: group.id,
+        session_id: session.id
+      })
+
+    group_session
+  end
+
+  def create_group_user() do
+    group = Seed.create_group()
+    user = Seed.create_user()
+    program_manager = Users.User |> offset(^Enum.random(1..99)) |> limit(1) |> Repo.one()
+
+    {:ok, group_user} =
+      GroupUsers.create_group_user(%{
+        group_id: group.id,
+        user_id: user.id,
+        program_manager_id: program_manager.id,
+        program_date_of_joining: Faker.DateTime.backward(Enum.random(1..10)),
+        program_student_language: Enum.random(["English", "Hindi"])
+      })
+
+    group_user
+  end
 end
 
-Repo.query("TRUNCATE batch_user", [])
-Repo.query("TRUNCATE batch_session", [])
 Repo.delete_all(Users.Teacher)
 Repo.delete_all(Schools.EnrollmentRecord)
 Repo.delete_all(Users.Student)
 Repo.delete_all(Schools.School)
 Repo.delete_all(Sessions.UserSession)
 Repo.delete_all(Sessions.SessionOccurence)
+Repo.delete_all(Groups.GroupSession)
+Repo.delete_all(Groups.GroupUser)
 Repo.delete_all(Sessions.Session)
-Repo.delete_all(Batches.Batch)
 Repo.delete_all(Groups.Group)
 Repo.delete_all(Users.User)
 
@@ -236,29 +335,6 @@ if Mix.env() == :dev do
   # create some sessions
   for count <- 1..50 do
     Seed.create_session()
-  end
-
-  # create some batches
-  for count <- 1..10 do
-    batch = Seed.create_batch()
-
-    # get some random users and assign them batch
-    user_ids =
-      for num <- 1..10 do
-        user = Users.User |> offset(^Enum.random(1..99)) |> limit(1) |> Repo.one()
-        user.id
-      end
-
-    Batches.update_users(batch.id, user_ids)
-
-    # get some random sessions and assign them batch
-    session_ids =
-      for num <- 1..10 do
-        session = Sessions.Session |> offset(^Enum.random(1..49)) |> limit(1) |> Repo.one()
-        session.id
-      end
-
-    Batches.update_sessions(batch.id, session_ids)
   end
 
   # create some sessions occurences and user-session mappings
@@ -289,5 +365,15 @@ if Mix.env() == :dev do
   # create some teachers
   for count <- 1..9 do
     Seed.create_teacher()
+  end
+
+  # create some group_user
+  for count <- 1..100 do
+    Seed.create_group_user()
+  end
+
+  # create some group_session
+  for count <- 1..100 do
+    Seed.create_group_session()
   end
 end

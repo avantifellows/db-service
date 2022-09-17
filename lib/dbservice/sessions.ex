@@ -102,23 +102,6 @@ defmodule Dbservice.Sessions do
     Session.changeset(session, attrs)
   end
 
-  @doc """
-  Updates the batches mapped to a session.
-  """
-  def update_batches(session_id, batch_ids) when is_list(batch_ids) do
-    session = get_session!(session_id)
-
-    batches =
-      Dbservice.Batches.Batch
-      |> where([batch], batch.id in ^batch_ids)
-      |> Repo.all()
-
-    session
-    |> Repo.preload(:batches)
-    |> Session.changeset_update_batches(batches)
-    |> Repo.update()
-  end
-
   alias Dbservice.Sessions.SessionOccurence
 
   @doc """

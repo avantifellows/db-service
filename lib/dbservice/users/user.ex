@@ -5,7 +5,10 @@ defmodule Dbservice.Users.User do
   import Ecto.Changeset
 
   alias Dbservice.Sessions.SessionOccurence
-  alias Dbservice.Batches.Batch
+  alias Dbservice.Sessions.UserSession
+  alias Dbservice.Users.Teacher
+  alias Dbservice.Users.Student
+  alias Dbservice.Groups.Group
 
   schema "user" do
     field :address, :string
@@ -19,11 +22,16 @@ defmodule Dbservice.Users.User do
     field :pincode, :string
     field :role, :string
     field :state, :string
+    field :whatsapp_phone, :string
+    field :date_of_birth, :date
 
     timestamps()
 
     many_to_many :sessions, SessionOccurence, join_through: "user_session", on_replace: :delete
-    many_to_many :batches, Batch, join_through: "batch_user", on_replace: :delete
+    has_many :user_session, UserSession
+    has_one :teacher, Teacher
+    has_one :student, Student
+    many_to_many :group, Group, join_through: "group_user", on_replace: :delete
   end
 
   @doc false
@@ -40,14 +48,10 @@ defmodule Dbservice.Users.User do
       :district,
       :state,
       :pincode,
-      :role
+      :role,
+      :whatsapp_phone,
+      :date_of_birth
     ])
     |> validate_required([:first_name, :last_name, :email, :phone])
-  end
-
-  def changeset_update_batches(user, batches) do
-    user
-    |> change()
-    |> put_assoc(:batches, batches)
   end
 end

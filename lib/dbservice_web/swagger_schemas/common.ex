@@ -3,21 +3,6 @@ defmodule DbserviceWeb.SwaggerSchema.Common do
 
   use PhoenixSwagger
 
-  def batch_ids do
-    %{
-      BatchIds:
-        swagger_schema do
-          properties do
-            batch_ids(:array, "List of batch ids")
-          end
-
-          example(%{
-            batch_ids: [1, 2]
-          })
-        end
-    }
-  end
-
   def user_ids do
     %{
       UserIds:

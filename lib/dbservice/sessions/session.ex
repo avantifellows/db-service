@@ -5,27 +5,27 @@ defmodule Dbservice.Sessions.Session do
   import Ecto.Changeset
 
   alias Dbservice.Users.User
-  alias Dbservice.Batches.Batch
+  alias Dbservice.Groups.Group
 
   schema "session" do
     field :end_time, :utc_datetime
-    field :is_active, :boolean
     field :meta_data, :map
     field :name, :string
     field :platform, :string
     field :platform_link, :string
     field :portal_link, :string
-    field :repeat_till_date, :utc_datetime
-    field :repeat_type, :string
     field :start_time, :utc_datetime
     field :owner_id, :id
     field :created_by_id, :id
     field :uuid, :binary_id, read_after_writes: true
+    field :is_active, :boolean
+    field :purpose, :map
+    field :repeat_schedule, :map
 
     timestamps()
 
     many_to_many :users, User, join_through: "user_session", on_replace: :delete
-    many_to_many :batches, Batch, join_through: "batch_session", on_replace: :delete
+    many_to_many :group, Group, join_through: "group_session", on_replace: :delete
   end
 
   @doc false
@@ -39,11 +39,12 @@ defmodule Dbservice.Sessions.Session do
       :portal_link,
       :start_time,
       :end_time,
-      :repeat_type,
-      :repeat_till_date,
       :meta_data,
       :owner_id,
-      :created_by_id
+      :created_by_id,
+      :uuid,
+      :purpose,
+      :repeat_schedule
     ])
     |> validate_required([
       :name,
@@ -53,15 +54,7 @@ defmodule Dbservice.Sessions.Session do
       :portal_link,
       :start_time,
       :end_time,
-      :repeat_type,
-      :repeat_till_date,
       :meta_data
     ])
-  end
-
-  def changeset_update_batches(session, batches) do
-    session
-    |> change()
-    |> put_assoc(:batches, batches)
   end
 end
