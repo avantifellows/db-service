@@ -19,8 +19,6 @@ defmodule DbserviceWeb.SessionView do
       portal_link: session.portal_link,
       start_time: session.start_time,
       end_time: session.end_time,
-      repeat_type: session.repeat_type,
-      repeat_till_date: session.repeat_till_date,
       meta_data: session.meta_data,
       owner_id: session.owner_id,
       created_by_id: session.created_by_id,

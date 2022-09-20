@@ -17,7 +17,9 @@ defmodule DbserviceWeb.EnrollmentRecordView do
       academic_year: enrollment_record.academic_year,
       is_current: enrollment_record.is_current,
       student_id: enrollment_record.student_id,
-      school_id: enrollment_record.school_id
+      school_id: enrollment_record.school_id,
+      board_medium: enrollment_record.board_medium,
+      date_of_enrollment: enrollment_record.date_of_enrollment
     }
   end
 end
