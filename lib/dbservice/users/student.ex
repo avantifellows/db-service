@@ -17,7 +17,6 @@ defmodule Dbservice.Users.Student do
     field :stream, :string
     field :uuid, :string
     field :physically_handicapped, :boolean
-    field :cohort, :string
     field :family_income, :string
     field :father_profession, :string
     field :father_education_level, :string
@@ -34,7 +33,6 @@ defmodule Dbservice.Users.Student do
     timestamps()
   end
 
-  @doc false
   def changeset(student, attrs) do
     student
     |> cast(attrs, [
@@ -48,7 +46,6 @@ defmodule Dbservice.Users.Student do
       :category,
       :stream,
       :physically_handicapped,
-      :cohort,
       :family_income,
       :father_profession,
       :father_education_level,
