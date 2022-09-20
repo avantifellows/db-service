@@ -15,7 +15,18 @@ defmodule DbserviceWeb.SchoolView do
       id: school.id,
       code: school.code,
       name: school.name,
-      medium: school.medium
+      udise_code: school.udise_code,
+      type: school.type,
+      category: school.category,
+      region: school.region,
+      state_code: school.state_code,
+      state: school.state,
+      district_code: school.district_code,
+      district: school.district,
+      block_code: school.block_code,
+      block_name: school.block_name,
+      board: school.board,
+      board_medium: school.board_medium
     }
   end
 end

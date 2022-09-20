@@ -27,7 +27,17 @@ defmodule DbserviceWeb.StudentView do
       category: student.category,
       stream: student.stream,
       user_id: student.user_id,
-      group_id: student.group_id
+      group_id: student.group_id,
+      physically_handicapped: student.physically_handicapped,
+      family_income: student.family_income,
+      father_profession: student.father_profession,
+      father_education_level: student.father_education_level,
+      mother_profession: student.mother_profession,
+      mother_education_level: student.mother_education_level,
+      time_of_device_availability: student.time_of_device_availability,
+      has_internet_access: student.has_internet_access,
+      primary_smartphone_owner: student.primary_smartphone_owner,
+      primary_smartphone_owner_profession: student.primary_smartphone_owner_profession
     }
   end
 
