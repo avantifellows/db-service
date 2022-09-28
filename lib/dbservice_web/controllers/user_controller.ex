@@ -2,7 +2,6 @@ defmodule DbserviceWeb.UserController do
   use DbserviceWeb, :controller
 
   alias Dbservice.Users
-  alias Dbservice.Groups.GroupUser
   alias Dbservice.Users.User
 
   action_fallback DbserviceWeb.FallbackController
@@ -117,10 +116,10 @@ defmodule DbserviceWeb.UserController do
     response(200, "OK", Schema.ref(:User))
   end
 
-  def update_groups(conn, %{"user_id" => user_id, "group_ids" => group_ids})
+  def update_groups(conn, %{"id" => user_id, "group_ids" => group_ids})
       when is_list(group_ids) do
-    with {:ok, %GroupUser{} = group_user} <- Users.update_groups(user_id, group_ids) do
-      render(conn, "show.json", group_user: group_user)
+    with {:ok, %User{} = user} <- Users.update_groups(user_id, group_ids) do
+      render(conn, "show.json", user: user)
     end
   end
 end

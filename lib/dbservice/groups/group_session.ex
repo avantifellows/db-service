@@ -26,6 +26,6 @@ defmodule Dbservice.Groups.GroupSession do
   def changeset_update_sessions(group, sessions) do
     group
     |> change()
-    |> put_assoc(:sessions, sessions)
+    |> put_assoc(:session, sessions)
   end
 end

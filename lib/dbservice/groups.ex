@@ -116,7 +116,7 @@ defmodule Dbservice.Groups do
       |> Repo.all()
 
     group
-    |> Repo.preload(:users)
+    |> Repo.preload(:user)
     |> GroupUser.changeset_update_users(users)
     |> Repo.update()
   end
@@ -133,7 +133,7 @@ defmodule Dbservice.Groups do
       |> Repo.all()
 
     group
-    |> Repo.preload(:sessions)
+    |> Repo.preload(:session)
     |> GroupSession.changeset_update_sessions(sessions)
     |> Repo.update()
   end

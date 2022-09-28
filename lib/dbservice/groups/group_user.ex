@@ -32,6 +32,6 @@ defmodule Dbservice.Groups.GroupUser do
   def changeset_update_users(group, users) do
     group
     |> change()
-    |> put_assoc(:users, users)
+    |> put_assoc(:user, users)
   end
 end

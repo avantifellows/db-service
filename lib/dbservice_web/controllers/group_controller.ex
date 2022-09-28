@@ -2,8 +2,6 @@ defmodule DbserviceWeb.GroupController do
   use DbserviceWeb, :controller
 
   alias Dbservice.Groups
-  alias Dbservice.Groups.GroupUser
-  alias Dbservice.Groups.GroupSession
   alias Dbservice.Groups.Group
 
   action_fallback DbserviceWeb.FallbackController
@@ -119,10 +117,10 @@ defmodule DbserviceWeb.GroupController do
     response(200, "OK", Schema.ref(:GroupUsers))
   end
 
-  def update_users(conn, %{"group_id" => group_id, "user_ids" => user_ids})
+  def update_users(conn, %{"id" => group_id, "user_ids" => user_ids})
       when is_list(user_ids) do
-    with {:ok, %GroupUser{} = group_user} <- Groups.update_users(group_id, user_ids) do
-      render(conn, "show.json", group_user: group_user)
+    with {:ok, %Group{} = group} <- Groups.update_users(group_id, user_ids) do
+      render(conn, "show.json", group: group)
     end
   end
 
@@ -137,10 +135,10 @@ defmodule DbserviceWeb.GroupController do
     response(200, "OK", Schema.ref(:GroupSessions))
   end
 
-  def update_sessions(conn, %{"group_id" => group_id, "session_ids" => session_ids})
+  def update_sessions(conn, %{"id" => group_id, "session_ids" => session_ids})
       when is_list(session_ids) do
-    with {:ok, %GroupSession{} = group_session} <- Groups.update_sessions(group_id, session_ids) do
-      render(conn, "show.json", group_session: group_session)
+    with {:ok, %Group{} = group} <- Groups.update_sessions(group_id, session_ids) do
+      render(conn, "show.json", group: group)
     end
   end
 end
