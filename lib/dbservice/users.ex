@@ -103,7 +103,7 @@ defmodule Dbservice.Users do
   end
 
   @doc """
-  Updates the users mapped to a group.
+  Updates the groups mapped to a user.
   """
   def update_groups(user_id, group_ids) when is_list(group_ids) do
     user = get_user!(user_id)

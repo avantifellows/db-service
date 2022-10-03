@@ -1079,7 +1079,7 @@
             "type": "integer"
           },
           {
-            "description": "List of session ids to update",
+            "description": "List of session ids to update for the group",
             "in": "body",
             "name": "body",
             "required": true,
@@ -1115,7 +1115,7 @@
             "type": "integer"
           },
           {
-            "description": "List of user ids to update",
+            "description": "List of user ids to update for the group",
             "in": "body",
             "name": "body",
             "required": true,

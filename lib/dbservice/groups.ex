@@ -122,7 +122,7 @@ defmodule Dbservice.Groups do
   end
 
   @doc """
-  Updates the sessions mapped to a batch.
+  Updates the sessions mapped to a group.
   """
   def update_sessions(group_id, session_ids) when is_list(session_ids) do
     group = get_group!(group_id)
