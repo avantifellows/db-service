@@ -45,7 +45,7 @@ defmodule Dbservice.GroupSessions do
       iex> create_group_session(%{field: value})
       {:ok, %Group{}}
 
-      iex> create_groupgroup_session(%{field: bad_value})
+      iex> create_group_session(%{field: bad_value})
       {:error, %Ecto.Changeset{}}
 
   """

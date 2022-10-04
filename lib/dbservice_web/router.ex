@@ -10,14 +10,18 @@ defmodule DbserviceWeb.Router do
     pipe_through :api
 
     resources "/group", GroupController, except: [:new, :edit]
+    post "/group/:id/update-users", GroupController, :update_users
+    post "/group/:id/update-sessions", GroupController, :update_sessions
 
     resources "/user", UserController, only: [:index, :create, :update, :show]
+    post "/user/:id/update-groups", UserController, :update_groups
     resources "/student", StudentController, except: [:new, :edit]
     post "/student/register", StudentController, :register
     resources "/teacher", TeacherController, except: [:new, :edit]
     resources "/school", SchoolController, except: [:new, :edit]
     resources "/enrollment-record", EnrollmentRecordController, except: [:new, :edit]
     resources "/session", SessionController, only: [:index, :create, :update, :show]
+    post "/session/:id/update-groups", SessionController, :update_groups
     resources "/session-occurence", SessionOccurenceController, except: [:new, :edit]
     resources "/user-session", UserSessionController, except: [:new, :edit]
 

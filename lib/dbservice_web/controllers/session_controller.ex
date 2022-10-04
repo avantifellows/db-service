@@ -9,12 +9,16 @@ defmodule DbserviceWeb.SessionController do
   use PhoenixSwagger
 
   alias DbserviceWeb.SwaggerSchema.Session, as: SwaggerSchemaSession
+  alias DbserviceWeb.SwaggerSchema.Common, as: SwaggerSchemaCommon
 
   def swagger_definitions do
     # merge the required definitions in a pair at a time using the Map.merge/2 function
     Map.merge(
-      SwaggerSchemaSession.session(),
-      SwaggerSchemaSession.sessions()
+      Map.merge(
+        SwaggerSchemaSession.session(),
+        SwaggerSchemaSession.sessions()
+      ),
+      SwaggerSchemaCommon.group_ids()
     )
   end
 
@@ -96,6 +100,27 @@ defmodule DbserviceWeb.SessionController do
 
     with {:ok, %Session{}} <- Sessions.delete_session(session) do
       send_resp(conn, :no_content, "")
+    end
+  end
+
+  swagger_path :update_groups do
+    post("/api/session/{sessionId}/update-groups")
+
+    parameters do
+      sessionId(:path, :integer, "The id of the session", required: true)
+
+      body(:body, Schema.ref(:GroupIds), "List of group ids to update for the session",
+        required: true
+      )
+    end
+
+    response(200, "OK", Schema.ref(:Session))
+  end
+
+  def update_groups(conn, %{"id" => session_id, "group_ids" => group_ids})
+      when is_list(group_ids) do
+    with {:ok, %Session{} = session} <- Sessions.update_groups(session_id, group_ids) do
+      render(conn, "show.json", session: session)
     end
   end
 end

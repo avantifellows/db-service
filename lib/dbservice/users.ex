@@ -102,6 +102,23 @@ defmodule Dbservice.Users do
     User.changeset(user, attrs)
   end
 
+  @doc """
+  Updates the groups mapped to a user.
+  """
+  def update_groups(user_id, group_ids) when is_list(group_ids) do
+    user = get_user!(user_id)
+
+    groups =
+      Dbservice.Groups.Group
+      |> where([group], group.id in ^group_ids)
+      |> Repo.all()
+
+    user
+    |> Repo.preload(:group)
+    |> User.changeset_update_groups(groups)
+    |> Repo.update()
+  end
+
   alias Dbservice.Users.Student
 
   @doc """

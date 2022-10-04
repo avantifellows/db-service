@@ -9,11 +9,15 @@ defmodule DbserviceWeb.UserController do
   use PhoenixSwagger
 
   alias DbserviceWeb.SwaggerSchema.User, as: SwaggerSchemaUser
+  alias DbserviceWeb.SwaggerSchema.Common, as: SwaggerSchemaCommon
 
   def swagger_definitions do
     Map.merge(
-      SwaggerSchemaUser.user(),
-      SwaggerSchemaUser.users()
+      Map.merge(
+        SwaggerSchemaUser.user(),
+        SwaggerSchemaUser.users()
+      ),
+      SwaggerSchemaCommon.group_ids()
     )
   end
 
@@ -95,6 +99,27 @@ defmodule DbserviceWeb.UserController do
 
     with {:ok, %User{}} <- Users.delete_user(user) do
       send_resp(conn, :no_content, "")
+    end
+  end
+
+  swagger_path :update_groups do
+    post("/api/user/{userId}/update-groups")
+
+    parameters do
+      userId(:path, :integer, "The id of the user", required: true)
+
+      body(:body, Schema.ref(:GroupIds), "List of group ids to update for the user",
+        required: true
+      )
+    end
+
+    response(200, "OK", Schema.ref(:User))
+  end
+
+  def update_groups(conn, %{"id" => user_id, "group_ids" => group_ids})
+      when is_list(group_ids) do
+    with {:ok, %User{} = user} <- Users.update_groups(user_id, group_ids) do
+      render(conn, "show.json", user: user)
     end
   end
 end

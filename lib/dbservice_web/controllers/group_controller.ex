@@ -8,40 +8,21 @@ defmodule DbserviceWeb.GroupController do
 
   use PhoenixSwagger
 
+  alias DbserviceWeb.SwaggerSchema.Group, as: SwaggerSchemaGroup
+  alias DbserviceWeb.SwaggerSchema.Common, as: SwaggerSchemaCommon
+
   def swagger_definitions do
-    %{
-      Group:
-        swagger_schema do
-          title("Group")
-          description("A group in the application")
-
-          properties do
-            input_schema(:map, "Input schema")
-            locale(:string, "The configured locale for the group")
-            locale_data(:map, "Meta data about locale settings for the group")
-          end
-
-          example(%{
-            input_schema: %{},
-            locale: "hi",
-            locale_data: %{
-              "hi" => %{
-                "title" => "सत्र के लिए पंजीकरण करें"
-              },
-              "en" => %{
-                "title" => "Register for session"
-              }
-            }
-          })
-        end,
-      Groups:
-        swagger_schema do
-          title("Groups")
-          description("All the groups")
-          type(:array)
-          items(Schema.ref(:Group))
-        end
-    }
+    # merge the required definitions in a pair at a time using the Map.merge/2 function
+    Map.merge(
+      Map.merge(
+        Map.merge(
+          Map.merge(SwaggerSchemaGroup.group(), SwaggerSchemaGroup.groupsessions()),
+          Map.merge(SwaggerSchemaCommon.user_ids(), SwaggerSchemaCommon.session_ids())
+        ),
+        SwaggerSchemaGroup.groupusers()
+      ),
+      SwaggerSchemaGroup.groups()
+    )
   end
 
   swagger_path :index do
@@ -122,6 +103,46 @@ defmodule DbserviceWeb.GroupController do
 
     with {:ok, %Group{}} <- Groups.delete_group(group) do
       send_resp(conn, :no_content, "")
+    end
+  end
+
+  swagger_path :update_users do
+    post("/api/group/{groupId}/update-users")
+
+    parameters do
+      groupId(:path, :integer, "The id of the group", required: true)
+
+      body(:body, Schema.ref(:UserIds), "List of user ids to update for the group", required: true)
+    end
+
+    response(200, "OK", Schema.ref(:GroupUsers))
+  end
+
+  def update_users(conn, %{"id" => group_id, "user_ids" => user_ids})
+      when is_list(user_ids) do
+    with {:ok, %Group{} = group} <- Groups.update_users(group_id, user_ids) do
+      render(conn, "show.json", group: group)
+    end
+  end
+
+  swagger_path :update_sessions do
+    post("/api/group/{groupId}/update-sessions")
+
+    parameters do
+      groupId(:path, :integer, "The id of the group", required: true)
+
+      body(:body, Schema.ref(:SessionIds), "List of session ids to update for the group",
+        required: true
+      )
+    end
+
+    response(200, "OK", Schema.ref(:GroupSessions))
+  end
+
+  def update_sessions(conn, %{"id" => group_id, "session_ids" => session_ids})
+      when is_list(session_ids) do
+    with {:ok, %Group{} = group} <- Groups.update_sessions(group_id, session_ids) do
+      render(conn, "show.json", group: group)
     end
   end
 end

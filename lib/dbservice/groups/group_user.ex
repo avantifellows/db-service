@@ -28,4 +28,10 @@ defmodule Dbservice.Groups.GroupUser do
     ])
     |> validate_required([:program_date_of_joining, :program_student_language])
   end
+
+  def changeset_update_users(group, users) do
+    group
+    |> change()
+    |> put_assoc(:user, users)
+  end
 end

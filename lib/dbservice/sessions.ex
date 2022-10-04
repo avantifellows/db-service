@@ -102,6 +102,23 @@ defmodule Dbservice.Sessions do
     Session.changeset(session, attrs)
   end
 
+  @doc """
+  Updates the groups mapped to a session.
+  """
+  def update_groups(session_id, group_ids) when is_list(group_ids) do
+    session = get_session!(session_id)
+
+    groups =
+      Dbservice.Groups.Group
+      |> where([group], group.id in ^group_ids)
+      |> Repo.all()
+
+    session
+    |> Repo.preload(:group)
+    |> Session.changeset_update_groups(groups)
+    |> Repo.update()
+  end
+
   alias Dbservice.Sessions.SessionOccurence
 
   @doc """

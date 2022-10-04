@@ -32,4 +32,19 @@ defmodule DbserviceWeb.SwaggerSchema.Common do
         end
     }
   end
+
+  def group_ids do
+    %{
+      GroupIds:
+        swagger_schema do
+          properties do
+            group_ids(:array, "List of group ids")
+          end
+
+          example(%{
+            group_ids: [1, 2]
+          })
+        end
+    }
+  end
 end

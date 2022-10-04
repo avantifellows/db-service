@@ -22,4 +22,10 @@ defmodule Dbservice.Groups.GroupSession do
     ])
     |> validate_required([:group_id, :session_id])
   end
+
+  def changeset_update_sessions(group, sessions) do
+    group
+    |> change()
+    |> put_assoc(:session, sessions)
+  end
 end

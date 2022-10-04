@@ -6,6 +6,8 @@ defmodule Dbservice.Groups do
   import Ecto.Query, warn: false
   alias Dbservice.Repo
 
+  alias Dbservice.Groups.GroupSession
+  alias Dbservice.Groups.GroupUser
   alias Dbservice.Groups.Group
 
   @doc """
@@ -100,5 +102,39 @@ defmodule Dbservice.Groups do
   """
   def change_group(%Group{} = group, attrs \\ %{}) do
     Group.changeset(group, attrs)
+  end
+
+  @doc """
+  Updates the users mapped to a group.
+  """
+  def update_users(group_id, user_ids) when is_list(user_ids) do
+    group = get_group!(group_id)
+
+    users =
+      Dbservice.Users.User
+      |> where([user], user.id in ^user_ids)
+      |> Repo.all()
+
+    group
+    |> Repo.preload(:user)
+    |> GroupUser.changeset_update_users(users)
+    |> Repo.update()
+  end
+
+  @doc """
+  Updates the sessions mapped to a group.
+  """
+  def update_sessions(group_id, session_ids) when is_list(session_ids) do
+    group = get_group!(group_id)
+
+    sessions =
+      Dbservice.Sessions.Session
+      |> where([session], session.id in ^session_ids)
+      |> Repo.all()
+
+    group
+    |> Repo.preload(:session)
+    |> GroupSession.changeset_update_sessions(sessions)
+    |> Repo.update()
   end
 end

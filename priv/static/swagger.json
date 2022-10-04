@@ -45,32 +45,156 @@
     "Group": {
       "description": "A group in the application",
       "example": {
-        "input_schema": {},
-        "locale": "hi",
-        "locale_data": {
+        "batch_contact_hours_per_week": 48,
+        "group_input_schema": {},
+        "group_locale": "hi",
+        "group_locale_data": {
           "en": {
             "title": "Register for session"
           },
           "hi": {
             "title": "सत्र के लिए पंजीकरण करें"
           }
-        }
+        },
+        "name": "Abhinav Singh",
+        "parent_id": 1,
+        "program_donor": "",
+        "program_mode": "Offline",
+        "program_products_used": "",
+        "program_start_date": "2020/02/03",
+        "program_state": "Delhi",
+        "program_sub_type": "",
+        "program_target_outreach": 1000,
+        "program_type": "",
+        "type": "program"
       },
       "properties": {
-        "input_schema": {
+        "batch_contact_hours_per_week": {
+          "description": "Contact hours for a batch in a week",
+          "type": "integer"
+        },
+        "group_input_schema": {
           "description": "Input schema",
           "type": "map"
         },
-        "locale": {
+        "group_locale": {
           "description": "The configured locale for the group",
           "type": "string"
         },
-        "locale_data": {
+        "group_locale_data": {
           "description": "Meta data about locale settings for the group",
           "type": "map"
+        },
+        "name": {
+          "description": "Name of a group",
+          "type": "string"
+        },
+        "parent_id": {
+          "description": "ID of a parent",
+          "type": "integer"
+        },
+        "program_donor": {
+          "description": "Donor of a program",
+          "type": "string"
+        },
+        "program_mode": {
+          "description": "Mode of a program",
+          "type": "string"
+        },
+        "program_products_used": {
+          "description": "Products used in a program",
+          "type": "string"
+        },
+        "program_start_date": {
+          "description": "Starting date of a program",
+          "type": "date"
+        },
+        "program_sub_type": {
+          "description": "Sub-type of a program",
+          "type": "string"
+        },
+        "program_target_outreach": {
+          "description": "Target outreach for a particular program",
+          "type": "integer"
+        },
+        "program_type": {
+          "description": "Type of a program",
+          "type": "string"
+        },
+        "type": {
+          "description": "Type of a group",
+          "type": "string"
         }
       },
       "title": "Group",
+      "type": "object"
+    },
+    "GroupIds": {
+      "example": {
+        "group_ids": [
+          1,
+          2
+        ]
+      },
+      "properties": {
+        "group_ids": {
+          "description": "List of group ids",
+          "type": "array"
+        }
+      },
+      "type": "object"
+    },
+    "GroupSessions": {
+      "description": "Relation between group and session",
+      "example": {
+        "group_id": 1,
+        "session_id": 1
+      },
+      "properties": {
+        "group_id": {
+          "description": "Id of a particular group",
+          "type": "integer"
+        },
+        "session_id": {
+          "description": "Id of a particular group",
+          "type": "integer"
+        }
+      },
+      "title": "Group Session",
+      "type": "object"
+    },
+    "GroupUsers": {
+      "description": "Relation between group and user",
+      "example": {
+        "group_id": 1,
+        "program_date_of_joining": "2020/01/06",
+        "program_manager_id": 1,
+        "program_student_language": "English",
+        "user_id": 1
+      },
+      "properties": {
+        "group_id": {
+          "description": "Id of a particular group",
+          "type": "integer"
+        },
+        "program_date_of_joining": {
+          "description": "Date of joining a program",
+          "type": "utc_datetime"
+        },
+        "program_manager_id": {
+          "description": "ID of a program manager",
+          "type": "integer"
+        },
+        "program_student_language": {
+          "description": "Language used in an enrolled program",
+          "type": "string"
+        },
+        "user_id": {
+          "description": "Id of a particular group",
+          "type": "integer"
+        }
+      },
+      "title": "Group Session",
       "type": "object"
     },
     "Groups": {
@@ -942,6 +1066,78 @@
         ]
       }
     },
+    "/api/group/{groupId}/update-sessions": {
+      "post": {
+        "description": "",
+        "operationId": "DbserviceWeb.GroupController.update_sessions",
+        "parameters": [
+          {
+            "description": "The id of the group",
+            "in": "path",
+            "name": "groupId",
+            "required": true,
+            "type": "integer"
+          },
+          {
+            "description": "List of session ids to update for the group",
+            "in": "body",
+            "name": "body",
+            "required": true,
+            "schema": {
+              "$ref": "#/definitions/SessionIds"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "schema": {
+              "$ref": "#/definitions/GroupSessions"
+            }
+          }
+        },
+        "summary": "",
+        "tags": [
+          "Group"
+        ]
+      }
+    },
+    "/api/group/{groupId}/update-users": {
+      "post": {
+        "description": "",
+        "operationId": "DbserviceWeb.GroupController.update_users",
+        "parameters": [
+          {
+            "description": "The id of the group",
+            "in": "path",
+            "name": "groupId",
+            "required": true,
+            "type": "integer"
+          },
+          {
+            "description": "List of user ids to update for the group",
+            "in": "body",
+            "name": "body",
+            "required": true,
+            "schema": {
+              "$ref": "#/definitions/UserIds"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "schema": {
+              "$ref": "#/definitions/GroupUsers"
+            }
+          }
+        },
+        "summary": "",
+        "tags": [
+          "Group"
+        ]
+      }
+    },
     "/api/school": {
       "get": {
         "description": "",
@@ -1296,6 +1492,42 @@
         "responses": {
           "200": {
             "description": "Updated",
+            "schema": {
+              "$ref": "#/definitions/Session"
+            }
+          }
+        },
+        "summary": "",
+        "tags": [
+          "Session"
+        ]
+      }
+    },
+    "/api/session/{sessionId}/update-groups": {
+      "post": {
+        "description": "",
+        "operationId": "DbserviceWeb.SessionController.update_groups",
+        "parameters": [
+          {
+            "description": "The id of the session",
+            "in": "path",
+            "name": "sessionId",
+            "required": true,
+            "type": "integer"
+          },
+          {
+            "description": "List of group ids to update for the session",
+            "in": "body",
+            "name": "body",
+            "required": true,
+            "schema": {
+              "$ref": "#/definitions/GroupIds"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
             "schema": {
               "$ref": "#/definitions/Session"
             }
@@ -1819,6 +2051,42 @@
         "responses": {
           "200": {
             "description": "Updated",
+            "schema": {
+              "$ref": "#/definitions/User"
+            }
+          }
+        },
+        "summary": "",
+        "tags": [
+          "User"
+        ]
+      }
+    },
+    "/api/user/{userId}/update-groups": {
+      "post": {
+        "description": "",
+        "operationId": "DbserviceWeb.UserController.update_groups",
+        "parameters": [
+          {
+            "description": "The id of the user",
+            "in": "path",
+            "name": "userId",
+            "required": true,
+            "type": "integer"
+          },
+          {
+            "description": "List of group ids to update for the user",
+            "in": "body",
+            "name": "body",
+            "required": true,
+            "schema": {
+              "$ref": "#/definitions/GroupIds"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
             "schema": {
               "$ref": "#/definitions/User"
             }
