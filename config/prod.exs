@@ -47,3 +47,6 @@ config :logger, level: :info
 #       force_ssl: [hsts: true]
 #
 # Check `Plug.SSL` for all available options in `force_ssl`.
+
+config :dbservice, DbserviceWeb.Endpoint,
+  force_ssl: [rewrite_on: [:x_forwarded_proto]]
