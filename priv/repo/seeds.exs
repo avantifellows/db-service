@@ -101,8 +101,6 @@ defmodule Seed do
           ]),
         start_time: Faker.DateTime.backward(Enum.random(1..10)),
         end_time: Faker.DateTime.backward(Enum.random(1..9)),
-        repeat_type: Enum.random(["weekly", "daily", "monthly"]),
-        repeat_till_date: Faker.DateTime.forward(Enum.random(1..10)),
         meta_data: %{},
         owner_id: owner.id,
         created_by_id: creator.id,
@@ -161,7 +159,6 @@ defmodule Seed do
         user_id: user.id,
         group_id: group.id,
         physically_handicapped: Enum.random([true, false]),
-        course: Enum.random(["JEE", "NEET", "NDA"]),
         family_income: Enum.random(["1LPA-3LPA", "3LPA-6LPA", ">6LPA"]),
         father_profession:
           Enum.random(["Self-employed", "Unemployed", "Private employee", "Government employee"]),
@@ -177,8 +174,8 @@ defmodule Seed do
         mother_education_level: Enum.random(["UG", "PG", "NA"]),
         time_of_device_availability: Faker.DateTime.forward(Enum.random(1..10)),
         has_internet_access: Enum.random([true, false]),
-        primary_smartphone_owner: Enum.random(["Yes", "No"]),
-        primary_smartphone_owner_profession: Enum.random(["Yes", "No"])
+        primary_smartphone_owner: Enum.random(["Father", "Mother"]),
+        primary_smartphone_owner_profession: Enum.random(["Employed", "Un-employed"])
       })
 
     student

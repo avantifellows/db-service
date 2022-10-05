@@ -16,6 +16,8 @@ defmodule DbserviceWeb.SwaggerSchema.EnrollmentRecord do
             is_current(:boolean, "Is current enrollment record for student")
             student_id(:integer, "Student ID that the program enrollment belongs to")
             school_id(:integer, "School ID that the program enrollment belongs to")
+            board_medium(:string, "Medium of the board")
+            date_of_enrollment(:date, "Date of Enrollment")
           end
 
           example(%{
@@ -23,7 +25,9 @@ defmodule DbserviceWeb.SwaggerSchema.EnrollmentRecord do
             academic_year: "2022",
             is_current: true,
             student_id: 1,
-            school_id: 1
+            school_id: 1,
+            board_medium: "English",
+            date_of_enrollment: "02/03/2020"
           })
         end
     }
