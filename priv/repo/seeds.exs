@@ -175,7 +175,7 @@ defmodule Seed do
         time_of_device_availability: Faker.DateTime.forward(Enum.random(1..10)),
         has_internet_access: Enum.random([true, false]),
         primary_smartphone_owner: Enum.random(["Father", "Mother"]),
-        primary_smartphone_owner_profession: Enum.random(["Employed", "Un-employed"])
+        primary_smartphone_owner_profession: Enum.random(["Employed", "Unemployed"])
       })
 
     student
