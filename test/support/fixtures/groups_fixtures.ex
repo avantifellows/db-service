@@ -17,7 +17,7 @@ defmodule Dbservice.GroupsFixtures do
         program_sub_type: "some program subtype",
         program_mode: "some program mode",
         program_start_date: ~U[2022-04-28 13:58:00Z],
-        program_target_outreach: Enum.random(3000..10000),
+        program_target_outreach: Enum.random(3000..9999),
         program_donor: "some program donor",
         program_state: "some program state",
         batch_contact_hours_per_week: Enum.random(20..48),
