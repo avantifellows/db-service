@@ -22,7 +22,14 @@ defmodule Dbservice.SessionsTest do
 
     test "list_session/0 returns all session" do
       session = session_fixture()
-      assert Sessions.list_session() == [session]
+
+      [session_list] =
+        Enum.filter(
+          Sessions.list_session(),
+          fn t -> t.name == session.name end
+        )
+
+      assert session_list.name == session.name
     end
 
     test "get_session!/1 returns the session with given id" do
@@ -36,11 +43,15 @@ defmodule Dbservice.SessionsTest do
         meta_data: %{},
         name: "some name",
         portal_link: "some portal_link",
-        repeat_till_date: ~U[2022-04-28 13:58:00Z],
-        repeat_type: "some repeat_type",
         start_time: ~U[2022-04-28 13:58:00Z],
         platform: "some platform",
-        platform_link: "some platform_link"
+        platform_link: "some platform_link",
+        owner_id: 129,
+        created_by_id: 124,
+        uuid: "",
+        is_active: false,
+        purpose: %{},
+        repeat_schedule: %{}
       }
 
       assert {:ok, %Session{} = session} = Sessions.create_session(valid_attrs)
@@ -48,11 +59,12 @@ defmodule Dbservice.SessionsTest do
       assert session.meta_data == %{}
       assert session.name == "some name"
       assert session.portal_link == "some portal_link"
-      assert session.repeat_till_date == ~U[2022-04-28 13:58:00Z]
-      assert session.repeat_type == "some repeat_type"
       assert session.start_time == ~U[2022-04-28 13:58:00Z]
       assert session.platform == "some platform"
       assert session.platform_link == "some platform_link"
+      assert session.is_active == false
+      assert session.purpose == %{}
+      assert session.repeat_schedule == %{}
     end
 
     test "create_session/1 with invalid data returns error changeset" do
@@ -71,7 +83,13 @@ defmodule Dbservice.SessionsTest do
         repeat_type: "some updated repeat_type",
         start_time: ~U[2022-04-29 13:58:00Z],
         platform: "some updated platform",
-        platform_link: "some updated platform_link"
+        platform_link: "some updated platform_link",
+        owner_id: 129,
+        created_by_id: 124,
+        uuid: "",
+        is_active: false,
+        purpose: %{},
+        repeat_schedule: %{}
       }
 
       assert {:ok, %Session{} = session} = Sessions.update_session(session, update_attrs)
@@ -79,11 +97,12 @@ defmodule Dbservice.SessionsTest do
       assert session.meta_data == %{}
       assert session.name == "some updated name"
       assert session.portal_link == "some updated portal_link"
-      assert session.repeat_till_date == ~U[2022-04-29 13:58:00Z]
-      assert session.repeat_type == "some updated repeat_type"
       assert session.start_time == ~U[2022-04-29 13:58:00Z]
       assert session.platform == "some updated platform"
       assert session.platform_link == "some updated platform_link"
+      assert session.is_active == false
+      assert session.purpose == %{}
+      assert session.repeat_schedule == %{}
     end
 
     test "update_session/2 with invalid data returns error changeset" do
@@ -113,7 +132,14 @@ defmodule Dbservice.SessionsTest do
 
     test "list_session_occurence/0 returns all session_occurence" do
       session_occurence = session_occurence_fixture()
-      assert Sessions.list_session_occurence() == [session_occurence]
+
+      [session_occurence_list] =
+        Enum.filter(
+          Sessions.list_session_occurence(),
+          fn t -> t.start_time == session_occurence.start_time end
+        )
+
+      assert session_occurence_list.start_time == session_occurence.start_time
     end
 
     test "get_session_occurence!/1 returns the session_occurence with given id" do
@@ -122,7 +148,11 @@ defmodule Dbservice.SessionsTest do
     end
 
     test "create_session_occurence/1 with valid data creates a session_occurence" do
-      valid_attrs = %{end_time: ~U[2022-04-28 14:05:00Z], start_time: ~U[2022-04-28 14:05:00Z]}
+      valid_attrs = %{
+        end_time: ~U[2022-04-28 14:05:00Z],
+        start_time: ~U[2022-04-28 14:05:00Z],
+        session_id: 7
+      }
 
       assert {:ok, %SessionOccurence{} = session_occurence} =
                Sessions.create_session_occurence(valid_attrs)

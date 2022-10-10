@@ -21,7 +21,9 @@ defmodule Dbservice.UsersFixtures do
         phone: "some phone",
         pincode: "some pincode",
         role: "some role",
-        state: "some state"
+        state: "some state",
+        whatsapp_phone: "some whatsapp phone",
+        date_of_birth: ~U[2022-04-28 13:58:00Z]
       })
       |> Dbservice.Users.create_user()
 
@@ -41,7 +43,19 @@ defmodule Dbservice.UsersFixtures do
         mother_name: "some mother_name",
         mother_phone: "some mother_phone",
         stream: "some stream",
-        uuid: "some uuid"
+        uuid: "some uuid",
+        physically_handicapped: false,
+        family_income: "some family income",
+        father_profession: "some father profession",
+        father_education_level: "some father education level",
+        mother_profession: "some mother profession",
+        mother_education_level: "some mother education level",
+        time_of_device_availability: ~U[2022-04-28 13:58:00Z],
+        has_internet_access: false,
+        primary_smartphone_owner: "some primary smartphone owner",
+        primary_smartphone_owner_profession: "some primary smartphone owner profession",
+        user_id: 142,
+        group_id: 10
       })
       |> Dbservice.Users.create_student()
 
@@ -57,7 +71,11 @@ defmodule Dbservice.UsersFixtures do
       |> Enum.into(%{
         designation: "some designation",
         grade: "some grade",
-        subject: "some subject"
+        subject: "some subject",
+        uuid: "some uuid",
+        user_id: 242,
+        school_id: 316,
+        program_manager_id: 97
       })
       |> Dbservice.Users.create_teacher()
 

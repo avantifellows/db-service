@@ -8,11 +8,32 @@ defmodule Dbservice.GroupsTest do
 
     import Dbservice.GroupsFixtures
 
-    @invalid_attrs %{input_schema: nil, locale: nil, locale_data: nil}
+    @invalid_attrs %{
+      name: nil,
+      type: nil,
+      program_type: nil,
+      program_sub_type: nil,
+      program_mode: nil,
+      program_start_date: nil,
+      program_target_outreach: nil,
+      program_donor: nil,
+      program_state: nil,
+      batch_contact_hours_per_week: nil,
+      group_input_schema: nil,
+      group_locale: nil,
+      group_locale_data: nil
+    }
 
     test "list_group/0 returns all group" do
       group = group_fixture()
-      assert Groups.list_group() == [group]
+
+      [group_list] =
+        Enum.filter(
+          Groups.list_group(),
+          fn t -> t.program_type == group.program_type end
+        )
+
+      assert group_list.program_type == group.program_type
     end
 
     test "get_group!/1 returns the group with given id" do
@@ -21,12 +42,32 @@ defmodule Dbservice.GroupsTest do
     end
 
     test "create_group/1 with valid data creates a group" do
-      valid_attrs = %{input_schema: %{}, locale: "some locale", locale_data: %{}}
+      valid_attrs = %{
+        name: "some name",
+        type: "group",
+        program_type: "some program type",
+        program_sub_type: "some program subtype",
+        program_mode: "some program mode",
+        program_start_date: ~U[2022-04-28 13:58:00Z],
+        program_target_outreach: Enum.random(3000..10000),
+        program_donor: "some program donor",
+        program_state: "some program state",
+        batch_contact_hours_per_week: Enum.random(20..48),
+        group_input_schema: %{},
+        group_locale: "some locale",
+        group_locale_data: %{}
+      }
 
       assert {:ok, %Group{} = group} = Groups.create_group(valid_attrs)
-      assert group.input_schema == %{}
-      assert group.locale == "some locale"
-      assert group.locale_data == %{}
+      assert group.name == "some name"
+      assert group.program_type == "some program type"
+      assert group.program_sub_type == "some program subtype"
+      assert group.program_mode == "some program mode"
+      assert group.program_donor == "some program donor"
+      assert group.program_state == "some program state"
+      assert group.group_input_schema == %{}
+      assert group.group_locale == "some locale"
+      assert group.group_locale_data == %{}
     end
 
     test "create_group/1 with invalid data returns error changeset" do
@@ -35,12 +76,33 @@ defmodule Dbservice.GroupsTest do
 
     test "update_group/2 with valid data updates the group" do
       group = group_fixture()
-      update_attrs = %{input_schema: %{}, locale: "some updated locale", locale_data: %{}}
+
+      update_attrs = %{
+        name: "some updated name",
+        type: "group",
+        program_type: "some updated program type",
+        program_sub_type: "some updated program subtype",
+        program_mode: "some updated program mode",
+        program_start_date: ~U[2022-04-28 13:58:00Z],
+        program_target_outreach: Enum.random(3000..10000),
+        program_donor: "some updated program donor",
+        program_state: "some updated program state",
+        batch_contact_hours_per_week: Enum.random(20..48),
+        group_input_schema: %{},
+        group_locale: "some updated locale",
+        group_locale_data: %{}
+      }
 
       assert {:ok, %Group{} = group} = Groups.update_group(group, update_attrs)
-      assert group.input_schema == %{}
-      assert group.locale == "some updated locale"
-      assert group.locale_data == %{}
+      assert group.name == "some updated name"
+      assert group.program_type == "some updated program type"
+      assert group.program_sub_type == "some updated program subtype"
+      assert group.program_mode == "some updated program mode"
+      assert group.program_donor == "some updated program donor"
+      assert group.program_state == "some updated program state"
+      assert group.group_input_schema == %{}
+      assert group.group_locale == "some updated locale"
+      assert group.group_locale_data == %{}
     end
 
     test "update_group/2 with invalid data returns error changeset" do

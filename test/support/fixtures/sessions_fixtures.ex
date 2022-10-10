@@ -15,11 +15,15 @@ defmodule Dbservice.SessionsFixtures do
         meta_data: %{},
         name: "some name",
         portal_link: "some portal_link",
-        repeat_till_date: ~U[2022-04-28 13:58:00Z],
-        repeat_type: "some repeat_type",
         start_time: ~U[2022-04-28 13:58:00Z],
         platform: "some platform",
-        platform_link: "some platform_link"
+        platform_link: "some platform_link",
+        owner_id: 129,
+        created_by_id: 124,
+        uuid: "",
+        is_active: false,
+        purpose: %{},
+        repeat_schedule: %{}
       })
       |> Dbservice.Sessions.create_session()
 
@@ -34,7 +38,8 @@ defmodule Dbservice.SessionsFixtures do
       attrs
       |> Enum.into(%{
         end_time: ~U[2022-04-28 14:05:00Z],
-        start_time: ~U[2022-04-28 14:05:00Z]
+        start_time: ~U[2022-04-28 14:05:00Z],
+        session_id: 7
       })
       |> Dbservice.Sessions.create_session_occurence()
 
