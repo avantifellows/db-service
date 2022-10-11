@@ -170,7 +170,7 @@ defmodule Dbservice.SchoolsTest do
 
     test "create_enrollment_record/1 with valid data creates a enrollment_record" do
       valid_attrs = %{
-        academic_year: "some academic_year",
+        academic_year: "some academic year",
         grade: "some grade",
         is_current: true,
         board_medium: "some board medium",
@@ -182,7 +182,7 @@ defmodule Dbservice.SchoolsTest do
       assert {:ok, %EnrollmentRecord{} = enrollment_record} =
                Schools.create_enrollment_record(valid_attrs)
 
-      assert enrollment_record.academic_year == "some academic_year"
+      assert enrollment_record.academic_year == "some academic year"
       assert enrollment_record.grade == "some grade"
       assert enrollment_record.is_current == true
       assert enrollment_record.board_medium == "some board medium"
@@ -200,7 +200,7 @@ defmodule Dbservice.SchoolsTest do
         grade: "some updated grade",
         is_current: false,
         board_medium: "some updated board medium",
-        date_of_enrollment: ~U[2022-04-28 13:58:00Z]
+        date_of_enrollments: ~U[2022-04-28 13:58:00Z]
       }
 
       assert {:ok, %EnrollmentRecord{} = enrollment_record} =
