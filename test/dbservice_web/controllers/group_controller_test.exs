@@ -93,9 +93,9 @@ defmodule DbserviceWeb.GroupControllerTest do
       conn = get(conn, Routes.group_path(conn, :show, id))
 
       assert %{
-              "id" => ^id,
-              "name" => "some updated name",
-              "type" => "group"
+               "id" => ^id,
+               "name" => "some updated name",
+               "type" => "group"
              } = json_response(conn, 200)
     end
 
