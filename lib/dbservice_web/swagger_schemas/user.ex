@@ -22,6 +22,8 @@ defmodule DbserviceWeb.SwaggerSchema.User do
             state(:string, "State")
             pincode(:string, "Pin code")
             role(:string, "User role")
+            whatsapp_phone(:string, "Whatsapp phone")
+            date_of_birth(:date, "Date of Birth")
           end
 
           example(%{
@@ -35,7 +37,9 @@ defmodule DbserviceWeb.SwaggerSchema.User do
             district: "Mumbai",
             state: "Maharashtra",
             pincode: "400011",
-            role: "student"
+            role: "student",
+            whatsapp_phone: "9998887777",
+            date_of_birth: "2003/08/06"
           })
         end
     }

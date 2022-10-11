@@ -20,6 +20,14 @@ defmodule DbserviceWeb.SwaggerSchema.Student do
             stream(:string, "Stream")
             user_id(:integer, "User ID for the student")
             group_id(:integer, "Group ID for the student")
+            physically_handicapped(:boolean, "Physically hadicapped")
+            family_income(:string, "Annual income of family")
+            father_profession(:string, "Father's profession")
+            mother_profession(:String, "Mother's profession")
+            mother_education_level(:string, "Mother's education level")
+            has_internet_access(:boolean, "If the family has internet access")
+            primary_smartphone_owner(:string, "Primary smartphone owner")
+            primary_smartphone_owner_profession(:string, "Profession of primary smartphone owner")
           end
 
           example(%{
@@ -31,7 +39,17 @@ defmodule DbserviceWeb.SwaggerSchema.Student do
             category: "general",
             stream: "PCB",
             user_id: 1,
-            group_id: 2
+            group_id: 2,
+            physically_handicapped: false,
+            family_income: "3LPA-6LPA",
+            father_profession: "Unemployed",
+            father_education_level: "UG",
+            mother_profession: "Housewife",
+            mother_education_level: "UG",
+            time_of_device_availability: "2022-10-07",
+            has_internet_access: true,
+            primary_smartphone_owner: "Father",
+            primary_smartphone_owner_profession: "Employed"
           })
         end
     }
