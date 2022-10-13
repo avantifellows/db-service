@@ -66,7 +66,7 @@ defmodule DbserviceWeb.GroupControllerTest do
   describe "create group" do
     test "renders group when data is valid", %{conn: conn} do
       conn = post(conn, Routes.group_path(conn, :create), @create_attrs)
-      assert %{"id" => id} = json_response(conn, 201)
+      %{"id" => id} = json_response(conn, 201)
 
       conn = get(conn, Routes.group_path(conn, :show, id))
 

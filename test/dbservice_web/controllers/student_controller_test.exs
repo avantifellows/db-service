@@ -82,7 +82,7 @@ defmodule DbserviceWeb.StudentControllerTest do
   describe "create student" do
     test "renders student when data is valid", %{conn: conn} do
       conn = post(conn, Routes.student_path(conn, :create), @create_attrs)
-      assert %{"id" => id} = json_response(conn, 201)
+      %{"id" => id} = json_response(conn, 201)
 
       conn = get(conn, Routes.student_path(conn, :show, id))
 

@@ -32,7 +32,7 @@ defmodule DbserviceWeb.SessionOccurenceControllerTest do
     test "renders session_occurence when data is valid", %{conn: conn} do
       conn = post(conn, Routes.session_occurence_path(conn, :create), @create_attrs)
 
-      assert %{"id" => id} = json_response(conn, 201)
+      %{"id" => id} = json_response(conn, 201)
 
       conn = get(conn, Routes.session_occurence_path(conn, :show, id))
 

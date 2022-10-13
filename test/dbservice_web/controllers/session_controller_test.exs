@@ -62,7 +62,7 @@ defmodule DbserviceWeb.SessionControllerTest do
   describe "create session" do
     test "renders session when data is valid", %{conn: conn} do
       conn = post(conn, Routes.session_path(conn, :create), @create_attrs)
-      assert %{"id" => id} = json_response(conn, 201)
+      %{"id" => id} = json_response(conn, 201)
 
       conn = get(conn, Routes.session_path(conn, :show, id))
 
