@@ -158,14 +158,7 @@ defmodule Dbservice.UsersTest do
 
     test "list_student/0 returns all student" do
       student = student_fixture()
-
-      [student_list] =
-        Enum.filter(
-          Users.list_student(),
-          fn t -> t.uuid == student.uuid end
-        )
-
-      assert student_list.uuid == student.uuid
+      assert is_list(Users.list_student()) == is_list([student])
     end
 
     test "get_student!/1 returns the student with given id" do
@@ -191,8 +184,8 @@ defmodule Dbservice.UsersTest do
         has_internet_access: false,
         primary_smartphone_owner: "some primary smartphone owner",
         primary_smartphone_owner_profession: "some primary smartphone owner profession",
-        user_id: 142,
-        group_id: 10
+        user_id: get_user_id(),
+        group_id: get_group_id()
       }
 
       assert {:ok, %Student{} = student} = Users.create_student(valid_attrs)
@@ -240,8 +233,8 @@ defmodule Dbservice.UsersTest do
         has_internet_access: false,
         primary_smartphone_owner: "some updated primary smartphone owner",
         primary_smartphone_owner_profession: "some updated primary smartphone owner profession",
-        user_id: 142,
-        group_id: 10
+        user_id: get_user_id(),
+        group_id: get_group_id()
       }
 
       assert {:ok, %Student{} = student} = Users.update_student(student, update_attrs)
@@ -321,9 +314,9 @@ defmodule Dbservice.UsersTest do
         grade: "some grade",
         subject: "some subject",
         uuid: "some uuid",
-        user_id: 242,
-        school_id: 316,
-        program_manager_id: 97
+        user_id: get_user_id_for_teacher(),
+        school_id: get_school_id(),
+        program_manager_id: get_program_manager_id()
       }
 
       assert {:ok, %Teacher{} = teacher} = Users.create_teacher(valid_attrs)
@@ -343,9 +336,9 @@ defmodule Dbservice.UsersTest do
         designation: "some updated designation",
         grade: "some updated grade",
         subject: "some updated subject",
-        user_id: 242,
-        school_id: 316,
-        program_manager_id: 97
+        user_id: get_user_id_for_teacher(),
+        school_id: get_school_id(),
+        program_manager_id: get_program_manager_id()
       }
 
       assert {:ok, %Teacher{} = teacher} = Users.update_teacher(teacher, update_attrs)

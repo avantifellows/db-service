@@ -1,4 +1,6 @@
 defmodule Dbservice.UsersFixtures do
+  alias Dbservice.Users
+
   @moduledoc """
   This module defines test helpers for creating
   entities via the `Dbservice.Users` context.
@@ -54,8 +56,8 @@ defmodule Dbservice.UsersFixtures do
         has_internet_access: false,
         primary_smartphone_owner: "some primary smartphone owner",
         primary_smartphone_owner_profession: "some primary smartphone owner profession",
-        user_id: 142,
-        group_id: 10
+        user_id: get_user_id(),
+        group_id: get_group_id()
       })
       |> Dbservice.Users.create_student()
 
@@ -73,12 +75,42 @@ defmodule Dbservice.UsersFixtures do
         grade: "some grade",
         subject: "some subject",
         uuid: "some uuid",
-        user_id: 242,
-        school_id: 316,
-        program_manager_id: 97
+        user_id: get_user_id_for_teacher(),
+        school_id: get_school_id(),
+        program_manager_id: get_program_manager_id()
       })
       |> Dbservice.Users.create_teacher()
 
     teacher
+  end
+
+  def get_user_id do
+    [head | _tail] = Users.list_student()
+    user_id = head.user_id
+    user_id
+  end
+
+  def get_group_id do
+    [head | _tail] = Users.list_student()
+    group_id = head.group_id
+    group_id
+  end
+
+  def get_user_id_for_teacher do
+    [head | _tail] = Users.list_teacher()
+    user_id = head.user_id
+    user_id
+  end
+
+  def get_school_id do
+    [head | _tail] = Users.list_teacher()
+    school_id = head.school_id
+    school_id
+  end
+
+  def get_program_manager_id do
+    [head | _tail] = Users.list_teacher()
+    program_manager_id = head.program_manager_id
+    program_manager_id
   end
 end

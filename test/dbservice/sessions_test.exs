@@ -22,14 +22,7 @@ defmodule Dbservice.SessionsTest do
 
     test "list_session/0 returns all session" do
       session = session_fixture()
-
-      [session_list] =
-        Enum.filter(
-          Sessions.list_session(),
-          fn t -> t.name == session.name end
-        )
-
-      assert session_list.name == session.name
+      assert is_list(Sessions.list_session()) == is_list([session])
     end
 
     test "get_session!/1 returns the session with given id" do
@@ -46,8 +39,8 @@ defmodule Dbservice.SessionsTest do
         start_time: ~U[2022-04-28 13:58:00Z],
         platform: "some platform",
         platform_link: "some platform_link",
-        owner_id: 129,
-        created_by_id: 124,
+        owner_id: get_owner_id(),
+        created_by_id: get_created_by_id(),
         uuid: "",
         is_active: false,
         purpose: %{},
@@ -84,8 +77,8 @@ defmodule Dbservice.SessionsTest do
         start_time: ~U[2022-04-29 13:58:00Z],
         platform: "some updated platform",
         platform_link: "some updated platform_link",
-        owner_id: 129,
-        created_by_id: 124,
+        owner_id: get_owner_id(),
+        created_by_id: get_created_by_id(),
         uuid: "",
         is_active: false,
         purpose: %{},
@@ -132,14 +125,7 @@ defmodule Dbservice.SessionsTest do
 
     test "list_session_occurence/0 returns all session_occurence" do
       session_occurence = session_occurence_fixture()
-
-      [session_occurence_list] =
-        Enum.filter(
-          Sessions.list_session_occurence(),
-          fn t -> t.start_time == session_occurence.start_time end
-        )
-
-      assert session_occurence_list.start_time == session_occurence.start_time
+      assert is_list(Sessions.list_session_occurence()) == is_list([session_occurence])
     end
 
     test "get_session_occurence!/1 returns the session_occurence with given id" do
@@ -151,7 +137,7 @@ defmodule Dbservice.SessionsTest do
       valid_attrs = %{
         end_time: ~U[2022-04-28 14:05:00Z],
         start_time: ~U[2022-04-28 14:05:00Z],
-        session_id: 7
+        session_id: get_session_id()
       }
 
       assert {:ok, %SessionOccurence{} = session_occurence} =

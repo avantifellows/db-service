@@ -27,14 +27,7 @@ defmodule Dbservice.SchoolsTest do
 
     test "list_school/0 returns all school" do
       school = school_fixture()
-
-      [school_list] =
-        Enum.filter(
-          Schools.list_school(),
-          fn t -> t.code == school.code end
-        )
-
-      assert school_list.code == school.code
+      assert is_list(Schools.list_school()) == is_list([school])
     end
 
     test "get_school!/1 returns the school with given id" do
@@ -175,8 +168,8 @@ defmodule Dbservice.SchoolsTest do
         is_current: true,
         board_medium: "some board medium",
         date_of_enrollment: ~U[2022-04-28 13:58:00Z],
-        student_id: 92,
-        school_id: 323
+        student_id: get_student_id(),
+        school_id: get_school_id()
       }
 
       assert {:ok, %EnrollmentRecord{} = enrollment_record} =

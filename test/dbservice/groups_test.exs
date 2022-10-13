@@ -26,14 +26,7 @@ defmodule Dbservice.GroupsTest do
 
     test "list_group/0 returns all group" do
       group = group_fixture()
-
-      [group_list] =
-        Enum.filter(
-          Groups.list_group(),
-          fn t -> t.program_type == group.program_type end
-        )
-
-      assert group_list.program_type == group.program_type
+      assert is_list(Groups.list_group()) == is_list([group])
     end
 
     test "get_group!/1 returns the group with given id" do
