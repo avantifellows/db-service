@@ -49,9 +49,9 @@ defmodule DbserviceWeb.SessionControllerTest do
 
   describe "index" do
     test "lists all session", %{conn: conn} do
+      session_fixture = session_fixture()
       conn = get(conn, Routes.session_path(conn, :index))
-      [head | _tail] = json_response(conn, 200)
-      assert head["platform"] == "teams"
+      assert is_list(json_response(conn, 200)) == is_list([session_fixture])
     end
   end
 

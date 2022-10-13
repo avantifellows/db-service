@@ -57,9 +57,9 @@ defmodule DbserviceWeb.GroupControllerTest do
 
   describe "index" do
     test "lists all group", %{conn: conn} do
+      group_fixture = group_fixture()
       conn = get(conn, Routes.group_path(conn, :index))
-      [head | _tail] = json_response(conn, 200)
-      assert head["program_state"] == "HARYANA"
+      assert is_list(json_response(conn, 200)) == is_list([group_fixture])
     end
   end
 

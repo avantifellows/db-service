@@ -21,9 +21,9 @@ defmodule DbserviceWeb.SessionOccurenceControllerTest do
 
   describe "index" do
     test "lists all session_occurence", %{conn: conn} do
+      session_occurence_fixture = session_occurence_fixture()
       conn = get(conn, Routes.session_occurence_path(conn, :index))
-      [head | _tail] = json_response(conn, 200)
-      assert head["end_time"] == "2022-10-04T00:00:06Z"
+      assert is_list(json_response(conn, 200)) == is_list([session_occurence_fixture])
     end
   end
 

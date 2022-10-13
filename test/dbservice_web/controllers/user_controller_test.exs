@@ -57,9 +57,9 @@ defmodule DbserviceWeb.UserControllerTest do
 
   describe "index" do
     test "lists all user", %{conn: conn} do
+      user_fixture = user_fixture()
       conn = get(conn, Routes.user_path(conn, :index))
-      [head | _tail] = json_response(conn, 200)
-      assert head["role"] == "admin"
+      assert is_list(json_response(conn, 200)) == is_list([user_fixture])
     end
   end
 

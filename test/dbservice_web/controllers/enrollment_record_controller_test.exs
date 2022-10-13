@@ -35,9 +35,9 @@ defmodule DbserviceWeb.EnrollmentRecordControllerTest do
 
   describe "index" do
     test "lists all enrollment_record", %{conn: conn} do
+      enrollment_record_fixture = enrollment_record_fixture()
       conn = get(conn, Routes.enrollment_record_path(conn, :index))
-      [head | _tail] = json_response(conn, 200)
-      assert head["academic_year"] == "2017-18"
+      assert is_list(json_response(conn, 200)) == is_list([enrollment_record_fixture])
     end
   end
 

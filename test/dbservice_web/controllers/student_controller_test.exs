@@ -69,9 +69,9 @@ defmodule DbserviceWeb.StudentControllerTest do
 
   describe "index" do
     test "lists all student", %{conn: conn} do
+      student_fixture = student_fixture()
       conn = get(conn, Routes.student_path(conn, :index))
-      [head | _tail] = json_response(conn, 200)
-      assert head["father_profession"] == "Unemployed"
+      assert is_list(json_response(conn, 200)) == is_list([student_fixture])
     end
   end
 

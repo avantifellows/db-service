@@ -60,9 +60,9 @@ defmodule DbserviceWeb.SchoolControllerTest do
 
   describe "index" do
     test "lists all school", %{conn: conn} do
+      school_fixture = school_fixture()
       conn = get(conn, Routes.school_path(conn, :index))
-      [head | _tail] = json_response(conn, 200)
-      assert head["block_name"] == "MCDUNAIDED"
+      assert is_list(json_response(conn, 200)) == is_list([school_fixture])
     end
   end
 
