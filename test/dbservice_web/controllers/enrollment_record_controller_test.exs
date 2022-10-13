@@ -10,18 +10,14 @@ defmodule DbserviceWeb.EnrollmentRecordControllerTest do
     grade: "some grade",
     is_current: true,
     board_medium: "some board medium",
-    date_of_enrollment: ~U[2022-04-28 13:58:00Z],
-    student_id: 92,
-    school_id: 323
+    date_of_enrollment: ~U[2022-04-28 13:58:00Z]
   }
   @update_attrs %{
     academic_year: "some updated academic year",
     grade: "some updated grade",
     is_current: false,
     board_medium: "some updated board medium",
-    date_of_enrollment: ~U[2022-04-28 13:58:00Z],
-    student_id: 92,
-    school_id: 323
+    date_of_enrollment: ~U[2022-04-28 13:58:00Z]
   }
   @invalid_attrs %{
     academic_year: nil,
@@ -47,7 +43,7 @@ defmodule DbserviceWeb.EnrollmentRecordControllerTest do
 
   describe "create enrollment_record" do
     test "renders enrollment_record when data is valid", %{conn: conn} do
-      conn = post(conn, Routes.enrollment_record_path(conn, :create), @create_attrs)
+      conn = post(conn, Routes.enrollment_record_path(conn, :create), get_ids_create_attrs())
       %{"id" => id} = json_response(conn, 201)
 
       conn = get(conn, Routes.enrollment_record_path(conn, :show, id))
@@ -77,7 +73,11 @@ defmodule DbserviceWeb.EnrollmentRecordControllerTest do
       enrollment_record: %EnrollmentRecord{id: id} = enrollment_record
     } do
       conn =
-        put(conn, Routes.enrollment_record_path(conn, :update, enrollment_record), @update_attrs)
+        put(
+          conn,
+          Routes.enrollment_record_path(conn, :update, enrollment_record),
+          get_ids_update_attrs()
+        )
 
       assert %{"id" => ^id} = json_response(conn, 200)
 
@@ -118,5 +118,21 @@ defmodule DbserviceWeb.EnrollmentRecordControllerTest do
   defp create_enrollment_record(_) do
     enrollment_record = enrollment_record_fixture()
     %{enrollment_record: enrollment_record}
+  end
+
+  defp get_ids_create_attrs do
+    enrollment_record_fixture = enrollment_record_fixture()
+    student_id = enrollment_record_fixture.student_id
+    school_id = enrollment_record_fixture.school_id
+    attrs1 = Map.merge(@create_attrs, %{student_id: student_id, school_id: school_id})
+    attrs1
+  end
+
+  defp get_ids_update_attrs do
+    enrollment_record_fixture = enrollment_record_fixture()
+    student_id = enrollment_record_fixture.student_id
+    school_id = enrollment_record_fixture.school_id
+    attrs2 = Map.merge(@update_attrs, %{student_id: student_id, school_id: school_id})
+    attrs2
   end
 end

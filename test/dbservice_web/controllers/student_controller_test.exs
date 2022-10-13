@@ -21,9 +21,7 @@ defmodule DbserviceWeb.StudentControllerTest do
     mother_education_level: "some mother education level",
     has_internet_access: false,
     primary_smartphone_owner: "some primary smartphone owner",
-    primary_smartphone_owner_profession: "some primary smartphone owner profession",
-    user_id: 142,
-    group_id: 10
+    primary_smartphone_owner_profession: "some primary smartphone owner profession"
   }
   @update_attrs %{
     category: "some updated category",
@@ -41,9 +39,7 @@ defmodule DbserviceWeb.StudentControllerTest do
     mother_education_level: "some updated mother education level",
     has_internet_access: false,
     primary_smartphone_owner: "some updated primary smartphone owner",
-    primary_smartphone_owner_profession: "some updated primary smartphone owner profession",
-    user_id: 142,
-    group_id: 10
+    primary_smartphone_owner_profession: "some updated primary smartphone owner profession"
   }
   @invalid_attrs %{
     category: nil,
@@ -81,7 +77,7 @@ defmodule DbserviceWeb.StudentControllerTest do
 
   describe "create student" do
     test "renders student when data is valid", %{conn: conn} do
-      conn = post(conn, Routes.student_path(conn, :create), @create_attrs)
+      conn = post(conn, Routes.student_path(conn, :create), get_ids_create_attrs())
       %{"id" => id} = json_response(conn, 201)
 
       conn = get(conn, Routes.student_path(conn, :show, id))
@@ -117,7 +113,7 @@ defmodule DbserviceWeb.StudentControllerTest do
     setup [:create_student]
 
     test "renders student when data is valid", %{conn: conn, student: %Student{id: id} = student} do
-      conn = put(conn, Routes.student_path(conn, :update, student), @update_attrs)
+      conn = put(conn, Routes.student_path(conn, :update, student), get_ids_update_attrs())
       assert %{"id" => ^id} = json_response(conn, 200)
 
       conn = get(conn, Routes.student_path(conn, :show, id))
@@ -166,5 +162,21 @@ defmodule DbserviceWeb.StudentControllerTest do
   defp create_student(_) do
     student = student_fixture()
     %{student: student}
+  end
+
+  defp get_ids_create_attrs do
+    student_fixture = student_fixture()
+    user_id = student_fixture.user_id
+    group_id = student_fixture.group_id
+    attrs1 = Map.merge(@create_attrs, %{user_id: user_id, group_id: group_id})
+    attrs1
+  end
+
+  defp get_ids_update_attrs do
+    student_fixture = student_fixture()
+    user_id = student_fixture.user_id
+    group_id = student_fixture.group_id
+    attrs2 = Map.merge(@update_attrs, %{user_id: user_id, group_id: group_id})
+    attrs2
   end
 end

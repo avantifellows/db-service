@@ -13,8 +13,6 @@ defmodule DbserviceWeb.SessionControllerTest do
     start_time: ~U[2022-04-28 13:58:00Z],
     platform: "some platform",
     platform_link: "some platform link",
-    owner_id: 129,
-    created_by_id: 124,
     uuid: "",
     is_active: false,
     purpose: %{},
@@ -30,8 +28,6 @@ defmodule DbserviceWeb.SessionControllerTest do
     start_time: ~U[2022-04-29 13:58:00Z],
     platform: "some updated platform",
     platform_link: "some updated platform link",
-    owner_id: 129,
-    created_by_id: 124,
     uuid: "",
     is_active: false,
     purpose: %{},
@@ -61,7 +57,7 @@ defmodule DbserviceWeb.SessionControllerTest do
 
   describe "create session" do
     test "renders session when data is valid", %{conn: conn} do
-      conn = post(conn, Routes.session_path(conn, :create), @create_attrs)
+      conn = post(conn, Routes.session_path(conn, :create), get_ids_create_attrs())
       %{"id" => id} = json_response(conn, 201)
 
       conn = get(conn, Routes.session_path(conn, :show, id))
@@ -86,7 +82,7 @@ defmodule DbserviceWeb.SessionControllerTest do
     setup [:create_session]
 
     test "renders session when data is valid", %{conn: conn, session: %Session{id: id} = session} do
-      conn = put(conn, Routes.session_path(conn, :update, session), @update_attrs)
+      conn = put(conn, Routes.session_path(conn, :update, session), get_ids_update_attrs())
       assert %{"id" => ^id} = json_response(conn, 200)
 
       conn = get(conn, Routes.session_path(conn, :show, id))
@@ -110,5 +106,21 @@ defmodule DbserviceWeb.SessionControllerTest do
   defp create_session(_) do
     session = session_fixture()
     %{session: session}
+  end
+
+  defp get_ids_create_attrs do
+    session_fixture = session_fixture()
+    owner_id = session_fixture.owner_id
+    created_by_id = session_fixture.created_by_id
+    attrs1 = Map.merge(@create_attrs, %{owner_id: owner_id, created_by_id: created_by_id})
+    attrs1
+  end
+
+  defp get_ids_update_attrs do
+    session_fixture = session_fixture()
+    owner_id = session_fixture.owner_id
+    created_by_id = session_fixture.created_by_id
+    attrs2 = Map.merge(@update_attrs, %{owner_id: owner_id, created_by_id: created_by_id})
+    attrs2
   end
 end

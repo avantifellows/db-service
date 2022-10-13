@@ -7,8 +7,7 @@ defmodule DbserviceWeb.SessionOccurenceControllerTest do
 
   @create_attrs %{
     end_time: ~U[2022-04-28 14:05:00Z],
-    start_time: ~U[2022-04-28 14:05:00Z],
-    session_id: 7
+    start_time: ~U[2022-04-28 14:05:00Z]
   }
   @update_attrs %{
     end_time: ~U[2022-04-29 14:05:00Z],
@@ -30,7 +29,7 @@ defmodule DbserviceWeb.SessionOccurenceControllerTest do
 
   describe "create session_occurence" do
     test "renders session_occurence when data is valid", %{conn: conn} do
-      conn = post(conn, Routes.session_occurence_path(conn, :create), @create_attrs)
+      conn = post(conn, Routes.session_occurence_path(conn, :create), get_ids_create_attrs())
 
       %{"id" => id} = json_response(conn, 201)
 
@@ -59,7 +58,11 @@ defmodule DbserviceWeb.SessionOccurenceControllerTest do
       session_occurence: %SessionOccurence{id: id} = session_occurence
     } do
       conn =
-        put(conn, Routes.session_occurence_path(conn, :update, session_occurence), @update_attrs)
+        put(
+          conn,
+          Routes.session_occurence_path(conn, :update, session_occurence),
+          get_ids_update_attrs()
+        )
 
       assert %{"id" => ^id} = json_response(conn, 200)
 
@@ -99,5 +102,19 @@ defmodule DbserviceWeb.SessionOccurenceControllerTest do
   defp create_session_occurence(_) do
     session_occurence = session_occurence_fixture()
     %{session_occurence: session_occurence}
+  end
+
+  defp get_ids_create_attrs do
+    session_occurence_fixture = session_occurence_fixture()
+    session_id = session_occurence_fixture.session_id
+    attrs1 = Map.merge(@create_attrs, %{session_id: session_id})
+    attrs1
+  end
+
+  defp get_ids_update_attrs do
+    session_occurence_fixture = session_occurence_fixture()
+    session_id = session_occurence_fixture.session_id
+    attrs2 = Map.merge(@update_attrs, %{session_id: session_id})
+    attrs2
   end
 end
