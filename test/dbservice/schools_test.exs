@@ -146,14 +146,7 @@ defmodule Dbservice.SchoolsTest do
 
     test "list_enrollment_record/0 returns all enrollment_record" do
       enrollment_record = enrollment_record_fixture()
-
-      [enrollment_record_list] =
-        Enum.filter(
-          Schools.list_enrollment_record(),
-          fn t -> t.board_medium == enrollment_record.board_medium end
-        )
-
-      assert enrollment_record_list.board_medium == enrollment_record.board_medium
+      assert is_list(Schools.list_enrollment_record()) == is_list([enrollment_record])
     end
 
     test "get_enrollment_record!/1 returns the enrollment_record with given id" do

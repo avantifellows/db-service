@@ -26,14 +26,7 @@ defmodule Dbservice.UsersTest do
 
     test "list_user/0 returns all user" do
       user = user_fixture()
-
-      [user_list] =
-        Enum.filter(
-          Users.list_all_users(),
-          fn t -> t.date_of_birth == user.date_of_birth end
-        )
-
-      assert user_list.date_of_birth == user.date_of_birth
+      assert is_list(Users.list_all_users()) == is_list([user])
     end
 
     test "get_user!/1 returns the user with given id" do
@@ -293,14 +286,7 @@ defmodule Dbservice.UsersTest do
 
     test "list_teacher/0 returns all teacher" do
       teacher = teacher_fixture()
-
-      [teacher_list] =
-        Enum.filter(
-          Users.list_teacher(),
-          fn t -> t.grade == teacher.grade end
-        )
-
-      assert teacher_list.grade == teacher.grade
+      assert is_list(Users.list_teacher()) == is_list([teacher])
     end
 
     test "get_teacher!/1 returns the teacher with given id" do
