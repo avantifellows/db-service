@@ -12,7 +12,7 @@ defmodule Dbservice.GroupsFixtures do
       attrs
       |> Enum.into(%{
         name: "some name",
-        type: "group",
+        type: Enum.random(["group", "cohort", "batch", "program"]),
         program_type: "some program type",
         program_sub_type: "some program subtype",
         program_mode: "some program mode",
