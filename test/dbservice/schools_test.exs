@@ -151,7 +151,10 @@ defmodule Dbservice.SchoolsTest do
       enrollment_record = enrollment_record_fixture()
       [head | _tail] = Schools.list_enrollment_record()
       assert Map.has_key?(head, :academic_year) == Map.has_key?(enrollment_record, :academic_year)
-      assert Map.has_key?(enrollment_record, :date_of_enrollment) == Map.has_key?(enrollment_record, :date_of_enrollment)
+
+      assert Map.has_key?(enrollment_record, :date_of_enrollment) ==
+               Map.has_key?(enrollment_record, :date_of_enrollment)
+
       assert is_list(Schools.list_enrollment_record()) == is_list([enrollment_record])
     end
 
