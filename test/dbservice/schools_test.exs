@@ -27,7 +27,10 @@ defmodule Dbservice.SchoolsTest do
 
     test "list_school/0 returns all school" do
       school = school_fixture()
+      [head | _tail] = Schools.list_school()
       assert is_list(Schools.list_school()) == is_list([school])
+      assert Map.has_key?(head, :name) == Map.has_key?(school, :name)
+      assert Map.has_key?(head, :block_code) == Map.has_key?(school, :block_code)
     end
 
     test "get_school!/1 returns the school with given id" do
@@ -146,6 +149,9 @@ defmodule Dbservice.SchoolsTest do
 
     test "list_enrollment_record/0 returns all enrollment_record" do
       enrollment_record = enrollment_record_fixture()
+      [head | _tail] = Schools.list_enrollment_record()
+      assert Map.has_key?(head, :academic_year) == Map.has_key?(enrollment_record, :academic_year)
+      assert Map.has_key?(enrollment_record, :date_of_enrollment) == Map.has_key?(enrollment_record, :date_of_enrollment)
       assert is_list(Schools.list_enrollment_record()) == is_list([enrollment_record])
     end
 
