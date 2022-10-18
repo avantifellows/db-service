@@ -14,8 +14,8 @@ defmodule Dbservice.Groups.GroupSession do
   end
 
   @doc false
-  def changeset(group_user, attrs) do
-    group_user
+  def changeset(group_session, attrs) do
+    group_session
     |> cast(attrs, [
       :group_id,
       :session_id
