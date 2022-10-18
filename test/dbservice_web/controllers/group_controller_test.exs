@@ -50,6 +50,24 @@ defmodule DbserviceWeb.GroupControllerTest do
     group_locale: nil,
     group_locale_data: nil
   }
+  @valid_fields [
+    "batch_contact_hours_per_week",
+    "group_input_schema",
+    "group_locale",
+    "group_locale_data",
+    "id",
+    "name",
+    "parent_id",
+    "program_donor",
+    "program_mode",
+    "program_product_used",
+    "program_start_date",
+    "program_state",
+    "program_sub_type",
+    "program_target_outreach",
+    "program_type",
+    "type"
+  ]
 
   setup %{conn: conn} do
     {:ok, conn: put_req_header(conn, "accept", "application/json")}
@@ -57,9 +75,9 @@ defmodule DbserviceWeb.GroupControllerTest do
 
   describe "index" do
     test "lists all group", %{conn: conn} do
-      group_fixture = group_fixture()
       conn = get(conn, Routes.group_path(conn, :index))
-      assert is_list(json_response(conn, 200)) == is_list([group_fixture])
+      [head | _tail] = json_response(conn, 200)
+      assert Map.keys(head) == @valid_fields
     end
   end
 

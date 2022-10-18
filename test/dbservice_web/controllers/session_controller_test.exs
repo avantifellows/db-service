@@ -42,6 +42,22 @@ defmodule DbserviceWeb.SessionControllerTest do
     platform: nil,
     platform_link: nil
   }
+  @valid_fields [
+    "created_by_id",
+    "end_time",
+    "id",
+    "is_active",
+    "meta_data",
+    "name",
+    "owner_id",
+    "platform",
+    "platform_link",
+    "portal_link",
+    "purpose",
+    "repeat_schedule",
+    "start_time",
+    "uuid"
+  ]
 
   setup %{conn: conn} do
     {:ok, conn: put_req_header(conn, "accept", "application/json")}
@@ -49,9 +65,9 @@ defmodule DbserviceWeb.SessionControllerTest do
 
   describe "index" do
     test "lists all session", %{conn: conn} do
-      session_fixture = session_fixture()
       conn = get(conn, Routes.session_path(conn, :index))
-      assert is_list(json_response(conn, 200)) == is_list([session_fixture])
+      [head | _tail] = json_response(conn, 200)
+      assert Map.keys(head) == @valid_fields
     end
   end
 

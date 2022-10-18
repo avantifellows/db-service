@@ -28,6 +28,16 @@ defmodule DbserviceWeb.EnrollmentRecordControllerTest do
     student_id: nil,
     school_id: nil
   }
+  @valid_fields [
+    "academic_year",
+    "board_medium",
+    "date_of_enrollment",
+    "grade",
+    "id",
+    "is_current",
+    "school_id",
+    "student_id"
+  ]
 
   setup %{conn: conn} do
     {:ok, conn: put_req_header(conn, "accept", "application/json")}
@@ -35,9 +45,11 @@ defmodule DbserviceWeb.EnrollmentRecordControllerTest do
 
   describe "index" do
     test "lists all enrollment_record", %{conn: conn} do
-      enrollment_record_fixture = enrollment_record_fixture()
       conn = get(conn, Routes.enrollment_record_path(conn, :index))
-      assert is_list(json_response(conn, 200)) == is_list([enrollment_record_fixture])
+      [head | _tail] = json_response(conn, 200)
+
+      assert Map.keys(head) ==
+               @valid_fields
     end
   end
 

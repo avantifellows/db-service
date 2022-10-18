@@ -53,6 +53,23 @@ defmodule DbserviceWeb.SchoolControllerTest do
     board: nil,
     board_medium: nil
   }
+  @valid_fields [
+    "block_code",
+    "block_name",
+    "board",
+    "board_medium",
+    "category",
+    "code",
+    "district",
+    "district_code",
+    "id",
+    "name",
+    "region",
+    "state",
+    "state_code",
+    "type",
+    "udise_code"
+  ]
 
   setup %{conn: conn} do
     {:ok, conn: put_req_header(conn, "accept", "application/json")}
@@ -60,9 +77,9 @@ defmodule DbserviceWeb.SchoolControllerTest do
 
   describe "index" do
     test "lists all school", %{conn: conn} do
-      school_fixture = school_fixture()
       conn = get(conn, Routes.school_path(conn, :index))
-      assert is_list(json_response(conn, 200)) == is_list([school_fixture])
+      [head | _tail] = json_response(conn, 200)
+      assert Map.keys(head) == @valid_fields
     end
   end
 

@@ -62,6 +62,28 @@ defmodule DbserviceWeb.StudentControllerTest do
     user_id: nil,
     group_id: nil
   }
+  @valid_fields [
+    "category",
+    "family_income",
+    "father_education_level",
+    "father_name",
+    "father_phone",
+    "father_profession",
+    "group_id",
+    "has_internet_access",
+    "id",
+    "mother_education_level",
+    "mother_name",
+    "mother_phone",
+    "mother_profession",
+    "physically_handicapped",
+    "primary_smartphone_owner",
+    "primary_smartphone_owner_profession",
+    "stream",
+    "time_of_device_availability",
+    "user_id",
+    "uuid"
+  ]
 
   setup %{conn: conn} do
     {:ok, conn: put_req_header(conn, "accept", "application/json")}
@@ -69,9 +91,9 @@ defmodule DbserviceWeb.StudentControllerTest do
 
   describe "index" do
     test "lists all student", %{conn: conn} do
-      student_fixture = student_fixture()
       conn = get(conn, Routes.student_path(conn, :index))
-      assert is_list(json_response(conn, 200)) == is_list([student_fixture])
+      [head | _tail] = json_response(conn, 200)
+      assert Map.keys(head) == @valid_fields
     end
   end
 

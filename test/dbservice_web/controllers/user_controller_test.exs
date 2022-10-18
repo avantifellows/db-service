@@ -50,6 +50,22 @@ defmodule DbserviceWeb.UserControllerTest do
     whatsapp_phone: nil,
     date_of_birth: nil
   }
+  @valid_fields [
+    "address",
+    "city",
+    "date_of_birth",
+    "district",
+    "email",
+    "first_name",
+    "gender",
+    "id",
+    "last_name",
+    "phone",
+    "pincode",
+    "role",
+    "state",
+    "whatsapp_phone"
+  ]
 
   setup %{conn: conn} do
     {:ok, conn: put_req_header(conn, "accept", "application/json")}
@@ -57,9 +73,9 @@ defmodule DbserviceWeb.UserControllerTest do
 
   describe "index" do
     test "lists all user", %{conn: conn} do
-      user_fixture = user_fixture()
       conn = get(conn, Routes.user_path(conn, :index))
-      assert is_list(json_response(conn, 200)) == is_list([user_fixture])
+      [head | _tail] = json_response(conn, 200)
+      assert Map.keys(head) == @valid_fields
     end
   end
 

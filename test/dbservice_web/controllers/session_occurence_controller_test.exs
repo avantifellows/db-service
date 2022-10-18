@@ -13,7 +13,15 @@ defmodule DbserviceWeb.SessionOccurenceControllerTest do
     end_time: ~U[2022-04-29 14:05:00Z],
     start_time: ~U[2022-04-29 14:05:00Z]
   }
-  @invalid_attrs %{end_time: nil, start_time: nil}
+  @invalid_attrs %{
+    end_time: nil,
+    start_time: nil
+  }
+  @valid_fields [
+    "end_time",
+    "id",
+    "start_time"
+  ]
 
   setup %{conn: conn} do
     {:ok, conn: put_req_header(conn, "accept", "application/json")}
@@ -21,9 +29,9 @@ defmodule DbserviceWeb.SessionOccurenceControllerTest do
 
   describe "index" do
     test "lists all session_occurence", %{conn: conn} do
-      session_occurence_fixture = session_occurence_fixture()
       conn = get(conn, Routes.session_occurence_path(conn, :index))
-      assert is_list(json_response(conn, 200)) == is_list([session_occurence_fixture])
+      [head | _tail] = json_response(conn, 200)
+      assert Map.keys(head) == @valid_fields
     end
   end
 

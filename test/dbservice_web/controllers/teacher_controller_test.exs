@@ -26,6 +26,15 @@ defmodule DbserviceWeb.TeacherControllerTest do
     school_id: nil,
     program_manager_id: nil
   }
+  @valid_fields [
+    "designation",
+    "grade",
+    "id",
+    "program_manager_id",
+    "school_id",
+    "subject",
+    "user_id"
+  ]
 
   setup %{conn: conn} do
     {:ok, conn: put_req_header(conn, "accept", "application/json")}
@@ -33,9 +42,9 @@ defmodule DbserviceWeb.TeacherControllerTest do
 
   describe "index" do
     test "lists all teacher", %{conn: conn} do
-      teacher_fixture = teacher_fixture()
       conn = get(conn, Routes.teacher_path(conn, :index))
-      assert is_list(json_response(conn, 200)) == is_list([teacher_fixture])
+      [head | _tail] = json_response(conn, 200)
+      assert Map.keys(head) == @valid_fields
     end
   end
 
