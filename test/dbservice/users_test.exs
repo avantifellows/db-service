@@ -27,9 +27,7 @@ defmodule Dbservice.UsersTest do
     test "list_user/0 returns all user" do
       user = user_fixture()
       [head | _tail] = Users.list_all_users()
-      assert is_list(Users.list_all_users()) == is_list([user])
-      assert Map.has_key?(head, :first_name) == Map.has_key?(user, :first_name)
-      assert Map.has_key?(head, :last_name) == Map.has_key?(user, :last_name)
+      assert Map.keys(head) == Map.keys(user)
     end
 
     test "get_user!/1 returns the user with given id" do
@@ -155,9 +153,7 @@ defmodule Dbservice.UsersTest do
     test "list_student/0 returns all student" do
       student = student_fixture()
       [head | _tail] = Users.list_student()
-      assert is_list(Users.list_student()) == is_list([student])
-      assert Map.has_key?(head, :user_id) == Map.has_key?(student, :user_id)
-      assert Map.has_key?(head, :group_id) == Map.has_key?(student, :group_id)
+      assert Map.keys(head) == Map.keys(student)
     end
 
     test "get_student!/1 returns the student with given id" do
@@ -293,9 +289,7 @@ defmodule Dbservice.UsersTest do
     test "list_teacher/0 returns all teacher" do
       teacher = teacher_fixture()
       [head | _tail] = Users.list_teacher()
-      assert is_list(Users.list_teacher()) == is_list([teacher])
-      assert Map.has_key?(head, :user_id) == Map.has_key?(teacher, :user_id)
-      assert Map.has_key?(head, :school_id) == Map.has_key?(teacher, :school_id)
+      assert Map.keys(head) == Map.keys(teacher)
     end
 
     test "get_teacher!/1 returns the teacher with given id" do

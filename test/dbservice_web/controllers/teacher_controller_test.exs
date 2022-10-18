@@ -107,14 +107,11 @@ defmodule DbserviceWeb.TeacherControllerTest do
     school_id = teacher_fixture.school_id
     program_manager_id = teacher_fixture.program_manager_id
 
-    attrs1 =
-      Map.merge(@create_attrs, %{
-        user_id: user_id,
-        school_id: school_id,
-        program_manager_id: program_manager_id
-      })
-
-    attrs1
+    Map.merge(@create_attrs, %{
+      user_id: user_id,
+      school_id: school_id,
+      program_manager_id: program_manager_id
+    })
   end
 
   defp get_ids_update_attrs do
@@ -123,13 +120,10 @@ defmodule DbserviceWeb.TeacherControllerTest do
     school_id = teacher_fixture.school_id
     program_manager_id = teacher_fixture.program_manager_id
 
-    attrs2 =
-      Map.merge(@update_attrs, %{
-        user_id: user_id,
-        school_id: school_id,
-        program_manager_id: program_manager_id
-      })
-
-    attrs2
+    Map.merge(@update_attrs, %{
+      user_id: user_id,
+      school_id: school_id,
+      program_manager_id: program_manager_id
+    })
   end
 end

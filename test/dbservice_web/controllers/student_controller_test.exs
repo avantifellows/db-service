@@ -168,15 +168,13 @@ defmodule DbserviceWeb.StudentControllerTest do
     student_fixture = student_fixture()
     user_id = student_fixture.user_id
     group_id = student_fixture.group_id
-    attrs1 = Map.merge(@create_attrs, %{user_id: user_id, group_id: group_id})
-    attrs1
+    Map.merge(@create_attrs, %{user_id: user_id, group_id: group_id})
   end
 
   defp get_ids_update_attrs do
     student_fixture = student_fixture()
     user_id = student_fixture.user_id
     group_id = student_fixture.group_id
-    attrs2 = Map.merge(@update_attrs, %{user_id: user_id, group_id: group_id})
-    attrs2
+    Map.merge(@update_attrs, %{user_id: user_id, group_id: group_id})
   end
 end

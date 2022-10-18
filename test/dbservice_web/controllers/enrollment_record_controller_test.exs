@@ -124,15 +124,13 @@ defmodule DbserviceWeb.EnrollmentRecordControllerTest do
     enrollment_record_fixture = enrollment_record_fixture()
     student_id = enrollment_record_fixture.student_id
     school_id = enrollment_record_fixture.school_id
-    attrs1 = Map.merge(@create_attrs, %{student_id: student_id, school_id: school_id})
-    attrs1
+    Map.merge(@create_attrs, %{student_id: student_id, school_id: school_id})
   end
 
   defp get_ids_update_attrs do
     enrollment_record_fixture = enrollment_record_fixture()
     student_id = enrollment_record_fixture.student_id
     school_id = enrollment_record_fixture.school_id
-    attrs2 = Map.merge(@update_attrs, %{student_id: student_id, school_id: school_id})
-    attrs2
+    Map.merge(@update_attrs, %{student_id: student_id, school_id: school_id})
   end
 end

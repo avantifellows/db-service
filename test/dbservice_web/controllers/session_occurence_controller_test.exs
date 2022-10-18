@@ -107,14 +107,12 @@ defmodule DbserviceWeb.SessionOccurenceControllerTest do
   defp get_ids_create_attrs do
     session_occurence_fixture = session_occurence_fixture()
     session_id = session_occurence_fixture.session_id
-    attrs1 = Map.merge(@create_attrs, %{session_id: session_id})
-    attrs1
+    Map.merge(@create_attrs, %{session_id: session_id})
   end
 
   defp get_ids_update_attrs do
     session_occurence_fixture = session_occurence_fixture()
     session_id = session_occurence_fixture.session_id
-    attrs2 = Map.merge(@update_attrs, %{session_id: session_id})
-    attrs2
+    Map.merge(@update_attrs, %{session_id: session_id})
   end
 end

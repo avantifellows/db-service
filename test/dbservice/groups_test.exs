@@ -27,9 +27,7 @@ defmodule Dbservice.GroupsTest do
     test "list_group/0 returns all group" do
       group = group_fixture()
       [head | _tail] = Groups.list_group()
-      assert is_list(Groups.list_group()) == is_list([group])
-      assert Map.has_key?(head, :program_type) == Map.has_key?(group, :program_type)
-      assert Map.has_key?(head, :program_state) == Map.has_key?(group, :program_state)
+      assert Map.keys(head) == Map.keys(group)
     end
 
     test "get_group!/1 returns the group with given id" do

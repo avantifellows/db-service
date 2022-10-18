@@ -23,9 +23,7 @@ defmodule Dbservice.SessionsTest do
     test "list_session/0 returns all session" do
       session = session_fixture()
       [head | _tail] = Sessions.list_session()
-      assert is_list(Sessions.list_session()) == is_list([session])
-      assert Map.has_key?(head, :meta_data) == Map.has_key?(session, :meta_data)
-      assert Map.has_key?(head, :name) == Map.has_key?(session, :name)
+      assert Map.keys(head) == Map.keys(session)
     end
 
     test "get_session!/1 returns the session with given id" do
@@ -129,9 +127,7 @@ defmodule Dbservice.SessionsTest do
     test "list_session_occurence/0 returns all session_occurence" do
       session_occurence = session_occurence_fixture()
       [head | _tail] = Sessions.list_session_occurence()
-      assert is_list(Sessions.list_session_occurence()) == is_list([session_occurence])
-      assert Map.has_key?(head, :start_time) == Map.has_key?(session_occurence, :start_time)
-      assert Map.has_key?(head, :end_time) == Map.has_key?(session_occurence, :end_time)
+      assert Map.keys(head) == Map.keys(session_occurence)
     end
 
     test "get_session_occurence!/1 returns the session_occurence with given id" do

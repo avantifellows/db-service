@@ -112,15 +112,13 @@ defmodule DbserviceWeb.SessionControllerTest do
     session_fixture = session_fixture()
     owner_id = session_fixture.owner_id
     created_by_id = session_fixture.created_by_id
-    attrs1 = Map.merge(@create_attrs, %{owner_id: owner_id, created_by_id: created_by_id})
-    attrs1
+    Map.merge(@create_attrs, %{owner_id: owner_id, created_by_id: created_by_id})
   end
 
   defp get_ids_update_attrs do
     session_fixture = session_fixture()
     owner_id = session_fixture.owner_id
     created_by_id = session_fixture.created_by_id
-    attrs2 = Map.merge(@update_attrs, %{owner_id: owner_id, created_by_id: created_by_id})
-    attrs2
+    Map.merge(@update_attrs, %{owner_id: owner_id, created_by_id: created_by_id})
   end
 end
