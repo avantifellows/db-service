@@ -114,7 +114,7 @@ defmodule DbserviceWeb.UserControllerTest do
 
     test "renders user when data is valid", %{conn: conn, user: %User{id: id} = user} do
       conn = put(conn, Routes.user_path(conn, :update, user), @update_attrs)
-      assert %{"id" => ^id} = json_response(conn, 200)
+      %{"id" => ^id} = json_response(conn, 200)
 
       conn = get(conn, Routes.user_path(conn, :show, id))
 

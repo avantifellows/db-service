@@ -109,7 +109,7 @@ defmodule DbserviceWeb.SchoolControllerTest do
 
     test "renders school when data is valid", %{conn: conn, school: %School{id: id} = school} do
       conn = put(conn, Routes.school_path(conn, :update, school), @update_attrs)
-      assert %{"id" => ^id} = json_response(conn, 200)
+      %{"id" => ^id} = json_response(conn, 200)
 
       conn = get(conn, Routes.school_path(conn, :show, id))
 

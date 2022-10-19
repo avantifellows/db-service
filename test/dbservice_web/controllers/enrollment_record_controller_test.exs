@@ -91,7 +91,7 @@ defmodule DbserviceWeb.EnrollmentRecordControllerTest do
           get_ids_update_attrs()
         )
 
-      assert %{"id" => ^id} = json_response(conn, 200)
+      %{"id" => ^id} = json_response(conn, 200)
 
       conn = get(conn, Routes.enrollment_record_path(conn, :show, id))
 

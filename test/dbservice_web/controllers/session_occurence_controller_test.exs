@@ -72,7 +72,7 @@ defmodule DbserviceWeb.SessionOccurenceControllerTest do
           get_ids_update_attrs()
         )
 
-      assert %{"id" => ^id} = json_response(conn, 200)
+      %{"id" => ^id} = json_response(conn, 200)
 
       conn = get(conn, Routes.session_occurence_path(conn, :show, id))
 

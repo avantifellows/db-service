@@ -74,7 +74,7 @@ defmodule DbserviceWeb.TeacherControllerTest do
 
     test "renders teacher when data is valid", %{conn: conn, teacher: %Teacher{id: id} = teacher} do
       conn = put(conn, Routes.teacher_path(conn, :update, teacher), get_ids_update_attrs())
-      assert %{"id" => ^id} = json_response(conn, 200)
+      %{"id" => ^id} = json_response(conn, 200)
 
       conn = get(conn, Routes.teacher_path(conn, :show, id))
 
