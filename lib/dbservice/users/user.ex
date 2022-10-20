@@ -53,11 +53,24 @@ defmodule Dbservice.Users.User do
       :date_of_birth
     ])
     |> validate_required([:first_name, :last_name, :email, :phone])
+    |> validate_format(:whatsapp_phone, ~r{\A\d*\z})
+    |> validate_date_of_birth
   end
 
   def changeset_update_groups(user, groups) do
     user
     |> change()
     |> put_assoc(:group, groups)
+  end
+
+  defp validate_date_of_birth(changeset) do
+    todays_date = Date.utc_today()
+    date_of_birth = get_field(changeset, :date_of_birth)
+
+    if Date.compare(date_of_birth, todays_date) == :gt do
+      add_error(changeset, :date_of_birth, "cannot be later than today's date")
+    else
+      changeset
+    end
   end
 end

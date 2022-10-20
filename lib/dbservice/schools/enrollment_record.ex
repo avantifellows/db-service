@@ -33,5 +33,17 @@ defmodule Dbservice.Schools.EnrollmentRecord do
       :date_of_enrollment
     ])
     |> validate_required([:student_id, :school_id])
+    |> validate_date_of_enrollment
+  end
+
+  defp validate_date_of_enrollment(changeset) do
+    todays_date = Date.utc_today()
+    date_of_enrollment = get_field(changeset, :date_of_enrollment)
+
+    if Date.compare(date_of_enrollment, todays_date) == :gt do
+      add_error(changeset, :date_of_enrollment, "cannot be later than today's date")
+    else
+      changeset
+    end
   end
 end

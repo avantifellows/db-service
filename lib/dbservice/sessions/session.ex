@@ -56,11 +56,23 @@ defmodule Dbservice.Sessions.Session do
       :end_time,
       :meta_data
     ])
+    |> validate_date_time
   end
 
   def changeset_update_groups(session, groups) do
     session
     |> change()
     |> put_assoc(:group, groups)
+  end
+
+  defp validate_date_time(changeset) do
+    start_time = get_field(changeset, :start_time)
+    end_time = get_field(changeset, :end_time)
+
+    if DateTime.compare(start_time, end_time) == :gt do
+      add_error(changeset, :start_time, "cannot be later than end time")
+    else
+      changeset
+    end
   end
 end

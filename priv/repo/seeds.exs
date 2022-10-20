@@ -57,7 +57,8 @@ defmodule Seed do
         program_type: Enum.random(["Competitive", "Non Competitive"]),
         program_sub_type: Enum.random(["Easy", "Moderate", "High"]),
         program_mode: Enum.random(["Online", "Offline"]),
-        program_start_date: Faker.DateTime.backward(Enum.random(1..10)),
+        program_start_date:
+          Faker.DateTime.between(~N[2015-05-19 00:00:00], ~N[2022-10-19 00:00:00]),
         program_target_outreach: Enum.random(3000..10000),
         program_product_used: Enum.random(["One", "Less than 5", "More than 5"]),
         program_donor: Enum.random(["YES", "NO"]),
@@ -99,8 +100,8 @@ defmodule Seed do
             "https://links.af.org/io-zmks",
             "https://links.af.org/po-dan"
           ]),
-        start_time: Faker.DateTime.backward(Enum.random(1..10)),
-        end_time: Faker.DateTime.backward(Enum.random(1..9)),
+        start_time: Faker.DateTime.between(~N[2022-05-19 00:00:00], ~N[2022-10-20 00:00:00]),
+        end_time: Faker.DateTime.between(~N[2022-10-21 00:00:00], ~N[2022-12-22 00:00:00]),
         meta_data: %{},
         owner_id: owner.id,
         created_by_id: creator.id,
@@ -251,7 +252,8 @@ defmodule Seed do
       Schools.create_enrollment_record(%{
         grade: Enum.random(["KG", "1", "2", "3", "4", "5", "6", "7", "8", "9", "10"]),
         board_medium: Enum.random(["ICSE", "CBSE", "State Board"]),
-        date_of_enrollment: Faker.DateTime.forward(Enum.random(1..10)),
+        date_of_enrollment:
+          Faker.DateTime.between(~N[2015-05-19 00:00:00], ~N[2022-10-19 00:00:00]),
         academic_year:
           Enum.random([
             "2010-11",
@@ -298,7 +300,8 @@ defmodule Seed do
         group_id: group.id,
         user_id: user.id,
         program_manager_id: program_manager.id,
-        program_date_of_joining: Faker.DateTime.backward(Enum.random(1..10)),
+        program_date_of_joining:
+          Faker.DateTime.between(~N[2015-05-19 00:00:00], ~N[2022-10-19 00:00:00]),
         program_student_language: Enum.random(["English", "Hindi"])
       })
 

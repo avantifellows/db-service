@@ -53,5 +53,17 @@ defmodule Dbservice.Groups.Group do
       :group_locale_data
     ])
     |> validate_required([:name, :type])
+    |> validate_program_start_date
+  end
+
+  defp validate_program_start_date(changeset) do
+    todays_date = Date.utc_today()
+    program_start_date = get_field(changeset, :program_start_date)
+
+    if Date.compare(program_start_date, todays_date) == :gt do
+      add_error(changeset, :program_start_date, "cannot be later than today's date")
+    else
+      changeset
+    end
   end
 end

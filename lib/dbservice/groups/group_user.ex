@@ -27,11 +27,23 @@ defmodule Dbservice.Groups.GroupUser do
       :program_student_language
     ])
     |> validate_required([:program_date_of_joining, :program_student_language])
+    |> validate_program_date_of_joining
   end
 
   def changeset_update_users(group, users) do
     group
     |> change()
     |> put_assoc(:user, users)
+  end
+
+  defp validate_program_date_of_joining(changeset) do
+    todays_date = Date.utc_today()
+    program_date_of_joining = get_field(changeset, :program_date_of_joining)
+
+    if Date.compare(program_date_of_joining, todays_date) == :gt do
+      add_error(changeset, :program_date_of_joining, "cannot be later than today's date")
+    else
+      changeset
+    end
   end
 end
