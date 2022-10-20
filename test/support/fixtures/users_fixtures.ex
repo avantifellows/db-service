@@ -1,4 +1,6 @@
 defmodule Dbservice.UsersFixtures do
+  alias Dbservice.Users
+
   @moduledoc """
   This module defines test helpers for creating
   entities via the `Dbservice.Users` context.
@@ -21,7 +23,9 @@ defmodule Dbservice.UsersFixtures do
         phone: "some phone",
         pincode: "some pincode",
         role: "some role",
-        state: "some state"
+        state: "some state",
+        whatsapp_phone: "some whatsapp phone",
+        date_of_birth: ~U[2022-04-28 13:58:00Z]
       })
       |> Dbservice.Users.create_user()
 
@@ -41,7 +45,19 @@ defmodule Dbservice.UsersFixtures do
         mother_name: "some mother_name",
         mother_phone: "some mother_phone",
         stream: "some stream",
-        uuid: "some uuid"
+        uuid: "some uuid",
+        physically_handicapped: false,
+        family_income: "some family income",
+        father_profession: "some father profession",
+        father_education_level: "some father education level",
+        mother_profession: "some mother profession",
+        mother_education_level: "some mother education level",
+        time_of_device_availability: ~U[2022-04-28 13:58:00Z],
+        has_internet_access: false,
+        primary_smartphone_owner: "some primary smartphone owner",
+        primary_smartphone_owner_profession: "some primary smartphone owner profession",
+        user_id: get_user_id(),
+        group_id: get_group_id()
       })
       |> Dbservice.Users.create_student()
 
@@ -57,10 +73,44 @@ defmodule Dbservice.UsersFixtures do
       |> Enum.into(%{
         designation: "some designation",
         grade: "some grade",
-        subject: "some subject"
+        subject: "some subject",
+        uuid: "some uuid",
+        user_id: get_user_id_for_teacher(),
+        school_id: get_school_id(),
+        program_manager_id: get_program_manager_id()
       })
       |> Dbservice.Users.create_teacher()
 
     teacher
+  end
+
+  def get_user_id do
+    [head | _tail] = Users.list_student()
+    user_id = head.user_id
+    user_id
+  end
+
+  def get_group_id do
+    [head | _tail] = Users.list_student()
+    group_id = head.group_id
+    group_id
+  end
+
+  def get_user_id_for_teacher do
+    [head | _tail] = Users.list_teacher()
+    user_id = head.user_id
+    user_id
+  end
+
+  def get_school_id do
+    [head | _tail] = Users.list_teacher()
+    school_id = head.school_id
+    school_id
+  end
+
+  def get_program_manager_id do
+    [head | _tail] = Users.list_teacher()
+    program_manager_id = head.program_manager_id
+    program_manager_id
   end
 end

@@ -9,22 +9,25 @@ defmodule Dbservice.UsersTest do
     import Dbservice.UsersFixtures
 
     @invalid_attrs %{
+      first_name: nil,
+      last_name: nil,
+      email: nil,
+      phone: nil,
+      gender: nil,
       address: nil,
       city: nil,
       district: nil,
-      email: nil,
-      first_name: nil,
-      gender: nil,
-      last_name: nil,
-      phone: nil,
+      state: nil,
       pincode: nil,
       role: nil,
-      state: nil
+      whatsapp_phone: nil,
+      date_of_birth: nil
     }
 
     test "list_user/0 returns all user" do
       user = user_fixture()
-      assert Users.list_user() == [user]
+      [head | _tail] = Users.list_all_users()
+      assert Map.keys(head) == Map.keys(user)
     end
 
     test "get_user!/1 returns the user with given id" do
@@ -44,7 +47,9 @@ defmodule Dbservice.UsersTest do
         phone: "some phone",
         pincode: "some pincode",
         role: "some role",
-        state: "some state"
+        state: "some state",
+        whatsapp_phone: "some whatsapp phone",
+        date_of_birth: ~U[2022-04-28 13:58:00Z]
       }
 
       assert {:ok, %User{} = user} = Users.create_user(valid_attrs)
@@ -59,6 +64,7 @@ defmodule Dbservice.UsersTest do
       assert user.pincode == "some pincode"
       assert user.role == "some role"
       assert user.state == "some state"
+      assert user.whatsapp_phone == "some whatsapp phone"
     end
 
     test "create_user/1 with invalid data returns error changeset" do
@@ -79,7 +85,9 @@ defmodule Dbservice.UsersTest do
         phone: "some updated phone",
         pincode: "some updated pincode",
         role: "some updated role",
-        state: "some updated state"
+        state: "some updated state",
+        whatsapp_phone: "some updated whatsapp phone",
+        date_of_birth: ~U[2022-04-28 13:58:00Z]
       }
 
       assert {:ok, %User{} = user} = Users.update_user(user, update_attrs)
@@ -94,6 +102,7 @@ defmodule Dbservice.UsersTest do
       assert user.pincode == "some updated pincode"
       assert user.role == "some updated role"
       assert user.state == "some updated state"
+      assert user.whatsapp_phone == "some updated whatsapp phone"
     end
 
     test "update_user/2 with invalid data returns error changeset" do
@@ -126,12 +135,25 @@ defmodule Dbservice.UsersTest do
       mother_name: nil,
       mother_phone: nil,
       stream: nil,
-      uuid: nil
+      uuid: nil,
+      physically_handicapped: nil,
+      family_income: nil,
+      father_profession: nil,
+      father_education_level: nil,
+      mother_profession: nil,
+      mother_education_level: nil,
+      time_of_device_availability: nil,
+      has_internet_access: nil,
+      primary_smartphone_owner: nil,
+      primary_smartphone_owner_profession: nil,
+      user_id: nil,
+      group_id: nil
     }
 
     test "list_student/0 returns all student" do
       student = student_fixture()
-      assert Users.list_student() == [student]
+      [head | _tail] = Users.list_student()
+      assert Map.keys(head) == Map.keys(student)
     end
 
     test "get_student!/1 returns the student with given id" do
@@ -147,7 +169,18 @@ defmodule Dbservice.UsersTest do
         mother_name: "some mother_name",
         mother_phone: "some mother_phone",
         stream: "some stream",
-        uuid: "some uuid"
+        uuid: "some uuid",
+        physically_handicapped: false,
+        family_income: "some family income",
+        father_profession: "some father profession",
+        father_education_level: "some father education level",
+        mother_profession: "some mother profession",
+        mother_education_level: "some mother education level",
+        has_internet_access: false,
+        primary_smartphone_owner: "some primary smartphone owner",
+        primary_smartphone_owner_profession: "some primary smartphone owner profession",
+        user_id: get_user_id(),
+        group_id: get_group_id()
       }
 
       assert {:ok, %Student{} = student} = Users.create_student(valid_attrs)
@@ -158,6 +191,17 @@ defmodule Dbservice.UsersTest do
       assert student.mother_phone == "some mother_phone"
       assert student.stream == "some stream"
       assert student.uuid == "some uuid"
+      assert student.physically_handicapped == false
+      assert student.family_income == "some family income"
+      assert student.father_profession == "some father profession"
+      assert student.father_education_level == "some father education level"
+      assert student.mother_profession == "some mother profession"
+      assert student.mother_education_level == "some mother education level"
+      assert student.has_internet_access == false
+      assert student.primary_smartphone_owner == "some primary smartphone owner"
+
+      assert student.primary_smartphone_owner_profession ==
+               "some primary smartphone owner profession"
     end
 
     test "create_student/1 with invalid data returns error changeset" do
@@ -174,7 +218,18 @@ defmodule Dbservice.UsersTest do
         mother_name: "some updated mother_name",
         mother_phone: "some updated mother_phone",
         stream: "some updated stream",
-        uuid: "some updated uuid"
+        uuid: "some updated uuid",
+        physically_handicapped: false,
+        family_income: "some updated family income",
+        father_profession: "some updated father profession",
+        father_education_level: "some updated father education level",
+        mother_profession: "some updated mother profession",
+        mother_education_level: "some updated mother education level",
+        has_internet_access: false,
+        primary_smartphone_owner: "some updated primary smartphone owner",
+        primary_smartphone_owner_profession: "some updated primary smartphone owner profession",
+        user_id: get_user_id(),
+        group_id: get_group_id()
       }
 
       assert {:ok, %Student{} = student} = Users.update_student(student, update_attrs)
@@ -185,6 +240,17 @@ defmodule Dbservice.UsersTest do
       assert student.mother_phone == "some updated mother_phone"
       assert student.stream == "some updated stream"
       assert student.uuid == "some updated uuid"
+      assert student.physically_handicapped == false
+      assert student.family_income == "some updated family income"
+      assert student.father_profession == "some updated father profession"
+      assert student.father_education_level == "some updated father education level"
+      assert student.mother_profession == "some updated mother profession"
+      assert student.mother_education_level == "some updated mother education level"
+      assert student.has_internet_access == false
+      assert student.primary_smartphone_owner == "some updated primary smartphone owner"
+
+      assert student.primary_smartphone_owner_profession ==
+               "some updated primary smartphone owner profession"
     end
 
     test "update_student/2 with invalid data returns error changeset" do
@@ -210,11 +276,20 @@ defmodule Dbservice.UsersTest do
 
     import Dbservice.UsersFixtures
 
-    @invalid_attrs %{designation: nil, grade: nil, subject: nil}
+    @invalid_attrs %{
+      designation: nil,
+      grade: nil,
+      subject: nil,
+      uuid: nil,
+      user_id: nil,
+      school_id: nil,
+      program_manager_id: nil
+    }
 
     test "list_teacher/0 returns all teacher" do
       teacher = teacher_fixture()
-      assert Users.list_teacher() == [teacher]
+      [head | _tail] = Users.list_teacher()
+      assert Map.keys(head) == Map.keys(teacher)
     end
 
     test "get_teacher!/1 returns the teacher with given id" do
@@ -226,7 +301,11 @@ defmodule Dbservice.UsersTest do
       valid_attrs = %{
         designation: "some designation",
         grade: "some grade",
-        subject: "some subject"
+        subject: "some subject",
+        uuid: "some uuid",
+        user_id: get_user_id_for_teacher(),
+        school_id: get_school_id(),
+        program_manager_id: get_program_manager_id()
       }
 
       assert {:ok, %Teacher{} = teacher} = Users.create_teacher(valid_attrs)
@@ -245,7 +324,10 @@ defmodule Dbservice.UsersTest do
       update_attrs = %{
         designation: "some updated designation",
         grade: "some updated grade",
-        subject: "some updated subject"
+        subject: "some updated subject",
+        user_id: get_user_id_for_teacher(),
+        school_id: get_school_id(),
+        program_manager_id: get_program_manager_id()
       }
 
       assert {:ok, %Teacher{} = teacher} = Users.update_teacher(teacher, update_attrs)

@@ -13,7 +13,15 @@ defmodule DbserviceWeb.SessionOccurenceControllerTest do
     end_time: ~U[2022-04-29 14:05:00Z],
     start_time: ~U[2022-04-29 14:05:00Z]
   }
-  @invalid_attrs %{end_time: nil, start_time: nil}
+  @invalid_attrs %{
+    end_time: nil,
+    start_time: nil
+  }
+  @valid_fields [
+    "end_time",
+    "id",
+    "start_time"
+  ]
 
   setup %{conn: conn} do
     {:ok, conn: put_req_header(conn, "accept", "application/json")}
@@ -22,16 +30,16 @@ defmodule DbserviceWeb.SessionOccurenceControllerTest do
   describe "index" do
     test "lists all session_occurence", %{conn: conn} do
       conn = get(conn, Routes.session_occurence_path(conn, :index))
-      assert json_response(conn, 200)["data"] == []
+      [head | _tail] = json_response(conn, 200)
+      assert Map.keys(head) == @valid_fields
     end
   end
 
   describe "create session_occurence" do
     test "renders session_occurence when data is valid", %{conn: conn} do
-      conn =
-        post(conn, Routes.session_occurence_path(conn, :create), session_occurence: @create_attrs)
+      conn = post(conn, Routes.session_occurence_path(conn, :create), get_ids_create_attrs())
 
-      assert %{"id" => id} = json_response(conn, 201)["data"]
+      %{"id" => id} = json_response(conn, 201)
 
       conn = get(conn, Routes.session_occurence_path(conn, :show, id))
 
@@ -39,7 +47,7 @@ defmodule DbserviceWeb.SessionOccurenceControllerTest do
                "id" => ^id,
                "end_time" => "2022-04-28T14:05:00Z",
                "start_time" => "2022-04-28T14:05:00Z"
-             } = json_response(conn, 200)["data"]
+             } = json_response(conn, 200)
     end
 
     test "renders errors when data is invalid", %{conn: conn} do
@@ -58,11 +66,13 @@ defmodule DbserviceWeb.SessionOccurenceControllerTest do
       session_occurence: %SessionOccurence{id: id} = session_occurence
     } do
       conn =
-        put(conn, Routes.session_occurence_path(conn, :update, session_occurence),
-          session_occurence: @update_attrs
+        put(
+          conn,
+          Routes.session_occurence_path(conn, :update, session_occurence),
+          get_ids_update_attrs()
         )
 
-      assert %{"id" => ^id} = json_response(conn, 200)["data"]
+      %{"id" => ^id} = json_response(conn, 200)
 
       conn = get(conn, Routes.session_occurence_path(conn, :show, id))
 
@@ -70,7 +80,7 @@ defmodule DbserviceWeb.SessionOccurenceControllerTest do
                "id" => ^id,
                "end_time" => "2022-04-29T14:05:00Z",
                "start_time" => "2022-04-29T14:05:00Z"
-             } = json_response(conn, 200)["data"]
+             } = json_response(conn, 200)
     end
 
     test "renders errors when data is invalid", %{
@@ -78,9 +88,7 @@ defmodule DbserviceWeb.SessionOccurenceControllerTest do
       session_occurence: session_occurence
     } do
       conn =
-        put(conn, Routes.session_occurence_path(conn, :update, session_occurence),
-          session_occurence: @invalid_attrs
-        )
+        put(conn, Routes.session_occurence_path(conn, :update, session_occurence), @invalid_attrs)
 
       assert json_response(conn, 422)["errors"] != %{}
     end
@@ -102,5 +110,17 @@ defmodule DbserviceWeb.SessionOccurenceControllerTest do
   defp create_session_occurence(_) do
     session_occurence = session_occurence_fixture()
     %{session_occurence: session_occurence}
+  end
+
+  defp get_ids_create_attrs do
+    session_occurence_fixture = session_occurence_fixture()
+    session_id = session_occurence_fixture.session_id
+    Map.merge(@create_attrs, %{session_id: session_id})
+  end
+
+  defp get_ids_update_attrs do
+    session_occurence_fixture = session_occurence_fixture()
+    session_id = session_occurence_fixture.session_id
+    Map.merge(@update_attrs, %{session_id: session_id})
   end
 end
