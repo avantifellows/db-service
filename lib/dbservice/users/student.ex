@@ -37,7 +37,6 @@ defmodule Dbservice.Users.Student do
     student
     |> cast(attrs, [
       :user_id,
-      :group_id,
       :uuid,
       :father_name,
       :father_phone,
@@ -56,6 +55,6 @@ defmodule Dbservice.Users.Student do
       :primary_smartphone_owner,
       :primary_smartphone_owner_profession
     ])
-    |> validate_required([:user_id, :group_id, :uuid])
+    |> validate_required([:user_id])
   end
 end

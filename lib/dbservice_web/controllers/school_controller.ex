@@ -1,6 +1,8 @@
 defmodule DbserviceWeb.SchoolController do
   use DbserviceWeb, :controller
 
+  import Ecto.Query
+  alias Dbservice.Repo
   alias Dbservice.Schools
   alias Dbservice.Schools.School
 
@@ -20,6 +22,11 @@ defmodule DbserviceWeb.SchoolController do
   swagger_path :index do
     get("/api/school")
     response(200, "OK", Schema.ref(:Schools))
+  end
+
+  def index(conn, %{"code" => code}) do
+    school = Repo.all(from t in School, where: t.code == ^code, select: t, limit: 1)
+    render(conn, "index.json", school: school)
   end
 
   def index(conn, _params) do
