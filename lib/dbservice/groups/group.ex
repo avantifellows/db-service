@@ -4,7 +4,6 @@ defmodule Dbservice.Groups.Group do
   use Ecto.Schema
   import Ecto.Changeset
 
-  alias Dbservice.Users.Student
   alias Dbservice.Users.User
   alias Dbservice.Sessions.Session
 
@@ -25,7 +24,6 @@ defmodule Dbservice.Groups.Group do
     field :group_locale, :string
     field :group_locale_data, :map
 
-    has_many :student, Student
     many_to_many :user, User, join_through: "group_user", on_replace: :delete
     many_to_many :session, Session, join_through: "group_session", on_replace: :delete
 

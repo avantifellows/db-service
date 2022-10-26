@@ -15,9 +15,8 @@ defmodule Dbservice.Users.User do
     field :city, :string
     field :district, :string
     field :email, :string
-    field :first_name, :string
+    field :full_name, :string
     field :gender, :string
-    field :last_name, :string
     field :phone, :string
     field :pincode, :string
     field :role, :string
@@ -38,8 +37,7 @@ defmodule Dbservice.Users.User do
   def changeset(user, attrs) do
     user
     |> cast(attrs, [
-      :first_name,
-      :last_name,
+      :full_name,
       :email,
       :phone,
       :gender,
@@ -52,8 +50,8 @@ defmodule Dbservice.Users.User do
       :whatsapp_phone,
       :date_of_birth
     ])
-    |> validate_required([:first_name, :last_name, :email, :phone])
-    |> validate_format(:whatsapp_phone, ~r{\A\d*\z})
+    |> validate_required([:full_name])
+    |> validate_format(:phone, ~r{\A\d*\z})
     |> validate_date_of_birth
   end
 

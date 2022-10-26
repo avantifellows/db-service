@@ -33,8 +33,7 @@ defmodule Seed do
   def create_user() do
     {:ok, user} =
       Users.create_user(%{
-        first_name: Person.first_name(),
-        last_name: Person.last_name(),
+        full_name: Person.name(),
         email: Internet.safe_email(),
         phone: Phone.PtPt.number(),
         gender: Enum.random(["male", "female"]),
@@ -145,7 +144,6 @@ defmodule Seed do
   end
 
   def create_student() do
-    group = Groups.Group |> offset(^Enum.random(1..4)) |> limit(1) |> Repo.one()
     user = Seed.create_user()
 
     {:ok, student} =
@@ -158,7 +156,6 @@ defmodule Seed do
         category: Enum.random(["General", "OBC", "SC", "ST"]),
         stream: Enum.random(["Science", "Commerce", "Arts"]),
         user_id: user.id,
-        group_id: group.id,
         physically_handicapped: Enum.random([true, false]),
         family_income: Enum.random(["1LPA-3LPA", "3LPA-6LPA", ">6LPA"]),
         father_profession:

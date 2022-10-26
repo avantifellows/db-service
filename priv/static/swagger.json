@@ -463,7 +463,6 @@
         "father_name": "Narayan Pandey",
         "father_phone": "8989898989",
         "father_profession": "Unemployed",
-        "group_id": 2,
         "has_internet_access": true,
         "mother_education_level": "UG",
         "mother_name": "Lakshmi Pandey",
@@ -497,10 +496,6 @@
         "father_profession": {
           "description": "Father's profession",
           "type": "string"
-        },
-        "group_id": {
-          "description": "Group ID for the student",
-          "type": "integer"
         },
         "has_internet_access": {
           "description": "If the family has internet access",
@@ -562,7 +557,6 @@
         "father_phone": "8989898989",
         "first_name": "Rahul",
         "gender": "Male",
-        "group_id": 2,
         "last_name": "Sharma",
         "mother_name": "Lakshmi Pandey",
         "mother_phone": "9998887777",
@@ -610,10 +604,6 @@
           "description": "Gender",
           "type": "string"
         },
-        "group_id": {
-          "description": "Group ID for the student",
-          "type": "integer"
-        },
         "last_name": {
           "description": "Last name",
           "type": "string"
@@ -660,7 +650,6 @@
         "category": "general",
         "father_name": "Narayan Pandey",
         "father_phone": "8989898989",
-        "group_id": 2,
         "mother_name": "Lakshmi Pandey",
         "mother_phone": "9998887777",
         "stream": "PCB",
@@ -691,10 +680,6 @@
         "father_phone": {
           "description": "Father's phone number",
           "type": "string"
-        },
-        "group_id": {
-          "description": "Group ID for the student",
-          "type": "integer"
         },
         "mother_name": {
           "description": "Mother's name",

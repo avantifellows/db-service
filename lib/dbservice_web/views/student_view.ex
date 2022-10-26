@@ -27,7 +27,6 @@ defmodule DbserviceWeb.StudentView do
       category: student.category,
       stream: student.stream,
       user_id: student.user_id,
-      group_id: student.group_id,
       physically_handicapped: student.physically_handicapped,
       family_income: student.family_income,
       father_profession: student.father_profession,
@@ -54,7 +53,6 @@ defmodule DbserviceWeb.StudentView do
       category: student.category,
       stream: student.stream,
       user: render_one(student.user, UserView, "user.json"),
-      group_id: student.group_id
     }
   end
 end

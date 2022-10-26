@@ -5,7 +5,6 @@ defmodule Dbservice.Users.Student do
   import Ecto.Changeset
 
   alias Dbservice.Users.User
-  alias Dbservice.Groups.Group
   alias Dbservice.Schools.EnrollmentRecord
 
   schema "student" do
@@ -27,7 +26,6 @@ defmodule Dbservice.Users.Student do
     field :primary_smartphone_owner, :string
     field :primary_smartphone_owner_profession, :string
     belongs_to :user, User
-    belongs_to :group, Group
     has_many :enrollment_record, EnrollmentRecord
 
     timestamps()
