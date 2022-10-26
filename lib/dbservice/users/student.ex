@@ -5,7 +5,6 @@ defmodule Dbservice.Users.Student do
   import Ecto.Changeset
 
   alias Dbservice.Users.User
-  alias Dbservice.Groups.Group
   alias Dbservice.Schools.EnrollmentRecord
 
   schema "student" do
@@ -27,7 +26,6 @@ defmodule Dbservice.Users.Student do
     field :primary_smartphone_owner, :string
     field :primary_smartphone_owner_profession, :string
     belongs_to :user, User
-    belongs_to :group, Group
     has_many :enrollment_record, EnrollmentRecord
 
     timestamps()
@@ -37,7 +35,6 @@ defmodule Dbservice.Users.Student do
     student
     |> cast(attrs, [
       :user_id,
-      :group_id,
       :uuid,
       :father_name,
       :father_phone,
@@ -56,6 +53,6 @@ defmodule Dbservice.Users.Student do
       :primary_smartphone_owner,
       :primary_smartphone_owner_profession
     ])
-    |> validate_required([:user_id, :group_id, :uuid])
+    |> validate_required([:user_id])
   end
 end

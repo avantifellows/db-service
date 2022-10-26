@@ -3,6 +3,7 @@ defmodule Dbservice.Sessions.SessionOccurence do
 
   use Ecto.Schema
   import Ecto.Changeset
+  import Dbservice.Utils.Util
 
   alias Dbservice.Users.User
 
@@ -21,5 +22,10 @@ defmodule Dbservice.Sessions.SessionOccurence do
     session_occurence
     |> cast(attrs, [:session_id, :start_time, :end_time])
     |> validate_required([:session_id, :start_time, :end_time])
+    |> validate_start_end_date_time
+  end
+
+  defp validate_start_end_date_time(changeset) do
+    validate_start_end_datetime(changeset, :start_time, :end_time)
   end
 end

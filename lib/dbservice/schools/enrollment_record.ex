@@ -3,6 +3,7 @@ defmodule Dbservice.Schools.EnrollmentRecord do
 
   use Ecto.Schema
   import Ecto.Changeset
+  import Dbservice.Utils.Util
 
   alias Dbservice.Users.Student
   alias Dbservice.Schools.School
@@ -33,5 +34,10 @@ defmodule Dbservice.Schools.EnrollmentRecord do
       :date_of_enrollment
     ])
     |> validate_required([:student_id, :school_id])
+    |> validate_date_of_enrollment
+  end
+
+  defp validate_date_of_enrollment(changeset) do
+    invalidate_future_date(changeset, :date_of_enrollment)
   end
 end

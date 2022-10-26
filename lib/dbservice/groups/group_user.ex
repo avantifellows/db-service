@@ -5,6 +5,7 @@ defmodule Dbservice.Groups.GroupUser do
   alias Dbservice.Users.User
   alias Dbservice.Groups.Group
   import Ecto.Changeset
+  import Dbservice.Utils.Util
 
   schema "group_user" do
     field :program_date_of_joining, :utc_datetime
@@ -27,11 +28,16 @@ defmodule Dbservice.Groups.GroupUser do
       :program_student_language
     ])
     |> validate_required([:program_date_of_joining, :program_student_language])
+    |> validate_program_date_of_joining
   end
 
   def changeset_update_users(group, users) do
     group
     |> change()
     |> put_assoc(:user, users)
+  end
+
+  defp validate_program_date_of_joining(changeset) do
+    invalidate_future_date(changeset, :program_date_of_joining)
   end
 end

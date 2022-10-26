@@ -19,7 +19,6 @@ defmodule DbserviceWeb.SwaggerSchema.Student do
             category(:string, "Category")
             stream(:string, "Stream")
             user_id(:integer, "User ID for the student")
-            group_id(:integer, "Group ID for the student")
             physically_handicapped(:boolean, "Physically hadicapped")
             family_income(:string, "Annual income of family")
             father_profession(:string, "Father's profession")
@@ -39,7 +38,6 @@ defmodule DbserviceWeb.SwaggerSchema.Student do
             category: "general",
             stream: "PCB",
             user_id: 1,
-            group_id: 2,
             physically_handicapped: false,
             family_income: "3LPA-6LPA",
             father_profession: "Unemployed",
@@ -82,7 +80,6 @@ defmodule DbserviceWeb.SwaggerSchema.Student do
             mother_phone(:string, "Mother's phone number")
             category(:string, "Category")
             stream(:string, "Stream")
-            group_id(:integer, "Group ID for the student")
             first_name(:string, "First name")
             last_name(:string, "Last name")
             email(:string, "Email")
@@ -104,7 +101,6 @@ defmodule DbserviceWeb.SwaggerSchema.Student do
             mother_phone: "9998887777",
             category: "general",
             stream: "PCB",
-            group_id: 2,
             first_name: "Rahul",
             last_name: "Sharma",
             email: "rahul.sharma@example.com",
@@ -136,7 +132,6 @@ defmodule DbserviceWeb.SwaggerSchema.Student do
             mother_phone(:string, "Mother's phone number")
             category(:string, "Category")
             stream(:string, "Stream")
-            group_id(:integer, "Group ID for the student")
             user(:map, "User details associated with the student")
           end
 
@@ -148,7 +143,6 @@ defmodule DbserviceWeb.SwaggerSchema.Student do
             mother_phone: "9998887777",
             category: "general",
             stream: "PCB",
-            group_id: 2,
             user: %{
               first_name: "Rahul",
               last_name: "Sharma",

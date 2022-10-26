@@ -3,15 +3,15 @@ defmodule Dbservice.Groups.Group do
 
   use Ecto.Schema
   import Ecto.Changeset
+  import Dbservice.Utils.Util
 
-  alias Dbservice.Users.Student
   alias Dbservice.Users.User
   alias Dbservice.Sessions.Session
 
   schema "group" do
     field :name, :string
     field :parent_id, :integer
-    field :type, Ecto.Enum, values: [:batch, :group, :cohort, :program]
+    field :type, Ecto.Enum, values: [:batch, :cohort, :program]
     field :program_type, :string
     field :program_sub_type, :string
     field :program_mode, :string
@@ -25,7 +25,6 @@ defmodule Dbservice.Groups.Group do
     field :group_locale, :string
     field :group_locale_data, :map
 
-    has_many :student, Student
     many_to_many :user, User, join_through: "group_user", on_replace: :delete
     many_to_many :session, Session, join_through: "group_session", on_replace: :delete
 
@@ -53,5 +52,10 @@ defmodule Dbservice.Groups.Group do
       :group_locale_data
     ])
     |> validate_required([:name, :type])
+    |> validate_program_start_date
+  end
+
+  defp validate_program_start_date(changeset) do
+    invalidate_future_date(changeset, :program_start_date)
   end
 end

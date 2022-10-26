@@ -1,6 +1,8 @@
 defmodule DbserviceWeb.GroupController do
   use DbserviceWeb, :controller
 
+  import Ecto.Query
+  alias Dbservice.Repo
   alias Dbservice.Groups
   alias Dbservice.Groups.Group
 
@@ -28,6 +30,13 @@ defmodule DbserviceWeb.GroupController do
   swagger_path :index do
     get("/api/group")
     response(200, "OK", Schema.ref(:Groups))
+  end
+
+  def index(conn, %{"name" => name, "type" => type}) do
+    group =
+      Repo.all(from t in Group, where: t.name == ^name and t.type == ^type, select: t, limit: 1)
+
+    render(conn, "index.json", group: group)
   end
 
   def index(conn, _params) do

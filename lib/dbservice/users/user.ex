@@ -3,6 +3,7 @@ defmodule Dbservice.Users.User do
 
   use Ecto.Schema
   import Ecto.Changeset
+  import Dbservice.Utils.Util
 
   alias Dbservice.Sessions.SessionOccurence
   alias Dbservice.Sessions.UserSession
@@ -15,9 +16,8 @@ defmodule Dbservice.Users.User do
     field :city, :string
     field :district, :string
     field :email, :string
-    field :first_name, :string
+    field :full_name, :string
     field :gender, :string
-    field :last_name, :string
     field :phone, :string
     field :pincode, :string
     field :role, :string
@@ -38,8 +38,7 @@ defmodule Dbservice.Users.User do
   def changeset(user, attrs) do
     user
     |> cast(attrs, [
-      :first_name,
-      :last_name,
+      :full_name,
       :email,
       :phone,
       :gender,
@@ -52,12 +51,18 @@ defmodule Dbservice.Users.User do
       :whatsapp_phone,
       :date_of_birth
     ])
-    |> validate_required([:first_name, :last_name, :email, :phone])
+    |> validate_required([:full_name])
+    |> validate_format(:phone, ~r{\A\d*\z})
+    |> validate_date_of_birth
   end
 
   def changeset_update_groups(user, groups) do
     user
     |> change()
     |> put_assoc(:group, groups)
+  end
+
+  defp validate_date_of_birth(changeset) do
+    invalidate_future_date(changeset, :date_of_birth)
   end
 end
