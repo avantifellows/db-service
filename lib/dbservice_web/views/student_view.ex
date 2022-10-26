@@ -52,7 +52,7 @@ defmodule DbserviceWeb.StudentView do
       mother_phone: student.mother_phone,
       category: student.category,
       stream: student.stream,
-      user: render_one(student.user, UserView, "user.json"),
+      user: render_one(student.user, UserView, "user.json")
     }
   end
 end
