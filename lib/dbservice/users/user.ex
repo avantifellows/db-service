@@ -3,6 +3,7 @@ defmodule Dbservice.Users.User do
 
   use Ecto.Schema
   import Ecto.Changeset
+  import Dbservice.Utils.Util
 
   alias Dbservice.Sessions.SessionOccurence
   alias Dbservice.Sessions.UserSession
@@ -62,13 +63,6 @@ defmodule Dbservice.Users.User do
   end
 
   defp validate_date_of_birth(changeset) do
-    todays_date = Date.utc_today()
-    date_of_birth = get_field(changeset, :date_of_birth)
-
-    if Date.compare(date_of_birth, todays_date) == :gt do
-      add_error(changeset, :date_of_birth, "cannot be later than today's date")
-    else
-      changeset
-    end
+    invalidate_future_date(changeset, :date_of_birth)
   end
 end

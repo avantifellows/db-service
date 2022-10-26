@@ -3,6 +3,7 @@ defmodule Dbservice.Groups.Group do
 
   use Ecto.Schema
   import Ecto.Changeset
+  import Dbservice.Utils.Util
 
   alias Dbservice.Users.User
   alias Dbservice.Sessions.Session
@@ -55,13 +56,6 @@ defmodule Dbservice.Groups.Group do
   end
 
   defp validate_program_start_date(changeset) do
-    todays_date = Date.utc_today()
-    program_start_date = get_field(changeset, :program_start_date)
-
-    if Date.compare(program_start_date, todays_date) == :gt do
-      add_error(changeset, :program_start_date, "cannot be later than today's date")
-    else
-      changeset
-    end
+    invalidate_future_date(changeset, :program_start_date)
   end
 end

@@ -3,6 +3,7 @@ defmodule Dbservice.Sessions.SessionOccurence do
 
   use Ecto.Schema
   import Ecto.Changeset
+  import Dbservice.Utils.Util
 
   alias Dbservice.Users.User
 
@@ -25,13 +26,6 @@ defmodule Dbservice.Sessions.SessionOccurence do
   end
 
   defp validate_date_time(changeset) do
-    start_time = get_field(changeset, :start_time)
-    end_time = get_field(changeset, :end_time)
-
-    if DateTime.compare(start_time, end_time) == :gt do
-      add_error(changeset, :start_time, "cannot be later than end time")
-    else
-      changeset
-    end
+    validate_date_time(changeset, :start_time, :end_time)
   end
 end

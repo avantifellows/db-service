@@ -5,6 +5,7 @@ defmodule Dbservice.Groups.GroupUser do
   alias Dbservice.Users.User
   alias Dbservice.Groups.Group
   import Ecto.Changeset
+  import Dbservice.Utils.Util
 
   schema "group_user" do
     field :program_date_of_joining, :utc_datetime
@@ -37,13 +38,6 @@ defmodule Dbservice.Groups.GroupUser do
   end
 
   defp validate_program_date_of_joining(changeset) do
-    todays_date = Date.utc_today()
-    program_date_of_joining = get_field(changeset, :program_date_of_joining)
-
-    if Date.compare(program_date_of_joining, todays_date) == :gt do
-      add_error(changeset, :program_date_of_joining, "cannot be later than today's date")
-    else
-      changeset
-    end
+    invalidate_future_date(changeset, :program_date_of_joining)
   end
 end

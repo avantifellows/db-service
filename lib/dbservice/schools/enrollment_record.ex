@@ -3,6 +3,7 @@ defmodule Dbservice.Schools.EnrollmentRecord do
 
   use Ecto.Schema
   import Ecto.Changeset
+  import Dbservice.Utils.Util
 
   alias Dbservice.Users.Student
   alias Dbservice.Schools.School
@@ -37,13 +38,6 @@ defmodule Dbservice.Schools.EnrollmentRecord do
   end
 
   defp validate_date_of_enrollment(changeset) do
-    todays_date = Date.utc_today()
-    date_of_enrollment = get_field(changeset, :date_of_enrollment)
-
-    if Date.compare(date_of_enrollment, todays_date) == :gt do
-      add_error(changeset, :date_of_enrollment, "cannot be later than today's date")
-    else
-      changeset
-    end
+    invalidate_future_date(changeset, :date_of_enrollment)
   end
 end
