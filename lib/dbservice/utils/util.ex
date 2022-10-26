@@ -1,4 +1,6 @@
 defmodule Dbservice.Utils.Util do
+  @moduledoc false
+
   use Ecto.Schema
   import Ecto.Changeset
 
