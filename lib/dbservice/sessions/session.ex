@@ -57,7 +57,7 @@ defmodule Dbservice.Sessions.Session do
       :end_time,
       :meta_data
     ])
-    |> validate_date_time
+    |> validate_start_end_date_time
   end
 
   def changeset_update_groups(session, groups) do
@@ -66,7 +66,7 @@ defmodule Dbservice.Sessions.Session do
     |> put_assoc(:group, groups)
   end
 
-  defp validate_date_time(changeset) do
-    validate_date_time(changeset, :start_time, :end_time)
+  defp validate_start_end_date_time(changeset) do
+    validate_start_end_datetime(changeset, :start_time, :end_time)
   end
 end

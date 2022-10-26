@@ -15,7 +15,7 @@ defmodule Dbservice.Utils.Util do
     end
   end
 
-  def validate_date_time(changeset, start_time_field_atom, end_time_field_atom) do
+  def validate_start_end_datetime(changeset, start_time_field_atom, end_time_field_atom) do
     start_time = get_field(changeset, start_time_field_atom)
     end_time = get_field(changeset, end_time_field_atom)
 
