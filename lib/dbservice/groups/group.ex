@@ -56,6 +56,10 @@ defmodule Dbservice.Groups.Group do
   end
 
   defp validate_program_start_date(changeset) do
-    invalidate_future_date(changeset, :program_start_date)
+    if get_field(changeset, :program_start_date) != nil do
+      invalidate_future_date(changeset, :program_start_date)
+    else
+      changeset
+    end
   end
 end

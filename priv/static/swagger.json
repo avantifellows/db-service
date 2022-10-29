@@ -773,9 +773,8 @@
         "date_of_birth": "2003/08/06",
         "district": "Mumbai",
         "email": "rahul.sharma@example.com",
-        "first_name": "Rahul",
+        "full_name": "Rahul Sharma",
         "gender": "Male",
-        "last_name": "Sharma",
         "phone": "9998887777",
         "pincode": "400011",
         "role": "student",
@@ -803,16 +802,12 @@
           "description": "Email",
           "type": "string"
         },
-        "first_name": {
-          "description": "First name",
+        "full_name": {
+          "description": "Full name",
           "type": "string"
         },
         "gender": {
           "description": "Gender",
-          "type": "string"
-        },
-        "last_name": {
-          "description": "Last name",
           "type": "string"
         },
         "phone": {

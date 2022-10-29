@@ -11,8 +11,7 @@ defmodule DbserviceWeb.SwaggerSchema.User do
           description("A user in the application")
 
           properties do
-            first_name(:string, "First name")
-            last_name(:string, "Last name")
+            full_name(:string, "Full name")
             email(:string, "Email")
             phone(:string, "Phone number")
             gender(:string, "Gender")
@@ -27,8 +26,7 @@ defmodule DbserviceWeb.SwaggerSchema.User do
           end
 
           example(%{
-            first_name: "Rahul",
-            last_name: "Sharma",
+            full_name: "Rahul Sharma",
             email: "rahul.sharma@example.com",
             phone: "9998887777",
             gender: "Male",
