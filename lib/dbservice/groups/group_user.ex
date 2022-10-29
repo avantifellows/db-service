@@ -27,7 +27,7 @@ defmodule Dbservice.Groups.GroupUser do
       :program_date_of_joining,
       :program_student_language
     ])
-    |> validate_required([:program_date_of_joining, :program_student_language])
+    |> validate_required([:group_id, :user_id])
     |> validate_program_date_of_joining
   end
 
@@ -38,6 +38,10 @@ defmodule Dbservice.Groups.GroupUser do
   end
 
   defp validate_program_date_of_joining(changeset) do
-    invalidate_future_date(changeset, :program_date_of_joining)
+    if get_field(changeset, :program_date_of_joining) != nil do
+      invalidate_future_date(changeset, :program_date_of_joining)
+    else
+      changeset
+    end
   end
 end

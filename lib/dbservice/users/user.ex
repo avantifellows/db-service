@@ -63,6 +63,10 @@ defmodule Dbservice.Users.User do
   end
 
   defp validate_date_of_birth(changeset) do
-    invalidate_future_date(changeset, :date_of_birth)
+    if get_field(changeset, :date_of_birth) != nil do
+      invalidate_future_date(changeset, :date_of_birth)
+    else
+      changeset
+    end
   end
 end
