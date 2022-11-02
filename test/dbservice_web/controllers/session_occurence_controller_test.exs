@@ -15,7 +15,8 @@ defmodule DbserviceWeb.SessionOccurenceControllerTest do
   }
   @invalid_attrs %{
     end_time: nil,
-    start_time: nil
+    start_time: nil,
+    session_id: nil
   }
   @valid_fields [
     "end_time",

@@ -59,8 +59,7 @@ defmodule DbserviceWeb.StudentControllerTest do
     has_internet_access: nil,
     primary_smartphone_owner: nil,
     primary_smartphone_owner_profession: nil,
-    user_id: nil,
-    group_id: nil
+    user_id: nil
   }
   @valid_fields [
     "category",
@@ -69,7 +68,6 @@ defmodule DbserviceWeb.StudentControllerTest do
     "father_name",
     "father_phone",
     "father_profession",
-    "group_id",
     "has_internet_access",
     "id",
     "mother_education_level",
@@ -189,14 +187,12 @@ defmodule DbserviceWeb.StudentControllerTest do
   defp get_ids_create_attrs do
     student_fixture = student_fixture()
     user_id = student_fixture.user_id
-    group_id = student_fixture.group_id
-    Map.merge(@create_attrs, %{user_id: user_id, group_id: group_id})
+    Map.merge(@create_attrs, %{user_id: user_id})
   end
 
   defp get_ids_update_attrs do
     student_fixture = student_fixture()
     user_id = student_fixture.user_id
-    group_id = student_fixture.group_id
-    Map.merge(@update_attrs, %{user_id: user_id, group_id: group_id})
+    Map.merge(@update_attrs, %{user_id: user_id})
   end
 end

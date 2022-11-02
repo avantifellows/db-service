@@ -122,7 +122,7 @@ defmodule Dbservice.SessionsTest do
 
     import Dbservice.SessionsFixtures
 
-    @invalid_attrs %{end_time: nil, start_time: nil}
+    @invalid_attrs %{end_time: nil, start_time: nil, session_id: nil}
 
     test "list_session_occurence/0 returns all session_occurence" do
       session_occurence = session_occurence_fixture()
