@@ -18,7 +18,7 @@ defmodule Dbservice.Sessions.Session do
     field :start_time, :utc_datetime
     field :owner_id, :id
     field :created_by_id, :id
-    field :uuid, :binary_id, read_after_writes: true
+    field :uuid, :string
     field :is_active, :boolean
     field :purpose, :map
     field :repeat_schedule, :map
