@@ -51,7 +51,6 @@ defmodule Dbservice.Users.User do
       :whatsapp_phone,
       :date_of_birth
     ])
-    |> validate_required([:full_name])
     |> validate_format(:phone, ~r{\A\d*\z})
     |> validate_date_of_birth
   end
