@@ -1,6 +1,8 @@
 defmodule DbserviceWeb.TeacherView do
   use DbserviceWeb, :view
   alias DbserviceWeb.TeacherView
+  alias DbserviceWeb.UserView
+  alias Dbservice.Repo
 
   def render("index.json", %{teacher: teacher}) do
     render_many(teacher, TeacherView, "teacher.json")
@@ -23,6 +25,21 @@ defmodule DbserviceWeb.TeacherView do
       user_id: teacher.user_id,
       school_id: teacher.school_id,
       program_manager_id: teacher.program_manager_id
+    }
+  end
+
+  def render("teacher_with_user.json", %{teacher: teacher}) do
+    teacher = Repo.preload(teacher, :user)
+
+    %{
+      id: teacher.id,
+      designation: teacher.designation,
+      grade: teacher.grade,
+      subject: teacher.subject,
+      uuid: teacher.uuid,
+      school_id: teacher.school_id,
+      program_manager_id: teacher.program_manager_id,
+      user: render_one(teacher.user, UserView, "user.json")
     }
   end
 end

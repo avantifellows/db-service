@@ -225,6 +225,28 @@ defmodule Dbservice.Users do
   end
 
   @doc """
+  Updates a user first and then the student.
+
+  ## Examples
+
+      iex> update_student_with_user(%{field: value})
+      {:ok, %Student{}}
+
+      iex> update_student_with_user(%{field: bad_value})
+      {:error, %Ecto.Changeset{}}
+
+  """
+  def update_student_with_user(student, users, attrs \\ %{}) do
+    alias Dbservice.Users
+
+    with {:ok, %User{} = user} <- Users.update_user(users, attrs),
+         {:ok, %Student{} = student} <-
+           Users.update_student(student, Map.merge(attrs, %{"user_id" => user.id})) do
+      {:ok, student}
+    end
+  end
+
+  @doc """
   Returns an `%Ecto.Changeset{}` for tracking student changes.
 
   ## Examples
@@ -338,6 +360,28 @@ defmodule Dbservice.Users do
     with {:ok, %User{} = user} <- Users.create_user(attrs),
          {:ok, %Teacher{} = teacher} <-
            Users.create_teacher(Map.merge(attrs, %{"user_id" => user.id})) do
+      {:ok, teacher}
+    end
+  end
+
+  @doc """
+  Updates a user first and then the teacher.
+
+  ## Examples
+
+      iex> update_teacher_with_user(%{field: value})
+      {:ok, %Teacher{}}
+
+      iex> update_teacher_with_user(%{field: bad_value})
+      {:error, %Ecto.Changeset{}}
+
+  """
+  def update_teacher_with_user(teacher, users, attrs \\ %{}) do
+    alias Dbservice.Users
+
+    with {:ok, %User{} = user} <- Users.update_user(users, attrs),
+         {:ok, %Teacher{} = teacher} <-
+           Users.update_teacher(teacher, Map.merge(attrs, %{"user_id" => user.id})) do
       {:ok, teacher}
     end
   end
