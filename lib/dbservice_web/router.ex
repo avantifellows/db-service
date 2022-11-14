@@ -18,6 +18,7 @@ defmodule DbserviceWeb.Router do
     resources "/student", StudentController, except: [:new, :edit]
     post "/student/register", StudentController, :register
     resources "/teacher", TeacherController, except: [:new, :edit]
+    post "/teacher/register", TeacherController, :register
     resources "/school", SchoolController, except: [:new, :edit]
     resources "/enrollment-record", EnrollmentRecordController, except: [:new, :edit]
     resources "/session", SessionController, only: [:index, :create, :update, :show]

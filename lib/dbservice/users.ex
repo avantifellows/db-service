@@ -321,6 +321,28 @@ defmodule Dbservice.Users do
   end
 
   @doc """
+  Creates a user first and then the teacher.
+
+  ## Examples
+
+      iex> create_teacher_with_user(%{field: value})
+      {:ok, %Teacher{}}
+
+      iex> create_teacher_with_user(%{field: bad_value})
+      {:error, %Ecto.Changeset{}}
+
+  """
+  def create_teacher_with_user(attrs \\ %{}) do
+    alias Dbservice.Users
+
+    with {:ok, %User{} = user} <- Users.create_user(attrs),
+         {:ok, %Teacher{} = teacher} <-
+           Users.create_teacher(Map.merge(attrs, %{"user_id" => user.id})) do
+      {:ok, teacher}
+    end
+  end
+
+  @doc """
   Returns an `%Ecto.Changeset{}` for tracking teacher changes.
 
   ## Examples
