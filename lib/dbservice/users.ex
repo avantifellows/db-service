@@ -236,10 +236,10 @@ defmodule Dbservice.Users do
       {:error, %Ecto.Changeset{}}
 
   """
-  def update_student_with_user(student, users, attrs \\ %{}) do
+  def update_student_with_user(student, user, attrs \\ %{}) do
     alias Dbservice.Users
 
-    with {:ok, %User{} = user} <- Users.update_user(users, attrs),
+    with {:ok, %User{} = user} <- Users.update_user(user, attrs),
          {:ok, %Student{} = student} <-
            Users.update_student(student, Map.merge(attrs, %{"user_id" => user.id})) do
       {:ok, student}
@@ -376,10 +376,10 @@ defmodule Dbservice.Users do
       {:error, %Ecto.Changeset{}}
 
   """
-  def update_teacher_with_user(teacher, users, attrs \\ %{}) do
+  def update_teacher_with_user(teacher, user, attrs \\ %{}) do
     alias Dbservice.Users
 
-    with {:ok, %User{} = user} <- Users.update_user(users, attrs),
+    with {:ok, %User{} = user} <- Users.update_user(user, attrs),
          {:ok, %Teacher{} = teacher} <-
            Users.update_teacher(teacher, Map.merge(attrs, %{"user_id" => user.id})) do
       {:ok, teacher}
