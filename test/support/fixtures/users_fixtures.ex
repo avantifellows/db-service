@@ -17,10 +17,9 @@ defmodule Dbservice.UsersFixtures do
         city: "some city",
         district: "some district",
         email: "some email",
-        first_name: "some first_name",
+        full_name: "some full name",
         gender: "some gender",
-        last_name: "some last_name",
-        phone: "some phone",
+        phone: "9456591269",
         pincode: "some pincode",
         role: "some role",
         state: "some state",
@@ -56,8 +55,7 @@ defmodule Dbservice.UsersFixtures do
         has_internet_access: false,
         primary_smartphone_owner: "some primary smartphone owner",
         primary_smartphone_owner_profession: "some primary smartphone owner profession",
-        user_id: get_user_id(),
-        group_id: get_group_id()
+        user_id: get_user_id()
       })
       |> Dbservice.Users.create_student()
 
@@ -88,12 +86,6 @@ defmodule Dbservice.UsersFixtures do
     [head | _tail] = Users.list_student()
     user_id = head.user_id
     user_id
-  end
-
-  def get_group_id do
-    [head | _tail] = Users.list_student()
-    group_id = head.group_id
-    group_id
   end
 
   def get_user_id_for_teacher do

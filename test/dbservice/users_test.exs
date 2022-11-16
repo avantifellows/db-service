@@ -9,8 +9,7 @@ defmodule Dbservice.UsersTest do
     import Dbservice.UsersFixtures
 
     @invalid_attrs %{
-      first_name: nil,
-      last_name: nil,
+      full_name: nil,
       email: nil,
       phone: nil,
       gender: nil,
@@ -41,10 +40,9 @@ defmodule Dbservice.UsersTest do
         city: "some city",
         district: "some district",
         email: "some email",
-        first_name: "some first_name",
+        full_name: "some full name",
         gender: "some gender",
-        last_name: "some last_name",
-        phone: "some phone",
+        phone: "9456591269",
         pincode: "some pincode",
         role: "some role",
         state: "some state",
@@ -57,10 +55,9 @@ defmodule Dbservice.UsersTest do
       assert user.city == "some city"
       assert user.district == "some district"
       assert user.email == "some email"
-      assert user.first_name == "some first_name"
+      assert user.full_name == "some full name"
       assert user.gender == "some gender"
-      assert user.last_name == "some last_name"
-      assert user.phone == "some phone"
+      assert user.phone == "9456591269"
       assert user.pincode == "some pincode"
       assert user.role == "some role"
       assert user.state == "some state"
@@ -79,10 +76,9 @@ defmodule Dbservice.UsersTest do
         city: "some updated city",
         district: "some updated district",
         email: "some updated email",
-        first_name: "some updated first_name",
+        full_name: "some updated full name",
         gender: "some updated gender",
-        last_name: "some updated last_name",
-        phone: "some updated phone",
+        phone: "9456591269",
         pincode: "some updated pincode",
         role: "some updated role",
         state: "some updated state",
@@ -95,10 +91,9 @@ defmodule Dbservice.UsersTest do
       assert user.city == "some updated city"
       assert user.district == "some updated district"
       assert user.email == "some updated email"
-      assert user.first_name == "some updated first_name"
+      assert user.full_name == "some updated full name"
       assert user.gender == "some updated gender"
-      assert user.last_name == "some updated last_name"
-      assert user.phone == "some updated phone"
+      assert user.phone == "9456591269"
       assert user.pincode == "some updated pincode"
       assert user.role == "some updated role"
       assert user.state == "some updated state"
@@ -179,8 +174,7 @@ defmodule Dbservice.UsersTest do
         has_internet_access: false,
         primary_smartphone_owner: "some primary smartphone owner",
         primary_smartphone_owner_profession: "some primary smartphone owner profession",
-        user_id: get_user_id(),
-        group_id: get_group_id()
+        user_id: get_user_id()
       }
 
       assert {:ok, %Student{} = student} = Users.create_student(valid_attrs)
@@ -228,8 +222,7 @@ defmodule Dbservice.UsersTest do
         has_internet_access: false,
         primary_smartphone_owner: "some updated primary smartphone owner",
         primary_smartphone_owner_profession: "some updated primary smartphone owner profession",
-        user_id: get_user_id(),
-        group_id: get_group_id()
+        user_id: get_user_id()
       }
 
       assert {:ok, %Student{} = student} = Users.update_student(student, update_attrs)

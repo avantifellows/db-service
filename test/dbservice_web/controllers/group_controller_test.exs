@@ -7,7 +7,7 @@ defmodule DbserviceWeb.GroupControllerTest do
 
   @create_attrs %{
     name: "some name",
-    type: "group",
+    type: "program",
     program_type: "some program type",
     program_sub_type: "some program subtype",
     program_mode: "some program mode",
@@ -22,7 +22,7 @@ defmodule DbserviceWeb.GroupControllerTest do
   }
   @update_attrs %{
     name: "some updated name",
-    type: "group",
+    type: "program",
     program_type: "some updated program type",
     program_sub_type: "some updated program subtype",
     program_mode: "some updated program mode",
@@ -91,7 +91,7 @@ defmodule DbserviceWeb.GroupControllerTest do
       assert %{
                "id" => ^id,
                "name" => "some name",
-               "type" => "group"
+               "type" => "program"
              } = json_response(conn, 200)
     end
 
@@ -113,7 +113,7 @@ defmodule DbserviceWeb.GroupControllerTest do
       assert %{
                "id" => ^id,
                "name" => "some updated name",
-               "type" => "group"
+               "type" => "program"
              } = json_response(conn, 200)
     end
 
