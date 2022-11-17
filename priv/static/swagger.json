@@ -204,7 +204,7 @@
           "type": "integer"
         }
       },
-      "title": "Group Session",
+      "title": "Group User",
       "type": "object"
     },
     "Groups": {
@@ -1079,6 +1079,135 @@
         "summary": "",
         "tags": [
           "Group"
+        ]
+      }
+    },
+    "/api/group-session": {
+      "get": {
+        "description": "",
+        "operationId": "DbserviceWeb.GroupSessionController.index",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "schema": {
+              "$ref": "#/definitions/GroupSessions"
+            }
+          }
+        },
+        "summary": "",
+        "tags": [
+          "GroupSession"
+        ]
+      },
+      "post": {
+        "description": "",
+        "operationId": "DbserviceWeb.GroupSessionController.create",
+        "parameters": [
+          {
+            "description": "Group session to create",
+            "in": "body",
+            "name": "body",
+            "required": true,
+            "schema": {
+              "$ref": "#/definitions/GroupSessions"
+            }
+          }
+        ],
+        "responses": {
+          "201": {
+            "description": "Created",
+            "schema": {
+              "$ref": "#/definitions/GroupSessions"
+            }
+          }
+        },
+        "summary": "",
+        "tags": [
+          "GroupSession"
+        ]
+      }
+    },
+    "/api/group-session/{groupSessionId}": {
+      "delete": {
+        "description": "",
+        "operationId": "DbserviceWeb.GroupSessionController.delete",
+        "parameters": [
+          {
+            "description": "The id of the group session",
+            "in": "path",
+            "name": "groupSessionId",
+            "required": true,
+            "type": "integer"
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "No Content"
+          }
+        },
+        "summary": "",
+        "tags": [
+          "GroupSession"
+        ]
+      },
+      "get": {
+        "description": "",
+        "operationId": "DbserviceWeb.GroupSessionController.show",
+        "parameters": [
+          {
+            "description": "The id of the group session",
+            "in": "path",
+            "name": "groupSessionId",
+            "required": true,
+            "type": "integer"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "schema": {
+              "$ref": "#/definitions/GroupSessions"
+            }
+          }
+        },
+        "summary": "",
+        "tags": [
+          "GroupSession"
+        ]
+      },
+      "patch": {
+        "description": "",
+        "operationId": "DbserviceWeb.GroupSessionController.update",
+        "parameters": [
+          {
+            "description": "The id of the session",
+            "in": "path",
+            "name": "groupSessionId",
+            "required": true,
+            "type": "integer"
+          },
+          {
+            "description": "Group session to create",
+            "in": "body",
+            "name": "body",
+            "required": true,
+            "schema": {
+              "$ref": "#/definitions/GroupSessions"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Updated",
+            "schema": {
+              "$ref": "#/definitions/GroupSessions"
+            }
+          }
+        },
+        "summary": "",
+        "tags": [
+          "GroupSession"
         ]
       }
     },

@@ -24,6 +24,7 @@ defmodule DbserviceWeb.Router do
     post "/session/:id/update-groups", SessionController, :update_groups
     resources "/session-occurence", SessionOccurenceController, except: [:new, :edit]
     resources "/user-session", UserSessionController, except: [:new, :edit]
+    resources "/group-session", GroupSessionController, except: [:new, :edit]
 
     def swagger_info do
       %{
