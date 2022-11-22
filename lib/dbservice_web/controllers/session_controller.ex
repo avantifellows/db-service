@@ -32,7 +32,6 @@ defmodule DbserviceWeb.SessionController do
   def index(conn, params) do
     session =
       Enum.reduce(params, Session, fn
-
         {"platform_link", platform_link}, query ->
           from(u in query, where: u.platform_link == ^platform_link)
 
