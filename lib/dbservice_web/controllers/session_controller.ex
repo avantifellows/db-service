@@ -1,6 +1,8 @@
 defmodule DbserviceWeb.SessionController do
   use DbserviceWeb, :controller
 
+  import Ecto.Query
+  alias Dbservice.Repo
   alias Dbservice.Sessions
   alias Dbservice.Sessions.Session
 
@@ -27,8 +29,24 @@ defmodule DbserviceWeb.SessionController do
     response(200, "OK", Schema.ref(:Sessions))
   end
 
-  def index(conn, _params) do
-    session = Sessions.list_session()
+  def index(conn, params) do
+    session =
+      Enum.reduce(params, Session, fn
+
+        {"platform_link", platform_link}, query ->
+          from(u in query, where: u.platform_link == ^platform_link)
+
+        {"portal_link", portal_link}, query ->
+          from(u in query, where: u.portal_link == ^portal_link)
+
+        {"session_id", session_id}, query ->
+          from(u in query, where: u.session_id == ^session_id)
+
+        _, query ->
+          query
+      end)
+      |> Repo.all()
+
     render(conn, "index.json", session: session)
   end
 

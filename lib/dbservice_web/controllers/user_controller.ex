@@ -1,6 +1,8 @@
 defmodule DbserviceWeb.UserController do
   use DbserviceWeb, :controller
 
+  import Ecto.Query
+  alias Dbservice.Repo
   alias Dbservice.Users
   alias Dbservice.Users.User
 
@@ -26,8 +28,20 @@ defmodule DbserviceWeb.UserController do
     response(200, "OK", Schema.ref(:Users))
   end
 
-  def index(conn, _params) do
-    user = Users.list_all_users()
+  def index(conn, params) do
+    user =
+      Enum.reduce(params, User, fn
+        {"email", email}, query ->
+          from(u in query, where: u.email == ^email)
+
+        {"date_of_birth", date_of_birth}, query ->
+          from(u in query, where: u.date_of_birth == ^date_of_birth)
+
+        _, query ->
+          query
+      end)
+      |> Repo.all()
+
     render(conn, "index.json", user: user)
   end
 

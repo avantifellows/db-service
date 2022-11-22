@@ -18,7 +18,7 @@ defmodule Dbservice.Sessions.Session do
     field :start_time, :utc_datetime
     field :owner_id, :id
     field :created_by_id, :id
-    field :uuid, :string
+    field :session_id, :string
     field :is_active, :boolean
     field :purpose, :map
     field :repeat_schedule, :map
@@ -43,7 +43,7 @@ defmodule Dbservice.Sessions.Session do
       :meta_data,
       :owner_id,
       :created_by_id,
-      :uuid,
+      :session_id,
       :purpose,
       :repeat_schedule
     ])

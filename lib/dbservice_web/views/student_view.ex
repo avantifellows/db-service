@@ -19,7 +19,7 @@ defmodule DbserviceWeb.StudentView do
   def render("student.json", %{student: student}) do
     %{
       id: student.id,
-      uuid: student.uuid,
+      student_id: student.student_id,
       father_name: student.father_name,
       father_phone: student.father_phone,
       mother_name: student.mother_name,
@@ -45,7 +45,7 @@ defmodule DbserviceWeb.StudentView do
 
     %{
       id: student.id,
-      uuid: student.uuid,
+      student_id: student.student_id,
       father_name: student.father_name,
       father_phone: student.father_phone,
       mother_name: student.mother_name,

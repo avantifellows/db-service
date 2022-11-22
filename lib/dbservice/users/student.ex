@@ -14,7 +14,7 @@ defmodule Dbservice.Users.Student do
     field :mother_name, :string
     field :mother_phone, :string
     field :stream, :string
-    field :uuid, :string
+    field :student_id, :string
     field :physically_handicapped, :boolean
     field :family_income, :string
     field :father_profession, :string
@@ -35,7 +35,7 @@ defmodule Dbservice.Users.Student do
     student
     |> cast(attrs, [
       :user_id,
-      :uuid,
+      :student_id,
       :father_name,
       :father_phone,
       :mother_name,
