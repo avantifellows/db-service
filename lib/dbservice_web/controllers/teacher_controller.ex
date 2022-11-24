@@ -97,4 +97,23 @@ defmodule DbserviceWeb.TeacherController do
       send_resp(conn, :no_content, "")
     end
   end
+
+  def register(conn, params) do
+    with {:ok, %Teacher{} = teacher} <- Users.create_teacher_with_user(params) do
+      conn
+      |> put_status(:created)
+      |> render("show_with_user.json", teacher: teacher)
+    end
+  end
+
+  def update_teacher_with_user(conn, params) do
+    teacher = Users.get_teacher!(params["id"])
+    user = Users.get_user!(teacher.user_id)
+
+    with {:ok, %Teacher{} = teacher} <- Users.update_teacher_with_user(teacher, user, params) do
+      conn
+      |> put_status(:ok)
+      |> render("show_with_user.json", teacher: teacher)
+    end
+  end
 end
