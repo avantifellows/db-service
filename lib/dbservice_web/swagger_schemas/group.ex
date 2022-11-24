@@ -79,7 +79,7 @@ defmodule DbserviceWeb.SwaggerSchema.Group do
     %{
       GroupUsers:
         swagger_schema do
-          title("Group Session")
+          title("Group User")
           description("Relation between group and user")
 
           properties do
