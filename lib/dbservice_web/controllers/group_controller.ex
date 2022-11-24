@@ -39,8 +39,19 @@ defmodule DbserviceWeb.GroupController do
     render(conn, "index.json", group: group)
   end
 
-  def index(conn, _params) do
-    group = Groups.list_group()
+  def index(conn, params) do
+    param = Enum.map(params, fn {key, value} -> {String.to_existing_atom(key), value} end)
+
+    group =
+      Enum.reduce(param, Group, fn
+        {key, value}, query ->
+          from u in query, or_where: field(u, ^key) == ^value
+
+        _, query ->
+          query
+      end)
+      |> Repo.all()
+
     render(conn, "index.json", group: group)
   end
 
