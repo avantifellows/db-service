@@ -1,6 +1,8 @@
 defmodule DbserviceWeb.SessionController do
   use DbserviceWeb, :controller
 
+  import Ecto.Query
+  alias Dbservice.Repo
   alias Dbservice.Sessions
   alias Dbservice.Sessions.Session
 
@@ -27,8 +29,19 @@ defmodule DbserviceWeb.SessionController do
     response(200, "OK", Schema.ref(:Sessions))
   end
 
-  def index(conn, _params) do
-    session = Sessions.list_session()
+  def index(conn, params) do
+    param = Enum.map(params, fn {key, value} -> {String.to_existing_atom(key), value} end)
+
+    session =
+      Enum.reduce(param, Session, fn
+        {key, value}, query ->
+          from u in query, or_where: field(u, ^key) == ^value
+
+        _, query ->
+          query
+      end)
+      |> Repo.all()
+
     render(conn, "index.json", session: session)
   end
 

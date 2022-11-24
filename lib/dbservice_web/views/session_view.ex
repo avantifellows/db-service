@@ -23,7 +23,7 @@ defmodule DbserviceWeb.SessionView do
       owner_id: session.owner_id,
       created_by_id: session.created_by_id,
       is_active: session.is_active,
-      uuid: session.uuid,
+      session_id: session.session_id,
       purpose: session.purpose,
       repeat_schedule: session.repeat_schedule
     }

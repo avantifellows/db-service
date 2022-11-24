@@ -106,7 +106,8 @@ defmodule Seed do
         created_by_id: creator.id,
         is_active: Enum.random([true, false]),
         purpose: %{},
-        repeat_schedule: %{}
+        repeat_schedule: %{},
+        session_id: Seed.random_alphanumeric()
       })
 
     session
@@ -148,7 +149,7 @@ defmodule Seed do
 
     {:ok, student} =
       Users.create_student(%{
-        uuid: Seed.random_alphanumeric(),
+        student_id: Seed.random_alphanumeric(),
         father_name: Person.name(),
         father_phone: Phone.PtPt.number(),
         mother_name: Person.name(),
