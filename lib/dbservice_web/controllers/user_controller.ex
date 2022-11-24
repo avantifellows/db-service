@@ -29,13 +29,12 @@ defmodule DbserviceWeb.UserController do
   end
 
   def index(conn, params) do
-    user =
-      Enum.reduce(params, User, fn
-        {"email", email}, query ->
-          from(u in query, where: u.email == ^email)
+    param = Enum.map(params, fn {key, value} -> {String.to_existing_atom(key), value} end)
 
-        {"date_of_birth", date_of_birth}, query ->
-          from(u in query, where: u.date_of_birth == ^date_of_birth)
+    user =
+      Enum.reduce(param, User, fn
+        {key, value}, query ->
+          from u in query, or_where: field(u, ^key) == ^value
 
         _, query ->
           query

@@ -30,16 +30,12 @@ defmodule DbserviceWeb.SessionController do
   end
 
   def index(conn, params) do
+    param = Enum.map(params, fn {key, value} -> {String.to_existing_atom(key), value} end)
+
     session =
-      Enum.reduce(params, Session, fn
-        {"platform_link", platform_link}, query ->
-          from(u in query, where: u.platform_link == ^platform_link)
-
-        {"portal_link", portal_link}, query ->
-          from(u in query, where: u.portal_link == ^portal_link)
-
-        {"session_id", session_id}, query ->
-          from(u in query, where: u.session_id == ^session_id)
+      Enum.reduce(param, Session, fn
+        {key, value}, query ->
+          from u in query, or_where: field(u, ^key) == ^value
 
         _, query ->
           query
