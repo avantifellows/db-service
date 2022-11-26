@@ -52,7 +52,7 @@ defmodule Seed do
     {:ok, group} =
       Groups.create_group(%{
         name: Person.name(),
-        type: Enum.random(["batch", "cohort", "program"]),
+        type: Enum.random(["batch", "cohort", "program", "group"]),
         program_type: Enum.random(["Competitive", "Non Competitive"]),
         program_sub_type: Enum.random(["Easy", "Moderate", "High"]),
         program_mode: Enum.random(["Online", "Offline"]),
