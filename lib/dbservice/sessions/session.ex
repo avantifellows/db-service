@@ -3,7 +3,6 @@ defmodule Dbservice.Sessions.Session do
 
   use Ecto.Schema
   import Ecto.Changeset
-  import Dbservice.Utils.Util
 
   alias Dbservice.Users.User
   alias Dbservice.Groups.Group
@@ -57,20 +56,11 @@ defmodule Dbservice.Sessions.Session do
       :end_time,
       :meta_data
     ])
-    |> validate_start_end_date_time
   end
 
   def changeset_update_groups(session, groups) do
     session
     |> change()
     |> put_assoc(:group, groups)
-  end
-
-  defp validate_start_end_date_time(changeset) do
-    if get_field(changeset, :start_time, :end_time) != nil do
-      validate_start_end_datetime(changeset, :start_time, :end_time)
-    else
-      changeset
-    end
   end
 end
