@@ -1,6 +1,8 @@
 defmodule DbserviceWeb.EnrollmentRecordController do
   use DbserviceWeb, :controller
 
+  import Ecto.Query
+  alias Dbservice.Repo
   alias Dbservice.Schools
   alias Dbservice.Schools.EnrollmentRecord
 
@@ -22,8 +24,19 @@ defmodule DbserviceWeb.EnrollmentRecordController do
     response(200, "OK", Schema.ref(:EnrollmentRecords))
   end
 
-  def index(conn, _params) do
-    enrollment_record = Schools.list_enrollment_record()
+  def index(conn, params) do
+    param = Enum.map(params, fn {key, value} -> {String.to_existing_atom(key), value} end)
+
+    enrollment_record =
+      Enum.reduce(param, EnrollmentRecord, fn
+        {key, value}, query ->
+          from u in query, or_where: field(u, ^key) == ^value
+
+        _, query ->
+          query
+      end)
+      |> Repo.all()
+
     render(conn, "index.json", enrollment_record: enrollment_record)
   end
 

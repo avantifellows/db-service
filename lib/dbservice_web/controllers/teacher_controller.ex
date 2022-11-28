@@ -1,6 +1,8 @@
 defmodule DbserviceWeb.TeacherController do
   use DbserviceWeb, :controller
 
+  import Ecto.Query
+  alias Dbservice.Repo
   alias Dbservice.Users
   alias Dbservice.Users.Teacher
 
@@ -22,8 +24,19 @@ defmodule DbserviceWeb.TeacherController do
     response(200, "OK", Schema.ref(:Teachers))
   end
 
-  def index(conn, _params) do
-    teacher = Users.list_teacher()
+  def index(conn, params) do
+    param = Enum.map(params, fn {key, value} -> {String.to_existing_atom(key), value} end)
+
+    teacher =
+      Enum.reduce(param, Teacher, fn
+        {key, value}, query ->
+          from u in query, or_where: field(u, ^key) == ^value
+
+        _, query ->
+          query
+      end)
+      |> Repo.all()
+
     render(conn, "index.json", teacher: teacher)
   end
 

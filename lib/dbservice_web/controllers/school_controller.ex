@@ -29,8 +29,19 @@ defmodule DbserviceWeb.SchoolController do
     render(conn, "index.json", school: school)
   end
 
-  def index(conn, _params) do
-    school = Schools.list_school()
+  def index(conn, params) do
+    param = Enum.map(params, fn {key, value} -> {String.to_existing_atom(key), value} end)
+
+    school =
+      Enum.reduce(param, School, fn
+        {key, value}, query ->
+          from u in query, or_where: field(u, ^key) == ^value
+
+        _, query ->
+          query
+      end)
+      |> Repo.all()
+
     render(conn, "index.json", school: school)
   end
 
