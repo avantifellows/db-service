@@ -35,7 +35,7 @@ defmodule DbserviceWeb.SchoolController do
     school =
       Enum.reduce(param, School, fn
         {key, value}, query ->
-          from u in query, or_where: field(u, ^key) == ^value
+          from u in query, where: field(u, ^key) == ^value
 
         _, query ->
           query

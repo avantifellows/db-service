@@ -37,14 +37,14 @@ defmodule DbserviceWeb.StudentController do
     student =
       Enum.reduce(param, Student, fn
         {key, value}, query ->
-          from u in query, or_where: field(u, ^key) == ^value
+          from u in query, where: field(u, ^key) == ^value
 
         _, query ->
           query
       end)
       |> Repo.all()
 
-    render(conn, "index.json", student: student)
+    render(conn, "show_with_user.json", student: student)
   end
 
   swagger_path :create do
