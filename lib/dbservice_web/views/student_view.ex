@@ -13,7 +13,7 @@ defmodule DbserviceWeb.StudentView do
   end
 
   def render("show_with_user.json", %{student: student}) do
-    render_one(student, StudentView, "student_with_user.json")
+    render_many(student, StudentView, "student_with_user.json")
   end
 
   def render("student.json", %{student: student}) do
@@ -52,6 +52,16 @@ defmodule DbserviceWeb.StudentView do
       mother_phone: student.mother_phone,
       category: student.category,
       stream: student.stream,
+      physically_handicapped: student.physically_handicapped,
+      family_income: student.family_income,
+      father_profession: student.father_profession,
+      father_education_level: student.father_education_level,
+      mother_profession: student.mother_profession,
+      mother_education_level: student.mother_education_level,
+      time_of_device_availability: student.time_of_device_availability,
+      has_internet_access: student.has_internet_access,
+      primary_smartphone_owner: student.primary_smartphone_owner,
+      primary_smartphone_owner_profession: student.primary_smartphone_owner_profession,
       user: render_one(student.user, UserView, "user.json")
     }
   end

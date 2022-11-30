@@ -13,7 +13,7 @@ defmodule DbserviceWeb.TeacherView do
   end
 
   def render("show_with_user.json", %{teacher: teacher}) do
-    render_one(teacher, TeacherView, "teacher_with_user.json")
+    render_many(teacher, TeacherView, "teacher_with_user.json")
   end
 
   def render("teacher.json", %{teacher: teacher}) do

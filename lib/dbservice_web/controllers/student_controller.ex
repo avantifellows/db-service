@@ -44,7 +44,7 @@ defmodule DbserviceWeb.StudentController do
       end)
       |> Repo.all()
 
-    render(conn, "index.json", student: student)
+    render(conn, "show_with_user.json", student: student)
   end
 
   swagger_path :create do
