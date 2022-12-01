@@ -50,4 +50,8 @@ config :logger, level: :info
 
 config :dbservice, DbserviceWeb.Endpoint, force_ssl: [rewrite_on: [:x_forwarded_proto]]
 
-config :dbservice, Dbservice.Repo, ownership_timeout: 60_000
+# Increase timeout time
+config :dbservice, Dbservice.Repo,
+  timeout: 120_000,
+  queue_target: 15_000,
+  queue_interval: 100_000
