@@ -9,7 +9,7 @@ defmodule DbserviceWeb.StudentView do
   end
 
   def render("show.json", %{student: student}) do
-    render_many(student, StudentView, "student.json")
+    render_one(student, StudentView, "student.json")
   end
 
   def render("show_with_user.json", %{student: student}) do
@@ -37,7 +37,8 @@ defmodule DbserviceWeb.StudentView do
       time_of_device_availability: student.time_of_device_availability,
       has_internet_access: student.has_internet_access,
       primary_smartphone_owner: student.primary_smartphone_owner,
-      primary_smartphone_owner_profession: student.primary_smartphone_owner_profession
+      primary_smartphone_owner_profession: student.primary_smartphone_owner_profession,
+      user: render_one(student.user, UserView, "user.json")
     }
   end
 
