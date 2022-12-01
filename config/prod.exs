@@ -49,3 +49,5 @@ config :logger, level: :info
 # Check `Plug.SSL` for all available options in `force_ssl`.
 
 config :dbservice, DbserviceWeb.Endpoint, force_ssl: [rewrite_on: [:x_forwarded_proto]]
+
+config :dbservice, Dbservice.Repo, ownership_timeout: 60_000
