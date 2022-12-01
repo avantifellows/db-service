@@ -56,4 +56,7 @@ config :phoenix_swagger, :json_library, Jason
 import_config "#{config_env()}.exs"
 
 # Increase timeout time
-config :dbservice, Dbservice.Repo, ownership_timeout: 60_000
+config :dbservice, Dbservice.Repo,
+  timeout: 120_000,
+  queue_target: 15_000,
+  queue_interval: 100_000
