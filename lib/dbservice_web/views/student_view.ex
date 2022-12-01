@@ -37,8 +37,7 @@ defmodule DbserviceWeb.StudentView do
       time_of_device_availability: student.time_of_device_availability,
       has_internet_access: student.has_internet_access,
       primary_smartphone_owner: student.primary_smartphone_owner,
-      primary_smartphone_owner_profession: student.primary_smartphone_owner_profession,
-      user: render_one(student.user, UserView, "user.json")
+      primary_smartphone_owner_profession: student.primary_smartphone_owner_profession
     }
   end
 
