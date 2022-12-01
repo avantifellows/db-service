@@ -9,7 +9,7 @@ defmodule DbserviceWeb.StudentView do
   end
 
   def render("show.json", %{student: student}) do
-    render_one(student, StudentView, "student.json")
+    render_many(student, StudentView, "student.json")
   end
 
   def render("show_with_user.json", %{student: student}) do
