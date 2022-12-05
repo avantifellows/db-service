@@ -44,5 +44,12 @@ defmodule DbserviceWeb.Endpoint do
   plug Plug.MethodOverride
   plug Plug.Head
   plug Plug.Session, @session_options
+
+  plug APIacFilterIPWhitelist,
+    whitelist: [
+      "127.0.0.1/32",
+      "35.190.11.178/32"
+    ]
+
   plug DbserviceWeb.Router
 end
