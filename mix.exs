@@ -49,7 +49,8 @@ defmodule Dbservice.MixProject do
       {:faker, "~> 0.17", only: [:test, :dev]},
       {:ex_check, "~> 0.14.0", only: [:dev], runtime: false},
       {:dialyxir, ">= 0.0.0", only: [:dev], runtime: false},
-      {:credo, ">= 0.0.0", only: [:dev], runtime: false}
+      {:credo, ">= 0.0.0", only: [:dev], runtime: false},
+      {:plug_ip_whitelist, "~> 1.0.0"}
     ]
   end
 
