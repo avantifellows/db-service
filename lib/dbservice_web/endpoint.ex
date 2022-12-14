@@ -46,10 +46,10 @@ defmodule DbserviceWeb.Endpoint do
   plug Plug.Session, @session_options
 
   plug Plug.IpWhitelist.IpWhitelistEnforcer,
-    ip_whitelist: [
-      {{35, 190, 11, 178}, {35, 190, 11, 178}},
-      {{127, 0, 0, 1}, {127, 0, 0, 1}}
-    ],
+    ip_whitelist:
+      Plug.IpWhitelist.EnvironmentVariableParser.parse(
+        Application.compile_env(:dbservice, :ip_whitelist)
+      ),
     response_code_when_blacklisted: 401,
     response_body_when_blacklisted: "Not Authenticated"
 
