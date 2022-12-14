@@ -59,5 +59,5 @@ config :phoenix, :stacktrace_depth, 20
 # Initialize plugs at runtime for faster development compilation
 config :phoenix, :plug_init_mode, :runtime
 
-# Setup configuration to fetch whitelisted
+# Setup configuration to fetch whitelisted ip's
 config :dbservice, :ip_whitelist, "127.0.0.1-127.0.0.1 35.190.11.178-35.190.11.178"
