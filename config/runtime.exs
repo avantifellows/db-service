@@ -1,4 +1,7 @@
 import Config
+import Dotenvy
+
+source(["config/.env", "config/.env.#{config_env()}"])
 
 # config/runtime.exs is executed for all environments, including
 # during releases. It is executed after compilation and before the
@@ -8,13 +11,13 @@ import Config
 # The block below contains prod specific runtime configuration.
 
 # Start the phoenix server if environment is set and running in a release
-if System.get_env("PHX_SERVER") && System.get_env("RELEASE_NAME") do
-  config :dbservice, DbserviceWeb.Endpoint, server: true
-end
+# if System.get_env("PHX_SERVER") && System.get_env("RELEASE_NAME") do
+#   config :dbservice, DbserviceWeb.Endpoint, server: true
+# end
 
-if config_env() == :prod do
+if config_env() == :dev do
   database_url =
-    System.get_env("DATABASE_URL") ||
+    env!("DATABASE_URL") ||
       raise """
       environment variable DATABASE_URL is missing.
       For example: ecto://USER:PASS@HOST/DATABASE
@@ -34,17 +37,17 @@ if config_env() == :prod do
   # to check this value into version control, so we use an environment
   # variable instead.
   secret_key_base =
-    System.get_env("SECRET_KEY_BASE") ||
+    env!("SECRET_KEY_BASE") ||
       raise """
       environment variable SECRET_KEY_BASE is missing.
       You can generate one by calling: mix phx.gen.secret
       """
 
-  host = System.get_env("PHX_HOST") || "example.com"
-  port = String.to_integer(System.get_env("PORT") || "4000")
+  host = env!("PHX_HOST") || "example.com"
+  port = String.to_integer(env!("PORT") || "4000")
 
   config :dbservice, DbserviceWeb.Endpoint,
-    url: [host: host, port: 443],
+    url: [host: host, port: port],
     http: [
       # Enable IPv6 and bind on all interfaces.
       # Set it to  {0, 0, 0, 0, 0, 0, 0, 1} for local network only access.

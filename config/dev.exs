@@ -1,13 +1,15 @@
 import Config
 
+config :dbservice, :environment, :dev
+
 # Configure your database
-config :dbservice, Dbservice.Repo,
-  username: "postgres",
-  password: "postgres",
-  hostname: "localhost",
-  database: "dbservice_dev",
-  show_sensitive_data_on_connection_error: true,
-  pool_size: 10
+# config :dbservice, Dbservice.Repo,
+#   username: "postgres",
+#   password: "postgres",
+#   hostname: "localhost",
+#   database: "dbservice_dev",
+#   show_sensitive_data_on_connection_error: true,
+#   pool_size: 10
 
 # For development, we disable any cache and enable
 # debugging and code reloading.
@@ -22,7 +24,6 @@ config :dbservice, DbserviceWeb.Endpoint,
   check_origin: false,
   code_reloader: true,
   debug_errors: true,
-  secret_key_base: "ATXS8cenJ+WIJegIC5wMDVOd09aFTtuWpb0mBOeAAxnsQrIYfdN/sEMPoXvbO9l/",
   watchers: []
 
 # ## SSL Support
