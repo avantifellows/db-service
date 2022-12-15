@@ -115,7 +115,7 @@ defmodule DbserviceWeb.TeacherController do
     with {:ok, %Teacher{} = teacher} <- Users.create_teacher_with_user(params) do
       conn
       |> put_status(:created)
-      |> render("show_with_user.json", teacher: teacher)
+      |> render("show.json", teacher: teacher)
     end
   end
 
@@ -126,7 +126,7 @@ defmodule DbserviceWeb.TeacherController do
     with {:ok, %Teacher{} = teacher} <- Users.update_teacher_with_user(teacher, user, params) do
       conn
       |> put_status(:ok)
-      |> render("show_with_user.json", teacher: teacher)
+      |> render("show.json", teacher: teacher)
     end
   end
 end
