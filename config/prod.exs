@@ -55,6 +55,3 @@ config :dbservice, Dbservice.Repo,
   timeout: 120_000,
   queue_target: 15_000,
   queue_interval: 100_000
-
-# Setup configuration to fetch whitelisted ip's
-config :dbservice, :ip_whitelist, System.get_env("IP_WHITELIST")

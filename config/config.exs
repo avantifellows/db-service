@@ -57,6 +57,13 @@ config :dbservice, Dbservice.Repo,
   queue_target: 15_000,
   queue_interval: 100_000
 
+# Setup configuration to fetch whitelisted ip's
+if config_env() == :prod do
+  config :dbservice, :ip_whitelist, System.get_env("IP_WHITELIST")
+else
+  config :dbservice, :ip_whitelist, "127.0.0.1-127.0.0.1 35.190.11.178-35.190.11.178"
+end
+
 # Import environment specific config. This must remain at the bottom
 # of this file so it overrides the configuration defined above.
 import_config "#{config_env()}.exs"
