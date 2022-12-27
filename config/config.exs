@@ -51,12 +51,12 @@ config :dbservice, :phoenix_swagger,
 # Use Jason for JSON parsing in Phoenix
 config :phoenix_swagger, :json_library, Jason
 
-# Import environment specific config. This must remain at the bottom
-# of this file so it overrides the configuration defined above.
-import_config "#{config_env()}.exs"
-
 # Increase timeout time
 config :dbservice, Dbservice.Repo,
   timeout: 120_000,
   queue_target: 15_000,
   queue_interval: 100_000
+
+# Import environment specific config. This must remain at the bottom
+# of this file so it overrides the configuration defined above.
+import_config "#{config_env()}.exs"
