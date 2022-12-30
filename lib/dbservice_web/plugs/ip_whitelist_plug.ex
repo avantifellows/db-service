@@ -21,7 +21,7 @@ defmodule DbserviceWeb.IpWhitelistPlug do
   end
 
   defp allowed_ip?(conn) do
-    allowed_ips = ['128.0.0.1', "127.0.0.1", "35.190.11.178", '35.190.11.178']
+    allowed_ips = ['128.0.0.1', '0.0.0.0.0.65535.2616.1051']
     IO.inspect(conn)
     IO.inspect(conn.remote_ip)
     ip = :inet_parse.ntoa(conn.remote_ip)
