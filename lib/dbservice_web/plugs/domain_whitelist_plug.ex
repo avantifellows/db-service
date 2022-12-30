@@ -21,7 +21,7 @@ defmodule DbserviceWeb.DomainWhitelistPlug do
   end
 
   defp allowed_domains?(conn) do
-    allowed_domains = ["localhost", "staging-af-db.gigalixirapp.com"]
+    allowed_domains = ["localhost"]
     domain = conn.host
     Enum.member?(allowed_domains, domain)
   end
