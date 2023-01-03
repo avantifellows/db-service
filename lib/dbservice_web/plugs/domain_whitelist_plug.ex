@@ -1,10 +1,10 @@
 defmodule DbserviceWeb.DomainWhitelistPlug do
   @moduledoc """
-  Only allow requests from the list of IP addresses specified. Assumes the request ip is present in the `remote_ip`
+  Only allow requests from the list of domains specified. Assumes the request domain is present in the `host`
   attribute on the passed in plug.
-  If the request IP is not whitelisted, the specified response code and body
+  If the request doamin is not whitelisted, the specified response code and body
   will be added to the Plug.Conn and it will be halted.
-  If the request IP is on the whitelist, the plug chain will continue
+  If the request domain is on the whitelist, the plug chain will continue
   """
   import Plug.Conn
 
@@ -22,6 +22,8 @@ defmodule DbserviceWeb.DomainWhitelistPlug do
 
   defp allowed_domains?(conn) do
     whitelisted_domains = System.get_env("WHITELISTED_DOMAINS")
+
+    IO.inspect(conn)
 
     allowed_domains =
       if is_nil(whitelisted_domains),
