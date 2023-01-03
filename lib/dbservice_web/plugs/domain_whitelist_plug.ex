@@ -23,8 +23,6 @@ defmodule DbserviceWeb.DomainWhitelistPlug do
   defp allowed_domains?(conn) do
     whitelisted_domains = System.get_env("WHITELISTED_DOMAINS")
 
-    IO.inspect(conn)
-
     allowed_domains =
       if is_nil(whitelisted_domains),
         do: ["localhost"],
