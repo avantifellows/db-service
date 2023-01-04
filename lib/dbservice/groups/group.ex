@@ -10,7 +10,7 @@ defmodule Dbservice.Groups.Group do
   schema "group" do
     field :name, :string
     field :parent_id, :integer
-    field :type, Ecto.Enum, values: [:batch, :group, :cohort, :program]
+    field :type, Ecto.Enum, values: [:batch, :group, :cohort, :program, :course]
     field :program_type, :string
     field :program_sub_type, :string
     field :program_mode, :string
@@ -24,6 +24,7 @@ defmodule Dbservice.Groups.Group do
     field :group_locale, :string
     field :group_locale_data, :map
     field :auth_type, {:array, :string}
+    field :program_model, :string
 
     many_to_many :user, User, join_through: "group_user", on_replace: :delete
     many_to_many :session, Session, join_through: "group_session", on_replace: :delete
@@ -50,7 +51,8 @@ defmodule Dbservice.Groups.Group do
       :group_input_schema,
       :group_locale,
       :group_locale_data,
-      :auth_type
+      :auth_type,
+      :program_model
     ])
     |> validate_required([:name, :type])
   end
