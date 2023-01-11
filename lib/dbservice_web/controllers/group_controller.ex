@@ -32,13 +32,6 @@ defmodule DbserviceWeb.GroupController do
     response(200, "OK", Schema.ref(:Groups))
   end
 
-  def index(conn, %{"name" => name, "type" => type}) do
-    group =
-      Repo.all(from t in Group, where: t.name == ^name and t.type == ^type, select: t, limit: 1)
-
-    render(conn, "index.json", group: group)
-  end
-
   def index(conn, params) do
     param = Enum.map(params, fn {key, value} -> {String.to_existing_atom(key), value} end)
 
