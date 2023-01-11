@@ -14,7 +14,6 @@ defmodule Dbservice.Schools.EnrollmentRecord do
     field :grade, :string
     field :is_current, :boolean, default: false
     field :board_medium, :string
-    field :date_of_enrollment, :date
     field :date_of_school_enrollment, :date
     field :date_of_group_enrollment, :date
 
@@ -35,18 +34,17 @@ defmodule Dbservice.Schools.EnrollmentRecord do
       :academic_year,
       :is_current,
       :board_medium,
-      :date_of_enrollment,
       :date_of_school_enrollment,
       :date_of_group_enrollment,
       :group_id
     ])
     |> validate_required([:student_id, :school_id])
-    |> validate_date_of_enrollment
+    |> validate_date_of_school_enrollment
   end
 
-  defp validate_date_of_enrollment(changeset) do
-    if get_field(changeset, :date_of_enrollment) != nil do
-      invalidate_future_date(changeset, :date_of_enrollment)
+  defp validate_date_of_school_enrollment(changeset) do
+    if get_field(changeset, :date_of_school_enrollment) != nil do
+      invalidate_future_date(changeset, :date_of_school_enrollment)
     else
       changeset
     end

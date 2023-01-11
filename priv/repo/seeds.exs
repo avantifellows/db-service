@@ -255,8 +255,6 @@ defmodule Seed do
       Schools.create_enrollment_record(%{
         grade: Enum.random(["KG", "1", "2", "3", "4", "5", "6", "7", "8", "9", "10"]),
         board_medium: Enum.random(["ICSE", "CBSE", "State Board"]),
-        date_of_enrollment:
-          Faker.DateTime.between(~N[2015-05-19 00:00:00], ~N[2022-10-19 00:00:00]),
         academic_year:
           Enum.random([
             "2010-11",
