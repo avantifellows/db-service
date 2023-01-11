@@ -249,6 +249,7 @@ defmodule Seed do
   def create_enrollment_record() do
     school = Schools.School |> offset(^Enum.random(1..9)) |> limit(1) |> Repo.one()
     student = Users.Student |> offset(^Enum.random(1..99)) |> limit(1) |> Repo.one()
+    group = Seed.create_group()
 
     {:ok, enrollment_record} =
       Schools.create_enrollment_record(%{
@@ -273,7 +274,12 @@ defmodule Seed do
           ]),
         is_current: Enum.random([true, false]),
         student_id: student.id,
-        school_id: school.id
+        school_id: school.id,
+        group_id: group.id,
+        date_of_school_enrollment:
+          Faker.DateTime.between(~N[2015-05-19 00:00:00], ~N[2022-10-19 00:00:00]),
+        date_of_group_enrollment:
+          Faker.DateTime.between(~N[2015-05-19 00:00:00], ~N[2022-10-19 00:00:00])
       })
 
     enrollment_record
