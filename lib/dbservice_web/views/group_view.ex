@@ -27,7 +27,9 @@ defmodule DbserviceWeb.GroupView do
       batch_contact_hours_per_week: group.batch_contact_hours_per_week,
       group_input_schema: group.group_input_schema,
       group_locale: group.group_locale,
-      group_locale_data: group.group_locale_data
+      group_locale_data: group.group_locale_data,
+      program_model: group.program_model,
+      auth_type: group.auth_type
     }
   end
 end

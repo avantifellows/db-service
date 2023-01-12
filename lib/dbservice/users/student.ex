@@ -25,6 +25,8 @@ defmodule Dbservice.Users.Student do
     field :has_internet_access, :boolean
     field :primary_smartphone_owner, :string
     field :primary_smartphone_owner_profession, :string
+    field :is_dropper, :boolean
+    field :contact_hours_per_week, :integer
     belongs_to :user, User
     has_many :enrollment_record, EnrollmentRecord
 
@@ -51,7 +53,9 @@ defmodule Dbservice.Users.Student do
       :time_of_device_availability,
       :has_internet_access,
       :primary_smartphone_owner,
-      :primary_smartphone_owner_profession
+      :primary_smartphone_owner_profession,
+      :is_dropper,
+      :contact_hours_per_week
     ])
     |> validate_required([:user_id])
   end

@@ -64,6 +64,8 @@ defmodule DbserviceWeb.StudentView do
       has_internet_access: student.has_internet_access,
       primary_smartphone_owner: student.primary_smartphone_owner,
       primary_smartphone_owner_profession: student.primary_smartphone_owner_profession,
+      is_dropper: student.is_dropper,
+      contact_hours_per_week: student.contact_hours_per_week,
       user: render_one(student.user, UserView, "user.json")
     }
   end

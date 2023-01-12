@@ -24,6 +24,7 @@ defmodule Dbservice.Users.User do
     field :state, :string
     field :whatsapp_phone, :string
     field :date_of_birth, :date
+    field :country, :string
 
     timestamps()
 
@@ -49,7 +50,8 @@ defmodule Dbservice.Users.User do
       :pincode,
       :role,
       :whatsapp_phone,
-      :date_of_birth
+      :date_of_birth,
+      :country
     ])
     |> validate_format(:phone, ~r{\A\d*\z})
     |> validate_date_of_birth

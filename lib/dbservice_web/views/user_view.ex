@@ -24,7 +24,8 @@ defmodule DbserviceWeb.UserView do
       pincode: user.pincode,
       role: user.role,
       whatsapp_phone: user.whatsapp_phone,
-      date_of_birth: user.date_of_birth
+      date_of_birth: user.date_of_birth,
+      country: user.country
     }
   end
 end

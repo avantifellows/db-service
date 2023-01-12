@@ -42,7 +42,8 @@ defmodule Seed do
         pincode: Address.postcode(),
         role: "admin",
         whatsapp_phone: Phone.PtPt.number(),
-        date_of_birth: Faker.Date.date_of_birth(Enum.random(1..10))
+        date_of_birth: Faker.Date.date_of_birth(Enum.random(1..10)),
+        country: Enum.random(["India", "Bhutan", "Sri Lanka", "Bangladesh"])
       })
 
     user
@@ -74,7 +75,8 @@ defmodule Seed do
         batch_contact_hours_per_week: Enum.random(20..48),
         group_input_schema: %{},
         group_locale: Enum.random(["hi", "en"]),
-        group_locale_data: %{}
+        group_locale_data: %{},
+        program_model: Enum.random(["Live Classes"])
       })
 
     group
@@ -174,7 +176,9 @@ defmodule Seed do
         time_of_device_availability: Faker.DateTime.forward(Enum.random(1..10)),
         has_internet_access: Enum.random([true, false]),
         primary_smartphone_owner: Enum.random(["Father", "Mother"]),
-        primary_smartphone_owner_profession: Enum.random(["Employed", "Unemployed"])
+        primary_smartphone_owner_profession: Enum.random(["Employed", "Unemployed"]),
+        is_dropper: Enum.random([true, false]),
+        contact_hours_per_week: Enum.random(20..48)
       })
 
     student
@@ -245,13 +249,12 @@ defmodule Seed do
   def create_enrollment_record() do
     school = Schools.School |> offset(^Enum.random(1..9)) |> limit(1) |> Repo.one()
     student = Users.Student |> offset(^Enum.random(1..99)) |> limit(1) |> Repo.one()
+    group = Seed.create_group()
 
     {:ok, enrollment_record} =
       Schools.create_enrollment_record(%{
         grade: Enum.random(["KG", "1", "2", "3", "4", "5", "6", "7", "8", "9", "10"]),
         board_medium: Enum.random(["ICSE", "CBSE", "State Board"]),
-        date_of_enrollment:
-          Faker.DateTime.between(~N[2015-05-19 00:00:00], ~N[2022-10-19 00:00:00]),
         academic_year:
           Enum.random([
             "2010-11",
@@ -269,7 +272,12 @@ defmodule Seed do
           ]),
         is_current: Enum.random([true, false]),
         student_id: student.id,
-        school_id: school.id
+        school_id: school.id,
+        group_id: group.id,
+        date_of_school_enrollment:
+          Faker.DateTime.between(~N[2015-05-19 00:00:00], ~N[2022-10-19 00:00:00]),
+        date_of_group_enrollment:
+          Faker.DateTime.between(~N[2015-05-19 00:00:00], ~N[2022-10-19 00:00:00])
       })
 
     enrollment_record
