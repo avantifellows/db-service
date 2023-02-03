@@ -76,7 +76,9 @@ defmodule Seed do
         group_input_schema: %{},
         group_locale: Enum.random(["hi", "en"]),
         group_locale_data: %{},
-        program_model: Enum.random(["Live Classes"])
+        auth_type: ["jwt", "auth_layer"],
+        program_model: Enum.random(["Live Classes"]),
+        group_id: Seed.random_alphanumeric()
       })
 
     group

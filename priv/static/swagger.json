@@ -56,6 +56,7 @@
       "description": "A group in the application",
       "example": {
         "batch_contact_hours_per_week": 48,
+        "group_id": "2243345211",
         "group_input_schema": {},
         "group_locale": "hi",
         "group_locale_data": {
@@ -70,6 +71,7 @@
         "parent_id": 1,
         "program_donor": "",
         "program_mode": "Offline",
+        "program_model": "Live Classes",
         "program_products_used": "",
         "program_start_date": "2020/02/03",
         "program_state": "Delhi",
@@ -82,6 +84,10 @@
         "batch_contact_hours_per_week": {
           "description": "Contact hours for a batch in a week",
           "type": "integer"
+        },
+        "group_id": {
+          "description": "ID of the group",
+          "type": "string"
         },
         "group_input_schema": {
           "description": "Input schema",
@@ -109,6 +115,10 @@
         },
         "program_mode": {
           "description": "Mode of a program",
+          "type": "string"
+        },
+        "program_model": {
+          "description": "Program Model",
           "type": "string"
         },
         "program_products_used": {

@@ -26,6 +26,7 @@ defmodule Dbservice.Groups.Group do
     field :group_locale_data, :map
     field :auth_type, {:array, :string}
     field :program_model, :string
+    field :group_id, :string
 
     many_to_many :user, User, join_through: "group_user", on_replace: :delete
     many_to_many :session, Session, join_through: "group_session", on_replace: :delete
@@ -54,7 +55,8 @@ defmodule Dbservice.Groups.Group do
       :group_locale,
       :group_locale_data,
       :auth_type,
-      :program_model
+      :program_model,
+      :group_id
     ])
     |> validate_required([:name, :type])
   end
