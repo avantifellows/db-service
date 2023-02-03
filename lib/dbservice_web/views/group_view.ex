@@ -29,7 +29,8 @@ defmodule DbserviceWeb.GroupView do
       group_locale: group.group_locale,
       group_locale_data: group.group_locale_data,
       program_model: group.program_model,
-      auth_type: group.auth_type
+      auth_type: group.auth_type,
+      group_id: group.group_id
     }
   end
 end
