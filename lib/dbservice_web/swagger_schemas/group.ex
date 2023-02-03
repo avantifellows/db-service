@@ -53,7 +53,7 @@ defmodule DbserviceWeb.SwaggerSchema.Group do
               }
             },
             program_model: "Live Classes",
-            group_id: "2243345211",
+            group_id: "2243345211"
           })
         end
     }
