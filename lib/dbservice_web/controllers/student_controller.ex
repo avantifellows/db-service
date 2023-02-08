@@ -43,7 +43,7 @@ defmodule DbserviceWeb.StudentController do
           query
       end)
       |> Repo.all()
-      |> Enum.slice(0, 100)
+      |> Enum.slice(1, 50)
 
     render(conn, "show_with_user.json", student: student)
   end
