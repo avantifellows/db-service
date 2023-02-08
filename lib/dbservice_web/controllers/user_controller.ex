@@ -40,6 +40,7 @@ defmodule DbserviceWeb.UserController do
           query
       end)
       |> Repo.all()
+      |> Enum.take(500)
 
     render(conn, "index.json", user: user)
   end
