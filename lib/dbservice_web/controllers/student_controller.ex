@@ -43,6 +43,7 @@ defmodule DbserviceWeb.StudentController do
           query
       end)
       |> Repo.all()
+      |> Repo.preload([:user])
 
     render(conn, "show_with_user.json", student: student)
   end
