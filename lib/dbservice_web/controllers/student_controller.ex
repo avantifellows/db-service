@@ -32,11 +32,7 @@ defmodule DbserviceWeb.StudentController do
   end
 
   def index(conn, params) do
-    is_filtered = params["is_filtered"]
-    IO.inspect(is_filtered)
     query_params = Map.delete(params, "is_filtered")
-    IO.inspect(query_params)
-    IO.inspect("hello")
 
     param = Enum.map(query_params, fn {key, value} -> {String.to_existing_atom(key), value} end)
 
