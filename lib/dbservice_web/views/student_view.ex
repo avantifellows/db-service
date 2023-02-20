@@ -16,6 +16,10 @@ defmodule DbserviceWeb.StudentView do
     render_many(student, StudentView, "student_with_user.json")
   end
 
+  def render("show_optimized_student_with_user.json", %{student: student}) do
+    render_many(student, StudentView, "optimized_student_with_user.json")
+  end
+
   def render("student.json", %{student: student}) do
     student = Repo.preload(student, :user)
 
@@ -43,7 +47,6 @@ defmodule DbserviceWeb.StudentView do
   end
 
   def render("student_with_user.json", %{student: student}) do
-
     %{
       id: student.id,
       student_id: student.student_id,
@@ -66,6 +69,16 @@ defmodule DbserviceWeb.StudentView do
       is_dropper: student.is_dropper,
       contact_hours_per_week: student.contact_hours_per_week,
       user: render_one(student.user, UserView, "user.json")
+    }
+  end
+
+  def render("optimized_student_with_user.json", %{student: student}) do
+    %{
+      id: student.id,
+      student_id: student.student_id,
+      category: student.category,
+      stream: student.stream,
+      user: render_one(student.user, UserView, "optimized_user.json")
     }
   end
 end

@@ -10,6 +10,10 @@ defmodule DbserviceWeb.UserView do
     render_one(user, UserView, "user.json")
   end
 
+  def render("show_optimized_user.json", %{user: user}) do
+    render_one(user, UserView, "optimized_user.json")
+  end
+
   def render("user.json", %{user: user}) do
     %{
       id: user.id,
@@ -23,6 +27,23 @@ defmodule DbserviceWeb.UserView do
       state: user.state,
       pincode: user.pincode,
       role: user.role,
+      whatsapp_phone: user.whatsapp_phone,
+      date_of_birth: user.date_of_birth,
+      country: user.country
+    }
+  end
+
+  def render("optimized_user.json", %{user: user}) do
+    %{
+      id: user.id,
+      full_name: user.full_name,
+      email: user.email,
+      phone: user.phone,
+      gender: user.gender,
+      city: user.city,
+      district: user.district,
+      state: user.state,
+      pincode: user.pincode,
       whatsapp_phone: user.whatsapp_phone,
       date_of_birth: user.date_of_birth,
       country: user.country

@@ -32,7 +32,13 @@ defmodule DbserviceWeb.StudentController do
   end
 
   def index(conn, params) do
-    param = Enum.map(params, fn {key, value} -> {String.to_existing_atom(key), value} end)
+    is_filtered = params["is_filtered"]
+    IO.inspect(is_filtered)
+    query_params = Map.delete(params, "is_filtered")
+    IO.inspect(query_params)
+    IO.inspect("hello")
+
+    param = Enum.map(query_params, fn {key, value} -> {String.to_existing_atom(key), value} end)
 
     student =
       Enum.reduce(param, Student, fn
@@ -45,7 +51,11 @@ defmodule DbserviceWeb.StudentController do
       |> Repo.all()
       |> Repo.preload([:user])
 
-    render(conn, "show_with_user.json", student: student)
+    if !Map.has_key?(params, "is_filtered") || params["is_filtered"] == "false" do
+      render(conn, "show_with_user.json", student: student)
+    else
+      render(conn, "show_optimized_student_with_user.json", student: student)
+    end
   end
 
   swagger_path :create do
