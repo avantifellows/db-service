@@ -32,7 +32,9 @@ defmodule DbserviceWeb.StudentController do
   end
 
   def index(conn, params) do
-    param = Enum.map(params, fn {key, value} -> {String.to_existing_atom(key), value} end)
+    query_params = Map.delete(params, "response_size")
+
+    param = Enum.map(query_params, fn {key, value} -> {String.to_existing_atom(key), value} end)
 
     student =
       Enum.reduce(param, Student, fn
@@ -45,7 +47,11 @@ defmodule DbserviceWeb.StudentController do
       |> Repo.all()
       |> Repo.preload([:user])
 
-    render(conn, "show_with_user.json", student: student)
+    if !Map.has_key?(params, "response_size") || params["response_size"] != "compact" do
+      render(conn, "show_with_user.json", student: student)
+    else
+      render(conn, "show_student_user_with_compact_fields.json", student: student)
+    end
   end
 
   swagger_path :create do
