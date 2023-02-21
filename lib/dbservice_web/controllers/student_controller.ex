@@ -32,7 +32,7 @@ defmodule DbserviceWeb.StudentController do
   end
 
   def index(conn, params) do
-    query_params = Map.delete(params, "is_filtered")
+    query_params = Map.delete(params, "response_size")
 
     param = Enum.map(query_params, fn {key, value} -> {String.to_existing_atom(key), value} end)
 
@@ -47,10 +47,10 @@ defmodule DbserviceWeb.StudentController do
       |> Repo.all()
       |> Repo.preload([:user])
 
-    if !Map.has_key?(params, "is_filtered") || params["is_filtered"] == "false" do
+    if !Map.has_key?(params, "response_size") || params["response_size"] != "compact" do
       render(conn, "show_with_user.json", student: student)
     else
-      render(conn, "show_optimized_student_with_user.json", student: student)
+      render(conn, "show_student_user_with_compact_fields.json", student: student)
     end
   end
 

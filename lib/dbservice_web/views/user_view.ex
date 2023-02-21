@@ -10,8 +10,8 @@ defmodule DbserviceWeb.UserView do
     render_one(user, UserView, "user.json")
   end
 
-  def render("show_optimized_user.json", %{user: user}) do
-    render_one(user, UserView, "optimized_user.json")
+  def render("show_user_with_compact_fields.json", %{user: user}) do
+    render_one(user, UserView, "user_with_compact_fields.json")
   end
 
   def render("user.json", %{user: user}) do
@@ -33,7 +33,7 @@ defmodule DbserviceWeb.UserView do
     }
   end
 
-  def render("optimized_user.json", %{user: user}) do
+  def render("user_with_compact_fields.json", %{user: user}) do
     %{
       id: user.id,
       full_name: user.full_name,

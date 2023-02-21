@@ -16,8 +16,8 @@ defmodule DbserviceWeb.StudentView do
     render_many(student, StudentView, "student_with_user.json")
   end
 
-  def render("show_optimized_student_with_user.json", %{student: student}) do
-    render_many(student, StudentView, "optimized_student_with_user.json")
+  def render("show_student_user_with_compact_fields.json", %{student: student}) do
+    render_many(student, StudentView, "student_user_with_compact_fields.json")
   end
 
   def render("student.json", %{student: student}) do
@@ -72,13 +72,13 @@ defmodule DbserviceWeb.StudentView do
     }
   end
 
-  def render("optimized_student_with_user.json", %{student: student}) do
+  def render("student_user_with_compact_fields.json", %{student: student}) do
     %{
       id: student.id,
       student_id: student.student_id,
       category: student.category,
       stream: student.stream,
-      user: render_one(student.user, UserView, "optimized_user.json")
+      user: render_one(student.user, UserView, "user_with_compact_fields.json")
     }
   end
 end
