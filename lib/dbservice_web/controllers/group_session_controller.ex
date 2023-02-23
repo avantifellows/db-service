@@ -1,6 +1,8 @@
 defmodule DbserviceWeb.GroupSessionController do
   use DbserviceWeb, :controller
 
+  import Ecto.Query
+  alias Dbservice.Repo
   alias Dbservice.GroupSessions
   alias Dbservice.Groups.GroupSession
 
@@ -13,8 +15,19 @@ defmodule DbserviceWeb.GroupSessionController do
     response(200, "OK", Schema.ref(:GroupSessions))
   end
 
-  def index(conn, _params) do
-    group_session = GroupSessions.list_group_session()
+  def index(conn, params) do
+    param = Enum.map(params, fn {key, value} -> {String.to_existing_atom(key), value} end)
+
+    group_session =
+      Enum.reduce(param, GroupSession, fn
+        {key, value}, query ->
+          from u in query, where: field(u, ^key) == ^value
+
+        _, query ->
+          query
+      end)
+      |> Repo.all()
+
     render(conn, "index.json", group_session: group_session)
   end
 
