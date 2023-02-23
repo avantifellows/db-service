@@ -21,6 +21,7 @@ defmodule Dbservice.Sessions.Session do
     field :is_active, :boolean
     field :purpose, :map
     field :repeat_schedule, :map
+    field :platform_id, :string
 
     timestamps()
 
@@ -44,7 +45,8 @@ defmodule Dbservice.Sessions.Session do
       :created_by_id,
       :session_id,
       :purpose,
-      :repeat_schedule
+      :repeat_schedule,
+      :platform_id
     ])
     |> validate_required([
       :name,

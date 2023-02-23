@@ -111,7 +111,14 @@ defmodule Seed do
         is_active: Enum.random([true, false]),
         purpose: %{},
         repeat_schedule: %{},
-        session_id: Seed.random_alphanumeric()
+        session_id: Seed.random_alphanumeric(),
+        platform_id:
+          Enum.random([
+            "vfr-mndk-ado",
+            "nhz-buxn-czq",
+            "oaf-hprk-ncw",
+            "doo-wzcv-izq"
+          ])
       })
 
     session
