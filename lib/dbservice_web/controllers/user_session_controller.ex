@@ -89,11 +89,11 @@ defmodule DbserviceWeb.UserSessionController do
     response(200, "Updated", Schema.ref(:UserSession))
   end
 
-  def update(conn, %{"id" => id, "user_session" => user_session_params}) do
-    user_session = Sessions.get_user_session!(id)
+  def update(conn, params) do
+    user_session = Sessions.get_user_session!(params["id"])
 
     with {:ok, %UserSession{} = user_session} <-
-           Sessions.update_user_session(user_session, user_session_params) do
+           Sessions.update_user_session(user_session, params) do
       render(conn, "show.json", user_session: user_session)
     end
   end
