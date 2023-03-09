@@ -10,7 +10,8 @@ defmodule Dbservice.Sessions.SessionOccurence do
   schema "session_occurence" do
     field :end_time, :utc_datetime
     field :start_time, :utc_datetime
-    field :session_id, :id
+    field :session_fk, :id
+    field :session_id, :string
 
     timestamps()
 
@@ -20,7 +21,7 @@ defmodule Dbservice.Sessions.SessionOccurence do
   @doc false
   def changeset(session_occurence, attrs) do
     session_occurence
-    |> cast(attrs, [:session_id, :start_time, :end_time])
+    |> cast(attrs, [:session_id, :start_time, :end_time, :session_fk])
     |> validate_required([:session_id])
     |> validate_start_end_date_time
   end
