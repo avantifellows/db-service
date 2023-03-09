@@ -129,9 +129,10 @@ defmodule Seed do
 
     {:ok, session_occurence} =
       Sessions.create_session_occurence(%{
-        session_id: session.id,
+        session_fk: session.id,
         start_time: session.start_time,
-        end_time: session.end_time
+        end_time: session.end_time,
+        session_id: Seed.random_alphanumeric()
       })
 
     session_occurence

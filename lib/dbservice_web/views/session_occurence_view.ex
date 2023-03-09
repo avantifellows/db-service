@@ -16,7 +16,9 @@ defmodule DbserviceWeb.SessionOccurenceView do
     %{
       id: session_occurence.id,
       start_time: session_occurence.start_time,
-      end_time: session_occurence.end_time
+      end_time: session_occurence.end_time,
+      session_fk: session_occurence.session_fk,
+      session_id: session_occurence.session_id
     }
   end
 
@@ -27,6 +29,8 @@ defmodule DbserviceWeb.SessionOccurenceView do
       id: session_occurence.id,
       start_time: session_occurence.start_time,
       end_time: session_occurence.end_time,
+      session_fk: session_occurence.session_fk,
+      session_id: session_occurence.session_id,
       users: render_many(session_occurence.users, UserView, "user.json")
     }
   end
