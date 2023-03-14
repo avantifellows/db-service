@@ -14,8 +14,14 @@ defmodule DbserviceWeb.TeacherController do
 
   def swagger_definitions do
     Map.merge(
-      SwaggerSchemaTeacher.teacher(),
-      SwaggerSchemaTeacher.teachers()
+      Map.merge(
+        SwaggerSchemaTeacher.teacher(),
+        SwaggerSchemaTeacher.teachers()
+      ),
+      Map.merge(
+        SwaggerSchemaTeacher.teacher_registration(),
+        SwaggerSchemaTeacher.teacher_with_user()
+      )
     )
   end
 
@@ -109,6 +115,18 @@ defmodule DbserviceWeb.TeacherController do
     with {:ok, %Teacher{}} <- Users.delete_teacher(teacher) do
       send_resp(conn, :no_content, "")
     end
+  end
+
+  swagger_path :register do
+    post("/api/teacher/register")
+
+    parameters do
+      body(:body, Schema.ref(:TeacherRegistration), "Teacher to create along with user",
+        required: true
+      )
+    end
+
+    response(201, "Created", Schema.ref(:TeacherWithUser))
   end
 
   def register(conn, params) do
