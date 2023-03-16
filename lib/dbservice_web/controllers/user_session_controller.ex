@@ -50,9 +50,9 @@ defmodule DbserviceWeb.UserSessionController do
     response(201, "Created", Schema.ref(:UserSession))
   end
 
-  def create(conn, %{"user_session" => user_session_params}) do
+  def create(conn, params) do
     with {:ok, %UserSession{} = user_session} <-
-           Sessions.create_user_session(user_session_params) do
+           Sessions.create_user_session(params) do
       conn
       |> put_status(:created)
       |> put_resp_header(

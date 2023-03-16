@@ -31,6 +31,6 @@ defmodule Dbservice.Users.Teacher do
       :grade,
       :uuid
     ])
-    |> validate_required([:user_id, :school_id])
+    |> validate_required([:user_id])
   end
 end
