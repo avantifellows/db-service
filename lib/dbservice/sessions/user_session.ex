@@ -24,7 +24,6 @@ defmodule Dbservice.Sessions.UserSession do
     user_session
     |> cast(attrs, [:start_time, :end_time, :data, :user_id, :session_occurence_id])
     |> validate_required([:user_id, :start_time])
-    |> validate_start_end_date_time
   end
 
   defp validate_start_end_date_time(changeset) do
