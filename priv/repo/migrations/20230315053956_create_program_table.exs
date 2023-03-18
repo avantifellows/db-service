@@ -12,6 +12,7 @@ defmodule Dbservice.Repo.Migrations.CreateProgramTable do
       add :program_product_used, :string
       add :program_donor, :string
       add :program_state, :string
+      add :group_id, references(:group, on_delete: :nothing)
 
       timestamps()
     end
