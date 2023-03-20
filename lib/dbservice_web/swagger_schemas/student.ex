@@ -11,7 +11,7 @@ defmodule DbserviceWeb.SwaggerSchema.Student do
           description("A student in the application")
 
           properties do
-            uuid(:string, "UUID for the student")
+            student_id(:string, "Id for the student")
             father_name(:string, "Father's name")
             father_phone(:string, "Father's phone number")
             mother_name(:string, "Mother's name")
@@ -30,7 +30,7 @@ defmodule DbserviceWeb.SwaggerSchema.Student do
           end
 
           example(%{
-            uuid: "120180101057",
+            student_id: "120180101057",
             father_name: "Narayan Pandey",
             father_phone: "8989898989",
             mother_name: "Lakshmi Pandey",
@@ -73,7 +73,7 @@ defmodule DbserviceWeb.SwaggerSchema.Student do
           description("A student in the application along with user info")
 
           properties do
-            uuid(:string, "UUID for the student")
+            student_id(:string, "Id for the student")
             father_name(:string, "Father's name")
             father_phone(:string, "Father's phone number")
             mother_name(:string, "Mother's name")
@@ -94,7 +94,7 @@ defmodule DbserviceWeb.SwaggerSchema.Student do
           end
 
           example(%{
-            uuid: "120180101057",
+            student_id: "120180101057",
             father_name: "Narayan Pandey",
             father_phone: "8989898989",
             mother_name: "Lakshmi Pandey",
@@ -125,7 +125,7 @@ defmodule DbserviceWeb.SwaggerSchema.Student do
           description("A student in the application along with user info")
 
           properties do
-            uuid(:string, "UUID for the student")
+            student_id(:string, "Id for the student")
             father_name(:string, "Father's name")
             father_phone(:string, "Father's phone number")
             mother_name(:string, "Mother's name")
@@ -136,7 +136,7 @@ defmodule DbserviceWeb.SwaggerSchema.Student do
           end
 
           example(%{
-            uuid: "120180101057",
+            student_id: "120180101057",
             father_name: "Narayan Pandey",
             father_phone: "8989898989",
             mother_name: "Lakshmi Pandey",
