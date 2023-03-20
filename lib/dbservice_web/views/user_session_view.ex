@@ -17,7 +17,8 @@ defmodule DbserviceWeb.UserSessionView do
       end_time: user_session.end_time,
       session_occurrence_id: user_session.session_occurrence_id,
       data: user_session.data,
-      is_user_valid: user_session.is_user_valid
+      is_user_valid: user_session.is_user_valid,
+      user_id: user_session.user_id
     }
   end
 end
