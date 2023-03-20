@@ -14,8 +14,8 @@ defmodule DbserviceWeb.SwaggerSchema.UserSession do
             start_time(:timestamp, "User session start time")
             end_time(:timestamp, "User session end time")
             data(:map, "Additional data for user session")
-            user_id(:integer, "The id of the user")
-            session_occurence_id(:integer, "The id of the session occurence")
+            session_occurrence_id(:integer, "The id of the session occurrence")
+            is_user_valid(:boolean, "Signifies whether the user exist or not")
           end
 
           example(%{
@@ -24,8 +24,8 @@ defmodule DbserviceWeb.SwaggerSchema.UserSession do
             data: %{
               "substitute-teacher-name" => "Ms. Poonam"
             },
-            user_id: 1,
-            session_occurence_id: 2
+            is_user_valid: true,
+            session_occurrence_id: 2
           })
         end
     }

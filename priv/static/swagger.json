@@ -998,9 +998,9 @@
           "substitute-teacher-name": "Ms. Poonam"
         },
         "end_time": "2022-02-02T11:30:00Z",
-        "session_occurence_id": 2,
-        "start_time": "2022-02-02T11:00:00Z",
-        "user_id": 1
+        "is_user_valid": true,
+        "session_occurrence_id": 2,
+        "start_time": "2022-02-02T11:00:00Z"
       },
       "properties": {
         "data": {
@@ -1011,17 +1011,17 @@
           "description": "User session end time",
           "type": "timestamp"
         },
-        "session_occurence_id": {
-          "description": "The id of the session occurence",
+        "is_user_valid": {
+          "description": "Signifies whether the user exist or not",
+          "type": "boolean"
+        },
+        "session_occurrence_id": {
+          "description": "The id of the session occurrence",
           "type": "integer"
         },
         "start_time": {
           "description": "User session start time",
           "type": "timestamp"
-        },
-        "user_id": {
-          "description": "The id of the user",
-          "type": "integer"
         }
       },
       "title": "UserSession",
