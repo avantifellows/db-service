@@ -139,18 +139,16 @@ defmodule Seed do
   end
 
   def create_user_session() do
-    session_occurence =
+    session_occurrence =
       Sessions.SessionOccurence |> offset(^Enum.random(1..99)) |> limit(1) |> Repo.one()
-
-    user = Users.User |> offset(^Enum.random(1..99)) |> limit(1) |> Repo.one()
 
     {:ok, user_session} =
       Sessions.create_user_session(%{
-        session_occurence_id: session_occurence.id,
-        user_id: user.id,
-        start_time: session_occurence.start_time,
-        end_time: session_occurence.end_time,
-        data: %{}
+        session_occurrence_id: session_occurrence.id,
+        start_time: session_occurrence.start_time,
+        end_time: session_occurrence.end_time,
+        data: %{},
+        is_user_valid: Enum.random([true, false])
       })
 
     user_session

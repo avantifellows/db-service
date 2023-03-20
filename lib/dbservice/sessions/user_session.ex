@@ -5,25 +5,24 @@ defmodule Dbservice.Sessions.UserSession do
   import Ecto.Changeset
   # import Dbservice.Utils.Util
 
-  alias Dbservice.Users.User
   alias Dbservice.Sessions.SessionOccurence
 
   schema "user_session" do
     field :end_time, :utc_datetime
     field :start_time, :utc_datetime
     field :data, :map
+    field :is_user_valid, :boolean
 
     timestamps()
 
-    belongs_to :user, User
-    belongs_to :session_occurence, SessionOccurence
+    belongs_to :session_occurrence, SessionOccurence
   end
 
   @doc false
   def changeset(user_session, attrs) do
     user_session
-    |> cast(attrs, [:start_time, :end_time, :data, :user_id, :session_occurence_id])
-    |> validate_required([:user_id, :start_time])
+    |> cast(attrs, [:start_time, :end_time, :data, :session_occurrence_id, :is_user_valid])
+    |> validate_required([:start_time])
   end
 
   # defp validate_start_end_date_time(changeset) do
