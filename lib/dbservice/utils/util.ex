@@ -19,7 +19,7 @@ defmodule Dbservice.Utils.Util do
     start_time = get_field(changeset, start_time_field_atom)
     end_time = get_field(changeset, end_time_field_atom)
 
-    if DateTime.compare(start_time, end_time) == :gt do
+    if start_time && end_time && DateTime.compare(start_time, end_time) == :gt do
       add_error(changeset, start_time_field_atom, "cannot be later than end time")
     else
       changeset

@@ -148,7 +148,8 @@ defmodule Seed do
         start_time: session_occurrence.start_time,
         end_time: session_occurrence.end_time,
         data: %{},
-        is_user_valid: Enum.random([true, false])
+        is_user_valid: Enum.random([true, false]),
+        user_id: Seed.random_alphanumeric()
       })
 
     user_session
