@@ -22,7 +22,7 @@ defmodule DbserviceWeb.SwaggerSchema.Session do
             owner_id(:integer, "User ID for the session owner")
             created_by_id(:integer, "User ID for the session creator")
             is_active(:boolean, "Tells whether session is active or not")
-            uuid(:string, "Uuid for the session")
+            session_id(:string, "Id for the session")
           end
 
           example(%{
@@ -42,7 +42,7 @@ defmodule DbserviceWeb.SwaggerSchema.Session do
             owner_id: 2,
             created_by_id: 1,
             is_active: true,
-            uuid: "uiqweopasdflkasdfj"
+            session_id: "uiqweopasdflkasdfj"
           })
         end
     }
