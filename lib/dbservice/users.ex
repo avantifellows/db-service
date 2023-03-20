@@ -109,7 +109,7 @@ defmodule Dbservice.Users do
     user = get_user!(user_id)
 
     groups =
-      Dbservice.Groups.Group
+      Dbservice.Groups.GroupType
       |> where([group], group.id in ^group_ids)
       |> Repo.all()
 

@@ -2,7 +2,7 @@ defmodule Dbservice.Groups.GroupSession do
   @moduledoc false
 
   use Ecto.Schema
-  alias Dbservice.Groups.Group
+  alias Dbservice.Groups.GroupType
   alias Dbservice.Sessions.Session
   import Ecto.Changeset
 

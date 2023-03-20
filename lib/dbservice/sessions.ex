@@ -109,7 +109,7 @@ defmodule Dbservice.Sessions do
     session = get_session!(session_id)
 
     groups =
-      Dbservice.Groups.Group
+      Dbservice.Groups.GroupType
       |> where([group], group.id in ^group_ids)
       |> Repo.all()
 

@@ -19,7 +19,6 @@ defmodule Dbservice.Schools.EnrollmentRecord do
 
     belongs_to :student, Student
     belongs_to :school, School
-    belongs_to :group, Group
 
     timestamps()
   end
@@ -36,7 +35,6 @@ defmodule Dbservice.Schools.EnrollmentRecord do
       :board_medium,
       :date_of_school_enrollment,
       :date_of_group_enrollment,
-      :group_id
     ])
     |> validate_required([:student_id, :school_id])
     |> validate_date_of_school_enrollment

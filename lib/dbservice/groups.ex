@@ -9,6 +9,7 @@ defmodule Dbservice.Groups do
   alias Dbservice.Groups.GroupSession
   alias Dbservice.Groups.GroupUser
   alias Dbservice.Groups.Group
+  alias Dbservice.GroupTypes.GroupType
 
   @doc """
   Returns the list of group.
@@ -52,8 +53,8 @@ defmodule Dbservice.Groups do
 
   """
   def create_group(attrs \\ %{}) do
-    %Group{}
-    |> Group.changeset(attrs)
+    %GroupType{}
+    |> GroupType.changeset(attrs)
     |> Repo.insert()
   end
 

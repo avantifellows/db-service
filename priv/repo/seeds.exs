@@ -13,10 +13,13 @@
 alias Dbservice.Repo
 alias Dbservice.Users
 alias Dbservice.Groups
+alias Dbservice.Programs
 alias Dbservice.Sessions
 alias Dbservice.Schools
 alias Dbservice.GroupUsers
 alias Dbservice.GroupSessions
+alias Dbservice.GroupTypes
+alias Dbservice.Batches
 
 alias Faker.Person
 alias Faker.Internet
@@ -26,6 +29,8 @@ alias Faker.Address
 import Ecto.Query
 
 defmodule Seed do
+alias Dbservice.BatchPrograms
+
   def random_alphanumeric(length \\ 20) do
     for _ <- 1..length, into: "", do: <<Enum.random('0123456789abcdef')>>
   end
@@ -53,7 +58,19 @@ defmodule Seed do
     {:ok, group} =
       Groups.create_group(%{
         name: Person.name(),
-        type: Enum.random(["batch", "cohort", "program", "group"]),
+        input_schema: %{},
+        locale: Enum.random(["hi", "en"]),
+        locale_data: %{}
+      })
+
+    group
+  end
+
+  def create_program() do
+
+    {:ok, program} =
+      Programs.create_program(%{
+        name: Person.name(),
         program_type: Enum.random(["Competitive", "Non Competitive"]),
         program_sub_type: Enum.random(["Easy", "Moderate", "High"]),
         program_mode: Enum.random(["Online", "Offline"]),
@@ -72,16 +89,44 @@ defmodule Seed do
             "DELHI",
             "HIMACHAL PRADESH"
           ]),
-        batch_contact_hours_per_week: Enum.random(20..48),
-        group_input_schema: %{},
-        group_locale: Enum.random(["hi", "en"]),
-        group_locale_data: %{},
-        auth_type: ["jwt", "auth_layer"],
         program_model: Enum.random(["Live Classes"]),
-        group_id: Seed.random_alphanumeric()
       })
 
-    group
+    program
+  end
+
+  def create_batch() do
+    {:ok, batch} =
+      Batches.create_batch(%{
+        name: Person.name(),
+        contact_hours_per_week: Enum.random(20..48)
+      })
+
+    batch
+  end
+
+  def create_batch_program() do
+    batch = Seed.create_batch()
+    program = Seed.create_program()
+
+    {:ok, batch_program} =
+      BatchPrograms.create_batch_program(%{
+        batch_id: batch.id,
+        program_id: program.id
+      })
+
+    batch_program
+  end
+
+
+  def create_group_type() do
+    {:ok, group_type} =
+      GroupTypes.create_group_type(%{
+        type: Enum.random(["batch", "cohort", "program", "group"]),
+        child_id: Enum.random(1..50)
+      })
+
+    group_type
   end
 
   def create_session() do
@@ -306,23 +351,23 @@ defmodule Seed do
     group_session
   end
 
-  def create_group_user() do
-    group = Seed.create_group()
-    user = Seed.create_user()
-    program_manager = Users.User |> offset(^Enum.random(1..99)) |> limit(1) |> Repo.one()
+  # def create_group_user() do
+  #   group = Seed.create_group()
+  #   user = Seed.create_user()
+  #   program_manager = Users.User |> offset(^Enum.random(1..99)) |> limit(1) |> Repo.one()
 
-    {:ok, group_user} =
-      GroupUsers.create_group_user(%{
-        group_id: group.id,
-        user_id: user.id,
-        program_manager_id: program_manager.id,
-        program_date_of_joining:
-          Faker.DateTime.between(~N[2015-05-19 00:00:00], ~N[2022-10-19 00:00:00]),
-        program_student_language: Enum.random(["English", "Hindi"])
-      })
+  #   {:ok, group_user} =
+  #     GroupUsers.create_group_user(%{
+  #       group_id: group.id,
+  #       user_id: user.id,
+  #       program_manager_id: program_manager.id,
+  #       program_date_of_joining:
+  #         Faker.DateTime.between(~N[2015-05-19 00:00:00], ~N[2022-10-19 00:00:00]),
+  #       program_student_language: Enum.random(["English", "Hindi"])
+  #     })
 
-    group_user
-  end
+  #   group_user
+  # end
 end
 
 Repo.delete_all(Users.Teacher)
@@ -336,6 +381,10 @@ Repo.delete_all(Groups.GroupUser)
 Repo.delete_all(Sessions.Session)
 Repo.delete_all(Groups.Group)
 Repo.delete_all(Users.User)
+Repo.delete_all(Batches.BatchProgram)
+Repo.delete_all(Programs.Program)
+Repo.delete_all(GroupTypes.GroupType)
+Repo.delete_all(Batches.Batch)
 
 if Mix.env() == :dev do
   # create some users
@@ -383,13 +432,33 @@ if Mix.env() == :dev do
     Seed.create_teacher()
   end
 
-  # create some group_user
-  for count <- 1..100 do
-    Seed.create_group_user()
-  end
+  # # create some group_user
+  # for count <- 1..100 do
+  #   Seed.create_group_user()
+  # end
 
   # create some group_session
+  # for count <- 1..100 do
+  #   Seed.create_group_session()
+  # end
+
+  # create some program
   for count <- 1..100 do
-    Seed.create_group_session()
+    Seed.create_program()
+  end
+
+  # create some batch
+  for count <- 1..100 do
+    Seed.create_batch()
+  end
+
+  # create some batch_program
+  for count <- 1..100 do
+    Seed.create_batch_program()
+  end
+
+  # create some batch_program
+  for count <- 1..100 do
+    Seed.create_group_type()
   end
 end
