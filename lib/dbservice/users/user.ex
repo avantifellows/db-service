@@ -6,7 +6,6 @@ defmodule Dbservice.Users.User do
   import Dbservice.Utils.Util
 
   alias Dbservice.Sessions.SessionOccurence
-  alias Dbservice.Sessions.UserSession
   alias Dbservice.Users.Teacher
   alias Dbservice.Users.Student
   alias Dbservice.Groups.Group
@@ -29,7 +28,6 @@ defmodule Dbservice.Users.User do
     timestamps()
 
     many_to_many :sessions, SessionOccurence, join_through: "user_session", on_replace: :delete
-    has_many :user_session, UserSession
     has_one :teacher, Teacher
     has_one :student, Student
     many_to_many :group, Group, join_through: "group_user", on_replace: :delete
