@@ -3,13 +3,13 @@ defmodule Dbservice.Groups.GroupUser do
 
   use Ecto.Schema
   alias Dbservice.Users.User
-  alias Dbservice.Groups.Group
+  alias Dbservice.Groups.GroupType
   import Ecto.Changeset
 
   schema "group_user" do
     field :program_date_of_joining, :utc_datetime
     field :program_student_language, :string
-    belongs_to :group, Group
+    belongs_to :group_type, GroupType, foreign_key: :group_id
     belongs_to :user, User
     belongs_to :program_manager, User
 

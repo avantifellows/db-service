@@ -2,12 +2,12 @@ defmodule Dbservice.Groups.GroupSession do
   @moduledoc false
 
   use Ecto.Schema
-  alias Dbservice.Groups.Group
+  alias Dbservice.Groups.GroupType
   alias Dbservice.Sessions.Session
   import Ecto.Changeset
 
   schema "group_session" do
-    belongs_to :group, Group
+    belongs_to :group_type, GroupType, foreign_key: :group_id
     belongs_to :session, Session
 
     timestamps()
