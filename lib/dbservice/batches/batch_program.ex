@@ -14,8 +14,8 @@ defmodule Dbservice.Batches.BatchProgram do
   end
 
   @doc false
-  def changeset(group_session, attrs) do
-    group_session
+  def changeset(batch_program, attrs) do
+    batch_program
     |> cast(attrs, [
       :batch_id,
       :program_id
