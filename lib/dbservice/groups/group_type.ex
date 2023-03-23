@@ -12,10 +12,9 @@ defmodule Dbservice.Groups.GroupType do
     field :type, :string
     field :child_id, :integer
 
-    has_many :group, Group
-    has_many :program, Program
-    has_many :batch, Batch
-
+    belongs_to :group, Group
+    belongs_to :program, Program
+    belongs_to :batch, Batch
     timestamps()
   end
 

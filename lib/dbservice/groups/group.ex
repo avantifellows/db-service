@@ -4,8 +4,8 @@ defmodule Dbservice.Groups.Group do
   use Ecto.Schema
   import Ecto.Changeset
 
-  alias Dbservice.Groups.GroupType
   alias Dbservice.Programs.Program
+  alias Dbservice.Groups.GroupType
 
   schema "group" do
     field :name, :string
@@ -13,8 +13,8 @@ defmodule Dbservice.Groups.Group do
     field :locale, :string
     field :locale_data, :map
 
-    belongs_to :group_type, GroupType, foreign_key: :child_id
     has_many :program, Program
+    has_many :group_type, GroupType, foreign_key: :child_id
 
     timestamps()
   end
