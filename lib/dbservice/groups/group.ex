@@ -14,7 +14,7 @@ defmodule Dbservice.Groups.Group do
     field :locale_data, :map
 
     has_many :program, Program
-    has_many :group_type, GroupType, foreign_key: :child_id
+    has_many :group_type, GroupType, foreign_key: :child_id, where: [type: "group"]
 
     timestamps()
   end

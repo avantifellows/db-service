@@ -42,6 +42,7 @@ defmodule Dbservice.GroupTypes do
   def create_group_type(attrs \\ %{}) do
     %GroupType{}
     |> GroupType.changeset(attrs)
+    |> Ecto.Changeset.put_assoc(attrs[:type], attrs[:child_id])
     |> Repo.insert()
   end
 

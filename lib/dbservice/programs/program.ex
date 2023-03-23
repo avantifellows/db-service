@@ -21,7 +21,7 @@ defmodule Dbservice.Programs.Program do
     field :program_model, :string
 
     belongs_to :group, Group
-    has_many :group_type, GroupType, foreign_key: :child_id
+    has_many :group_type, GroupType, foreign_key: :child_id, where: [type: "program"]
     many_to_many :batch, Batch, join_through: "batch_program", on_replace: :delete
 
     timestamps()

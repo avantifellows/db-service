@@ -54,16 +54,6 @@ defmodule Seed do
     user
   end
 
-  def create_group_type() do
-    {:ok, group_type} =
-      GroupTypes.create_group_type(%{
-        type: Enum.random(["batch", "cohort", "program", "group"]),
-        child_id: Enum.random(1..50)
-      })
-
-    group_type
-  end
-
   def create_group() do
     {:ok, group} =
       Groups.create_group(%{
@@ -367,6 +357,16 @@ defmodule Seed do
       })
 
     group_user
+  end
+
+  def create_group_type() do
+    {:ok, group_type} =
+      GroupTypes.create_group_type(%{
+        type: Enum.random(["batch", "program", "group"]),
+        child_id: Enum.random(1..50)
+      })
+
+    group_type
   end
 end
 
