@@ -12,20 +12,16 @@ defmodule DbserviceWeb.SwaggerSchema.Group do
 
           properties do
             name(:string, "Name of a group")
-            parent_id(:integer, "ID of a parent")
-            type(:string, "Type of a group")
-            group_input_schema(:map, "Input schema")
-            group_locale(:string, "The configured locale for the group")
-            group_locale_data(:map, "Meta data about locale settings for the group")
+            input_schema(:map, "Input schema")
+            locale(:string, "The configured locale for the group")
+            locale_data(:map, "Meta data about locale settings for the group")
           end
 
           example(%{
-            name: "Abhinav Singh",
-            parent_id: 1,
-            type: "program",
-            group_input_schema: %{},
-            group_locale: "hi",
-            group_locale_data: %{
+            name: "Delhi Students",
+            input_schema: %{},
+            locale: "hi",
+            locale_data: %{
               "hi" => %{
                 "title" => "सत्र के लिए पंजीकरण करें"
               },
