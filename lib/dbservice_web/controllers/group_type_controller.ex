@@ -11,6 +11,7 @@ defmodule DbserviceWeb.GroupTypeController do
   use PhoenixSwagger
 
   alias DbserviceWeb.SwaggerSchema.GroupType, as: SwaggerSchemaGroupType
+  alias DbserviceWeb.SwaggerSchema.Group, as: SwaggerSchemaGroup
   alias DbserviceWeb.SwaggerSchema.Common, as: SwaggerSchemaCommon
 
   def swagger_definitions do
@@ -29,7 +30,7 @@ defmodule DbserviceWeb.GroupTypeController do
 
   swagger_path :index do
     get("/api/group-type")
-    response(200, "OK", Schema.ref(:Groups))
+    response(200, "OK", Schema.ref(:GroupTypes))
   end
 
   def index(conn, params) do
@@ -52,10 +53,10 @@ defmodule DbserviceWeb.GroupTypeController do
     post("/api/group-type")
 
     parameters do
-      body(:body, Schema.ref(:Group), "Group to create", required: true)
+      body(:body, Schema.ref(:GroupType), "Group to create", required: true)
     end
 
-    response(201, "Created", Schema.ref(:Group))
+    response(201, "Created", Schema.ref(:GroupType))
   end
 
   def create(conn, params) do
@@ -74,7 +75,7 @@ defmodule DbserviceWeb.GroupTypeController do
       groupId(:path, :integer, "The id of the group", required: true)
     end
 
-    response(200, "OK", Schema.ref(:Group))
+    response(200, "OK", Schema.ref(:GroupType))
   end
 
   def show(conn, %{"id" => id}) do
@@ -87,7 +88,7 @@ defmodule DbserviceWeb.GroupTypeController do
 
     parameters do
       groupId(:path, :integer, "The id of the group", required: true)
-      body(:body, Schema.ref(:Group), "Group to create", required: true)
+      body(:body, Schema.ref(:GroupType), "Group to create", required: true)
     end
 
     response(200, "Updated", Schema.ref(:Group))
