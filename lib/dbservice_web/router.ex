@@ -28,6 +28,9 @@ defmodule DbserviceWeb.Router do
     resources "/session-occurrence", SessionOccurenceController, except: [:new, :edit]
     resources "/user-session", UserSessionController, except: [:new, :edit]
     resources "/group-session", GroupSessionController, except: [:new, :edit]
+    resources "/program", ProgramController, except: [:new, :edit]
+    resources "/batch", BatchController, except: [:new, :edit]
+    resources "/batch-program", BatchProgramController, except: [:new, :edit]
 
     def swagger_info do
       %{

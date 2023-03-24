@@ -11,20 +11,10 @@ defmodule DbserviceWeb.GroupController do
   use PhoenixSwagger
 
   alias DbserviceWeb.SwaggerSchema.Group, as: SwaggerSchemaGroup
-  alias DbserviceWeb.SwaggerSchema.Common, as: SwaggerSchemaCommon
 
   def swagger_definitions do
     # merge the required definitions in a pair at a time using the Map.merge/2 function
-    Map.merge(
-      Map.merge(
-        Map.merge(
-          Map.merge(SwaggerSchemaGroup.group(), SwaggerSchemaGroup.groupsessions()),
-          Map.merge(SwaggerSchemaCommon.user_ids(), SwaggerSchemaCommon.session_ids())
-        ),
-        SwaggerSchemaGroup.groupusers()
-      ),
-      SwaggerSchemaGroup.groups()
-    )
+    Map.merge(SwaggerSchemaGroup.group(), SwaggerSchemaGroup.groups())
   end
 
   swagger_path :index do
@@ -117,17 +107,5 @@ defmodule DbserviceWeb.GroupController do
     with {:ok, %Group{}} <- Groups.delete_group(group) do
       send_resp(conn, :no_content, "")
     end
-  end
-
-  swagger_path :update_users do
-    post("/api/group/{groupId}/update-users")
-
-    parameters do
-      groupId(:path, :integer, "The id of the group", required: true)
-
-      body(:body, Schema.ref(:UserIds), "List of user ids to update for the group", required: true)
-    end
-
-    response(200, "OK", Schema.ref(:GroupUsers))
   end
 end
