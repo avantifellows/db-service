@@ -10,27 +10,20 @@ defmodule DbserviceWeb.BatchProgramController do
 
   use PhoenixSwagger
 
-  # alias DbserviceWeb.SwaggerSchema.batch_program, as: SwaggerSchemabatch_program
-  # alias DbserviceWeb.SwaggerSchema.Common, as: SwaggerSchemaCommon
+  alias DbserviceWeb.SwaggerSchema.BatchProgram, as: SwaggerSchemaBatchProgram
 
-  # def swagger_definitions do
-  #   # merge the required definitions in a pair at a time using the Map.merge/2 function
-  #   Map.merge(
-  #     Map.merge(
-  #       Map.merge(
-  #         Map.merge(SwaggerSchemabatch_program.batch_program(), SwaggerSchemabatch_program.batch_programsessions()),
-  #         Map.merge(SwaggerSchemaCommon.user_ids(), SwaggerSchemaCommon.session_ids())
-  #       ),
-  #       SwaggerSchemabatch_program.batch_programusers()
-  #     ),
-  #     SwaggerSchemabatch_program.batch_programs()
-  #   )
-  # end
+  def swagger_definitions do
+    # merge the required definitions in a pair at a time using the Map.merge/2 function
+    Map.merge(
+      SwaggerSchemaBatchProgram.batch_program(),
+      SwaggerSchemaBatchProgram.batch_programs()
+    )
+  end
 
-  # swagger_path :index do
-  #   get("/api/batch_program")
-  #   response(200, "OK", Schema.ref(:batch_programs))
-  # end
+  swagger_path :index do
+    get("/api/batch-program")
+    response(200, "OK", Schema.ref(:BatchPrograms))
+  end
 
   def index(conn, params) do
     param = Enum.map(params, fn {key, value} -> {String.to_existing_atom(key), value} end)
@@ -48,15 +41,15 @@ defmodule DbserviceWeb.BatchProgramController do
     render(conn, "index.json", batch_program: batch_program)
   end
 
-  # swagger_path :create do
-  #   post("/api/batch_program")
+  swagger_path :create do
+    post("/api/batch-program")
 
-  #   parameters do
-  #     body(:body, Schema.ref(:batch_program), "batch_program to create", required: true)
-  #   end
+    parameters do
+      body(:body, Schema.ref(:BatchProgram), "BatchProgram to create", required: true)
+    end
 
-  #   response(201, "Created", Schema.ref(:batch_program))
-  # end
+    response(201, "Created", Schema.ref(:BatchProgram))
+  end
 
   def create(conn, params) do
     with {:ok, %BatchProgram{} = batch_program} <- BatchPrograms.create_batch_program(params) do
@@ -67,31 +60,31 @@ defmodule DbserviceWeb.BatchProgramController do
     end
   end
 
-  # swagger_path :show do
-  #   get("/api/batch_program/{batch_programId}")
+  swagger_path :show do
+    get("/api/batch-program/{batchProgramId}")
 
-  #   parameters do
-  #     batch_programId(:path, :integer, "The id of the batch_program", required: true)
-  #   end
+    parameters do
+      batchProgramId(:path, :integer, "The id of the batch-program", required: true)
+    end
 
-  #   response(200, "OK", Schema.ref(:batch_program))
-  # end
+    response(200, "OK", Schema.ref(:BatchProgram))
+  end
 
   def show(conn, %{"id" => id}) do
     batch_program = BatchPrograms.get_batch_program!(id)
     render(conn, "show.json", batch_program: batch_program)
   end
 
-  # swagger_path :update do
-  #   patch("/api/batch_program/{batch_programId}")
+  swagger_path :update do
+    patch("/api/batch-program/{batchProgramId}")
 
-  #   parameters do
-  #     batch_programId(:path, :integer, "The id of the batch_program", required: true)
-  #     body(:body, Schema.ref(:batch_program), "batch_program to create", required: true)
-  #   end
+    parameters do
+      batchProgramId(:path, :integer, "The id of the batch_program", required: true)
+      body(:body, Schema.ref(:BatchProgram), "batch_program to create", required: true)
+    end
 
-  #   response(200, "Updated", Schema.ref(:batch_program))
-  # end
+    response(200, "Updated", Schema.ref(:BatchProgram))
+  end
 
   def update(conn, params) do
     batch_program = BatchPrograms.get_batch_program!(params["id"])
@@ -102,15 +95,15 @@ defmodule DbserviceWeb.BatchProgramController do
     end
   end
 
-  # swagger_path :delete do
-  #   PhoenixSwagger.Path.delete("/api/batch_program/{batch_programId}")
+  swagger_path :delete do
+    PhoenixSwagger.Path.delete("/api/batch-program/{batchProgramId}")
 
-  #   parameters do
-  #     batch_programId(:path, :integer, "The id of the batch_program", required: true)
-  #   end
+    parameters do
+      batchProgramId(:path, :integer, "The id of the batch_program", required: true)
+    end
 
-  #   response(204, "No Content")
-  # end
+    response(204, "No Content")
+  end
 
   def delete(conn, %{"id" => id}) do
     batch_program = BatchPrograms.get_batch_program!(id)

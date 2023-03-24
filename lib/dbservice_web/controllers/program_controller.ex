@@ -10,27 +10,17 @@ defmodule DbserviceWeb.ProgramController do
 
   use PhoenixSwagger
 
-  # alias DbserviceWeb.SwaggerSchema.program, as: SwaggerSchemaprogram
-  # alias DbserviceWeb.SwaggerSchema.Common, as: SwaggerSchemaCommon
+  alias DbserviceWeb.SwaggerSchema.Program, as: SwaggerSchemaProgram
 
-  # def swagger_definitions do
-  #   # merge the required definitions in a pair at a time using the Map.merge/2 function
-  #   Map.merge(
-  #     Map.merge(
-  #       Map.merge(
-  #         Map.merge(SwaggerSchemaprogram.program(), SwaggerSchemaprogram.programsessions()),
-  #         Map.merge(SwaggerSchemaCommon.user_ids(), SwaggerSchemaCommon.session_ids())
-  #       ),
-  #       SwaggerSchemaprogram.programusers()
-  #     ),
-  #     SwaggerSchemaprogram.programs()
-  #   )
-  # end
+  def swagger_definitions do
+    # merge the required definitions in a pair at a time using the Map.merge/2 function
+    Map.merge(SwaggerSchemaProgram.program(), SwaggerSchemaProgram.programs())
+  end
 
-  # swagger_path :index do
-  #   get("/api/program")
-  #   response(200, "OK", Schema.ref(:programs))
-  # end
+  swagger_path :index do
+    get("/api/program")
+    response(200, "OK", Schema.ref(:Programs))
+  end
 
   def index(conn, params) do
     param = Enum.map(params, fn {key, value} -> {String.to_existing_atom(key), value} end)
@@ -48,15 +38,15 @@ defmodule DbserviceWeb.ProgramController do
     render(conn, "index.json", program: program)
   end
 
-  # swagger_path :create do
-  #   post("/api/program")
+  swagger_path :create do
+    post("/api/program")
 
-  #   parameters do
-  #     body(:body, Schema.ref(:program), "program to create", required: true)
-  #   end
+    parameters do
+      body(:body, Schema.ref(:Program), "Program to create", required: true)
+    end
 
-  #   response(201, "Created", Schema.ref(:program))
-  # end
+    response(201, "Created", Schema.ref(:Program))
+  end
 
   def create(conn, params) do
     with {:ok, %Program{} = program} <- Programs.create_program(params) do
@@ -67,31 +57,31 @@ defmodule DbserviceWeb.ProgramController do
     end
   end
 
-  # swagger_path :show do
-  #   get("/api/program/{programId}")
+  swagger_path :show do
+    get("/api/program/{programId}")
 
-  #   parameters do
-  #     programId(:path, :integer, "The id of the program", required: true)
-  #   end
+    parameters do
+      programId(:path, :integer, "The id of the program", required: true)
+    end
 
-  #   response(200, "OK", Schema.ref(:program))
-  # end
+    response(200, "OK", Schema.ref(:Program))
+  end
 
   def show(conn, %{"id" => id}) do
     program = Programs.get_program!(id)
     render(conn, "show.json", program: program)
   end
 
-  # swagger_path :update do
-  #   patch("/api/program/{programId}")
+  swagger_path :update do
+    patch("/api/program/{programId}")
 
-  #   parameters do
-  #     programId(:path, :integer, "The id of the program", required: true)
-  #     body(:body, Schema.ref(:program), "program to create", required: true)
-  #   end
+    parameters do
+      programId(:path, :integer, "The id of the program", required: true)
+      body(:body, Schema.ref(:Program), "Program to create", required: true)
+    end
 
-  #   response(200, "Updated", Schema.ref(:program))
-  # end
+    response(200, "Updated", Schema.ref(:Program))
+  end
 
   def update(conn, params) do
     program = Programs.get_program!(params["id"])
@@ -101,15 +91,15 @@ defmodule DbserviceWeb.ProgramController do
     end
   end
 
-  # swagger_path :delete do
-  #   PhoenixSwagger.Path.delete("/api/program/{programId}")
+  swagger_path :delete do
+    PhoenixSwagger.Path.delete("/api/program/{programId}")
 
-  #   parameters do
-  #     programId(:path, :integer, "The id of the program", required: true)
-  #   end
+    parameters do
+      programId(:path, :integer, "The id of the program", required: true)
+    end
 
-  #   response(204, "No Content")
-  # end
+    response(204, "No Content")
+  end
 
   def delete(conn, %{"id" => id}) do
     program = Programs.get_program!(id)

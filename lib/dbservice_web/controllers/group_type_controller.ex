@@ -1,4 +1,4 @@
-defmodule DbserviceWeb.GroupTypeControlller do
+defmodule DbserviceWeb.GroupTypeController do
   use DbserviceWeb, :controller
 
   import Ecto.Query
@@ -10,7 +10,7 @@ defmodule DbserviceWeb.GroupTypeControlller do
 
   use PhoenixSwagger
 
-  alias DbserviceWeb.SwaggerSchema.Group, as: SwaggerSchemaGroup
+  alias DbserviceWeb.SwaggerSchema.GroupType, as: SwaggerSchemaGroupType
   alias DbserviceWeb.SwaggerSchema.Common, as: SwaggerSchemaCommon
 
   def swagger_definitions do
@@ -18,17 +18,17 @@ defmodule DbserviceWeb.GroupTypeControlller do
     Map.merge(
       Map.merge(
         Map.merge(
-          Map.merge(SwaggerSchemaGroup.group(), SwaggerSchemaGroup.groupsessions()),
+          Map.merge(SwaggerSchemaGroupType.group_type(), SwaggerSchemaGroup.groupsessions()),
           Map.merge(SwaggerSchemaCommon.user_ids(), SwaggerSchemaCommon.session_ids())
         ),
         SwaggerSchemaGroup.groupusers()
       ),
-      SwaggerSchemaGroup.groups()
+      SwaggerSchemaGroupType.group_types()
     )
   end
 
   swagger_path :index do
-    get("/api/group")
+    get("/api/group-type")
     response(200, "OK", Schema.ref(:Groups))
   end
 
@@ -49,7 +49,7 @@ defmodule DbserviceWeb.GroupTypeControlller do
   end
 
   swagger_path :create do
-    post("/api/group")
+    post("/api/group-type")
 
     parameters do
       body(:body, Schema.ref(:Group), "Group to create", required: true)
@@ -68,7 +68,7 @@ defmodule DbserviceWeb.GroupTypeControlller do
   end
 
   swagger_path :show do
-    get("/api/group/{groupId}")
+    get("/api/group-type/{groupTypeId}")
 
     parameters do
       groupId(:path, :integer, "The id of the group", required: true)
@@ -83,7 +83,7 @@ defmodule DbserviceWeb.GroupTypeControlller do
   end
 
   swagger_path :update do
-    patch("/api/group/{groupId}")
+    patch("/api/group-type/{groupTypeId}")
 
     parameters do
       groupId(:path, :integer, "The id of the group", required: true)
@@ -102,7 +102,7 @@ defmodule DbserviceWeb.GroupTypeControlller do
   end
 
   swagger_path :delete do
-    PhoenixSwagger.Path.delete("/api/group/{groupId}")
+    PhoenixSwagger.Path.delete("/api/group-type/{groupTypeId}")
 
     parameters do
       groupId(:path, :integer, "The id of the group", required: true)
@@ -120,10 +120,10 @@ defmodule DbserviceWeb.GroupTypeControlller do
   end
 
   swagger_path :update_users do
-    post("/api/group/{groupId}/update-users")
+    post("/api/group-type/{groupTypeId}/update-users")
 
     parameters do
-      groupId(:path, :integer, "The id of the group", required: true)
+      groupTypeId(:path, :integer, "The id of the group", required: true)
 
       body(:body, Schema.ref(:UserIds), "List of user ids to update for the group", required: true)
     end
@@ -139,10 +139,10 @@ defmodule DbserviceWeb.GroupTypeControlller do
   end
 
   swagger_path :update_sessions do
-    post("/api/group/{groupId}/update-sessions")
+    post("/api/group-type/{groupTypeId}/update-sessions")
 
     parameters do
-      groupId(:path, :integer, "The id of the group", required: true)
+      groupTypeId(:path, :integer, "The id of the group", required: true)
 
       body(:body, Schema.ref(:SessionIds), "List of session ids to update for the group",
         required: true
@@ -154,8 +154,8 @@ defmodule DbserviceWeb.GroupTypeControlller do
 
   def update_sessions(conn, %{"id" => group_id, "session_ids" => session_ids})
       when is_list(session_ids) do
-    with {:ok, %GroupType{} = group} <- GroupTypes.update_sessions(group_id, session_ids) do
-      render(conn, "show.json", group: group)
+    with {:ok, %GroupType{} = group_type} <- GroupTypes.update_sessions(group_id, session_ids) do
+      render(conn, "show.json", group_type: group_type)
     end
   end
 end

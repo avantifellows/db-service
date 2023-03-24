@@ -31,6 +31,7 @@ defmodule DbserviceWeb.Router do
     resources "/program", ProgramController, except: [:new, :edit]
     resources "/batch", BatchController, except: [:new, :edit]
     resources "/batch-program", BatchProgramController, except: [:new, :edit]
+    resources "/group-type", GroupTypeController, except: [:new, :edit]
 
     def swagger_info do
       %{
