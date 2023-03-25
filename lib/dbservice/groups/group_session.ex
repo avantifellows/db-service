@@ -7,7 +7,7 @@ defmodule Dbservice.Groups.GroupSession do
   import Ecto.Changeset
 
   schema "group_session" do
-    belongs_to :group_type, GroupType, foreign_key: :group_id
+    belongs_to :group_type, GroupType
     belongs_to :session, Session
 
     timestamps()
@@ -17,10 +17,10 @@ defmodule Dbservice.Groups.GroupSession do
   def changeset(group_session, attrs) do
     group_session
     |> cast(attrs, [
-      :group_id,
+      :group_type_id,
       :session_id
     ])
-    |> validate_required([:group_id, :session_id])
+    |> validate_required([:group_type_id, :session_id])
   end
 
   def changeset_update_sessions(group, sessions) do

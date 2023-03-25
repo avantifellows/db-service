@@ -1142,107 +1142,15 @@
     "version": "1.0"
   },
   "paths": {
-    "/api/batch": {
-      "get": {
-        "description": "",
-        "operationId": "DbserviceWeb.BatchController.index",
-        "parameters": [],
-        "responses": {
-          "200": {
-            "description": "OK",
-            "schema": {
-              "$ref": "#/definitions/Batches"
-            }
-          }
-        },
-        "summary": "",
-        "tags": [
-          "Batch"
-        ]
-      },
-      "post": {
-        "description": "",
-        "operationId": "DbserviceWeb.BatchController.create",
-        "parameters": [
-          {
-            "description": "Batch to create",
-            "in": "body",
-            "name": "body",
-            "required": true,
-            "schema": {
-              "$ref": "#/definitions/Batch"
-            }
-          }
-        ],
-        "responses": {
-          "201": {
-            "description": "Created",
-            "schema": {
-              "$ref": "#/definitions/Batch"
-            }
-          }
-        },
-        "summary": "",
-        "tags": [
-          "Batch"
-        ]
-      }
-    },
-    "/api/batch-program": {
-      "get": {
-        "description": "",
-        "operationId": "DbserviceWeb.BatchProgramController.index",
-        "parameters": [],
-        "responses": {
-          "200": {
-            "description": "OK",
-            "schema": {
-              "$ref": "#/definitions/BatchPrograms"
-            }
-          }
-        },
-        "summary": "",
-        "tags": [
-          "BatchProgram"
-        ]
-      },
-      "post": {
-        "description": "",
-        "operationId": "DbserviceWeb.BatchProgramController.create",
-        "parameters": [
-          {
-            "description": "BatchProgram to create",
-            "in": "body",
-            "name": "body",
-            "required": true,
-            "schema": {
-              "$ref": "#/definitions/BatchProgram"
-            }
-          }
-        ],
-        "responses": {
-          "201": {
-            "description": "Created",
-            "schema": {
-              "$ref": "#/definitions/BatchProgram"
-            }
-          }
-        },
-        "summary": "",
-        "tags": [
-          "BatchProgram"
-        ]
-      }
-    },
-    "/api/batch-program/{batchProgramId}": {
+    "/api/program/{programId}": {
       "delete": {
         "description": "",
-        "operationId": "DbserviceWeb.BatchProgramController.delete",
+        "operationId": "DbserviceWeb.ProgramController.delete",
         "parameters": [
           {
-            "description": "The id of the batch_program",
+            "description": "The id of the program",
             "in": "path",
-            "name": "batchProgramId",
+            "name": "programId",
             "required": true,
             "type": "integer"
           }
@@ -1254,17 +1162,17 @@
         },
         "summary": "",
         "tags": [
-          "BatchProgram"
+          "Program"
         ]
       },
       "get": {
         "description": "",
-        "operationId": "DbserviceWeb.BatchProgramController.show",
+        "operationId": "DbserviceWeb.ProgramController.show",
         "parameters": [
           {
-            "description": "The id of the batch-program",
+            "description": "The id of the program",
             "in": "path",
-            "name": "batchProgramId",
+            "name": "programId",
             "required": true,
             "type": "integer"
           }
@@ -1273,33 +1181,33 @@
           "200": {
             "description": "OK",
             "schema": {
-              "$ref": "#/definitions/BatchProgram"
+              "$ref": "#/definitions/Program"
             }
           }
         },
         "summary": "",
         "tags": [
-          "BatchProgram"
+          "Program"
         ]
       },
       "patch": {
         "description": "",
-        "operationId": "DbserviceWeb.BatchProgramController.update",
+        "operationId": "DbserviceWeb.ProgramController.update",
         "parameters": [
           {
-            "description": "The id of the batch_program",
+            "description": "The id of the program",
             "in": "path",
-            "name": "batchProgramId",
+            "name": "programId",
             "required": true,
             "type": "integer"
           },
           {
-            "description": "batch_program to create",
+            "description": "Program to create",
             "in": "body",
             "name": "body",
             "required": true,
             "schema": {
-              "$ref": "#/definitions/BatchProgram"
+              "$ref": "#/definitions/Program"
             }
           }
         ],
@@ -1307,317 +1215,13 @@
           "200": {
             "description": "Updated",
             "schema": {
-              "$ref": "#/definitions/BatchProgram"
+              "$ref": "#/definitions/Program"
             }
           }
         },
         "summary": "",
         "tags": [
-          "BatchProgram"
-        ]
-      }
-    },
-    "/api/batch/{batchId}": {
-      "delete": {
-        "description": "",
-        "operationId": "DbserviceWeb.BatchController.delete",
-        "parameters": [
-          {
-            "description": "The id of the batch",
-            "in": "path",
-            "name": "batchId",
-            "required": true,
-            "type": "integer"
-          }
-        ],
-        "responses": {
-          "204": {
-            "description": "No Content"
-          }
-        },
-        "summary": "",
-        "tags": [
-          "Batch"
-        ]
-      },
-      "get": {
-        "description": "",
-        "operationId": "DbserviceWeb.BatchController.show",
-        "parameters": [
-          {
-            "description": "The id of the batch",
-            "in": "path",
-            "name": "batchId",
-            "required": true,
-            "type": "integer"
-          }
-        ],
-        "responses": {
-          "200": {
-            "description": "OK",
-            "schema": {
-              "$ref": "#/definitions/Batch"
-            }
-          }
-        },
-        "summary": "",
-        "tags": [
-          "Batch"
-        ]
-      },
-      "patch": {
-        "description": "",
-        "operationId": "DbserviceWeb.BatchController.update",
-        "parameters": [
-          {
-            "description": "The id of the batch",
-            "in": "path",
-            "name": "batchId",
-            "required": true,
-            "type": "integer"
-          },
-          {
-            "description": "Batch to create",
-            "in": "body",
-            "name": "body",
-            "required": true,
-            "schema": {
-              "$ref": "#/definitions/Batch"
-            }
-          }
-        ],
-        "responses": {
-          "200": {
-            "description": "Updated",
-            "schema": {
-              "$ref": "#/definitions/Batch"
-            }
-          }
-        },
-        "summary": "",
-        "tags": [
-          "Batch"
-        ]
-      }
-    },
-    "/api/enrollment-record": {
-      "get": {
-        "description": "",
-        "operationId": "DbserviceWeb.EnrollmentRecordController.index",
-        "parameters": [],
-        "responses": {
-          "200": {
-            "description": "OK",
-            "schema": {
-              "$ref": "#/definitions/EnrollmentRecords"
-            }
-          }
-        },
-        "summary": "",
-        "tags": [
-          "EnrollmentRecord"
-        ]
-      },
-      "post": {
-        "description": "",
-        "operationId": "DbserviceWeb.EnrollmentRecordController.create",
-        "parameters": [
-          {
-            "description": "Enrollment record to create",
-            "in": "body",
-            "name": "body",
-            "required": true,
-            "schema": {
-              "$ref": "#/definitions/EnrollmentRecord"
-            }
-          }
-        ],
-        "responses": {
-          "201": {
-            "description": "Created",
-            "schema": {
-              "$ref": "#/definitions/EnrollmentRecord"
-            }
-          }
-        },
-        "summary": "",
-        "tags": [
-          "EnrollmentRecord"
-        ]
-      }
-    },
-    "/api/enrollment-record/{enrollmentRecordId}": {
-      "delete": {
-        "description": "",
-        "operationId": "DbserviceWeb.EnrollmentRecordController.delete",
-        "parameters": [
-          {
-            "description": "The id of the enrollment record",
-            "in": "path",
-            "name": "enrollmentRecordId",
-            "required": true,
-            "type": "integer"
-          }
-        ],
-        "responses": {
-          "204": {
-            "description": "No Content"
-          }
-        },
-        "summary": "",
-        "tags": [
-          "EnrollmentRecord"
-        ]
-      },
-      "get": {
-        "description": "",
-        "operationId": "DbserviceWeb.EnrollmentRecordController.show",
-        "parameters": [
-          {
-            "description": "The id of the enrollment record",
-            "in": "path",
-            "name": "enrollmentRecordId",
-            "required": true,
-            "type": "integer"
-          }
-        ],
-        "responses": {
-          "200": {
-            "description": "OK",
-            "schema": {
-              "$ref": "#/definitions/EnrollmentRecord"
-            }
-          }
-        },
-        "summary": "",
-        "tags": [
-          "EnrollmentRecord"
-        ]
-      },
-      "patch": {
-        "description": "",
-        "operationId": "DbserviceWeb.EnrollmentRecordController.update",
-        "parameters": [
-          {
-            "description": "The id of the enrollment record",
-            "in": "path",
-            "name": "enrollmentRecordId",
-            "required": true,
-            "type": "integer"
-          },
-          {
-            "description": "Enrollment record to create",
-            "in": "body",
-            "name": "body",
-            "required": true,
-            "schema": {
-              "$ref": "#/definitions/EnrollmentRecord"
-            }
-          }
-        ],
-        "responses": {
-          "200": {
-            "description": "Updated",
-            "schema": {
-              "$ref": "#/definitions/EnrollmentRecord"
-            }
-          }
-        },
-        "summary": "",
-        "tags": [
-          "EnrollmentRecord"
-        ]
-      }
-    },
-    "/api/group": {
-      "get": {
-        "description": "",
-        "operationId": "DbserviceWeb.GroupController.index",
-        "parameters": [],
-        "responses": {
-          "200": {
-            "description": "OK",
-            "schema": {
-              "$ref": "#/definitions/Groups"
-            }
-          }
-        },
-        "summary": "",
-        "tags": [
-          "Group"
-        ]
-      },
-      "post": {
-        "description": "",
-        "operationId": "DbserviceWeb.GroupController.create",
-        "parameters": [
-          {
-            "description": "Group to create",
-            "in": "body",
-            "name": "body",
-            "required": true,
-            "schema": {
-              "$ref": "#/definitions/Group"
-            }
-          }
-        ],
-        "responses": {
-          "201": {
-            "description": "Created",
-            "schema": {
-              "$ref": "#/definitions/Group"
-            }
-          }
-        },
-        "summary": "",
-        "tags": [
-          "Group"
-        ]
-      }
-    },
-    "/api/group-session": {
-      "get": {
-        "description": "",
-        "operationId": "DbserviceWeb.GroupSessionController.index",
-        "parameters": [],
-        "responses": {
-          "200": {
-            "description": "OK",
-            "schema": {
-              "$ref": "#/definitions/GroupSessions"
-            }
-          }
-        },
-        "summary": "",
-        "tags": [
-          "GroupSession"
-        ]
-      },
-      "post": {
-        "description": "",
-        "operationId": "DbserviceWeb.GroupSessionController.create",
-        "parameters": [
-          {
-            "description": "Group session to create",
-            "in": "body",
-            "name": "body",
-            "required": true,
-            "schema": {
-              "$ref": "#/definitions/GroupSessions"
-            }
-          }
-        ],
-        "responses": {
-          "201": {
-            "description": "Created",
-            "schema": {
-              "$ref": "#/definitions/GroupSessions"
-            }
-          }
-        },
-        "summary": "",
-        "tags": [
-          "GroupSession"
+          "Program"
         ]
       }
     },
@@ -1704,35 +1308,35 @@
         ]
       }
     },
-    "/api/group-type": {
+    "/api/user": {
       "get": {
         "description": "",
-        "operationId": "DbserviceWeb.GroupTypeController.index",
+        "operationId": "DbserviceWeb.UserController.index",
         "parameters": [],
         "responses": {
           "200": {
             "description": "OK",
             "schema": {
-              "$ref": "#/definitions/GroupTypes"
+              "$ref": "#/definitions/Users"
             }
           }
         },
         "summary": "",
         "tags": [
-          "GroupType"
+          "User"
         ]
       },
       "post": {
         "description": "",
-        "operationId": "DbserviceWeb.GroupTypeController.create",
+        "operationId": "DbserviceWeb.UserController.create",
         "parameters": [
           {
-            "description": "Group to create",
+            "description": "User to create",
             "in": "body",
             "name": "body",
             "required": true,
             "schema": {
-              "$ref": "#/definitions/GroupType"
+              "$ref": "#/definitions/User"
             }
           }
         ],
@@ -1740,25 +1344,25 @@
           "201": {
             "description": "Created",
             "schema": {
-              "$ref": "#/definitions/GroupType"
+              "$ref": "#/definitions/User"
             }
           }
         },
         "summary": "",
         "tags": [
-          "GroupType"
+          "User"
         ]
       }
     },
-    "/api/group-type/{groupTypeId}": {
+    "/api/teacher/{teacherId}": {
       "delete": {
         "description": "",
-        "operationId": "DbserviceWeb.GroupTypeController.delete",
+        "operationId": "DbserviceWeb.TeacherController.delete",
         "parameters": [
           {
-            "description": "The id of the group",
+            "description": "The id of the teacher",
             "in": "path",
-            "name": "groupId",
+            "name": "teacherId",
             "required": true,
             "type": "integer"
           }
@@ -1770,17 +1374,17 @@
         },
         "summary": "",
         "tags": [
-          "GroupType"
+          "Teacher"
         ]
       },
       "get": {
         "description": "",
-        "operationId": "DbserviceWeb.GroupTypeController.show",
+        "operationId": "DbserviceWeb.TeacherController.show",
         "parameters": [
           {
-            "description": "The id of the group",
+            "description": "The id of the teacher",
             "in": "path",
-            "name": "groupId",
+            "name": "teacherId",
             "required": true,
             "type": "integer"
           }
@@ -1789,33 +1393,33 @@
           "200": {
             "description": "OK",
             "schema": {
-              "$ref": "#/definitions/GroupType"
+              "$ref": "#/definitions/Teacher"
             }
           }
         },
         "summary": "",
         "tags": [
-          "GroupType"
+          "Teacher"
         ]
       },
       "patch": {
         "description": "",
-        "operationId": "DbserviceWeb.GroupTypeController.update",
+        "operationId": "DbserviceWeb.TeacherController.update",
         "parameters": [
           {
-            "description": "The id of the group",
+            "description": "The id of the teacher",
             "in": "path",
-            "name": "groupId",
+            "name": "teacherId",
             "required": true,
             "type": "integer"
           },
           {
-            "description": "Group to create",
+            "description": "Teacher to create",
             "in": "body",
             "name": "body",
             "required": true,
             "schema": {
-              "$ref": "#/definitions/GroupType"
+              "$ref": "#/definitions/Teacher"
             }
           }
         ],
@@ -1823,25 +1427,132 @@
           "200": {
             "description": "Updated",
             "schema": {
-              "$ref": "#/definitions/Group"
+              "$ref": "#/definitions/Teacher"
             }
           }
         },
         "summary": "",
         "tags": [
-          "GroupType"
+          "Teacher"
         ]
       }
     },
-    "/api/group/{groupId}": {
-      "delete": {
+    "/api/session/{sessionId}": {
+      "get": {
         "description": "",
-        "operationId": "DbserviceWeb.GroupController.delete",
+        "operationId": "DbserviceWeb.SessionController.show",
         "parameters": [
           {
-            "description": "The id of the group",
+            "description": "The id of the session",
             "in": "path",
-            "name": "groupId",
+            "name": "sessionId",
+            "required": true,
+            "type": "integer"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "schema": {
+              "$ref": "#/definitions/Session"
+            }
+          }
+        },
+        "summary": "",
+        "tags": [
+          "Session"
+        ]
+      },
+      "patch": {
+        "description": "",
+        "operationId": "DbserviceWeb.SessionController.update",
+        "parameters": [
+          {
+            "description": "The id of the session",
+            "in": "path",
+            "name": "sessionId",
+            "required": true,
+            "type": "integer"
+          },
+          {
+            "description": "Session to create",
+            "in": "body",
+            "name": "body",
+            "required": true,
+            "schema": {
+              "$ref": "#/definitions/Session"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Updated",
+            "schema": {
+              "$ref": "#/definitions/Session"
+            }
+          }
+        },
+        "summary": "",
+        "tags": [
+          "Session"
+        ]
+      }
+    },
+    "/api/student": {
+      "get": {
+        "description": "",
+        "operationId": "DbserviceWeb.StudentController.index",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "schema": {
+              "$ref": "#/definitions/Students"
+            }
+          }
+        },
+        "summary": "",
+        "tags": [
+          "Student"
+        ]
+      },
+      "post": {
+        "description": "",
+        "operationId": "DbserviceWeb.StudentController.create",
+        "parameters": [
+          {
+            "description": "Student to create",
+            "in": "body",
+            "name": "body",
+            "required": true,
+            "schema": {
+              "$ref": "#/definitions/Student"
+            }
+          }
+        ],
+        "responses": {
+          "201": {
+            "description": "Created",
+            "schema": {
+              "$ref": "#/definitions/Student"
+            }
+          }
+        },
+        "summary": "",
+        "tags": [
+          "Student"
+        ]
+      }
+    },
+    "/api/batch-program/{batchProgramId}": {
+      "delete": {
+        "description": "",
+        "operationId": "DbserviceWeb.BatchProgramController.delete",
+        "parameters": [
+          {
+            "description": "The id of the batch_program",
+            "in": "path",
+            "name": "batchProgramId",
             "required": true,
             "type": "integer"
           }
@@ -1853,17 +1564,17 @@
         },
         "summary": "",
         "tags": [
-          "Group"
+          "BatchProgram"
         ]
       },
       "get": {
         "description": "",
-        "operationId": "DbserviceWeb.GroupController.show",
+        "operationId": "DbserviceWeb.BatchProgramController.show",
         "parameters": [
           {
-            "description": "The id of the group",
+            "description": "The id of the batch-program",
             "in": "path",
-            "name": "groupId",
+            "name": "batchProgramId",
             "required": true,
             "type": "integer"
           }
@@ -1872,33 +1583,33 @@
           "200": {
             "description": "OK",
             "schema": {
-              "$ref": "#/definitions/Group"
+              "$ref": "#/definitions/BatchProgram"
             }
           }
         },
         "summary": "",
         "tags": [
-          "Group"
+          "BatchProgram"
         ]
       },
       "patch": {
         "description": "",
-        "operationId": "DbserviceWeb.GroupController.update",
+        "operationId": "DbserviceWeb.BatchProgramController.update",
         "parameters": [
           {
-            "description": "The id of the group",
+            "description": "The id of the batch_program",
             "in": "path",
-            "name": "groupId",
+            "name": "batchProgramId",
             "required": true,
             "type": "integer"
           },
           {
-            "description": "Group to create",
+            "description": "batch_program to create",
             "in": "body",
             "name": "body",
             "required": true,
             "schema": {
-              "$ref": "#/definitions/Group"
+              "$ref": "#/definitions/BatchProgram"
             }
           }
         ],
@@ -1906,13 +1617,13 @@
           "200": {
             "description": "Updated",
             "schema": {
-              "$ref": "#/definitions/Group"
+              "$ref": "#/definitions/BatchProgram"
             }
           }
         },
         "summary": "",
         "tags": [
-          "Group"
+          "BatchProgram"
         ]
       }
     },
@@ -1962,86 +1673,39 @@
         ]
       }
     },
-    "/api/program/{programId}": {
-      "delete": {
+    "/api/session/{sessionId}/update-groups": {
+      "post": {
         "description": "",
-        "operationId": "DbserviceWeb.ProgramController.delete",
+        "operationId": "DbserviceWeb.SessionController.update_groups",
         "parameters": [
           {
-            "description": "The id of the program",
+            "description": "The id of the session",
             "in": "path",
-            "name": "programId",
+            "name": "sessionId",
             "required": true,
             "type": "integer"
-          }
-        ],
-        "responses": {
-          "204": {
-            "description": "No Content"
-          }
-        },
-        "summary": "",
-        "tags": [
-          "Program"
-        ]
-      },
-      "get": {
-        "description": "",
-        "operationId": "DbserviceWeb.ProgramController.show",
-        "parameters": [
+          },
           {
-            "description": "The id of the program",
-            "in": "path",
-            "name": "programId",
+            "description": "List of group ids to update for the session",
+            "in": "body",
+            "name": "body",
             "required": true,
-            "type": "integer"
+            "schema": {
+              "$ref": "#/definitions/GroupIds"
+            }
           }
         ],
         "responses": {
           "200": {
             "description": "OK",
             "schema": {
-              "$ref": "#/definitions/Program"
+              "$ref": "#/definitions/Session"
             }
           }
         },
         "summary": "",
         "tags": [
-          "Program"
-        ]
-      },
-      "patch": {
-        "description": "",
-        "operationId": "DbserviceWeb.ProgramController.update",
-        "parameters": [
-          {
-            "description": "The id of the program",
-            "in": "path",
-            "name": "programId",
-            "required": true,
-            "type": "integer"
-          },
-          {
-            "description": "Program to create",
-            "in": "body",
-            "name": "body",
-            "required": true,
-            "schema": {
-              "$ref": "#/definitions/Program"
-            }
-          }
-        ],
-        "responses": {
-          "200": {
-            "description": "Updated",
-            "schema": {
-              "$ref": "#/definitions/Program"
-            }
-          }
-        },
-        "summary": "",
-        "tags": [
-          "Program"
+          "Session"
         ]
       }
     },
@@ -2174,107 +1838,76 @@
         ]
       }
     },
-    "/api/session": {
+    "/api/user/{userId}": {
       "get": {
         "description": "",
-        "operationId": "DbserviceWeb.SessionController.index",
-        "parameters": [],
+        "operationId": "DbserviceWeb.UserController.show",
+        "parameters": [
+          {
+            "description": "The id of the user",
+            "in": "path",
+            "name": "userId",
+            "required": true,
+            "type": "integer"
+          }
+        ],
         "responses": {
           "200": {
             "description": "OK",
             "schema": {
-              "$ref": "#/definitions/Sessions"
+              "$ref": "#/definitions/User"
             }
           }
         },
         "summary": "",
         "tags": [
-          "Session"
+          "User"
         ]
       },
-      "post": {
+      "patch": {
         "description": "",
-        "operationId": "DbserviceWeb.SessionController.create",
+        "operationId": "DbserviceWeb.UserController.update",
         "parameters": [
           {
-            "description": "Session to create",
+            "description": "The id of the user",
+            "in": "path",
+            "name": "userId",
+            "required": true,
+            "type": "integer"
+          },
+          {
+            "description": "User to create",
             "in": "body",
             "name": "body",
             "required": true,
             "schema": {
-              "$ref": "#/definitions/Session"
+              "$ref": "#/definitions/User"
             }
           }
         ],
-        "responses": {
-          "201": {
-            "description": "Created",
-            "schema": {
-              "$ref": "#/definitions/Session"
-            }
-          }
-        },
-        "summary": "",
-        "tags": [
-          "Session"
-        ]
-      }
-    },
-    "/api/session-occurence": {
-      "get": {
-        "description": "",
-        "operationId": "DbserviceWeb.SessionOccurenceController.index",
-        "parameters": [],
         "responses": {
           "200": {
-            "description": "OK",
+            "description": "Updated",
             "schema": {
-              "$ref": "#/definitions/SessionOccurences"
+              "$ref": "#/definitions/User"
             }
           }
         },
         "summary": "",
         "tags": [
-          "SessionOccurence"
-        ]
-      },
-      "post": {
-        "description": "",
-        "operationId": "DbserviceWeb.SessionOccurenceController.create",
-        "parameters": [
-          {
-            "description": "Session occurence to create",
-            "in": "body",
-            "name": "body",
-            "required": true,
-            "schema": {
-              "$ref": "#/definitions/SessionOccurence"
-            }
-          }
-        ],
-        "responses": {
-          "201": {
-            "description": "Created",
-            "schema": {
-              "$ref": "#/definitions/SessionOccurence"
-            }
-          }
-        },
-        "summary": "",
-        "tags": [
-          "SessionOccurence"
+          "User"
         ]
       }
     },
-    "/api/session-occurence/{sessionOccurenceId}": {
+    "/api/batch/{batchId}": {
       "delete": {
         "description": "",
-        "operationId": "DbserviceWeb.SessionOccurenceController.delete",
+        "operationId": "DbserviceWeb.BatchController.delete",
         "parameters": [
           {
-            "description": "The id of the session occurence",
+            "description": "The id of the batch",
             "in": "path",
-            "name": "sessionOccurenceId",
+            "name": "batchId",
             "required": true,
             "type": "integer"
           }
@@ -2286,17 +1919,17 @@
         },
         "summary": "",
         "tags": [
-          "SessionOccurence"
+          "Batch"
         ]
       },
       "get": {
         "description": "",
-        "operationId": "DbserviceWeb.SessionOccurenceController.show",
+        "operationId": "DbserviceWeb.BatchController.show",
         "parameters": [
           {
-            "description": "The id of the session occurence",
+            "description": "The id of the batch",
             "in": "path",
-            "name": "sessionOccurenceId",
+            "name": "batchId",
             "required": true,
             "type": "integer"
           }
@@ -2305,33 +1938,33 @@
           "200": {
             "description": "OK",
             "schema": {
-              "$ref": "#/definitions/SessionOccurenceWithUser"
+              "$ref": "#/definitions/Batch"
             }
           }
         },
         "summary": "",
         "tags": [
-          "SessionOccurence"
+          "Batch"
         ]
       },
       "patch": {
         "description": "",
-        "operationId": "DbserviceWeb.SessionOccurenceController.update",
+        "operationId": "DbserviceWeb.BatchController.update",
         "parameters": [
           {
-            "description": "The id of the session occurence",
+            "description": "The id of the batch",
             "in": "path",
-            "name": "sessionOccurenceId",
+            "name": "batchId",
             "required": true,
             "type": "integer"
           },
           {
-            "description": "Session occurence to create",
+            "description": "Batch to create",
             "in": "body",
             "name": "body",
             "required": true,
             "schema": {
-              "$ref": "#/definitions/SessionOccurence"
+              "$ref": "#/definitions/Batch"
             }
           }
         ],
@@ -2339,185 +1972,13 @@
           "200": {
             "description": "Updated",
             "schema": {
-              "$ref": "#/definitions/SessionOccurence"
+              "$ref": "#/definitions/Batch"
             }
           }
         },
         "summary": "",
         "tags": [
-          "SessionOccurence"
-        ]
-      }
-    },
-    "/api/session/{sessionId}": {
-      "get": {
-        "description": "",
-        "operationId": "DbserviceWeb.SessionController.show",
-        "parameters": [
-          {
-            "description": "The id of the session",
-            "in": "path",
-            "name": "sessionId",
-            "required": true,
-            "type": "integer"
-          }
-        ],
-        "responses": {
-          "200": {
-            "description": "OK",
-            "schema": {
-              "$ref": "#/definitions/Session"
-            }
-          }
-        },
-        "summary": "",
-        "tags": [
-          "Session"
-        ]
-      },
-      "patch": {
-        "description": "",
-        "operationId": "DbserviceWeb.SessionController.update",
-        "parameters": [
-          {
-            "description": "The id of the session",
-            "in": "path",
-            "name": "sessionId",
-            "required": true,
-            "type": "integer"
-          },
-          {
-            "description": "Session to create",
-            "in": "body",
-            "name": "body",
-            "required": true,
-            "schema": {
-              "$ref": "#/definitions/Session"
-            }
-          }
-        ],
-        "responses": {
-          "200": {
-            "description": "Updated",
-            "schema": {
-              "$ref": "#/definitions/Session"
-            }
-          }
-        },
-        "summary": "",
-        "tags": [
-          "Session"
-        ]
-      }
-    },
-    "/api/session/{sessionId}/update-groups": {
-      "post": {
-        "description": "",
-        "operationId": "DbserviceWeb.SessionController.update_groups",
-        "parameters": [
-          {
-            "description": "The id of the session",
-            "in": "path",
-            "name": "sessionId",
-            "required": true,
-            "type": "integer"
-          },
-          {
-            "description": "List of group ids to update for the session",
-            "in": "body",
-            "name": "body",
-            "required": true,
-            "schema": {
-              "$ref": "#/definitions/GroupIds"
-            }
-          }
-        ],
-        "responses": {
-          "200": {
-            "description": "OK",
-            "schema": {
-              "$ref": "#/definitions/Session"
-            }
-          }
-        },
-        "summary": "",
-        "tags": [
-          "Session"
-        ]
-      }
-    },
-    "/api/student": {
-      "get": {
-        "description": "",
-        "operationId": "DbserviceWeb.StudentController.index",
-        "parameters": [],
-        "responses": {
-          "200": {
-            "description": "OK",
-            "schema": {
-              "$ref": "#/definitions/Students"
-            }
-          }
-        },
-        "summary": "",
-        "tags": [
-          "Student"
-        ]
-      },
-      "post": {
-        "description": "",
-        "operationId": "DbserviceWeb.StudentController.create",
-        "parameters": [
-          {
-            "description": "Student to create",
-            "in": "body",
-            "name": "body",
-            "required": true,
-            "schema": {
-              "$ref": "#/definitions/Student"
-            }
-          }
-        ],
-        "responses": {
-          "201": {
-            "description": "Created",
-            "schema": {
-              "$ref": "#/definitions/Student"
-            }
-          }
-        },
-        "summary": "",
-        "tags": [
-          "Student"
-        ]
-      }
-    },
-    "/api/student/register": {
-      "post": {
-        "description": "",
-        "operationId": "DbserviceWeb.StudentController.register",
-        "parameters": [
-          {
-            "description": "Student to create along with user",
-            "in": "body",
-            "name": "body",
-            "required": true,
-            "schema": {
-              "$ref": "#/definitions/StudentRegistration"
-            }
-          }
-        ],
-        "responses": {
-          "201": {
-            "description": "Created",
-            "schema": {
-              "$ref": "#/definitions/StudentWithUser"
-            }
-          }
-        },
-        "summary": "",
-        "tags": [
-          "Student"
+          "Batch"
         ]
       }
     },
@@ -2604,90 +2065,15 @@
         ]
       }
     },
-    "/api/teacher": {
-      "get": {
-        "description": "",
-        "operationId": "DbserviceWeb.TeacherController.index",
-        "parameters": [],
-        "responses": {
-          "200": {
-            "description": "OK",
-            "schema": {
-              "$ref": "#/definitions/Teachers"
-            }
-          }
-        },
-        "summary": "",
-        "tags": [
-          "Teacher"
-        ]
-      },
-      "post": {
-        "description": "",
-        "operationId": "DbserviceWeb.TeacherController.create",
-        "parameters": [
-          {
-            "description": "Teacher to create",
-            "in": "body",
-            "name": "body",
-            "required": true,
-            "schema": {
-              "$ref": "#/definitions/Teacher"
-            }
-          }
-        ],
-        "responses": {
-          "201": {
-            "description": "Created",
-            "schema": {
-              "$ref": "#/definitions/Teacher"
-            }
-          }
-        },
-        "summary": "",
-        "tags": [
-          "Teacher"
-        ]
-      }
-    },
-    "/api/teacher/register": {
-      "post": {
-        "description": "",
-        "operationId": "DbserviceWeb.TeacherController.register",
-        "parameters": [
-          {
-            "description": "Teacher to create along with user",
-            "in": "body",
-            "name": "body",
-            "required": true,
-            "schema": {
-              "$ref": "#/definitions/TeacherRegistration"
-            }
-          }
-        ],
-        "responses": {
-          "201": {
-            "description": "Created",
-            "schema": {
-              "$ref": "#/definitions/TeacherWithUser"
-            }
-          }
-        },
-        "summary": "",
-        "tags": [
-          "Teacher"
-        ]
-      }
-    },
-    "/api/teacher/{teacherId}": {
+    "/api/session-occurence/{sessionOccurenceId}": {
       "delete": {
         "description": "",
-        "operationId": "DbserviceWeb.TeacherController.delete",
+        "operationId": "DbserviceWeb.SessionOccurenceController.delete",
         "parameters": [
           {
-            "description": "The id of the teacher",
+            "description": "The id of the session occurence",
             "in": "path",
-            "name": "teacherId",
+            "name": "sessionOccurenceId",
             "required": true,
             "type": "integer"
           }
@@ -2699,17 +2085,17 @@
         },
         "summary": "",
         "tags": [
-          "Teacher"
+          "SessionOccurence"
         ]
       },
       "get": {
         "description": "",
-        "operationId": "DbserviceWeb.TeacherController.show",
+        "operationId": "DbserviceWeb.SessionOccurenceController.show",
         "parameters": [
           {
-            "description": "The id of the teacher",
+            "description": "The id of the session occurence",
             "in": "path",
-            "name": "teacherId",
+            "name": "sessionOccurenceId",
             "required": true,
             "type": "integer"
           }
@@ -2718,33 +2104,33 @@
           "200": {
             "description": "OK",
             "schema": {
-              "$ref": "#/definitions/Teacher"
+              "$ref": "#/definitions/SessionOccurenceWithUser"
             }
           }
         },
         "summary": "",
         "tags": [
-          "Teacher"
+          "SessionOccurence"
         ]
       },
       "patch": {
         "description": "",
-        "operationId": "DbserviceWeb.TeacherController.update",
+        "operationId": "DbserviceWeb.SessionOccurenceController.update",
         "parameters": [
           {
-            "description": "The id of the teacher",
+            "description": "The id of the session occurence",
             "in": "path",
-            "name": "teacherId",
+            "name": "sessionOccurenceId",
             "required": true,
             "type": "integer"
           },
           {
-            "description": "Teacher to create",
+            "description": "Session occurence to create",
             "in": "body",
             "name": "body",
             "required": true,
             "schema": {
-              "$ref": "#/definitions/Teacher"
+              "$ref": "#/definitions/SessionOccurence"
             }
           }
         ],
@@ -2752,45 +2138,81 @@
           "200": {
             "description": "Updated",
             "schema": {
-              "$ref": "#/definitions/Teacher"
+              "$ref": "#/definitions/SessionOccurence"
             }
           }
         },
         "summary": "",
         "tags": [
-          "Teacher"
+          "SessionOccurence"
         ]
       }
     },
-    "/api/user": {
+    "/api/group-type/{groupTypeId}/update-users": {
+      "post": {
+        "description": "",
+        "operationId": "DbserviceWeb.GroupTypeController.update_users",
+        "parameters": [
+          {
+            "description": "The id of the group",
+            "in": "path",
+            "name": "groupTypeId",
+            "required": true,
+            "type": "integer"
+          },
+          {
+            "description": "List of user ids to update for the group",
+            "in": "body",
+            "name": "body",
+            "required": true,
+            "schema": {
+              "$ref": "#/definitions/UserIds"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "schema": {
+              "$ref": "#/definitions/GroupUsers"
+            }
+          }
+        },
+        "summary": "",
+        "tags": [
+          "GroupType"
+        ]
+      }
+    },
+    "/api/session": {
       "get": {
         "description": "",
-        "operationId": "DbserviceWeb.UserController.index",
+        "operationId": "DbserviceWeb.SessionController.index",
         "parameters": [],
         "responses": {
           "200": {
             "description": "OK",
             "schema": {
-              "$ref": "#/definitions/Users"
+              "$ref": "#/definitions/Sessions"
             }
           }
         },
         "summary": "",
         "tags": [
-          "User"
+          "Session"
         ]
       },
       "post": {
         "description": "",
-        "operationId": "DbserviceWeb.UserController.create",
+        "operationId": "DbserviceWeb.SessionController.create",
         "parameters": [
           {
-            "description": "User to create",
+            "description": "Session to create",
             "in": "body",
             "name": "body",
             "required": true,
             "schema": {
-              "$ref": "#/definitions/User"
+              "$ref": "#/definitions/Session"
             }
           }
         ],
@@ -2798,13 +2220,354 @@
           "201": {
             "description": "Created",
             "schema": {
-              "$ref": "#/definitions/User"
+              "$ref": "#/definitions/Session"
             }
           }
         },
         "summary": "",
         "tags": [
-          "User"
+          "Session"
+        ]
+      }
+    },
+    "/api/group/{groupId}": {
+      "delete": {
+        "description": "",
+        "operationId": "DbserviceWeb.GroupController.delete",
+        "parameters": [
+          {
+            "description": "The id of the group",
+            "in": "path",
+            "name": "groupId",
+            "required": true,
+            "type": "integer"
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "No Content"
+          }
+        },
+        "summary": "",
+        "tags": [
+          "Group"
+        ]
+      },
+      "get": {
+        "description": "",
+        "operationId": "DbserviceWeb.GroupController.show",
+        "parameters": [
+          {
+            "description": "The id of the group",
+            "in": "path",
+            "name": "groupId",
+            "required": true,
+            "type": "integer"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "schema": {
+              "$ref": "#/definitions/Group"
+            }
+          }
+        },
+        "summary": "",
+        "tags": [
+          "Group"
+        ]
+      },
+      "patch": {
+        "description": "",
+        "operationId": "DbserviceWeb.GroupController.update",
+        "parameters": [
+          {
+            "description": "The id of the group",
+            "in": "path",
+            "name": "groupId",
+            "required": true,
+            "type": "integer"
+          },
+          {
+            "description": "Group to create",
+            "in": "body",
+            "name": "body",
+            "required": true,
+            "schema": {
+              "$ref": "#/definitions/Group"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Updated",
+            "schema": {
+              "$ref": "#/definitions/Group"
+            }
+          }
+        },
+        "summary": "",
+        "tags": [
+          "Group"
+        ]
+      }
+    },
+    "/api/batch-program": {
+      "get": {
+        "description": "",
+        "operationId": "DbserviceWeb.BatchProgramController.index",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "schema": {
+              "$ref": "#/definitions/BatchPrograms"
+            }
+          }
+        },
+        "summary": "",
+        "tags": [
+          "BatchProgram"
+        ]
+      },
+      "post": {
+        "description": "",
+        "operationId": "DbserviceWeb.BatchProgramController.create",
+        "parameters": [
+          {
+            "description": "BatchProgram to create",
+            "in": "body",
+            "name": "body",
+            "required": true,
+            "schema": {
+              "$ref": "#/definitions/BatchProgram"
+            }
+          }
+        ],
+        "responses": {
+          "201": {
+            "description": "Created",
+            "schema": {
+              "$ref": "#/definitions/BatchProgram"
+            }
+          }
+        },
+        "summary": "",
+        "tags": [
+          "BatchProgram"
+        ]
+      }
+    },
+    "/api/enrollment-record/{enrollmentRecordId}": {
+      "delete": {
+        "description": "",
+        "operationId": "DbserviceWeb.EnrollmentRecordController.delete",
+        "parameters": [
+          {
+            "description": "The id of the enrollment record",
+            "in": "path",
+            "name": "enrollmentRecordId",
+            "required": true,
+            "type": "integer"
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "No Content"
+          }
+        },
+        "summary": "",
+        "tags": [
+          "EnrollmentRecord"
+        ]
+      },
+      "get": {
+        "description": "",
+        "operationId": "DbserviceWeb.EnrollmentRecordController.show",
+        "parameters": [
+          {
+            "description": "The id of the enrollment record",
+            "in": "path",
+            "name": "enrollmentRecordId",
+            "required": true,
+            "type": "integer"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "schema": {
+              "$ref": "#/definitions/EnrollmentRecord"
+            }
+          }
+        },
+        "summary": "",
+        "tags": [
+          "EnrollmentRecord"
+        ]
+      },
+      "patch": {
+        "description": "",
+        "operationId": "DbserviceWeb.EnrollmentRecordController.update",
+        "parameters": [
+          {
+            "description": "The id of the enrollment record",
+            "in": "path",
+            "name": "enrollmentRecordId",
+            "required": true,
+            "type": "integer"
+          },
+          {
+            "description": "Enrollment record to create",
+            "in": "body",
+            "name": "body",
+            "required": true,
+            "schema": {
+              "$ref": "#/definitions/EnrollmentRecord"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Updated",
+            "schema": {
+              "$ref": "#/definitions/EnrollmentRecord"
+            }
+          }
+        },
+        "summary": "",
+        "tags": [
+          "EnrollmentRecord"
+        ]
+      }
+    },
+    "/api/group-type/{groupTypeId}": {
+      "delete": {
+        "description": "",
+        "operationId": "DbserviceWeb.GroupTypeController.delete",
+        "parameters": [
+          {
+            "description": "The id of the group",
+            "in": "path",
+            "name": "groupId",
+            "required": true,
+            "type": "integer"
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "No Content"
+          }
+        },
+        "summary": "",
+        "tags": [
+          "GroupType"
+        ]
+      },
+      "get": {
+        "description": "",
+        "operationId": "DbserviceWeb.GroupTypeController.show",
+        "parameters": [
+          {
+            "description": "The id of the group",
+            "in": "path",
+            "name": "groupId",
+            "required": true,
+            "type": "integer"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "schema": {
+              "$ref": "#/definitions/GroupType"
+            }
+          }
+        },
+        "summary": "",
+        "tags": [
+          "GroupType"
+        ]
+      },
+      "patch": {
+        "description": "",
+        "operationId": "DbserviceWeb.GroupTypeController.update",
+        "parameters": [
+          {
+            "description": "The id of the group",
+            "in": "path",
+            "name": "groupId",
+            "required": true,
+            "type": "integer"
+          },
+          {
+            "description": "Group to create",
+            "in": "body",
+            "name": "body",
+            "required": true,
+            "schema": {
+              "$ref": "#/definitions/GroupType"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Updated",
+            "schema": {
+              "$ref": "#/definitions/Group"
+            }
+          }
+        },
+        "summary": "",
+        "tags": [
+          "GroupType"
+        ]
+      }
+    },
+    "/api/group": {
+      "get": {
+        "description": "",
+        "operationId": "DbserviceWeb.GroupController.index",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "schema": {
+              "$ref": "#/definitions/Groups"
+            }
+          }
+        },
+        "summary": "",
+        "tags": [
+          "Group"
+        ]
+      },
+      "post": {
+        "description": "",
+        "operationId": "DbserviceWeb.GroupController.create",
+        "parameters": [
+          {
+            "description": "Group to create",
+            "in": "body",
+            "name": "body",
+            "required": true,
+            "schema": {
+              "$ref": "#/definitions/Group"
+            }
+          }
+        ],
+        "responses": {
+          "201": {
+            "description": "Created",
+            "schema": {
+              "$ref": "#/definitions/Group"
+            }
+          }
+        },
+        "summary": "",
+        "tags": [
+          "Group"
         ]
       }
     },
@@ -2851,6 +2614,81 @@
         "summary": "",
         "tags": [
           "UserSession"
+        ]
+      }
+    },
+    "/api/student/register": {
+      "post": {
+        "description": "",
+        "operationId": "DbserviceWeb.StudentController.register",
+        "parameters": [
+          {
+            "description": "Student to create along with user",
+            "in": "body",
+            "name": "body",
+            "required": true,
+            "schema": {
+              "$ref": "#/definitions/StudentRegistration"
+            }
+          }
+        ],
+        "responses": {
+          "201": {
+            "description": "Created",
+            "schema": {
+              "$ref": "#/definitions/StudentWithUser"
+            }
+          }
+        },
+        "summary": "",
+        "tags": [
+          "Student"
+        ]
+      }
+    },
+    "/api/batch": {
+      "get": {
+        "description": "",
+        "operationId": "DbserviceWeb.BatchController.index",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "schema": {
+              "$ref": "#/definitions/Batches"
+            }
+          }
+        },
+        "summary": "",
+        "tags": [
+          "Batch"
+        ]
+      },
+      "post": {
+        "description": "",
+        "operationId": "DbserviceWeb.BatchController.create",
+        "parameters": [
+          {
+            "description": "Batch to create",
+            "in": "body",
+            "name": "body",
+            "required": true,
+            "schema": {
+              "$ref": "#/definitions/Batch"
+            }
+          }
+        ],
+        "responses": {
+          "201": {
+            "description": "Created",
+            "schema": {
+              "$ref": "#/definitions/Batch"
+            }
+          }
+        },
+        "summary": "",
+        "tags": [
+          "Batch"
         ]
       }
     },
@@ -2937,64 +2775,252 @@
         ]
       }
     },
-    "/api/user/{userId}": {
+    "/api/enrollment-record": {
       "get": {
         "description": "",
-        "operationId": "DbserviceWeb.UserController.show",
+        "operationId": "DbserviceWeb.EnrollmentRecordController.index",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "schema": {
+              "$ref": "#/definitions/EnrollmentRecords"
+            }
+          }
+        },
+        "summary": "",
+        "tags": [
+          "EnrollmentRecord"
+        ]
+      },
+      "post": {
+        "description": "",
+        "operationId": "DbserviceWeb.EnrollmentRecordController.create",
         "parameters": [
           {
-            "description": "The id of the user",
+            "description": "Enrollment record to create",
+            "in": "body",
+            "name": "body",
+            "required": true,
+            "schema": {
+              "$ref": "#/definitions/EnrollmentRecord"
+            }
+          }
+        ],
+        "responses": {
+          "201": {
+            "description": "Created",
+            "schema": {
+              "$ref": "#/definitions/EnrollmentRecord"
+            }
+          }
+        },
+        "summary": "",
+        "tags": [
+          "EnrollmentRecord"
+        ]
+      }
+    },
+    "/api/session-occurence": {
+      "get": {
+        "description": "",
+        "operationId": "DbserviceWeb.SessionOccurenceController.index",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "schema": {
+              "$ref": "#/definitions/SessionOccurences"
+            }
+          }
+        },
+        "summary": "",
+        "tags": [
+          "SessionOccurence"
+        ]
+      },
+      "post": {
+        "description": "",
+        "operationId": "DbserviceWeb.SessionOccurenceController.create",
+        "parameters": [
+          {
+            "description": "Session occurence to create",
+            "in": "body",
+            "name": "body",
+            "required": true,
+            "schema": {
+              "$ref": "#/definitions/SessionOccurence"
+            }
+          }
+        ],
+        "responses": {
+          "201": {
+            "description": "Created",
+            "schema": {
+              "$ref": "#/definitions/SessionOccurence"
+            }
+          }
+        },
+        "summary": "",
+        "tags": [
+          "SessionOccurence"
+        ]
+      }
+    },
+    "/api/teacher": {
+      "get": {
+        "description": "",
+        "operationId": "DbserviceWeb.TeacherController.index",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "schema": {
+              "$ref": "#/definitions/Teachers"
+            }
+          }
+        },
+        "summary": "",
+        "tags": [
+          "Teacher"
+        ]
+      },
+      "post": {
+        "description": "",
+        "operationId": "DbserviceWeb.TeacherController.create",
+        "parameters": [
+          {
+            "description": "Teacher to create",
+            "in": "body",
+            "name": "body",
+            "required": true,
+            "schema": {
+              "$ref": "#/definitions/Teacher"
+            }
+          }
+        ],
+        "responses": {
+          "201": {
+            "description": "Created",
+            "schema": {
+              "$ref": "#/definitions/Teacher"
+            }
+          }
+        },
+        "summary": "",
+        "tags": [
+          "Teacher"
+        ]
+      }
+    },
+    "/api/group-type": {
+      "get": {
+        "description": "",
+        "operationId": "DbserviceWeb.GroupTypeController.index",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "schema": {
+              "$ref": "#/definitions/GroupTypes"
+            }
+          }
+        },
+        "summary": "",
+        "tags": [
+          "GroupType"
+        ]
+      },
+      "post": {
+        "description": "",
+        "operationId": "DbserviceWeb.GroupTypeController.create",
+        "parameters": [
+          {
+            "description": "Group to create",
+            "in": "body",
+            "name": "body",
+            "required": true,
+            "schema": {
+              "$ref": "#/definitions/GroupType"
+            }
+          }
+        ],
+        "responses": {
+          "201": {
+            "description": "Created",
+            "schema": {
+              "$ref": "#/definitions/GroupType"
+            }
+          }
+        },
+        "summary": "",
+        "tags": [
+          "GroupType"
+        ]
+      }
+    },
+    "/api/group-type/{groupTypeId}/update-sessions": {
+      "post": {
+        "description": "",
+        "operationId": "DbserviceWeb.GroupTypeController.update_sessions",
+        "parameters": [
+          {
+            "description": "The id of the group",
             "in": "path",
-            "name": "userId",
+            "name": "groupTypeId",
             "required": true,
             "type": "integer"
+          },
+          {
+            "description": "List of session ids to update for the group",
+            "in": "body",
+            "name": "body",
+            "required": true,
+            "schema": {
+              "$ref": "#/definitions/SessionIds"
+            }
           }
         ],
         "responses": {
           "200": {
             "description": "OK",
             "schema": {
-              "$ref": "#/definitions/User"
+              "$ref": "#/definitions/GroupSessions"
             }
           }
         },
         "summary": "",
         "tags": [
-          "User"
+          "GroupType"
         ]
-      },
-      "patch": {
+      }
+    },
+    "/api/teacher/register": {
+      "post": {
         "description": "",
-        "operationId": "DbserviceWeb.UserController.update",
+        "operationId": "DbserviceWeb.TeacherController.register",
         "parameters": [
           {
-            "description": "The id of the user",
-            "in": "path",
-            "name": "userId",
-            "required": true,
-            "type": "integer"
-          },
-          {
-            "description": "User to create",
+            "description": "Teacher to create along with user",
             "in": "body",
             "name": "body",
             "required": true,
             "schema": {
-              "$ref": "#/definitions/User"
+              "$ref": "#/definitions/TeacherRegistration"
             }
           }
         ],
         "responses": {
-          "200": {
-            "description": "Updated",
+          "201": {
+            "description": "Created",
             "schema": {
-              "$ref": "#/definitions/User"
+              "$ref": "#/definitions/TeacherWithUser"
             }
           }
         },
         "summary": "",
         "tags": [
-          "User"
+          "Teacher"
         ]
       }
     },
@@ -3031,6 +3057,52 @@
         "summary": "",
         "tags": [
           "User"
+        ]
+      }
+    },
+    "/api/group-session": {
+      "get": {
+        "description": "",
+        "operationId": "DbserviceWeb.GroupSessionController.index",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "schema": {
+              "$ref": "#/definitions/GroupSessions"
+            }
+          }
+        },
+        "summary": "",
+        "tags": [
+          "GroupSession"
+        ]
+      },
+      "post": {
+        "description": "",
+        "operationId": "DbserviceWeb.GroupSessionController.create",
+        "parameters": [
+          {
+            "description": "Group session to create",
+            "in": "body",
+            "name": "body",
+            "required": true,
+            "schema": {
+              "$ref": "#/definitions/GroupSessions"
+            }
+          }
+        ],
+        "responses": {
+          "201": {
+            "description": "Created",
+            "schema": {
+              "$ref": "#/definitions/GroupSessions"
+            }
+          }
+        },
+        "summary": "",
+        "tags": [
+          "GroupSession"
         ]
       }
     }

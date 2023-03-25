@@ -330,11 +330,11 @@ defmodule Seed do
 
   def create_group_session() do
     session = Sessions.Session |> offset(^Enum.random(1..49)) |> limit(1) |> Repo.one()
-    group = Seed.create_group_type()
+    group_type = Seed.create_group_type()
 
     {:ok, group_session} =
       GroupSessions.create_group_session(%{
-        group_id: group.id,
+        group_type_id: group_type.id,
         session_id: session.id
       })
 
@@ -342,13 +342,13 @@ defmodule Seed do
   end
 
   def create_group_user() do
-    group = Seed.create_group_type()
+    group_type = Seed.create_group_type()
     user = Seed.create_user()
     program_manager = Users.User |> offset(^Enum.random(1..99)) |> limit(1) |> Repo.one()
 
     {:ok, group_user} =
       GroupUsers.create_group_user(%{
-        group_id: group.id,
+        group_type_id: group_type.id,
         user_id: user.id,
         program_manager_id: program_manager.id,
         program_date_of_joining:
