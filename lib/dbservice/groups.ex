@@ -7,6 +7,7 @@ defmodule Dbservice.Groups do
   alias Dbservice.Repo
 
   alias Dbservice.Groups.Group
+  alias Dbservice.Groups.GroupType
 
   @doc """
   Returns the list of group.
@@ -40,6 +41,7 @@ defmodule Dbservice.Groups do
   def create_group(attrs \\ %{}) do
     %Group{}
     |> Group.changeset(attrs)
+    |> Ecto.Changeset.put_assoc(:group_type, [%GroupType{type: "group", child_id: attrs["id"]}])
     |> Repo.insert()
   end
 

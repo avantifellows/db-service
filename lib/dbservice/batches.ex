@@ -7,6 +7,7 @@ defmodule Dbservice.Batches do
   alias Dbservice.Repo
 
   alias Dbservice.Batches.Batch
+  alias Dbservice.Groups.GroupType
 
   @doc """
   Returns the list of batch.
@@ -40,6 +41,7 @@ defmodule Dbservice.Batches do
   def create_batch(attrs \\ %{}) do
     %Batch{}
     |> Batch.changeset(attrs)
+    |> Ecto.Changeset.put_assoc(:group_type, [%GroupType{type: "batch", child_id: attrs["id"]}])
     |> Repo.insert()
   end
 

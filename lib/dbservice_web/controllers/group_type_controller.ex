@@ -36,7 +36,7 @@ defmodule DbserviceWeb.GroupTypeController do
   def index(conn, params) do
     param = Enum.map(params, fn {key, value} -> {String.to_existing_atom(key), value} end)
 
-    group =
+    group_type =
       Enum.reduce(param, GroupType, fn
         {key, value}, query ->
           from u in query, where: field(u, ^key) == ^value
@@ -46,7 +46,7 @@ defmodule DbserviceWeb.GroupTypeController do
       end)
       |> Repo.all()
 
-    render(conn, "index.json", group: group)
+    render(conn, "index.json", group_type: group_type)
   end
 
   swagger_path :create do
@@ -60,11 +60,11 @@ defmodule DbserviceWeb.GroupTypeController do
   end
 
   def create(conn, params) do
-    with {:ok, %GroupType{} = group} <- GroupTypes.create_group_type(params) do
+    with {:ok, %GroupType{} = group_type} <- GroupTypes.create_group_type(params) do
       conn
       |> put_status(:created)
-      |> put_resp_header("location", Routes.group_path(conn, :show, group))
-      |> render("show.json", group: group)
+      |> put_resp_header("location", Routes.group_path(conn, :show, group_type))
+      |> render("show.json", group_type: group_type)
     end
   end
 
@@ -79,8 +79,8 @@ defmodule DbserviceWeb.GroupTypeController do
   end
 
   def show(conn, %{"id" => id}) do
-    group = GroupTypes.get_group_type!(id)
-    render(conn, "show.json", group: group)
+    group_type = GroupTypes.get_group_type!(id)
+    render(conn, "show.json", group_type: group_type)
   end
 
   swagger_path :update do
@@ -95,10 +95,10 @@ defmodule DbserviceWeb.GroupTypeController do
   end
 
   def update(conn, params) do
-    group = GroupTypes.get_group_type!(params["id"])
+    group_type = GroupTypes.get_group_type!(params["id"])
 
-    with {:ok, %GroupType{} = group} <- GroupTypes.update_group_type(group, params) do
-      render(conn, "show.json", group: group)
+    with {:ok, %GroupType{} = group_type} <- GroupTypes.update_group_type(group_type, params) do
+      render(conn, "show.json", group_type: group_type)
     end
   end
 
@@ -113,9 +113,9 @@ defmodule DbserviceWeb.GroupTypeController do
   end
 
   def delete(conn, %{"id" => id}) do
-    group = GroupTypes.get_group_type!(id)
+    group_type = GroupTypes.get_group_type!(id)
 
-    with {:ok, %GroupType{}} <- GroupTypes.delete_group_type(group) do
+    with {:ok, %GroupType{}} <- GroupTypes.delete_group_type(group_type) do
       send_resp(conn, :no_content, "")
     end
   end
@@ -134,8 +134,8 @@ defmodule DbserviceWeb.GroupTypeController do
 
   def update_users(conn, %{"id" => group_id, "user_ids" => user_ids})
       when is_list(user_ids) do
-    with {:ok, %GroupType{} = group} <- GroupTypes.update_users(group_id, user_ids) do
-      render(conn, "show.json", group: group)
+    with {:ok, %GroupType{} = group_type} <- GroupTypes.update_users(group_id, user_ids) do
+      render(conn, "show.json", group_type: group_type)
     end
   end
 

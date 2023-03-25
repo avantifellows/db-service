@@ -7,6 +7,7 @@ defmodule Dbservice.Programs do
   alias Dbservice.Repo
 
   alias Dbservice.Programs.Program
+  alias Dbservice.Groups.GroupType
 
   @doc """
   Returns the list of program.
@@ -40,6 +41,7 @@ defmodule Dbservice.Programs do
   def create_program(attrs \\ %{}) do
     %Program{}
     |> Program.changeset(attrs)
+    |> Ecto.Changeset.put_assoc(:group_type, [%GroupType{type: "program", child_id: attrs["id"]}])
     |> Repo.insert()
   end
 
