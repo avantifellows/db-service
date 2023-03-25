@@ -4,17 +4,10 @@ defmodule Dbservice.Groups.GroupType do
   use Ecto.Schema
   import Ecto.Changeset
 
-  alias Dbservice.Groups.Group
-  alias Dbservice.Programs.Program
-  alias Dbservice.Batches.Batch
-
   schema "group_type" do
     field :type, :string
     field :child_id, :integer
 
-    belongs_to :group, Group
-    belongs_to :program, Program
-    belongs_to :batch, Batch
     timestamps()
   end
 
