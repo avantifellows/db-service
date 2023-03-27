@@ -1,6 +1,6 @@
 defmodule Dbservice.GroupTypes do
   @moduledoc """
-  The Groups context.
+  The GroupTypes context.
   """
 
   import Ecto.Query, warn: false
@@ -11,31 +11,31 @@ defmodule Dbservice.GroupTypes do
   alias Dbservice.Groups.GroupType
 
   @doc """
-  Returns the list of group.
+  Returns the list of group_type.
   ## Examples
       iex> list_group_type()
-      [%Group{}, ...]
+      [%GroupType{}, ...]
   """
   def list_group_type do
     Repo.all(GroupType)
   end
 
   @doc """
-  Gets a single group.
-  Raises `Ecto.NoResultsError` if the Group does not exist.
+  Gets a single group_type.
+  Raises `Ecto.NoResultsError` if the GroupType does not exist.
   ## Examples
       iex> get_group_type!(123)
-      %Group{}
+      %GroupType{}
       iex> get_group_type!(456)
       ** (Ecto.NoResultsError)
   """
   def get_group_type!(id), do: Repo.get!(GroupType, id)
 
   @doc """
-  Creates a group.
+  Creates a group_type.
   ## Examples
       iex> create_group_type_type(%{field: value})
-      {:ok, %Group{}}
+      {:ok, %GroupType{}}
       iex> create_group_type(%{field: bad_value})
       {:error, %Ecto.Changeset{}}
   """
@@ -46,11 +46,11 @@ defmodule Dbservice.GroupTypes do
   end
 
   @doc """
-  Updates a group.
+  Updates a group_type.
   ## Examples
-      iex> update_group_type(group, %{field: new_value})
-      {:ok, %Group{}}
-      iex> update_group_type(group, %{field: bad_value})
+      iex> update_group_type(group_type, %{field: new_value})
+      {:ok, %GroupType{}}
+      iex> update_group_type(group_type, %{field: bad_value})
       {:error, %Ecto.Changeset{}}
   """
   def update_group_type(%GroupType{} = group, attrs) do
@@ -60,7 +60,7 @@ defmodule Dbservice.GroupTypes do
   end
 
   @doc """
-  Deletes a group.
+  Deletes a group_type.
   ## Examples
       iex> delete_group_type(group)
       {:ok, %Group{}}
@@ -72,17 +72,17 @@ defmodule Dbservice.GroupTypes do
   end
 
   @doc """
-  Returns an `%Ecto.Changeset{}` for tracking group changes.
+  Returns an `%Ecto.Changeset{}` for tracking group_type changes.
   ## Examples
-      iex> change_group_type(group)
-      %Ecto.Changeset{data: %Group{}}
+      iex> change_group_type(group_type)
+      %Ecto.Changeset{data: %GroupType{}}
   """
   def change_group_type(%GroupType{} = group, attrs \\ %{}) do
     GroupType.changeset(group, attrs)
   end
 
   @doc """
-  Updates the users mapped to a group.
+  Updates the users mapped to a group_type.
   """
   def update_users(group_id, user_ids) when is_list(user_ids) do
     group = get_group_type!(group_id)
