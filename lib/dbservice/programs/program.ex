@@ -10,15 +10,15 @@ defmodule Dbservice.Programs.Program do
 
   schema "program" do
     field :name, :string
-    field :program_type, :string
-    field :program_sub_type, :string
-    field :program_mode, :string
-    field :program_start_date, :date
-    field :program_target_outreach, :integer
-    field :program_product_used, :string
-    field :program_donor, :string
-    field :program_state, :string
-    field :program_model, :string
+    field :type, :string
+    field :sub_type, :string
+    field :mode, :string
+    field :start_date, :date
+    field :target_outreach, :integer
+    field :product_used, :string
+    field :donor, :string
+    field :state, :string
+    field :model, :string
 
     belongs_to :group, Group
     has_many :group_type, GroupType, foreign_key: :child_id, where: [type: "program"]
@@ -32,15 +32,15 @@ defmodule Dbservice.Programs.Program do
     program
     |> cast(attrs, [
       :name,
-      :program_type,
-      :program_sub_type,
-      :program_mode,
-      :program_start_date,
-      :program_target_outreach,
-      :program_product_used,
-      :program_donor,
-      :program_state,
-      :program_model,
+      :type,
+      :sub_type,
+      :mode,
+      :start_date,
+      :target_outreach,
+      :product_used,
+      :donor,
+      :state,
+      :model,
       :group_id
     ])
     |> validate_required([:name])

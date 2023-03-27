@@ -4,15 +4,15 @@ defmodule Dbservice.Repo.Migrations.CreateProgram do
   def change do
     create table(:program) do
       add :name, :string
-      add :program_type, :string
-      add :program_sub_type, :string
-      add :program_mode, :string
-      add :program_start_date, :date
-      add :program_target_outreach, :integer
-      add :program_product_used, :string
-      add :program_donor, :string
-      add :program_state, :string
-      add :program_model, :string
+      add :type, :string
+      add :sub_type, :string
+      add :mode, :string
+      add :start_date, :date
+      add :target_outreach, :integer
+      add :product_used, :string
+      add :donor, :string
+      add :state, :string
+      add :model, :string
       add :group_id, references(:group, on_delete: :nothing)
 
       timestamps()
