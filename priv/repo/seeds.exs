@@ -72,15 +72,15 @@ defmodule Seed do
     {:ok, program} =
       Programs.create_program(%{
         name: Person.name(),
-        program_type: Enum.random(["Competitive", "Non Competitive"]),
-        program_sub_type: Enum.random(["Easy", "Moderate", "High"]),
-        program_mode: Enum.random(["Online", "Offline"]),
-        program_start_date:
+        type: Enum.random(["Competitive", "Non Competitive"]),
+        sub_type: Enum.random(["Easy", "Moderate", "High"]),
+        mode: Enum.random(["Online", "Offline"]),
+        start_date:
           Faker.DateTime.between(~N[2015-05-19 00:00:00], ~N[2022-10-19 00:00:00]),
-        program_target_outreach: Enum.random(3000..10000),
-        program_product_used: Enum.random(["One", "Less than 5", "More than 5"]),
-        program_donor: Enum.random(["YES", "NO"]),
-        program_state:
+        target_outreach: Enum.random(3000..10000),
+        product_used: Enum.random(["One", "Less than 5", "More than 5"]),
+        donor: Enum.random(["YES", "NO"]),
+        state:
           Enum.random([
             "HARYANA",
             "ASSAM",
@@ -90,7 +90,7 @@ defmodule Seed do
             "DELHI",
             "HIMACHAL PRADESH"
           ]),
-        program_model: Enum.random(["Live Classes"]),
+        model: Enum.random(["Live Classes"]),
         group_id: group.id
       })
 
@@ -154,7 +154,7 @@ defmodule Seed do
     {:ok, batch_program} =
       BatchPrograms.create_batch_program(%{
         batch_id: batch.id,
-        program_id: program.id
+        id: program.id
       })
 
     batch_program
@@ -275,7 +275,7 @@ defmodule Seed do
   def create_teacher() do
     school = Schools.School |> offset(^Enum.random(1..9)) |> limit(1) |> Repo.one()
     user = Seed.create_user()
-    program_manager = Users.User |> offset(^Enum.random(1..99)) |> limit(1) |> Repo.one()
+    manager = Users.User |> offset(^Enum.random(1..99)) |> limit(1) |> Repo.one()
 
     {:ok, teacher} =
       Users.create_teacher(%{
@@ -284,7 +284,7 @@ defmodule Seed do
         grade: Enum.random(["KG", "1", "2", "3", "4", "5", "6", "7", "8", "9", "10"]),
         user_id: user.id,
         school_id: school.id,
-        program_manager_id: program_manager.id,
+        manager_id: manager.id,
         uuid: Seed.random_alphanumeric()
       })
 
@@ -344,16 +344,16 @@ defmodule Seed do
   def create_group_user() do
     group_type = Seed.create_group_type()
     user = Seed.create_user()
-    program_manager = Users.User |> offset(^Enum.random(1..99)) |> limit(1) |> Repo.one()
+    manager = Users.User |> offset(^Enum.random(1..99)) |> limit(1) |> Repo.one()
 
     {:ok, group_user} =
       GroupUsers.create_group_user(%{
         group_type_id: group_type.id,
         user_id: user.id,
-        program_manager_id: program_manager.id,
-        program_date_of_joining:
+        manager_id: manager.id,
+        date_of_joining:
           Faker.DateTime.between(~N[2015-05-19 00:00:00], ~N[2022-10-19 00:00:00]),
-        program_student_language: Enum.random(["English", "Hindi"])
+        student_language: Enum.random(["English", "Hindi"])
       })
 
     group_user

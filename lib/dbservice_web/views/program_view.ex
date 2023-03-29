@@ -14,15 +14,15 @@ defmodule DbserviceWeb.ProgramView do
     %{
       id: program.id,
       name: program.name,
-      program_type: program.program_type,
-      program_sub_type: program.program_sub_type,
-      program_mode: program.program_mode,
-      program_start_date: program.program_start_date,
-      program_target_outreach: program.program_target_outreach,
-      program_product_used: program.program_product_used,
-      program_donor: program.program_donor,
-      program_state: program.program_state,
-      program_model: program.program_model,
+      type: program.type,
+      sub_type: program.sub_type,
+      mode: program.mode,
+      start_date: program.start_date,
+      target_outreach: program.target_outreach,
+      product_used: program.product_used,
+      donor: program.donor,
+      state: program.state,
+      model: program.model,
       group_id: program.group_id
     }
   end
