@@ -75,8 +75,7 @@ defmodule Seed do
         type: Enum.random(["Competitive", "Non Competitive"]),
         sub_type: Enum.random(["Easy", "Moderate", "High"]),
         mode: Enum.random(["Online", "Offline"]),
-        start_date:
-          Faker.DateTime.between(~N[2015-05-19 00:00:00], ~N[2022-10-19 00:00:00]),
+        start_date: Faker.DateTime.between(~N[2015-05-19 00:00:00], ~N[2022-10-19 00:00:00]),
         target_outreach: Enum.random(3000..10000),
         product_used: Enum.random(["One", "Less than 5", "More than 5"]),
         donor: Enum.random(["YES", "NO"]),
@@ -351,8 +350,7 @@ defmodule Seed do
         group_type_id: group_type.id,
         user_id: user.id,
         manager_id: manager.id,
-        date_of_joining:
-          Faker.DateTime.between(~N[2015-05-19 00:00:00], ~N[2022-10-19 00:00:00]),
+        date_of_joining: Faker.DateTime.between(~N[2015-05-19 00:00:00], ~N[2022-10-19 00:00:00]),
         student_language: Enum.random(["English", "Hindi"])
       })
 
