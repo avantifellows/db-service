@@ -153,7 +153,7 @@ defmodule Seed do
     {:ok, batch_program} =
       BatchPrograms.create_batch_program(%{
         batch_id: batch.id,
-        id: program.id
+        program_id: program.id
       })
 
     batch_program
