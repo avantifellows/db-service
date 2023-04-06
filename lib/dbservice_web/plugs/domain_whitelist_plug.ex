@@ -23,17 +23,13 @@ defmodule DbserviceWeb.DomainWhitelistPlug do
   end
 
   defp allowed_domains?(conn) do
-    whitelisted_domains = System.get_env("WHITELISTED_DOMAINS")
-
     allowed_domains =
-      if is_nil(whitelisted_domains),
-        do: ["localhost"],
-        else: String.split(whitelisted_domains, ",")
+      case Mix.env() do
+        :dev -> ["localhost"]
+        :test -> ["www.example.com"]
+        _ -> System.get_env("WHITELISTED_DOMAINS") |> String.split(",")
+      end
 
-    if Mix.env() == :test do
-      true
-    else
-      Enum.member?(allowed_domains, conn.host)
-    end
+    Enum.member?(allowed_domains, conn.host)
   end
 end
