@@ -13,6 +13,7 @@ defmodule DbserviceWeb.GroupView do
   def render("group.json", %{group: group}) do
     %{
       id: group.id,
+      name: group.name,
       input_schema: group.input_schema,
       locale: group.locale,
       locale_data: group.locale_data
