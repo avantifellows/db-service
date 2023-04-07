@@ -10,8 +10,8 @@ defmodule DbserviceWeb.Router do
     pipe_through :api
 
     resources "/group", GroupController, except: [:new, :edit]
-    post "/group/:id/update-users", GroupController, :update_users
-    post "/group/:id/update-sessions", GroupController, :update_sessions
+    post "/group-type/:id/update-users", GroupTypeController, :update_users
+    post "/group-type/:id/update-sessions", GroupTypeController, :update_sessions
 
     resources "/user", UserController, only: [:index, :create, :update, :show]
     post "/user/:id/update-groups", UserController, :update_groups
@@ -28,6 +28,10 @@ defmodule DbserviceWeb.Router do
     resources "/session-occurrence", SessionOccurenceController, except: [:new, :edit]
     resources "/user-session", UserSessionController, except: [:new, :edit]
     resources "/group-session", GroupSessionController, except: [:new, :edit]
+    resources "/program", ProgramController, except: [:new, :edit]
+    resources "/batch", BatchController, except: [:new, :edit]
+    resources "/batch-program", BatchProgramController, except: [:new, :edit]
+    resources "/group-type", GroupTypeController, except: [:new, :edit]
 
     def swagger_info do
       %{
