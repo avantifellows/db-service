@@ -28,7 +28,7 @@ defmodule DbserviceWeb.SwaggerSchema.Program do
             type: "Test Prep",
             sub_type: "AF-Led",
             mode: "Offline",
-            start_date: "2020/02/03",
+            start_date: "2020-02-03",
             target_outreach: 1000,
             products_used: "",
             donor: "Infosys, MSDF, Sofina",

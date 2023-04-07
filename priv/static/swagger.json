@@ -1,46 +1,26 @@
 {
   "definitions": {
-    "Batch": {
-      "description": "A batch in application",
-      "example": {
-        "contact_hours_per_week": 48,
-        "name": "Kendriya Vidyalaya - Class 12th"
+    "Programs": {
+      "description": "All the programs",
+      "items": {
+        "$ref": "#/definitions/Program"
       },
-      "properties": {
-        "contact_hours_per_week": {
-          "description": "Contact hours per week of a batch",
-          "type": "integer"
-        },
-        "name": {
-          "description": "The name of a batch",
-          "type": "string"
-        }
-      },
-      "title": "Batch",
-      "type": "object"
+      "title": "Programs",
+      "type": "array"
     },
-    "SessionOccurence": {
-      "description": "A session occurence for a session",
+    "SessionIds": {
       "example": {
-        "end_time": "2022-02-02T11:30:00Z",
-        "session_id": 1,
-        "start_time": "2022-02-02T11:00:00Z"
+        "session_ids": [
+          1,
+          2
+        ]
       },
       "properties": {
-        "end_time": {
-          "description": "Session occurence finish time",
-          "type": "timestamp"
-        },
-        "session_id": {
-          "description": "Session ID",
-          "type": "integer"
-        },
-        "start_time": {
-          "description": "Session occurence start time",
-          "type": "timestamp"
+        "session_ids": {
+          "description": "List of session ids",
+          "type": "array"
         }
       },
-      "title": "SessionOccurence",
       "type": "object"
     },
     "Student": {
@@ -134,269 +114,6 @@
       "title": "Student",
       "type": "object"
     },
-    "Users": {
-      "description": "All users in the application",
-      "items": {
-        "$ref": "#/definitions/User"
-      },
-      "title": "Users",
-      "type": "array"
-    },
-    "SessionIds": {
-      "example": {
-        "session_ids": [
-          1,
-          2
-        ]
-      },
-      "properties": {
-        "session_ids": {
-          "description": "List of session ids",
-          "type": "array"
-        }
-      },
-      "type": "object"
-    },
-    "Program": {
-      "description": "A program in application",
-      "example": {
-        "donor": "Infosys, MSDF, Sofina",
-        "group_id": 1,
-        "mode": "Offline",
-        "model": "Live Classes",
-        "name": "Delhi-Govt",
-        "products_used": "",
-        "start_date": "2020/02/03",
-        "state": "Delhi",
-        "sub_type": "AF-Led",
-        "target_outreach": 1000,
-        "type": "Test Prep"
-      },
-      "properties": {
-        "donor": {
-          "description": "Donor of a program",
-          "type": "string"
-        },
-        "group_id": {
-          "description": "ID of the group",
-          "type": "integer"
-        },
-        "mode": {
-          "description": "Mode of a program",
-          "type": "string"
-        },
-        "model": {
-          "description": "Program Model",
-          "type": "string"
-        },
-        "name": {
-          "description": "The name of a program",
-          "type": "name"
-        },
-        "products_used": {
-          "description": "Products used in a program",
-          "type": "string"
-        },
-        "start_date": {
-          "description": "Starting date of a program",
-          "type": "date"
-        },
-        "sub_type": {
-          "description": "Sub-type of a program",
-          "type": "string"
-        },
-        "target_outreach": {
-          "description": "Target outreach for a particular program",
-          "type": "integer"
-        },
-        "type": {
-          "description": "Type of a program",
-          "type": "string"
-        }
-      },
-      "title": "Program",
-      "type": "object"
-    },
-    "Sessions": {
-      "description": "All the sessions",
-      "items": {
-        "$ref": "#/definitions/Session"
-      },
-      "title": "Sessions",
-      "type": "array"
-    },
-    "Group": {
-      "description": "A group in the application",
-      "example": {
-        "input_schema": {},
-        "locale": "hi",
-        "locale_data": {
-          "en": {
-            "title": "Register for session"
-          },
-          "hi": {
-            "title": "सत्र के लिए पंजीकरण करें"
-          }
-        },
-        "name": "Delhi Students"
-      },
-      "properties": {
-        "input_schema": {
-          "description": "Input schema",
-          "type": "map"
-        },
-        "locale": {
-          "description": "The configured locale for the group",
-          "type": "string"
-        },
-        "locale_data": {
-          "description": "Meta data about locale settings for the group",
-          "type": "map"
-        },
-        "name": {
-          "description": "Name of a group",
-          "type": "string"
-        }
-      },
-      "title": "Group",
-      "type": "object"
-    },
-    "UserIds": {
-      "example": {
-        "user_ids": [
-          1,
-          2
-        ]
-      },
-      "properties": {
-        "user_ids": {
-          "description": "List of user ids",
-          "type": "array"
-        }
-      },
-      "type": "object"
-    },
-    "Students": {
-      "description": "All students in the application",
-      "items": {
-        "$ref": "#/definitions/Student"
-      },
-      "title": "Students",
-      "type": "array"
-    },
-    "UserSessions": {
-      "description": "All user and session occurence mappings",
-      "items": {
-        "$ref": "#/definitions/UserSession"
-      },
-      "title": "UserSessions",
-      "type": "array"
-    },
-    "Schools": {
-      "description": "All schools in the application",
-      "items": {
-        "$ref": "#/definitions/School"
-      },
-      "title": "Schools",
-      "type": "array"
-    },
-    "School": {
-      "description": "A school in the application",
-      "example": {
-        "block_code": "DOEAIDED",
-        "board": "CBSE",
-        "board_medium": "en",
-        "category": "Government",
-        "code": "872931",
-        "district": "NORTH WEST DELHI",
-        "district_code": "0701",
-        "name": "Kendriya Vidyalaya - Rajori Garden",
-        "region": "Urban",
-        "state": "Delhi",
-        "state_code": "DL",
-        "type": "Open",
-        "udise_code": "05040120901"
-      },
-      "properties": {
-        "block_code": {
-          "description": "Block Code",
-          "type": "string"
-        },
-        "block_name": {
-          "description": "Block Name",
-          "type": "string"
-        },
-        "board": {
-          "description": "Board",
-          "type": "string"
-        },
-        "board_medium": {
-          "description": "Medium",
-          "type": "string"
-        },
-        "category": {
-          "description": "Category",
-          "type": "string"
-        },
-        "code": {
-          "description": "Code",
-          "type": "string"
-        },
-        "district": {
-          "description": "District",
-          "type": "string"
-        },
-        "district_code": {
-          "description": "District Code",
-          "type": "string"
-        },
-        "name": {
-          "description": "Name",
-          "type": "string"
-        },
-        "region": {
-          "description": "Region",
-          "type": "string"
-        },
-        "state": {
-          "description": "State",
-          "type": "string"
-        },
-        "state_code": {
-          "description": "State Code",
-          "type": "string"
-        },
-        "type": {
-          "description": "Type",
-          "type": "string"
-        },
-        "udise_code": {
-          "description": "Udise Code",
-          "type": "string"
-        }
-      },
-      "title": "School",
-      "type": "object"
-    },
-    "BatchProgram": {
-      "description": "A mapping between batch and program",
-      "example": {
-        "batch_id": 1,
-        "program_id": 1
-      },
-      "properties": {
-        "batch_id": {
-          "description": "The id of the batch",
-          "type": "integer"
-        },
-        "program_id": {
-          "description": "The id of the program",
-          "type": "integer"
-        }
-      },
-      "title": "BatchProgram",
-      "type": "object"
-    },
     "TeacherRegistration": {
       "description": "A teacher in the application along with user info",
       "example": {
@@ -482,6 +199,322 @@
       "title": "Teacher Registration",
       "type": "object"
     },
+    "GroupTypes": {
+      "description": "All the GroupTypes",
+      "items": {
+        "$ref": "#/definitions/GroupType"
+      },
+      "title": "GroupTypes",
+      "type": "array"
+    },
+    "UserSessions": {
+      "description": "All user and session occurence mappings",
+      "items": {
+        "$ref": "#/definitions/UserSession"
+      },
+      "title": "UserSessions",
+      "type": "array"
+    },
+    "GroupType": {
+      "description": "A Group type in application",
+      "example": {
+        "child_id": 24,
+        "type": "program"
+      },
+      "properties": {
+        "child_id": {
+          "description": "The id of type",
+          "type": "integer"
+        },
+        "type": {
+          "description": "The type of a group",
+          "type": "string"
+        }
+      },
+      "title": "GroupType",
+      "type": "object"
+    },
+    "UserSession": {
+      "description": "A mapping between user and sesssion-occurence",
+      "example": {
+        "data": {
+          "substitute-teacher-name": "Ms. Poonam"
+        },
+        "end_time": "2022-02-02T11:30:00Z",
+        "is_user_valid": true,
+        "session_occurrence_id": 2,
+        "start_time": "2022-02-02T11:00:00Z",
+        "user_id": "12213221211"
+      },
+      "properties": {
+        "data": {
+          "description": "Additional data for user session",
+          "type": "map"
+        },
+        "end_time": {
+          "description": "User session end time",
+          "type": "timestamp"
+        },
+        "is_user_valid": {
+          "description": "Signifies whether the user exist or not",
+          "type": "boolean"
+        },
+        "session_occurrence_id": {
+          "description": "The id of the session occurrence",
+          "type": "integer"
+        },
+        "start_time": {
+          "description": "User session start time",
+          "type": "timestamp"
+        },
+        "user_id": {
+          "description": "The id of the user",
+          "type": "string"
+        }
+      },
+      "title": "UserSession",
+      "type": "object"
+    },
+    "Users": {
+      "description": "All users in the application",
+      "items": {
+        "$ref": "#/definitions/User"
+      },
+      "title": "Users",
+      "type": "array"
+    },
+    "Groups": {
+      "description": "All the groups",
+      "items": {
+        "$ref": "#/definitions/Group"
+      },
+      "title": "Groups",
+      "type": "array"
+    },
+    "TeacherWithUser": {
+      "description": "A teacher in the application along with user info",
+      "example": {
+        "category": "general",
+        "designation": "Principal",
+        "grade": "High School",
+        "school_id": 2,
+        "stream": "PCB",
+        "user": {
+          "address": "Bandra Complex, Kurla Road",
+          "city": "Mumbai",
+          "district": "Mumbai",
+          "email": "aman.bahuguna@example.com",
+          "full_name": "Aman Bahuguna",
+          "gender": "Male",
+          "phone": "8484515848",
+          "pincode": "400011",
+          "role": "principal",
+          "state": "Maharashtra"
+        },
+        "uuid": "AF419"
+      },
+      "properties": {
+        "designation": {
+          "description": "Designation for the teacher",
+          "type": "string"
+        },
+        "grade": {
+          "description": "Grade level in which a teacher instructs",
+          "type": "string"
+        },
+        "subject": {
+          "description": "Subject taught by the teacher",
+          "type": "string"
+        },
+        "user": {
+          "description": "User details associated with the teacher",
+          "type": "map"
+        },
+        "uuid": {
+          "description": "UUID of the teacher",
+          "type": "string"
+        }
+      },
+      "title": "Teacher with User",
+      "type": "object"
+    },
+    "BatchPrograms": {
+      "description": "All batch and program mappings",
+      "items": {
+        "$ref": "#/definitions/BatchProgram"
+      },
+      "title": "BatchPrograms",
+      "type": "array"
+    },
+    "Schools": {
+      "description": "All schools in the application",
+      "items": {
+        "$ref": "#/definitions/School"
+      },
+      "title": "Schools",
+      "type": "array"
+    },
+    "BatchProgram": {
+      "description": "A mapping between batch and program",
+      "example": {
+        "batch_id": 1,
+        "program_id": 1
+      },
+      "properties": {
+        "batch_id": {
+          "description": "The id of the batch",
+          "type": "integer"
+        },
+        "program_id": {
+          "description": "The id of the program",
+          "type": "integer"
+        }
+      },
+      "title": "BatchProgram",
+      "type": "object"
+    },
+    "GroupSessions": {
+      "description": "Relation between group and session",
+      "example": {
+        "group_id": 1,
+        "session_id": 1
+      },
+      "properties": {
+        "group_id": {
+          "description": "Id of a particular group",
+          "type": "integer"
+        },
+        "session_id": {
+          "description": "Id of a particular group",
+          "type": "integer"
+        }
+      },
+      "title": "Group Session",
+      "type": "object"
+    },
+    "EnrollmentRecord": {
+      "description": "An enrollment record for the student",
+      "example": {
+        "academic_year": "2022",
+        "board_medium": "English",
+        "date_of_enrollment": "02/03/2020",
+        "grade": "7",
+        "is_current": true,
+        "school_id": 1,
+        "student_id": 1
+      },
+      "properties": {
+        "academic_year": {
+          "description": "Academic Year",
+          "type": "string"
+        },
+        "board_medium": {
+          "description": "Medium of the board",
+          "type": "string"
+        },
+        "date_of_enrollment": {
+          "description": "Date of Enrollment",
+          "type": "date"
+        },
+        "grade": {
+          "description": "Grade",
+          "type": "string"
+        },
+        "is_current": {
+          "description": "Is current enrollment record for student",
+          "type": "boolean"
+        },
+        "school_id": {
+          "description": "School ID that the program enrollment belongs to",
+          "type": "integer"
+        },
+        "student_id": {
+          "description": "Student ID that the program enrollment belongs to",
+          "type": "integer"
+        }
+      },
+      "title": "EnrollmentRecord",
+      "type": "object"
+    },
+    "Batch": {
+      "description": "A batch in application",
+      "example": {
+        "contact_hours_per_week": 48,
+        "name": "Kendriya Vidyalaya - Class 12th"
+      },
+      "properties": {
+        "contact_hours_per_week": {
+          "description": "Contact hours per week of a batch",
+          "type": "integer"
+        },
+        "name": {
+          "description": "The name of a batch",
+          "type": "string"
+        }
+      },
+      "title": "Batch",
+      "type": "object"
+    },
+    "Program": {
+      "description": "A program in application",
+      "example": {
+        "donor": "Infosys, MSDF, Sofina",
+        "group_id": 1,
+        "mode": "Offline",
+        "model": "Live Classes",
+        "name": "Delhi-Govt",
+        "products_used": "",
+        "start_date": "2020-02-03",
+        "state": "Delhi",
+        "sub_type": "AF-Led",
+        "target_outreach": 1000,
+        "type": "Test Prep"
+      },
+      "properties": {
+        "donor": {
+          "description": "Donor of a program",
+          "type": "string"
+        },
+        "group_id": {
+          "description": "ID of the group",
+          "type": "integer"
+        },
+        "mode": {
+          "description": "Mode of a program",
+          "type": "string"
+        },
+        "model": {
+          "description": "Program Model",
+          "type": "string"
+        },
+        "name": {
+          "description": "The name of a program",
+          "type": "name"
+        },
+        "products_used": {
+          "description": "Products used in a program",
+          "type": "string"
+        },
+        "start_date": {
+          "description": "Starting date of a program",
+          "type": "date"
+        },
+        "sub_type": {
+          "description": "Sub-type of a program",
+          "type": "string"
+        },
+        "target_outreach": {
+          "description": "Target outreach for a particular program",
+          "type": "integer"
+        },
+        "type": {
+          "description": "Type of a program",
+          "type": "string"
+        }
+      },
+      "title": "Program",
+      "type": "object"
+    },
     "User": {
       "description": "A user in the application",
       "example": {
@@ -551,53 +584,6 @@
       "title": "User",
       "type": "object"
     },
-    "TeacherWithUser": {
-      "description": "A teacher in the application along with user info",
-      "example": {
-        "category": "general",
-        "designation": "Principal",
-        "grade": "High School",
-        "school_id": 2,
-        "stream": "PCB",
-        "user": {
-          "address": "Bandra Complex, Kurla Road",
-          "city": "Mumbai",
-          "district": "Mumbai",
-          "email": "aman.bahuguna@example.com",
-          "full_name": "Aman Bahuguna",
-          "gender": "Male",
-          "phone": "8484515848",
-          "pincode": "400011",
-          "role": "principal",
-          "state": "Maharashtra"
-        },
-        "uuid": "AF419"
-      },
-      "properties": {
-        "designation": {
-          "description": "Designation for the teacher",
-          "type": "string"
-        },
-        "grade": {
-          "description": "Grade level in which a teacher instructs",
-          "type": "string"
-        },
-        "subject": {
-          "description": "Subject taught by the teacher",
-          "type": "string"
-        },
-        "user": {
-          "description": "User details associated with the teacher",
-          "type": "map"
-        },
-        "uuid": {
-          "description": "UUID of the teacher",
-          "type": "string"
-        }
-      },
-      "title": "Teacher with User",
-      "type": "object"
-    },
     "EnrollmentRecords": {
       "description": "All enrollment records",
       "items": {
@@ -605,6 +591,84 @@
       },
       "title": "EnrollmentRecords",
       "type": "array"
+    },
+    "School": {
+      "description": "A school in the application",
+      "example": {
+        "block_code": "DOEAIDED",
+        "board": "CBSE",
+        "board_medium": "en",
+        "category": "Government",
+        "code": "872931",
+        "district": "NORTH WEST DELHI",
+        "district_code": "0701",
+        "name": "Kendriya Vidyalaya - Rajori Garden",
+        "region": "Urban",
+        "state": "Delhi",
+        "state_code": "DL",
+        "type": "Open",
+        "udise_code": "05040120901"
+      },
+      "properties": {
+        "block_code": {
+          "description": "Block Code",
+          "type": "string"
+        },
+        "block_name": {
+          "description": "Block Name",
+          "type": "string"
+        },
+        "board": {
+          "description": "Board",
+          "type": "string"
+        },
+        "board_medium": {
+          "description": "Medium",
+          "type": "string"
+        },
+        "category": {
+          "description": "Category",
+          "type": "string"
+        },
+        "code": {
+          "description": "Code",
+          "type": "string"
+        },
+        "district": {
+          "description": "District",
+          "type": "string"
+        },
+        "district_code": {
+          "description": "District Code",
+          "type": "string"
+        },
+        "name": {
+          "description": "Name",
+          "type": "string"
+        },
+        "region": {
+          "description": "Region",
+          "type": "string"
+        },
+        "state": {
+          "description": "State",
+          "type": "string"
+        },
+        "state_code": {
+          "description": "State Code",
+          "type": "string"
+        },
+        "type": {
+          "description": "Type",
+          "type": "string"
+        },
+        "udise_code": {
+          "description": "Udise Code",
+          "type": "string"
+        }
+      },
+      "title": "School",
+      "type": "object"
     },
     "GroupUsers": {
       "description": "Relation between group and user",
@@ -640,44 +704,49 @@
       "title": "Group User",
       "type": "object"
     },
-    "SessionOccurenceWithUser": {
-      "description": "A single session occurence with user details",
+    "Group": {
+      "description": "A group in the application",
       "example": {
-        "end_time": "2022-02-02T11:30:00Z",
-        "session_id": 1,
-        "start_time": "2022-02-02T11:00:00Z"
+        "input_schema": {},
+        "locale": "hi",
+        "locale_data": {
+          "en": {
+            "title": "Register for session"
+          },
+          "hi": {
+            "title": "सत्र के लिए पंजीकरण करें"
+          }
+        },
+        "name": "Delhi Students"
       },
       "properties": {
-        "end_time": {
-          "description": "Session occurence finish time",
-          "type": "timestamp"
+        "input_schema": {
+          "description": "Input schema",
+          "type": "map"
         },
-        "session_id": {
-          "description": "Session ID",
-          "type": "integer"
+        "locale": {
+          "description": "The configured locale for the group",
+          "type": "string"
         },
-        "start_time": {
-          "description": "Session occurence start time",
-          "type": "timestamp"
+        "locale_data": {
+          "description": "Meta data about locale settings for the group",
+          "type": "map"
+        },
+        "name": {
+          "description": "Name of a group",
+          "type": "string"
         }
       },
-      "title": "SessionOccurenceWithUser",
+      "title": "Group",
       "type": "object"
     },
-    "GroupIds": {
-      "example": {
-        "group_ids": [
-          1,
-          2
-        ]
+    "SessionOccurences": {
+      "description": "All the session occurences ",
+      "items": {
+        "$ref": "#/definitions/SessionOccurence"
       },
-      "properties": {
-        "group_ids": {
-          "description": "List of group ids",
-          "type": "array"
-        }
-      },
-      "type": "object"
+      "title": "SessionOccurences",
+      "type": "array"
     },
     "Teacher": {
       "description": "A teacher in the application",
@@ -721,82 +790,6 @@
         }
       },
       "title": "Teacher",
-      "type": "object"
-    },
-    "GroupTypes": {
-      "description": "All the GroupTypes",
-      "items": {
-        "$ref": "#/definitions/GroupType"
-      },
-      "title": "GroupTypes",
-      "type": "array"
-    },
-    "BatchPrograms": {
-      "description": "All batch and program mappings",
-      "items": {
-        "$ref": "#/definitions/BatchProgram"
-      },
-      "title": "BatchPrograms",
-      "type": "array"
-    },
-    "GroupSessions": {
-      "description": "Relation between group and session",
-      "example": {
-        "group_id": 1,
-        "session_id": 1
-      },
-      "properties": {
-        "group_id": {
-          "description": "Id of a particular group",
-          "type": "integer"
-        },
-        "session_id": {
-          "description": "Id of a particular group",
-          "type": "integer"
-        }
-      },
-      "title": "Group Session",
-      "type": "object"
-    },
-    "UserSession": {
-      "description": "A mapping between user and sesssion-occurence",
-      "example": {
-        "data": {
-          "substitute-teacher-name": "Ms. Poonam"
-        },
-        "end_time": "2022-02-02T11:30:00Z",
-        "is_user_valid": true,
-        "session_occurrence_id": 2,
-        "start_time": "2022-02-02T11:00:00Z",
-        "user_id": "12213221211"
-      },
-      "properties": {
-        "data": {
-          "description": "Additional data for user session",
-          "type": "map"
-        },
-        "end_time": {
-          "description": "User session end time",
-          "type": "timestamp"
-        },
-        "is_user_valid": {
-          "description": "Signifies whether the user exist or not",
-          "type": "boolean"
-        },
-        "session_occurrence_id": {
-          "description": "The id of the session occurrence",
-          "type": "integer"
-        },
-        "start_time": {
-          "description": "User session start time",
-          "type": "timestamp"
-        },
-        "user_id": {
-          "description": "The id of the user",
-          "type": "string"
-        }
-      },
-      "title": "UserSession",
       "type": "object"
     },
     "StudentRegistration": {
@@ -898,6 +891,14 @@
       "title": "Student Registration",
       "type": "object"
     },
+    "Teachers": {
+      "description": "All teachers in the application",
+      "items": {
+        "$ref": "#/definitions/Teacher"
+      },
+      "title": "Teachers",
+      "type": "array"
+    },
     "Session": {
       "description": "A session in the application",
       "example": {
@@ -972,91 +973,83 @@
       "title": "Session",
       "type": "object"
     },
-    "Programs": {
-      "description": "All the programs",
+    "Students": {
+      "description": "All students in the application",
       "items": {
-        "$ref": "#/definitions/Program"
+        "$ref": "#/definitions/Student"
       },
-      "title": "Programs",
+      "title": "Students",
       "type": "array"
     },
-    "GroupType": {
-      "description": "A Group type in application",
+    "SessionOccurenceWithUser": {
+      "description": "A single session occurence with user details",
       "example": {
-        "child_id": 24,
-        "type": "program"
+        "end_time": "2022-02-02T11:30:00Z",
+        "session_id": 1,
+        "start_time": "2022-02-02T11:00:00Z"
       },
       "properties": {
-        "child_id": {
-          "description": "The id of type",
+        "end_time": {
+          "description": "Session occurence finish time",
+          "type": "timestamp"
+        },
+        "session_id": {
+          "description": "Session ID",
           "type": "integer"
         },
-        "type": {
-          "description": "The type of a group",
-          "type": "string"
+        "start_time": {
+          "description": "Session occurence start time",
+          "type": "timestamp"
         }
       },
-      "title": "GroupType",
+      "title": "SessionOccurenceWithUser",
       "type": "object"
     },
-    "Groups": {
-      "description": "All the groups",
+    "Sessions": {
+      "description": "All the sessions",
       "items": {
-        "$ref": "#/definitions/Group"
+        "$ref": "#/definitions/Session"
       },
-      "title": "Groups",
+      "title": "Sessions",
       "type": "array"
     },
-    "SessionOccurences": {
-      "description": "All the session occurences ",
-      "items": {
-        "$ref": "#/definitions/SessionOccurence"
-      },
-      "title": "SessionOccurences",
-      "type": "array"
-    },
-    "EnrollmentRecord": {
-      "description": "An enrollment record for the student",
+    "GroupIds": {
       "example": {
-        "academic_year": "2022",
-        "board_medium": "English",
-        "date_of_enrollment": "02/03/2020",
-        "grade": "7",
-        "is_current": true,
-        "school_id": 1,
-        "student_id": 1
+        "group_ids": [
+          1,
+          2
+        ]
       },
       "properties": {
-        "academic_year": {
-          "description": "Academic Year",
-          "type": "string"
-        },
-        "board_medium": {
-          "description": "Medium of the board",
-          "type": "string"
-        },
-        "date_of_enrollment": {
-          "description": "Date of Enrollment",
-          "type": "date"
-        },
-        "grade": {
-          "description": "Grade",
-          "type": "string"
-        },
-        "is_current": {
-          "description": "Is current enrollment record for student",
-          "type": "boolean"
-        },
-        "school_id": {
-          "description": "School ID that the program enrollment belongs to",
-          "type": "integer"
-        },
-        "student_id": {
-          "description": "Student ID that the program enrollment belongs to",
-          "type": "integer"
+        "group_ids": {
+          "description": "List of group ids",
+          "type": "array"
         }
       },
-      "title": "EnrollmentRecord",
+      "type": "object"
+    },
+    "SessionOccurence": {
+      "description": "A session occurence for a session",
+      "example": {
+        "end_time": "2022-02-02T11:30:00Z",
+        "session_id": 1,
+        "start_time": "2022-02-02T11:00:00Z"
+      },
+      "properties": {
+        "end_time": {
+          "description": "Session occurence finish time",
+          "type": "timestamp"
+        },
+        "session_id": {
+          "description": "Session ID",
+          "type": "integer"
+        },
+        "start_time": {
+          "description": "Session occurence start time",
+          "type": "timestamp"
+        }
+      },
+      "title": "SessionOccurence",
       "type": "object"
     },
     "Batches": {
@@ -1067,13 +1060,20 @@
       "title": "Batches",
       "type": "array"
     },
-    "Teachers": {
-      "description": "All teachers in the application",
-      "items": {
-        "$ref": "#/definitions/Teacher"
+    "UserIds": {
+      "example": {
+        "user_ids": [
+          1,
+          2
+        ]
       },
-      "title": "Teachers",
-      "type": "array"
+      "properties": {
+        "user_ids": {
+          "description": "List of user ids",
+          "type": "array"
+        }
+      },
+      "type": "object"
     },
     "StudentWithUser": {
       "description": "A student in the application along with user info",
