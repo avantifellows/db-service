@@ -53,6 +53,7 @@ defmodule Dbservice.Users.User do
     ])
     |> validate_format(:phone, ~r{\A\d*\z})
     |> validate_date_of_birth
+    |> validate_required([:date_of_birth])
   end
 
   def changeset_update_groups(user, groups) do

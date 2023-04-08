@@ -8,6 +8,7 @@ defmodule DbserviceWeb.UserControllerTest do
   @create_attrs %{
     address: "some address",
     city: "some city",
+    country: "some country",
     district: "some district",
     email: "some email",
     full_name: "some full name",
@@ -22,6 +23,7 @@ defmodule DbserviceWeb.UserControllerTest do
   @update_attrs %{
     address: "some updated address",
     city: "some updated city",
+    country: "some updated country",
     district: "some updated district",
     email: "some updated email",
     full_name: "some updated full name",
@@ -40,6 +42,7 @@ defmodule DbserviceWeb.UserControllerTest do
     gender: nil,
     address: nil,
     city: nil,
+    country: nil,
     district: nil,
     state: nil,
     pincode: nil,
@@ -50,6 +53,7 @@ defmodule DbserviceWeb.UserControllerTest do
   @valid_fields [
     "address",
     "city",
+    "country",
     "date_of_birth",
     "district",
     "email",
