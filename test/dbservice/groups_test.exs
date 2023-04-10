@@ -49,6 +49,10 @@ defmodule Dbservice.GroupsTest do
       }
     end
 
+    test "create_group/1 with invalid data returns error changeset" do
+      assert {:error, %Ecto.Changeset{}} = Groups.create_group(@invalid_attrs)
+    end
+
     test "update_group/2 with valid data updates the group" do
       group = group_fixture()
 
@@ -69,7 +73,7 @@ defmodule Dbservice.GroupsTest do
       assert group.locale == "some updated locale"
       assert group.locale_data == %{
         "some updated locale" => %{
-          "title" => "Some  title"
+          "title" => "Some updated title"
         }
       }
     end
