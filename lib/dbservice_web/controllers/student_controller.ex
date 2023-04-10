@@ -27,7 +27,7 @@ defmodule DbserviceWeb.StudentController do
   end
 
   swagger_path :index do
-    get("/api/student")
+    get("/api/student?student_id=120180101057")
     response(200, "OK", Schema.ref(:Students))
   end
 

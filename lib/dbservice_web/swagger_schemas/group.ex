@@ -18,7 +18,7 @@ defmodule DbserviceWeb.SwaggerSchema.Group do
           end
 
           example(%{
-            name: "Delhi Students",
+            name: "DelhiStudents",
             input_schema: %{},
             locale: "hi",
             locale_data: %{

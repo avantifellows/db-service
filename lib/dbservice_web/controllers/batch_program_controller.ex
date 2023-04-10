@@ -21,7 +21,7 @@ defmodule DbserviceWeb.BatchProgramController do
   end
 
   swagger_path :index do
-    get("/api/batch-program")
+    get("/api/batch-program?batch_id=1")
     response(200, "OK", Schema.ref(:BatchPrograms))
   end
 
