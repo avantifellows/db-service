@@ -64,7 +64,7 @@ defmodule DbserviceWeb.BatchProgramController do
     get("/api/batch-program/{batchProgramId}")
 
     parameters do
-      batchProgramId(:path, :integer, "The id of the batch-program", required: true)
+      batchProgramId(:path, :integer, "The id of the batch-program record", required: true)
     end
 
     response(200, "OK", Schema.ref(:BatchProgram))
@@ -79,7 +79,7 @@ defmodule DbserviceWeb.BatchProgramController do
     patch("/api/batch-program/{batchProgramId}")
 
     parameters do
-      batchProgramId(:path, :integer, "The id of the batch_program", required: true)
+      batchProgramId(:path, :integer, "The id of the batch_program record", required: true)
       body(:body, Schema.ref(:BatchProgram), "batch_program to create", required: true)
     end
 
@@ -99,7 +99,7 @@ defmodule DbserviceWeb.BatchProgramController do
     PhoenixSwagger.Path.delete("/api/batch-program/{batchProgramId}")
 
     parameters do
-      batchProgramId(:path, :integer, "The id of the batch_program", required: true)
+      batchProgramId(:path, :integer, "The id of the batch_program record", required: true)
     end
 
     response(204, "No Content")

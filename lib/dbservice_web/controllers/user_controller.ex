@@ -67,7 +67,7 @@ defmodule DbserviceWeb.UserController do
     get("/api/user/{userId}")
 
     parameters do
-      userId(:path, :integer, "The id of the user", required: true)
+      userId(:path, :integer, "The id of the user record", required: true)
     end
 
     response(200, "OK", Schema.ref(:User))
@@ -82,7 +82,7 @@ defmodule DbserviceWeb.UserController do
     patch("/api/user/{userId}")
 
     parameters do
-      userId(:path, :integer, "The id of the user", required: true)
+      userId(:path, :integer, "The id of the user record", required: true)
       body(:body, Schema.ref(:User), "User to create", required: true)
     end
 
@@ -101,7 +101,7 @@ defmodule DbserviceWeb.UserController do
     PhoenixSwagger.Path.delete("/api/user/{userId}")
 
     parameters do
-      userId(:path, :integer, "The id of the user", required: true)
+      userId(:path, :integer, "The id of the user record", required: true)
     end
 
     response(204, "No Content")
@@ -119,7 +119,7 @@ defmodule DbserviceWeb.UserController do
     post("/api/user/{userId}/update-groups")
 
     parameters do
-      userId(:path, :integer, "The id of the user", required: true)
+      userId(:path, :integer, "The id of the user record", required: true)
 
       body(:body, Schema.ref(:GroupIds), "List of group ids to update for the user",
         required: true
