@@ -164,7 +164,7 @@ defmodule Dbservice.UsersTest do
         mother_name: "some mother_name",
         mother_phone: "some mother_phone",
         stream: "some stream",
-        uuid: "some uuid",
+        student_id: "some student id",
         physically_handicapped: false,
         family_income: "some family income",
         father_profession: "some father profession",
@@ -184,7 +184,7 @@ defmodule Dbservice.UsersTest do
       assert student.mother_name == "some mother_name"
       assert student.mother_phone == "some mother_phone"
       assert student.stream == "some stream"
-      assert student.uuid == "some uuid"
+      assert student.student_id == "some student id"
       assert student.physically_handicapped == false
       assert student.family_income == "some family income"
       assert student.father_profession == "some father profession"
@@ -212,7 +212,7 @@ defmodule Dbservice.UsersTest do
         mother_name: "some updated mother_name",
         mother_phone: "some updated mother_phone",
         stream: "some updated stream",
-        uuid: "some updated uuid",
+        student_id: "some updated student id",
         physically_handicapped: false,
         family_income: "some updated family income",
         father_profession: "some updated father profession",
@@ -232,7 +232,7 @@ defmodule Dbservice.UsersTest do
       assert student.mother_name == "some updated mother_name"
       assert student.mother_phone == "some updated mother_phone"
       assert student.stream == "some updated stream"
-      assert student.uuid == "some updated uuid"
+      assert student.student_id == "some updated student id"
       assert student.physically_handicapped == false
       assert student.family_income == "some updated family income"
       assert student.father_profession == "some updated father profession"
