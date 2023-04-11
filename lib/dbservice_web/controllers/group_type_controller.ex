@@ -73,7 +73,7 @@ defmodule DbserviceWeb.GroupTypeController do
     get("/api/group-type/{groupTypeId}")
 
     parameters do
-      groupId(:path, :integer, "The id of the group", required: true)
+      groupId(:path, :integer, "The id of the group record", required: true)
     end
 
     response(200, "OK", Schema.ref(:GroupType))
@@ -88,7 +88,7 @@ defmodule DbserviceWeb.GroupTypeController do
     patch("/api/group-type/{groupTypeId}")
 
     parameters do
-      groupId(:path, :integer, "The id of the group", required: true)
+      groupId(:path, :integer, "The id of the group record", required: true)
       body(:body, Schema.ref(:GroupType), "Group to create", required: true)
     end
 
@@ -107,7 +107,7 @@ defmodule DbserviceWeb.GroupTypeController do
     PhoenixSwagger.Path.delete("/api/group-type/{groupTypeId}")
 
     parameters do
-      groupId(:path, :integer, "The id of the group", required: true)
+      groupId(:path, :integer, "The id of the group record", required: true)
     end
 
     response(204, "No Content")
@@ -125,7 +125,7 @@ defmodule DbserviceWeb.GroupTypeController do
     post("/api/group-type/{groupTypeId}/update-users")
 
     parameters do
-      groupTypeId(:path, :integer, "The id of the group", required: true)
+      groupTypeId(:path, :integer, "The id of the group record", required: true)
 
       body(:body, Schema.ref(:UserIds), "List of user ids to update for the group", required: true)
     end
@@ -144,7 +144,7 @@ defmodule DbserviceWeb.GroupTypeController do
     post("/api/group-type/{groupTypeId}/update-sessions")
 
     parameters do
-      groupTypeId(:path, :integer, "The id of the group", required: true)
+      groupTypeId(:path, :integer, "The id of the group record", required: true)
 
       body(:body, Schema.ref(:SessionIds), "List of session ids to update for the group",
         required: true

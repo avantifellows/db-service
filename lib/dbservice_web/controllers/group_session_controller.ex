@@ -58,7 +58,7 @@ defmodule DbserviceWeb.GroupSessionController do
     get("/api/group-session/{groupSessionId}")
 
     parameters do
-      groupSessionId(:path, :integer, "The id of the group session", required: true)
+      groupSessionId(:path, :integer, "The id of the group session record", required: true)
     end
 
     response(200, "OK", Schema.ref(:GroupSessions))
@@ -73,7 +73,7 @@ defmodule DbserviceWeb.GroupSessionController do
     patch("/api/group-session/{groupSessionId}")
 
     parameters do
-      groupSessionId(:path, :integer, "The id of the session", required: true)
+      groupSessionId(:path, :integer, "The id of the session record", required: true)
       body(:body, Schema.ref(:GroupSessions), "Group session to create", required: true)
     end
 
@@ -93,7 +93,7 @@ defmodule DbserviceWeb.GroupSessionController do
     PhoenixSwagger.Path.delete("/api/group-session/{groupSessionId}")
 
     parameters do
-      groupSessionId(:path, :integer, "The id of the group session", required: true)
+      groupSessionId(:path, :integer, "The id of the group session record", required: true)
     end
 
     response(204, "No Content")

@@ -68,7 +68,7 @@ defmodule DbserviceWeb.SchoolController do
     get("/api/school/{schoolId}")
 
     parameters do
-      schoolId(:path, :integer, "The id of the school", required: true)
+      schoolId(:path, :integer, "The id of the school record", required: true)
     end
 
     response(200, "OK", Schema.ref(:School))
@@ -83,7 +83,7 @@ defmodule DbserviceWeb.SchoolController do
     patch("/api/school/{schoolId}")
 
     parameters do
-      schoolId(:path, :integer, "The id of the school", required: true)
+      schoolId(:path, :integer, "The id of the school record", required: true)
       body(:body, Schema.ref(:School), "School to create", required: true)
     end
 
@@ -102,7 +102,7 @@ defmodule DbserviceWeb.SchoolController do
     PhoenixSwagger.Path.delete("/api/school/{schoolId}")
 
     parameters do
-      schoolId(:path, :integer, "The id of the school", required: true)
+      schoolId(:path, :integer, "The id of the school record", required: true)
     end
 
     response(204, "No Content")

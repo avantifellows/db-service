@@ -1200,7 +1200,7 @@
         "operationId": "DbserviceWeb.ProgramController.delete",
         "parameters": [
           {
-            "description": "The id of the program",
+            "description": "The id of the program record",
             "in": "path",
             "name": "programId",
             "required": true,
@@ -1222,7 +1222,7 @@
         "operationId": "DbserviceWeb.ProgramController.show",
         "parameters": [
           {
-            "description": "The id of the program",
+            "description": "The id of the program record",
             "in": "path",
             "name": "programId",
             "required": true,
@@ -1247,7 +1247,7 @@
         "operationId": "DbserviceWeb.ProgramController.update",
         "parameters": [
           {
-            "description": "The id of the program",
+            "description": "The id of the program record",
             "in": "path",
             "name": "programId",
             "required": true,
@@ -1283,7 +1283,7 @@
         "operationId": "DbserviceWeb.GroupSessionController.delete",
         "parameters": [
           {
-            "description": "The id of the group session",
+            "description": "The id of the group session record",
             "in": "path",
             "name": "groupSessionId",
             "required": true,
@@ -1305,7 +1305,7 @@
         "operationId": "DbserviceWeb.GroupSessionController.show",
         "parameters": [
           {
-            "description": "The id of the group session",
+            "description": "The id of the group session record",
             "in": "path",
             "name": "groupSessionId",
             "required": true,
@@ -1330,7 +1330,7 @@
         "operationId": "DbserviceWeb.GroupSessionController.update",
         "parameters": [
           {
-            "description": "The id of the session",
+            "description": "The id of the session record",
             "in": "path",
             "name": "groupSessionId",
             "required": true,
@@ -1587,7 +1587,7 @@
         "operationId": "DbserviceWeb.BatchProgramController.delete",
         "parameters": [
           {
-            "description": "The id of the batch_program",
+            "description": "The id of the batch_program record",
             "in": "path",
             "name": "batchProgramId",
             "required": true,
@@ -1609,7 +1609,7 @@
         "operationId": "DbserviceWeb.BatchProgramController.show",
         "parameters": [
           {
-            "description": "The id of the batch-program",
+            "description": "The id of the batch-program record",
             "in": "path",
             "name": "batchProgramId",
             "required": true,
@@ -1634,7 +1634,7 @@
         "operationId": "DbserviceWeb.BatchProgramController.update",
         "parameters": [
           {
-            "description": "The id of the batch_program",
+            "description": "The id of the batch_program record",
             "in": "path",
             "name": "batchProgramId",
             "required": true,
@@ -1764,7 +1764,7 @@
         "operationId": "DbserviceWeb.SchoolController.delete",
         "parameters": [
           {
-            "description": "The id of the school",
+            "description": "The id of the school record",
             "in": "path",
             "name": "schoolId",
             "required": true,
@@ -1786,7 +1786,7 @@
         "operationId": "DbserviceWeb.SchoolController.show",
         "parameters": [
           {
-            "description": "The id of the school",
+            "description": "The id of the school record",
             "in": "path",
             "name": "schoolId",
             "required": true,
@@ -1811,7 +1811,7 @@
         "operationId": "DbserviceWeb.SchoolController.update",
         "parameters": [
           {
-            "description": "The id of the school",
+            "description": "The id of the school record",
             "in": "path",
             "name": "schoolId",
             "required": true,
@@ -1866,7 +1866,7 @@
         "operationId": "DbserviceWeb.UserController.show",
         "parameters": [
           {
-            "description": "The id of the user",
+            "description": "The id of the user record",
             "in": "path",
             "name": "userId",
             "required": true,
@@ -1891,7 +1891,7 @@
         "operationId": "DbserviceWeb.UserController.update",
         "parameters": [
           {
-            "description": "The id of the user",
+            "description": "The id of the user record",
             "in": "path",
             "name": "userId",
             "required": true,
@@ -1927,7 +1927,7 @@
         "operationId": "DbserviceWeb.BatchController.delete",
         "parameters": [
           {
-            "description": "The id of the batch",
+            "description": "The id of the batch record",
             "in": "path",
             "name": "batchId",
             "required": true,
@@ -1949,7 +1949,7 @@
         "operationId": "DbserviceWeb.BatchController.show",
         "parameters": [
           {
-            "description": "The id of the batch",
+            "description": "The id of the batch record",
             "in": "path",
             "name": "batchId",
             "required": true,
@@ -1974,7 +1974,7 @@
         "operationId": "DbserviceWeb.BatchController.update",
         "parameters": [
           {
-            "description": "The id of the batch",
+            "description": "The id of the batch record",
             "in": "path",
             "name": "batchId",
             "required": true,
@@ -2029,7 +2029,7 @@
         "operationId": "DbserviceWeb.SessionOccurenceController.delete",
         "parameters": [
           {
-            "description": "The id of the session occurence",
+            "description": "The id of the session occurence record",
             "in": "path",
             "name": "sessionOccurenceId",
             "required": true,
@@ -2051,7 +2051,7 @@
         "operationId": "DbserviceWeb.SessionOccurenceController.show",
         "parameters": [
           {
-            "description": "The id of the session occurence",
+            "description": "The id of the session occurence record",
             "in": "path",
             "name": "sessionOccurenceId",
             "required": true,
@@ -2076,7 +2076,7 @@
         "operationId": "DbserviceWeb.SessionOccurenceController.update",
         "parameters": [
           {
-            "description": "The id of the session occurence",
+            "description": "The id of the session occurence record",
             "in": "path",
             "name": "sessionOccurenceId",
             "required": true,
@@ -2112,7 +2112,7 @@
         "operationId": "DbserviceWeb.GroupTypeController.update_users",
         "parameters": [
           {
-            "description": "The id of the group",
+            "description": "The id of the group record",
             "in": "path",
             "name": "groupTypeId",
             "required": true,
@@ -2196,7 +2196,7 @@
         "operationId": "DbserviceWeb.GroupController.delete",
         "parameters": [
           {
-            "description": "The id of the group",
+            "description": "The id of the group record",
             "in": "path",
             "name": "groupId",
             "required": true,
@@ -2218,7 +2218,7 @@
         "operationId": "DbserviceWeb.GroupController.show",
         "parameters": [
           {
-            "description": "The id of the group",
+            "description": "The id of the group record",
             "in": "path",
             "name": "groupId",
             "required": true,
@@ -2243,7 +2243,7 @@
         "operationId": "DbserviceWeb.GroupController.update",
         "parameters": [
           {
-            "description": "The id of the group",
+            "description": "The id of the group record",
             "in": "path",
             "name": "groupId",
             "required": true,
@@ -2410,7 +2410,7 @@
         "operationId": "DbserviceWeb.GroupTypeController.delete",
         "parameters": [
           {
-            "description": "The id of the group",
+            "description": "The id of the group record",
             "in": "path",
             "name": "groupId",
             "required": true,
@@ -2432,7 +2432,7 @@
         "operationId": "DbserviceWeb.GroupTypeController.show",
         "parameters": [
           {
-            "description": "The id of the group",
+            "description": "The id of the group record",
             "in": "path",
             "name": "groupId",
             "required": true,
@@ -2457,7 +2457,7 @@
         "operationId": "DbserviceWeb.GroupTypeController.update",
         "parameters": [
           {
-            "description": "The id of the group",
+            "description": "The id of the group record",
             "in": "path",
             "name": "groupId",
             "required": true,
@@ -2747,7 +2747,7 @@
         "operationId": "DbserviceWeb.UserSessionController.delete",
         "parameters": [
           {
-            "description": "The id of the user session",
+            "description": "The id of the user session record",
             "in": "path",
             "name": "userSessionId",
             "required": true,
@@ -2769,7 +2769,7 @@
         "operationId": "DbserviceWeb.UserSessionController.show",
         "parameters": [
           {
-            "description": "The id of the user session",
+            "description": "The id of the user session record",
             "in": "path",
             "name": "userSessionId",
             "required": true,
@@ -2794,7 +2794,7 @@
         "operationId": "DbserviceWeb.UserSessionController.update",
         "parameters": [
           {
-            "description": "The id of the session",
+            "description": "The id of the session record",
             "in": "path",
             "name": "userSessionId",
             "required": true,
@@ -2980,7 +2980,7 @@
         "operationId": "DbserviceWeb.GroupTypeController.update_sessions",
         "parameters": [
           {
-            "description": "The id of the group",
+            "description": "The id of the group record",
             "in": "path",
             "name": "groupTypeId",
             "required": true,
@@ -3045,7 +3045,7 @@
         "operationId": "DbserviceWeb.UserController.update_groups",
         "parameters": [
           {
-            "description": "The id of the user",
+            "description": "The id of the user record",
             "in": "path",
             "name": "userId",
             "required": true,

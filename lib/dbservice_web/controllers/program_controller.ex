@@ -61,7 +61,7 @@ defmodule DbserviceWeb.ProgramController do
     get("/api/program/{programId}")
 
     parameters do
-      programId(:path, :integer, "The id of the program", required: true)
+      programId(:path, :integer, "The id of the program record", required: true)
     end
 
     response(200, "OK", Schema.ref(:Program))
@@ -76,7 +76,7 @@ defmodule DbserviceWeb.ProgramController do
     patch("/api/program/{programId}")
 
     parameters do
-      programId(:path, :integer, "The id of the program", required: true)
+      programId(:path, :integer, "The id of the program record", required: true)
       body(:body, Schema.ref(:Program), "Program to create", required: true)
     end
 
@@ -95,7 +95,7 @@ defmodule DbserviceWeb.ProgramController do
     PhoenixSwagger.Path.delete("/api/program/{programId}")
 
     parameters do
-      programId(:path, :integer, "The id of the program", required: true)
+      programId(:path, :integer, "The id of the program record", required: true)
     end
 
     response(204, "No Content")
