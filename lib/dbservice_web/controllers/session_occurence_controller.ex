@@ -87,6 +87,7 @@ defmodule DbserviceWeb.SessionOccurenceController do
 
     parameters do
       sessionOccurenceId(:path, :integer, "The id of the session occurence record", required: true)
+
       body(:body, Schema.ref(:SessionOccurence), "Session occurence to create", required: true)
     end
 
