@@ -1360,6 +1360,67 @@
         ]
       }
     },
+    "/api/session/{id}": {
+      "get": {
+        "description": "",
+        "operationId": "DbserviceWeb.SessionController.show",
+        "parameters": [
+          {
+            "description": "The id of the session",
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "type": "integer"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "schema": {
+              "$ref": "#/definitions/Session"
+            }
+          }
+        },
+        "summary": "",
+        "tags": [
+          "Session"
+        ]
+      },
+      "patch": {
+        "description": "",
+        "operationId": "DbserviceWeb.SessionController.update",
+        "parameters": [
+          {
+            "description": "The id of the session",
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "type": "integer"
+          },
+          {
+            "description": "Session to create",
+            "in": "body",
+            "name": "body",
+            "required": true,
+            "schema": {
+              "$ref": "#/definitions/Session"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Updated",
+            "schema": {
+              "$ref": "#/definitions/Session"
+            }
+          }
+        },
+        "summary": "",
+        "tags": [
+          "Session"
+        ]
+      }
+    },
     "/api/user": {
       "post": {
         "description": "",
@@ -1389,89 +1450,6 @@
         ]
       }
     },
-    "/api/teacher/{teacherId}": {
-      "delete": {
-        "description": "",
-        "operationId": "DbserviceWeb.TeacherController.delete",
-        "parameters": [
-          {
-            "description": "The id of the teacher",
-            "in": "path",
-            "name": "teacherId",
-            "required": true,
-            "type": "integer"
-          }
-        ],
-        "responses": {
-          "204": {
-            "description": "No Content"
-          }
-        },
-        "summary": "",
-        "tags": [
-          "Teacher"
-        ]
-      },
-      "get": {
-        "description": "",
-        "operationId": "DbserviceWeb.TeacherController.show",
-        "parameters": [
-          {
-            "description": "The id of the teacher",
-            "in": "path",
-            "name": "teacherId",
-            "required": true,
-            "type": "integer"
-          }
-        ],
-        "responses": {
-          "200": {
-            "description": "OK",
-            "schema": {
-              "$ref": "#/definitions/Teacher"
-            }
-          }
-        },
-        "summary": "",
-        "tags": [
-          "Teacher"
-        ]
-      },
-      "patch": {
-        "description": "",
-        "operationId": "DbserviceWeb.TeacherController.update",
-        "parameters": [
-          {
-            "description": "The id of the teacher",
-            "in": "path",
-            "name": "teacherId",
-            "required": true,
-            "type": "integer"
-          },
-          {
-            "description": "Teacher to create",
-            "in": "body",
-            "name": "body",
-            "required": true,
-            "schema": {
-              "$ref": "#/definitions/Teacher"
-            }
-          }
-        ],
-        "responses": {
-          "200": {
-            "description": "Updated",
-            "schema": {
-              "$ref": "#/definitions/Teacher"
-            }
-          }
-        },
-        "summary": "",
-        "tags": [
-          "Teacher"
-        ]
-      }
-    },
     "/api/batch?name=Delhi-12-NEET": {
       "get": {
         "description": "",
@@ -1491,15 +1469,37 @@
         ]
       }
     },
-    "/api/session/{sessionId}": {
-      "get": {
+    "/api/student/{id}": {
+      "delete": {
         "description": "",
-        "operationId": "DbserviceWeb.SessionController.show",
+        "operationId": "DbserviceWeb.StudentController.delete",
         "parameters": [
           {
-            "description": "The id of the session",
+            "description": "The id of the student",
             "in": "path",
-            "name": "sessionId",
+            "name": "id",
+            "required": true,
+            "type": "integer"
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "No Content"
+          }
+        },
+        "summary": "",
+        "tags": [
+          "Student"
+        ]
+      },
+      "get": {
+        "description": "",
+        "operationId": "DbserviceWeb.StudentController.show",
+        "parameters": [
+          {
+            "description": "The id of the student",
+            "in": "path",
+            "name": "id",
             "required": true,
             "type": "integer"
           }
@@ -1508,33 +1508,33 @@
           "200": {
             "description": "OK",
             "schema": {
-              "$ref": "#/definitions/Session"
+              "$ref": "#/definitions/Student"
             }
           }
         },
         "summary": "",
         "tags": [
-          "Session"
+          "Student"
         ]
       },
       "patch": {
         "description": "",
-        "operationId": "DbserviceWeb.SessionController.update",
+        "operationId": "DbserviceWeb.StudentController.update",
         "parameters": [
           {
-            "description": "The id of the session",
+            "description": "The id of the student",
             "in": "path",
-            "name": "sessionId",
+            "name": "id",
             "required": true,
             "type": "integer"
           },
           {
-            "description": "Session to create",
+            "description": "Student to create",
             "in": "body",
             "name": "body",
             "required": true,
             "schema": {
-              "$ref": "#/definitions/Session"
+              "$ref": "#/definitions/Student"
             }
           }
         ],
@@ -1542,13 +1542,13 @@
           "200": {
             "description": "Updated",
             "schema": {
-              "$ref": "#/definitions/Session"
+              "$ref": "#/definitions/Student"
             }
           }
         },
         "summary": "",
         "tags": [
-          "Session"
+          "Student"
         ]
       }
     },
@@ -1693,42 +1693,6 @@
         ]
       }
     },
-    "/api/session/{sessionId}/update-groups": {
-      "post": {
-        "description": "",
-        "operationId": "DbserviceWeb.SessionController.update_groups",
-        "parameters": [
-          {
-            "description": "The id of the session",
-            "in": "path",
-            "name": "sessionId",
-            "required": true,
-            "type": "integer"
-          },
-          {
-            "description": "List of group ids to update for the session",
-            "in": "body",
-            "name": "body",
-            "required": true,
-            "schema": {
-              "$ref": "#/definitions/GroupIds"
-            }
-          }
-        ],
-        "responses": {
-          "200": {
-            "description": "OK",
-            "schema": {
-              "$ref": "#/definitions/Session"
-            }
-          }
-        },
-        "summary": "",
-        "tags": [
-          "Session"
-        ]
-      }
-    },
     "/api/school": {
       "post": {
         "description": "",
@@ -1755,6 +1719,42 @@
         "summary": "",
         "tags": [
           "School"
+        ]
+      }
+    },
+    "/api/session/{id}/update-groups": {
+      "post": {
+        "description": "",
+        "operationId": "DbserviceWeb.SessionController.update_groups",
+        "parameters": [
+          {
+            "description": "The id of the session",
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "type": "integer"
+          },
+          {
+            "description": "List of group ids to update for the session",
+            "in": "body",
+            "name": "body",
+            "required": true,
+            "schema": {
+              "$ref": "#/definitions/GroupIds"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "schema": {
+              "$ref": "#/definitions/Session"
+            }
+          }
+        },
+        "summary": "",
+        "tags": [
+          "Session"
         ]
       }
     },
@@ -2001,89 +2001,6 @@
         "summary": "",
         "tags": [
           "Batch"
-        ]
-      }
-    },
-    "/api/student/{studentId}": {
-      "delete": {
-        "description": "",
-        "operationId": "DbserviceWeb.StudentController.delete",
-        "parameters": [
-          {
-            "description": "The id of the student",
-            "in": "path",
-            "name": "studentId",
-            "required": true,
-            "type": "integer"
-          }
-        ],
-        "responses": {
-          "204": {
-            "description": "No Content"
-          }
-        },
-        "summary": "",
-        "tags": [
-          "Student"
-        ]
-      },
-      "get": {
-        "description": "",
-        "operationId": "DbserviceWeb.StudentController.show",
-        "parameters": [
-          {
-            "description": "The id of the student",
-            "in": "path",
-            "name": "studentId",
-            "required": true,
-            "type": "integer"
-          }
-        ],
-        "responses": {
-          "200": {
-            "description": "OK",
-            "schema": {
-              "$ref": "#/definitions/Student"
-            }
-          }
-        },
-        "summary": "",
-        "tags": [
-          "Student"
-        ]
-      },
-      "patch": {
-        "description": "",
-        "operationId": "DbserviceWeb.StudentController.update",
-        "parameters": [
-          {
-            "description": "The id of the student",
-            "in": "path",
-            "name": "studentId",
-            "required": true,
-            "type": "integer"
-          },
-          {
-            "description": "Student to create",
-            "in": "body",
-            "name": "body",
-            "required": true,
-            "schema": {
-              "$ref": "#/definitions/Student"
-            }
-          }
-        ],
-        "responses": {
-          "200": {
-            "description": "Updated",
-            "schema": {
-              "$ref": "#/definitions/Student"
-            }
-          }
-        },
-        "summary": "",
-        "tags": [
-          "Student"
         ]
       }
     },
@@ -2738,6 +2655,89 @@
         "summary": "",
         "tags": [
           "Batch"
+        ]
+      }
+    },
+    "/api/teacher/{id}": {
+      "delete": {
+        "description": "",
+        "operationId": "DbserviceWeb.TeacherController.delete",
+        "parameters": [
+          {
+            "description": "The id of the teacher",
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "type": "integer"
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "No Content"
+          }
+        },
+        "summary": "",
+        "tags": [
+          "Teacher"
+        ]
+      },
+      "get": {
+        "description": "",
+        "operationId": "DbserviceWeb.TeacherController.show",
+        "parameters": [
+          {
+            "description": "The id of the teacher",
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "type": "integer"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "schema": {
+              "$ref": "#/definitions/Teacher"
+            }
+          }
+        },
+        "summary": "",
+        "tags": [
+          "Teacher"
+        ]
+      },
+      "patch": {
+        "description": "",
+        "operationId": "DbserviceWeb.TeacherController.update",
+        "parameters": [
+          {
+            "description": "The id of the teacher",
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "type": "integer"
+          },
+          {
+            "description": "Teacher to create",
+            "in": "body",
+            "name": "body",
+            "required": true,
+            "schema": {
+              "$ref": "#/definitions/Teacher"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Updated",
+            "schema": {
+              "$ref": "#/definitions/Teacher"
+            }
+          }
+        },
+        "summary": "",
+        "tags": [
+          "Teacher"
         ]
       }
     },
