@@ -2410,9 +2410,9 @@
         "operationId": "DbserviceWeb.GroupTypeController.delete",
         "parameters": [
           {
-            "description": "The id of the group record",
+            "description": "The id of the group-type record",
             "in": "path",
-            "name": "groupId",
+            "name": "groupTypeId",
             "required": true,
             "type": "integer"
           }
@@ -2432,9 +2432,9 @@
         "operationId": "DbserviceWeb.GroupTypeController.show",
         "parameters": [
           {
-            "description": "The id of the group record",
+            "description": "The id of the group-type record",
             "in": "path",
-            "name": "groupId",
+            "name": "groupTypeId",
             "required": true,
             "type": "integer"
           }
@@ -2457,9 +2457,9 @@
         "operationId": "DbserviceWeb.GroupTypeController.update",
         "parameters": [
           {
-            "description": "The id of the group record",
+            "description": "The id of the group-type record",
             "in": "path",
-            "name": "groupId",
+            "name": "groupTypeId",
             "required": true,
             "type": "integer"
           },
