@@ -66,11 +66,11 @@ defmodule DbserviceWeb.GroupControllerTest do
       conn = get(conn, Routes.group_path(conn, :show, id))
 
       assert %{
-        "id" => ^id,
-        "input_schema" => %{},
-        "locale" => "some locale",
-        "locale_data" => %{}
-        } = json_response(conn, 200)
+               "id" => ^id,
+               "input_schema" => %{},
+               "locale" => "some locale",
+               "locale_data" => %{}
+             } = json_response(conn, 200)
     end
 
     test "renders errors when data is invalid", %{conn: conn} do

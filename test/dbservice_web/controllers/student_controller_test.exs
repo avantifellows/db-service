@@ -157,7 +157,8 @@ defmodule DbserviceWeb.StudentControllerTest do
                "mother_education_level" => "some updated mother education level",
                "has_internet_access" => false,
                "primary_smartphone_owner" => "some updated primary smartphone owner",
-               "primary_smartphone_owner_profession" => "some updated primary smartphone owner profession"
+               "primary_smartphone_owner_profession" =>
+                 "some updated primary smartphone owner profession"
              } = json_response(conn, 200)
     end
 

@@ -42,11 +42,12 @@ defmodule Dbservice.GroupsTest do
       assert group.name == "some name"
       assert group.input_schema == %{}
       assert group.locale == "some locale"
+
       assert group.locale_data == %{
-        "some locale" => %{
-          "title" => "Some title"
-        }
-      }
+               "some locale" => %{
+                 "title" => "Some title"
+               }
+             }
     end
 
     test "create_group/1 with invalid data returns error changeset" do
@@ -71,11 +72,12 @@ defmodule Dbservice.GroupsTest do
       assert group.name == "some updated name"
       assert group.input_schema == %{}
       assert group.locale == "some updated locale"
+
       assert group.locale_data == %{
-        "some updated locale" => %{
-          "title" => "Some updated title"
-        }
-      }
+               "some updated locale" => %{
+                 "title" => "Some updated title"
+               }
+             }
     end
 
     test "update_group/2 with invalid data returns error changeset" do
