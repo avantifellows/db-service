@@ -27,8 +27,8 @@ defmodule DbserviceWeb.DomainWhitelistPlug do
 
     allowed_domains =
       if is_nil(whitelisted_domains),
-      do: ["localhost", "www.example.com"],
-    else: String.split(whitelisted_domains, ",")
+        do: ["localhost", "www.example.com"],
+        else: String.split(whitelisted_domains, ",")
 
     Enum.member?(allowed_domains, conn.host)
   end
