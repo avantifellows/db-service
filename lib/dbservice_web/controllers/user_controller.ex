@@ -24,7 +24,7 @@ defmodule DbserviceWeb.UserController do
   end
 
   swagger_path :index do
-    get("/api/user?full_name=Aman")
+    get("/api/user?full_name=Rahul Sharma")
     response(200, "OK", Schema.ref(:Users))
   end
 

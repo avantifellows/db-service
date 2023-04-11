@@ -42,7 +42,7 @@ defmodule DbserviceWeb.SwaggerSchema.Session do
             owner_id: 2,
             created_by_id: 1,
             is_active: true,
-            session_id: "uiqweopasdflkasdfj"
+            session_id: "c714-e1d4-5a42-0f9f-36b3"
           })
         end
     }

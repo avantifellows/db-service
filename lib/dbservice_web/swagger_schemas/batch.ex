@@ -16,7 +16,7 @@ defmodule DbserviceWeb.SwaggerSchema.Batch do
           end
 
           example(%{
-            name: "Kendriya Vidyalaya - Class 12th",
+            name: "Delhi-12-NEET",
             contact_hours_per_week: 48
           })
         end
