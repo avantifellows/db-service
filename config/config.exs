@@ -61,4 +61,4 @@ config :dbservice, Dbservice.Repo,
 # of this file so it overrides the configuration defined above.
 import_config "#{config_env()}.exs"
 
-config :mixservice, env: Mix.env()
+config :dbservice, env: Mix.env()

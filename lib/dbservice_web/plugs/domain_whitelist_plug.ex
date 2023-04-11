@@ -24,7 +24,7 @@ defmodule DbserviceWeb.DomainWhitelistPlug do
 
   defp allowed_domains?(conn) do
     allowed_domains =
-      case Application.get_env(:mixservice, :env) do
+      case Application.get_env(:dbservice, :env) do
         :dev -> ["localhost"]
         :test -> ["www.example.com"]
         _ -> System.get_env("WHITELISTED_DOMAINS") |> String.split(",")
