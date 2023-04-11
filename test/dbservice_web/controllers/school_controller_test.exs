@@ -100,7 +100,6 @@ defmodule DbserviceWeb.SchoolControllerTest do
 
     test "renders errors when data is invalid", %{conn: conn} do
       conn = post(conn, Routes.school_path(conn, :create), school: @invalid_attrs)
-      IO.inspect(conn)
       assert json_response(conn, 422)["errors"] != %{}
     end
   end
