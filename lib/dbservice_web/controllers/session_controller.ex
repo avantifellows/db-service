@@ -68,7 +68,7 @@ defmodule DbserviceWeb.SessionController do
     get("/api/session/{id}")
 
     parameters do
-      id(:path, :integer, "The id of the session", required: true)
+      id(:path, :integer, "The id of the session record", required: true)
     end
 
     response(200, "OK", Schema.ref(:Session))
@@ -83,7 +83,7 @@ defmodule DbserviceWeb.SessionController do
     patch("/api/session/{id}")
 
     parameters do
-      id(:path, :integer, "The id of the session", required: true)
+      id(:path, :integer, "The id of the session record", required: true)
       body(:body, Schema.ref(:Session), "Session to create", required: true)
     end
 
@@ -102,7 +102,7 @@ defmodule DbserviceWeb.SessionController do
     PhoenixSwagger.Path.delete("/api/session/{id}")
 
     parameters do
-      id(:path, :integer, "The id of the session", required: true)
+      id(:path, :integer, "The id of the session record", required: true)
     end
 
     response(204, "No Content")
@@ -120,7 +120,7 @@ defmodule DbserviceWeb.SessionController do
     post("/api/session/{id}/update-groups")
 
     parameters do
-      id(:path, :integer, "The id of the session", required: true)
+      id(:path, :integer, "The id of the session record", required: true)
 
       body(:body, Schema.ref(:GroupIds), "List of group ids to update for the session",
         required: true

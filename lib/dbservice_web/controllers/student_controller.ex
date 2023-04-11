@@ -77,7 +77,7 @@ defmodule DbserviceWeb.StudentController do
     get("/api/student/{id}")
 
     parameters do
-      id(:path, :integer, "The id of the student", required: true)
+      id(:path, :integer, "The id of the student record", required: true)
     end
 
     response(200, "OK", Schema.ref(:Student))
@@ -92,7 +92,7 @@ defmodule DbserviceWeb.StudentController do
     patch("/api/student/{id}")
 
     parameters do
-      id(:path, :integer, "The id of the student", required: true)
+      id(:path, :integer, "The id of the student record", required: true)
       body(:body, Schema.ref(:Student), "Student to create", required: true)
     end
 
@@ -111,7 +111,7 @@ defmodule DbserviceWeb.StudentController do
     PhoenixSwagger.Path.delete("/api/student/{id}")
 
     parameters do
-      id(:path, :integer, "The id of the student", required: true)
+      id(:path, :integer, "The id of the student record", required: true)
     end
 
     response(204, "No Content")

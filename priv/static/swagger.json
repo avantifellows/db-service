@@ -1366,7 +1366,7 @@
         "operationId": "DbserviceWeb.SessionController.show",
         "parameters": [
           {
-            "description": "The id of the session",
+            "description": "The id of the session record",
             "in": "path",
             "name": "id",
             "required": true,
@@ -1391,7 +1391,7 @@
         "operationId": "DbserviceWeb.SessionController.update",
         "parameters": [
           {
-            "description": "The id of the session",
+            "description": "The id of the session record",
             "in": "path",
             "name": "id",
             "required": true,
@@ -1475,7 +1475,7 @@
         "operationId": "DbserviceWeb.StudentController.delete",
         "parameters": [
           {
-            "description": "The id of the student",
+            "description": "The id of the student record",
             "in": "path",
             "name": "id",
             "required": true,
@@ -1497,7 +1497,7 @@
         "operationId": "DbserviceWeb.StudentController.show",
         "parameters": [
           {
-            "description": "The id of the student",
+            "description": "The id of the student record",
             "in": "path",
             "name": "id",
             "required": true,
@@ -1522,7 +1522,7 @@
         "operationId": "DbserviceWeb.StudentController.update",
         "parameters": [
           {
-            "description": "The id of the student",
+            "description": "The id of the student record",
             "in": "path",
             "name": "id",
             "required": true,
@@ -1728,7 +1728,7 @@
         "operationId": "DbserviceWeb.SessionController.update_groups",
         "parameters": [
           {
-            "description": "The id of the session",
+            "description": "The id of the session record",
             "in": "path",
             "name": "id",
             "required": true,
@@ -2664,7 +2664,7 @@
         "operationId": "DbserviceWeb.TeacherController.delete",
         "parameters": [
           {
-            "description": "The id of the teacher",
+            "description": "The id of the teacher record",
             "in": "path",
             "name": "id",
             "required": true,
@@ -2686,7 +2686,7 @@
         "operationId": "DbserviceWeb.TeacherController.show",
         "parameters": [
           {
-            "description": "The id of the teacher",
+            "description": "The id of the teacher record",
             "in": "path",
             "name": "id",
             "required": true,
@@ -2711,7 +2711,7 @@
         "operationId": "DbserviceWeb.TeacherController.update",
         "parameters": [
           {
-            "description": "The id of the teacher",
+            "description": "The id of the teacher record",
             "in": "path",
             "name": "id",
             "required": true,
