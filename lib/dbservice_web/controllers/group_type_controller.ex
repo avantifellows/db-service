@@ -29,10 +29,11 @@ defmodule DbserviceWeb.GroupTypeController do
   end
 
   swagger_path :index do
-    get("/api/group-type")
+    get("/api/group-type?type=program&child_id=24")
     response(200, "OK", Schema.ref(:GroupTypes))
   end
 
+  @spec index(Plug.Conn.t(), any) :: Plug.Conn.t()
   def index(conn, params) do
     param = Enum.map(params, fn {key, value} -> {String.to_existing_atom(key), value} end)
 

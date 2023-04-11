@@ -18,7 +18,7 @@ defmodule DbserviceWeb.GroupController do
   end
 
   swagger_path :index do
-    get("/api/group")
+    get("/api/group?name=DelhiStudents")
     response(200, "OK", Schema.ref(:Groups))
   end
 

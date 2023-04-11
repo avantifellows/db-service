@@ -20,7 +20,7 @@ defmodule DbserviceWeb.SchoolController do
   end
 
   swagger_path :index do
-    get("/api/school")
+    get("/api/school?board_medium=en")
     response(200, "OK", Schema.ref(:Schools))
   end
 

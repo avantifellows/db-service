@@ -26,7 +26,7 @@ defmodule DbserviceWeb.TeacherController do
   end
 
   swagger_path :index do
-    get("/api/teacher")
+    get("/api/teacher?designation=Vice Principal")
     response(200, "OK", Schema.ref(:Teachers))
   end
 

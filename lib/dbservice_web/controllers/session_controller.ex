@@ -25,7 +25,7 @@ defmodule DbserviceWeb.SessionController do
   end
 
   swagger_path :index do
-    get("/api/session")
+    get("/api/session?session_id=c714-e1d4-5a42-0f9f-36b3")
     response(200, "OK", Schema.ref(:Sessions))
   end
 
