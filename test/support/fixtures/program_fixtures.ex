@@ -5,7 +5,7 @@ defmodule Dbservice.ProgramsFixtures do
   """
 
   @doc """
-  Generate a group.
+  Generate a program.
   """
   def program_fixture(attrs \\ %{}) do
     {:ok, program} =
