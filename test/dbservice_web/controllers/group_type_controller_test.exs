@@ -42,11 +42,10 @@ defmodule DbserviceWeb.GroupTypeControllerTest do
 
       conn = get(conn, Routes.group_type_path(conn, :show, id))
 
-      assert %{
-               "id" => ^id,
-               "type" => "some type",
-               "child_id" => %{}
-             } = json_response(conn, 200)
+      assert %{"id" => ^id, "type" => "some type", "child_id" => child_id} =
+               json_response(conn, 200)
+
+      assert Enum.member?(20..48, child_id)
     end
 
     test "renders errors when data is invalid", %{conn: conn} do
@@ -67,11 +66,10 @@ defmodule DbserviceWeb.GroupTypeControllerTest do
 
       conn = get(conn, Routes.group_type_path(conn, :show, id))
 
-      assert %{
-               "id" => ^id,
-               "type" => "some updated type",
-               "child_id" => %{}
-             } = json_response(conn, 200)
+      assert %{"id" => ^id, "type" => "some updated type", "child_id" => child_id} =
+               json_response(conn, 200)
+
+      assert Enum.member?(20..48, child_id)
     end
 
     test "renders errors when data is invalid", %{conn: conn, group_type: group_type} do
