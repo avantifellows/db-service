@@ -58,7 +58,10 @@ defmodule DbserviceWeb.GroupTypeControllerTest do
   describe "update group type" do
     setup [:create_group_type]
 
-    test "renders group type when data is valid", %{conn: conn, group_type: %GroupType{id: id} = group_type} do
+    test "renders group type when data is valid", %{
+      conn: conn,
+      group_type: %GroupType{id: id} = group_type
+    } do
       conn = put(conn, Routes.group_type_path(conn, :update, group_type), @update_attrs)
       %{"id" => ^id} = json_response(conn, 200)
 
@@ -86,8 +89,8 @@ defmodule DbserviceWeb.GroupTypeControllerTest do
     end
   end
 
-defp create_group_type(_) do
-  group_type = group_type_fixture()
-  %{group_type: group_type}
-end
+  defp create_group_type(_) do
+    group_type = group_type_fixture()
+    %{group_type: group_type}
+  end
 end

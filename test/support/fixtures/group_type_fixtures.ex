@@ -16,6 +16,6 @@ defmodule Dbservice.GroupTypesFixtures do
       })
       |> Dbservice.GroupTypes.create_group_type()
 
-      group_type
+    group_type
   end
 end

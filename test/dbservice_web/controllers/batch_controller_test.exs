@@ -45,8 +45,10 @@ defmodule DbserviceWeb.BatchControllerTest do
       assert %{
                "id" => ^id,
                "name" => "some name",
-               "contact_hours_per_week" => %{}
+               "contact_hours_per_week" => contact_hours_per_week
              } = json_response(conn, 200)
+
+      assert Enum.member?(20..48, contact_hours_per_week)
     end
 
     test "renders errors when data is invalid", %{conn: conn} do
@@ -67,8 +69,10 @@ defmodule DbserviceWeb.BatchControllerTest do
       assert %{
                "id" => ^id,
                "name" => "some updated name",
-               "contact_hours_per_week" => %{}
+               "contact_hours_per_week" => contact_hours_per_week
              } = json_response(conn, 200)
+
+      assert Enum.member?(20..48, contact_hours_per_week)
     end
 
     test "renders errors when data is invalid", %{conn: conn, batch: batch} do
