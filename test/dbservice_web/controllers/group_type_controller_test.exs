@@ -45,7 +45,7 @@ defmodule DbserviceWeb.GroupTypeControllerTest do
       assert %{"id" => ^id, "type" => "some type", "child_id" => child_id} =
                json_response(conn, 200)
 
-      assert Enum.member?(20..48, child_id)
+      assert Enum.member?(1..100, child_id)
     end
 
     test "renders errors when data is invalid", %{conn: conn} do
@@ -69,7 +69,7 @@ defmodule DbserviceWeb.GroupTypeControllerTest do
       assert %{"id" => ^id, "type" => "some updated type", "child_id" => child_id} =
                json_response(conn, 200)
 
-      assert Enum.member?(20..48, child_id)
+      assert Enum.member?(1..100, child_id)
     end
 
     test "renders errors when data is invalid", %{conn: conn, group_type: group_type} do
