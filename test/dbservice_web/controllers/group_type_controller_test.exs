@@ -83,7 +83,11 @@ defmodule DbserviceWeb.GroupTypeControllerTest do
 
     test "deletes chosen group type", %{conn: conn, group_type: group_type} do
       conn = delete(conn, Routes.group_type_path(conn, :delete, group_type))
-      assert json_response(conn, 200)["message"] == "Group type deleted successfully"
+      assert response(conn, 204)
+
+      assert_error_sent 404, fn ->
+        get(conn, Routes.group_type_path(conn, :show, group_type))
+      end
     end
   end
 
