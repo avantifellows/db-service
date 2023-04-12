@@ -18,9 +18,9 @@ defmodule DbserviceWeb.GroupTypeControllerTest do
     child_id: nil
   }
   @valid_fields [
+    "child_id",
     "id",
-    "type",
-    "child_id"
+    "type"
   ]
 
   setup %{conn: conn} do
