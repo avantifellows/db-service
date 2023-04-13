@@ -18,7 +18,7 @@ defmodule DbserviceWeb.GroupController do
   end
 
   swagger_path :index do
-    get("/api/group")
+    get("/api/group?name=DelhiStudents")
     response(200, "OK", Schema.ref(:Groups))
   end
 
@@ -61,7 +61,7 @@ defmodule DbserviceWeb.GroupController do
     get("/api/group/{groupId}")
 
     parameters do
-      groupId(:path, :integer, "The id of the group", required: true)
+      groupId(:path, :integer, "The id of the group record", required: true)
     end
 
     response(200, "OK", Schema.ref(:Group))
@@ -76,7 +76,7 @@ defmodule DbserviceWeb.GroupController do
     patch("/api/group/{groupId}")
 
     parameters do
-      groupId(:path, :integer, "The id of the group", required: true)
+      groupId(:path, :integer, "The id of the group record", required: true)
       body(:body, Schema.ref(:Group), "Group to create", required: true)
     end
 
@@ -95,7 +95,7 @@ defmodule DbserviceWeb.GroupController do
     PhoenixSwagger.Path.delete("/api/group/{groupId}")
 
     parameters do
-      groupId(:path, :integer, "The id of the group", required: true)
+      groupId(:path, :integer, "The id of the group record", required: true)
     end
 
     response(204, "No Content")

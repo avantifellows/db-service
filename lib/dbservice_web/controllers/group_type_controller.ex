@@ -29,10 +29,11 @@ defmodule DbserviceWeb.GroupTypeController do
   end
 
   swagger_path :index do
-    get("/api/group-type")
+    get("/api/group-type?type=program&child_id=24")
     response(200, "OK", Schema.ref(:GroupTypes))
   end
 
+  @spec index(Plug.Conn.t(), any) :: Plug.Conn.t()
   def index(conn, params) do
     param = Enum.map(params, fn {key, value} -> {String.to_existing_atom(key), value} end)
 
@@ -72,7 +73,7 @@ defmodule DbserviceWeb.GroupTypeController do
     get("/api/group-type/{groupTypeId}")
 
     parameters do
-      groupId(:path, :integer, "The id of the group", required: true)
+      groupTypeId(:path, :integer, "The id of the group-type record", required: true)
     end
 
     response(200, "OK", Schema.ref(:GroupType))
@@ -87,7 +88,7 @@ defmodule DbserviceWeb.GroupTypeController do
     patch("/api/group-type/{groupTypeId}")
 
     parameters do
-      groupId(:path, :integer, "The id of the group", required: true)
+      groupTypeId(:path, :integer, "The id of the group-type record", required: true)
       body(:body, Schema.ref(:GroupType), "Group to create", required: true)
     end
 
@@ -106,7 +107,7 @@ defmodule DbserviceWeb.GroupTypeController do
     PhoenixSwagger.Path.delete("/api/group-type/{groupTypeId}")
 
     parameters do
-      groupId(:path, :integer, "The id of the group", required: true)
+      groupTypeId(:path, :integer, "The id of the group-type record", required: true)
     end
 
     response(204, "No Content")
@@ -124,7 +125,7 @@ defmodule DbserviceWeb.GroupTypeController do
     post("/api/group-type/{groupTypeId}/update-users")
 
     parameters do
-      groupTypeId(:path, :integer, "The id of the group", required: true)
+      groupTypeId(:path, :integer, "The id of the group record", required: true)
 
       body(:body, Schema.ref(:UserIds), "List of user ids to update for the group", required: true)
     end
@@ -143,7 +144,7 @@ defmodule DbserviceWeb.GroupTypeController do
     post("/api/group-type/{groupTypeId}/update-sessions")
 
     parameters do
-      groupTypeId(:path, :integer, "The id of the group", required: true)
+      groupTypeId(:path, :integer, "The id of the group record", required: true)
 
       body(:body, Schema.ref(:SessionIds), "List of session ids to update for the group",
         required: true

@@ -67,7 +67,7 @@ defmodule DbserviceWeb.UserSessionController do
     get("/api/user-session/{userSessionId}")
 
     parameters do
-      userSessionId(:path, :integer, "The id of the user session", required: true)
+      userSessionId(:path, :integer, "The id of the user session record", required: true)
     end
 
     response(200, "OK", Schema.ref(:UserSession))
@@ -82,7 +82,7 @@ defmodule DbserviceWeb.UserSessionController do
     patch("/api/user-session/{userSessionId}")
 
     parameters do
-      userSessionId(:path, :integer, "The id of the session", required: true)
+      userSessionId(:path, :integer, "The id of the session record", required: true)
       body(:body, Schema.ref(:UserSession), "User session to create", required: true)
     end
 
@@ -102,7 +102,7 @@ defmodule DbserviceWeb.UserSessionController do
     PhoenixSwagger.Path.delete("/api/user-session/{userSessionId}")
 
     parameters do
-      userSessionId(:path, :integer, "The id of the user session", required: true)
+      userSessionId(:path, :integer, "The id of the user session record", required: true)
     end
 
     response(204, "No Content")

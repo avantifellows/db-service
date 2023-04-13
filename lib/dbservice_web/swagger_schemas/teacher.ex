@@ -22,7 +22,7 @@ defmodule DbserviceWeb.SwaggerSchema.Teacher do
 
           example(%{
             designation: "Vice Principal",
-            subject: "Mats",
+            subject: "Maths",
             grade: "12",
             user_id: 1,
             school_id: 2,

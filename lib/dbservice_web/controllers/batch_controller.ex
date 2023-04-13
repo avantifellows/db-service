@@ -18,7 +18,7 @@ defmodule DbserviceWeb.BatchController do
   end
 
   swagger_path :index do
-    get("/api/batch")
+    get("/api/batch?name=Delhi-12-NEET")
     response(200, "OK", Schema.ref(:Batches))
   end
 
@@ -61,7 +61,7 @@ defmodule DbserviceWeb.BatchController do
     get("/api/batch/{batchId}")
 
     parameters do
-      batchId(:path, :integer, "The id of the batch", required: true)
+      batchId(:path, :integer, "The id of the batch record", required: true)
     end
 
     response(200, "OK", Schema.ref(:Batch))
@@ -76,7 +76,7 @@ defmodule DbserviceWeb.BatchController do
     patch("/api/batch/{batchId}")
 
     parameters do
-      batchId(:path, :integer, "The id of the batch", required: true)
+      batchId(:path, :integer, "The id of the batch record", required: true)
       body(:body, Schema.ref(:Batch), "Batch to create", required: true)
     end
 
@@ -95,7 +95,7 @@ defmodule DbserviceWeb.BatchController do
     PhoenixSwagger.Path.delete("/api/batch/{batchId}")
 
     parameters do
-      batchId(:path, :integer, "The id of the batch", required: true)
+      batchId(:path, :integer, "The id of the batch record", required: true)
     end
 
     response(204, "No Content")
