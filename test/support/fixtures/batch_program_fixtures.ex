@@ -11,8 +11,8 @@ defmodule Dbservice.BatchProgramsFixtures do
     {:ok, batch} =
       attrs
       |> Enum.into(%{
-        batch_id: 1,
-        program_id: 1
+        batch_id: Enum.random(1..100),
+        program_id: Enum.random(1..100)
       })
       |> Dbservice.BatchPrograms.create_batch_program()
 
