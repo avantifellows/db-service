@@ -44,7 +44,8 @@ defmodule DbserviceWeb.GroupControllerTest do
     "id",
     "input_schema",
     "locale",
-    "locale_data"
+    "locale_data",
+    "name"
   ]
   setup %{conn: conn} do
     {:ok, conn: put_req_header(conn, "accept", "application/json")}
