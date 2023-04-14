@@ -16,7 +16,6 @@ defmodule Dbservice.GroupTypeTest do
     test "list_group_type/0 returns all group types" do
       group_type = group_type_fixture()
       [head | _tail] = GroupTypes.list_group_type()
-      # IO.inspect(GroupType.list_group_type())
       assert Map.keys(head) == Map.keys(group_type)
     end
 

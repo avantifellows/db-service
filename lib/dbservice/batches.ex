@@ -81,3 +81,4 @@ defmodule Dbservice.Batches do
     Batch.changeset(batch, attrs)
   end
 end
+
