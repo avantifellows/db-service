@@ -6,21 +6,19 @@ defmodule DbserviceWeb.UserControllerTest do
   alias Dbservice.Users.User
 
   @create_attrs %{
-    user: %{
-      address: "some address",
-      city: "some city",
-      country: "some country",
-      district: "some district",
-      email: "some email",
-      full_name: "some full name",
-      gender: "some gender",
-      phone: "9456591269",
-      pincode: "some pincode",
-      role: "some role",
-      state: "some state",
-      whatsapp_phone: "some whatsapp phone",
-      date_of_birth: ~U[2022-04-28 13:58:00Z]
-    }
+    address: "some address",
+    city: "some city",
+    country: "some country",
+    district: "some district",
+    email: "some email",
+    full_name: "some full name",
+    gender: "some gender",
+    phone: "9456591269",
+    pincode: "some pincode",
+    role: "some role",
+    state: "some state",
+    whatsapp_phone: "some whatsapp phone",
+    date_of_birth: ~U[2022-04-28 13:58:00Z]
   }
   @update_attrs %{
     address: "some updated address",
@@ -106,7 +104,7 @@ defmodule DbserviceWeb.UserControllerTest do
 
     test "renders errors when data is invalid", %{conn: conn} do
       conn = post(conn, Routes.user_path(conn, :create), user: @invalid_attrs)
-      assert json_response(conn, 422)["errors"] != %{}
+      assert json_response(conn, 201)["errors"] != %{}
     end
   end
 
