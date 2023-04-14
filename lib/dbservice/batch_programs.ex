@@ -80,4 +80,3 @@ defmodule Dbservice.BatchPrograms do
     BatchProgram.changeset(batch_program, attrs)
   end
 end
-
