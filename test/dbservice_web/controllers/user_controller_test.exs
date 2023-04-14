@@ -6,19 +6,21 @@ defmodule DbserviceWeb.UserControllerTest do
   alias Dbservice.Users.User
 
   @create_attrs %{
-    address: "some address",
-    city: "some city",
-    country: "some country",
-    district: "some district",
-    email: "some email",
-    full_name: "some full name",
-    gender: "some gender",
-    phone: "9456591269",
-    pincode: "some pincode",
-    role: "some role",
-    state: "some state",
-    whatsapp_phone: "some whatsapp phone",
-    date_of_birth: ~U[2022-04-28 13:58:00Z]
+    user: %{
+      address: "some address",
+      city: "some city",
+      country: "some country",
+      district: "some district",
+      email: "some email",
+      full_name: "some full name",
+      gender: "some gender",
+      phone: "9456591269",
+      pincode: "some pincode",
+      role: "some role",
+      state: "some state",
+      whatsapp_phone: "some whatsapp phone",
+      date_of_birth: ~U[2022-04-28 13:58:00Z]
+    }
   }
   @update_attrs %{
     address: "some updated address",
