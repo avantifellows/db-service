@@ -81,7 +81,7 @@ defmodule DbserviceWeb.UserControllerTest do
 
   describe "create user" do
     test "renders user when data is valid", %{conn: conn} do
-      conn = post(conn, Routes.user_path(conn, :create), @create_attrs)
+      conn = post(conn, Routes.user_path(conn, :create), user: @create_attrs)
       %{"id" => id} = json_response(conn, 201)
 
       conn = get(conn, Routes.user_path(conn, :show, id))
@@ -104,7 +104,7 @@ defmodule DbserviceWeb.UserControllerTest do
 
     test "renders errors when data is invalid", %{conn: conn} do
       conn = post(conn, Routes.user_path(conn, :create), user: @invalid_attrs)
-      assert json_response(conn, 201)["errors"] != %{}
+      assert json_response(conn, 422)["errors"] != %{}
     end
   end
 

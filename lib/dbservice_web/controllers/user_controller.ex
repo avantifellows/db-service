@@ -54,8 +54,8 @@ defmodule DbserviceWeb.UserController do
     response(201, "Created", Schema.ref(:User))
   end
 
-  def create(conn, params) do
-    with {:ok, %User{} = user} <- Users.create_user(params) do
+  def create(conn, %{"user" => user_params}) do
+    with {:ok, %User{} = user} <- Users.create_user(user_params) do
       conn
       |> put_status(:created)
       |> put_resp_header("location", Routes.user_path(conn, :show, user))
