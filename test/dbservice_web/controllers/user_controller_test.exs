@@ -38,7 +38,7 @@ defmodule DbserviceWeb.UserControllerTest do
   @invalid_attrs %{
     full_name: nil,
     email: nil,
-    phone: "nope",
+    phone: "invalid phone number",
     gender: nil,
     address: nil,
     city: nil,
