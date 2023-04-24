@@ -5,7 +5,7 @@ defmodule DbserviceWeb.SwaggerSchema.SessionOccurrence do
 
   def session_occurrence do
     %{
-      SessionOccurence:
+      SessionOccurrence:
         swagger_schema do
           title("SessionOccurrence")
           description("A session occurrence for a session")
@@ -27,19 +27,19 @@ defmodule DbserviceWeb.SwaggerSchema.SessionOccurrence do
 
   def session_occurrences do
     %{
-      SessionOccurences:
+      SessionOccurrences:
         swagger_schema do
           title("SessionOccurrences")
           description("All the session occurrences ")
           type(:array)
-          items(Schema.ref(:SessionOccurence))
+          items(Schema.ref(:SessionOccurrence))
         end
     }
   end
 
   def session_occurrence_with_user do
     %{
-      SessionOccurenceWithUser:
+      SessionOccurrenceWithUser:
         swagger_schema do
           title("SessionOccurrenceWithUser")
           description("A single session occurrence with user details")
