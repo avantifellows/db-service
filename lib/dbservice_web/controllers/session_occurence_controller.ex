@@ -10,21 +10,21 @@ defmodule DbserviceWeb.SessionOccurenceController do
 
   use PhoenixSwagger
 
-  alias DbserviceWeb.SwaggerSchema.SessionOccurence, as: SwaggerSchemaSessionOccurence
+  alias DbserviceWeb.SwaggerSchema.SessionOccurence, as: SwaggerSchemaSessionOccurrence
 
   def swagger_definitions do
     # merge the required definitions in a pair at a time using the Map.merge/2 function
     Map.merge(
       Map.merge(
-        SwaggerSchemaSessionOccurence.session_occurence(),
-        SwaggerSchemaSessionOccurence.session_occurences()
+        SwaggerSchemaSessionOccurrence.session_occurrence(),
+        SwaggerSchemaSessionOccurrence.session_occurrences()
       ),
-      SwaggerSchemaSessionOccurence.session_occurence_with_user()
+      SwaggerSchemaSessionOccurrence.session_occurrence_with_user()
     )
   end
 
   swagger_path :index do
-    get("/api/session-occurence")
+    get("/api/session-occurrence")
     response(200, "OK", Schema.ref(:SessionOccurences))
   end
 
@@ -45,13 +45,13 @@ defmodule DbserviceWeb.SessionOccurenceController do
   end
 
   swagger_path :create do
-    post("/api/session-occurence")
+    post("/api/session-occurrence")
 
     parameters do
-      body(:body, Schema.ref(:SessionOccurence), "Session occurence to create", required: true)
+      body(:body, Schema.ref(:SessionOccurrence), "Session occurence to create", required: true)
     end
 
-    response(201, "Created", Schema.ref(:SessionOccurence))
+    response(201, "Created", Schema.ref(:SessionOccurrence))
   end
 
   def create(conn, params) do
@@ -68,10 +68,12 @@ defmodule DbserviceWeb.SessionOccurenceController do
   end
 
   swagger_path :show do
-    get("/api/session-occurence/{sessionOccurenceId}")
+    get("/api/session-occurrence/{sessionOccurrenceId}")
 
     parameters do
-      sessionOccurenceId(:path, :integer, "The id of the session occurence record", required: true)
+      sessionOccurrenceId(:path, :integer, "The id of the session occurence record",
+        required: true
+      )
     end
 
     response(200, "OK", Schema.ref(:SessionOccurenceWithUser))
@@ -83,15 +85,14 @@ defmodule DbserviceWeb.SessionOccurenceController do
   end
 
   swagger_path :update do
-    patch("/api/session-occurence/{sessionOccurenceId}")
+    patch("/api/session-occurrence/{sessionOccurrenceId}")
 
     parameters do
-      sessionOccurenceId(:path, :integer, "The id of the session occurence record", required: true)
-
-      body(:body, Schema.ref(:SessionOccurence), "Session occurence to create", required: true)
+      sessionOccurrenceId(:path, :integer, "The id of the session occurrence", required: true)
+      body(:body, Schema.ref(:SessionOccurrence), "Session occurrence to create", required: true)
     end
 
-    response(200, "Updated", Schema.ref(:SessionOccurence))
+    response(200, "Updated", Schema.ref(:SessionOccurrence))
   end
 
   def update(conn, params) do
@@ -104,10 +105,12 @@ defmodule DbserviceWeb.SessionOccurenceController do
   end
 
   swagger_path :delete do
-    PhoenixSwagger.Path.delete("/api/session-occurence/{sessionOccurenceId}")
+    PhoenixSwagger.Path.delete("/api/session-occurrence/{sessionOccurrenceId}")
 
     parameters do
-      sessionOccurenceId(:path, :integer, "The id of the session occurence record", required: true)
+      sessionOccurrenceId(:path, :integer, "The id of the session occurence record",
+        required: true
+      )
     end
 
     response(204, "No Content")
