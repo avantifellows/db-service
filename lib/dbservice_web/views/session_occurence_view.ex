@@ -9,7 +9,7 @@ defmodule DbserviceWeb.SessionOccurenceView do
   end
 
   def render("show.json", %{session_occurence: session_occurence}) do
-    render_one(session_occurence, SessionOccurenceView, "session_occurence_with_users.json")
+    render_one(session_occurence, SessionOccurenceView, "session_occurence.json")
   end
 
   def render("session_occurence.json", %{session_occurence: session_occurence}) do

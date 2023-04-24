@@ -3,17 +3,17 @@ defmodule DbserviceWeb.SwaggerSchema.SessionOccurence do
 
   use PhoenixSwagger
 
-  def session_occurence do
+  def session_occurrence do
     %{
-      SessionOccurence:
+      SessionOccurrence:
         swagger_schema do
-          title("SessionOccurence")
-          description("A session occurence for a session")
+          title("SessionOccurrence")
+          description("A session occurrence for a session")
 
           properties do
             session_id(:integer, "Session ID")
-            start_time(:timestamp, "Session occurence start time")
-            end_time(:timestamp, "Session occurence finish time")
+            start_time(:timestamp, "Session occurrence start time")
+            end_time(:timestamp, "Session occurrence finish time")
           end
 
           example(%{
@@ -25,29 +25,29 @@ defmodule DbserviceWeb.SwaggerSchema.SessionOccurence do
     }
   end
 
-  def session_occurences do
+  def session_occurrences do
     %{
-      SessionOccurences:
+      SessionOccurrences:
         swagger_schema do
-          title("SessionOccurences")
-          description("All the session occurences ")
+          title("SessionOccurrences")
+          description("All the session occurrences ")
           type(:array)
-          items(Schema.ref(:SessionOccurence))
+          items(Schema.ref(:SessionOccurrence))
         end
     }
   end
 
-  def session_occurence_with_user do
+  def session_occurrence_with_user do
     %{
-      SessionOccurenceWithUser:
+      SessionOccurrenceWithUser:
         swagger_schema do
-          title("SessionOccurenceWithUser")
-          description("A single session occurence with user details")
+          title("SessionOccurrenceWithUser")
+          description("A single session occurrence with user details")
 
           properties do
             session_id(:integer, "Session ID")
-            start_time(:timestamp, "Session occurence start time")
-            end_time(:timestamp, "Session occurence finish time")
+            start_time(:timestamp, "Session occurrence start time")
+            end_time(:timestamp, "Session occurrence finish time")
           end
 
           example(%{
