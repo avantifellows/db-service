@@ -24,7 +24,7 @@ defmodule DbserviceWeb.SessionOccurenceController do
   end
 
   swagger_path :index do
-    get("/api/session-occurence")
+    get("/api/session-occurrence")
     response(200, "OK", Schema.ref(:SessionOccurences))
   end
 
@@ -45,7 +45,7 @@ defmodule DbserviceWeb.SessionOccurenceController do
   end
 
   swagger_path :create do
-    post("/api/session-occurence")
+    post("/api/session-occurrence")
 
     parameters do
       body(:body, Schema.ref(:SessionOccurence), "Session occurence to create", required: true)
@@ -68,10 +68,10 @@ defmodule DbserviceWeb.SessionOccurenceController do
   end
 
   swagger_path :show do
-    get("/api/session-occurence/{sessionOccurenceId}")
+    get("/api/session-occurrence/{sessionOccurrenceId}")
 
     parameters do
-      sessionOccurenceId(:path, :integer, "The id of the session occurence", required: true)
+      sessionOccurrenceId(:path, :integer, "The id of the session occurence", required: true)
     end
 
     response(200, "OK", Schema.ref(:SessionOccurenceWithUser))
@@ -83,10 +83,10 @@ defmodule DbserviceWeb.SessionOccurenceController do
   end
 
   swagger_path :update do
-    patch("/api/session-occurence/{sessionOccurenceId}")
+    patch("/api/session-occurrence/{sessionOccurrenceId}")
 
     parameters do
-      sessionOccurenceId(:path, :integer, "The id of the session occurence", required: true)
+      sessionOccurrenceId(:path, :integer, "The id of the session occurence", required: true)
       body(:body, Schema.ref(:SessionOccurence), "Session occurence to create", required: true)
     end
 
@@ -103,10 +103,10 @@ defmodule DbserviceWeb.SessionOccurenceController do
   end
 
   swagger_path :delete do
-    PhoenixSwagger.Path.delete("/api/session-occurence/{sessionOccurenceId}")
+    PhoenixSwagger.Path.delete("/api/session-occurrence/{sessionOccurrenceId}")
 
     parameters do
-      sessionOccurenceId(:path, :integer, "The id of the session occurence", required: true)
+      sessionOccurrenceId(:path, :integer, "The id of the session occurence", required: true)
     end
 
     response(204, "No Content")

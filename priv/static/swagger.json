@@ -1688,7 +1688,7 @@
         ]
       }
     },
-    "/api/session-occurence": {
+    "/api/session-occurrence": {
       "get": {
         "description": "",
         "operationId": "DbserviceWeb.SessionOccurenceController.index",
@@ -1734,7 +1734,7 @@
         ]
       }
     },
-    "/api/session-occurence/{sessionOccurenceId}": {
+    "/api/session-occurrence/{sessionOccurrenceId}": {
       "delete": {
         "description": "",
         "operationId": "DbserviceWeb.SessionOccurenceController.delete",
@@ -1742,7 +1742,7 @@
           {
             "description": "The id of the session occurence",
             "in": "path",
-            "name": "sessionOccurenceId",
+            "name": "sessionOccurrenceId",
             "required": true,
             "type": "integer"
           }
@@ -1764,7 +1764,7 @@
           {
             "description": "The id of the session occurence",
             "in": "path",
-            "name": "sessionOccurenceId",
+            "name": "sessionOccurrenceId",
             "required": true,
             "type": "integer"
           }
@@ -1789,7 +1789,7 @@
           {
             "description": "The id of the session occurence",
             "in": "path",
-            "name": "sessionOccurenceId",
+            "name": "sessionOccurrenceId",
             "required": true,
             "type": "integer"
           },
