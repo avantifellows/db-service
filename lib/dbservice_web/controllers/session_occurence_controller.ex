@@ -48,10 +48,10 @@ defmodule DbserviceWeb.SessionOccurenceController do
     post("/api/session-occurrence")
 
     parameters do
-      body(:body, Schema.ref(:SessionOccurence), "Session occurence to create", required: true)
+      body(:body, Schema.ref(:SessionOccurrence), "Session occurence to create", required: true)
     end
 
-    response(201, "Created", Schema.ref(:SessionOccurence))
+    response(201, "Created", Schema.ref(:SessionOccurrence))
   end
 
   def create(conn, params) do
@@ -88,11 +88,11 @@ defmodule DbserviceWeb.SessionOccurenceController do
     patch("/api/session-occurrence/{sessionOccurrenceId}")
 
     parameters do
-      sessionOccurrenceId(:path, :integer, "The id of the session occurence", required: true)
-      body(:body, Schema.ref(:SessionOccurence), "Session occurence to create", required: true)
+      sessionOccurrenceId(:path, :integer, "The id of the session occurrence", required: true)
+      body(:body, Schema.ref(:SessionOccurrence), "Session occurrence to create", required: true)
     end
 
-    response(200, "Updated", Schema.ref(:SessionOccurence))
+    response(200, "Updated", Schema.ref(:SessionOccurrence))
   end
 
   def update(conn, params) do
