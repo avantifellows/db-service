@@ -50,13 +50,7 @@ defmodule Dbservice.Sessions.Session do
     ])
     |> validate_required([
       :name,
-      :is_active,
-      :platform,
-      :platform_link,
-      :portal_link,
-      :start_time,
-      :end_time,
-      :meta_data
+      :platform
     ])
   end
 
