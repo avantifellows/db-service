@@ -10,16 +10,16 @@ defmodule DbserviceWeb.SessionOccurenceController do
 
   use PhoenixSwagger
 
-  alias DbserviceWeb.SwaggerSchema.SessionOccurence, as: SwaggerSchemaSessionOccurence
+  alias DbserviceWeb.SwaggerSchema.SessionOccurrence, as: SwaggerSchemaSessionOccurrence
 
   def swagger_definitions do
     # merge the required definitions in a pair at a time using the Map.merge/2 function
     Map.merge(
       Map.merge(
-        SwaggerSchemaSessionOccurence.session_occurence(),
-        SwaggerSchemaSessionOccurence.session_occurences()
+        SwaggerSchemaSessionOccurrence.session_occurrence(),
+        SwaggerSchemaSessionOccurrence.session_occurrences()
       ),
-      SwaggerSchemaSessionOccurence.session_occurence_with_user()
+      SwaggerSchemaSessionOccurrence.session_occurrence_with_user()
     )
   end
 
