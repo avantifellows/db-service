@@ -3,13 +3,13 @@ defmodule Dbservice.Groups.GroupUser do
 
   use Ecto.Schema
   alias Dbservice.Users.User
-  alias Dbservice.Groups.Group
+  alias Dbservice.Groups.GroupType
   import Ecto.Changeset
 
   schema "group_user" do
     field :program_date_of_joining, :utc_datetime
     field :program_student_language, :string
-    belongs_to :group, Group
+    belongs_to :group_type, GroupType
     belongs_to :user, User
     belongs_to :program_manager, User
 
@@ -20,13 +20,13 @@ defmodule Dbservice.Groups.GroupUser do
   def changeset(group_user, attrs) do
     group_user
     |> cast(attrs, [
-      :group_id,
+      :group_type_id,
       :user_id,
       :program_manager_id,
       :program_date_of_joining,
       :program_student_language
     ])
-    |> validate_required([:group_id, :user_id])
+    |> validate_required([:group_type_id, :user_id])
   end
 
   def changeset_update_users(group, users) do

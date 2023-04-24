@@ -10,6 +10,7 @@
 # We recommend using the bang functions (`insert!`, `update!`
 # and so on) as they will fail if something goes wrong.
 
+alias Dbservice.Programs
 alias Dbservice.Repo
 alias Dbservice.Users
 alias Dbservice.Groups
@@ -17,6 +18,10 @@ alias Dbservice.Sessions
 alias Dbservice.Schools
 alias Dbservice.GroupUsers
 alias Dbservice.GroupSessions
+alias Dbservice.Batches
+alias Dbservice.GroupTypes
+alias Dbservice.Batches
+alias Dbservice.BatchPrograms
 
 alias Faker.Person
 alias Faker.Internet
@@ -53,16 +58,28 @@ defmodule Seed do
     {:ok, group} =
       Groups.create_group(%{
         name: Person.name(),
-        type: Enum.random(["batch", "cohort", "program", "group"]),
-        program_type: Enum.random(["Competitive", "Non Competitive"]),
-        program_sub_type: Enum.random(["Easy", "Moderate", "High"]),
-        program_mode: Enum.random(["Online", "Offline"]),
-        program_start_date:
-          Faker.DateTime.between(~N[2015-05-19 00:00:00], ~N[2022-10-19 00:00:00]),
-        program_target_outreach: Enum.random(3000..10000),
-        program_product_used: Enum.random(["One", "Less than 5", "More than 5"]),
-        program_donor: Enum.random(["YES", "NO"]),
-        program_state:
+        input_schema: %{},
+        locale: Enum.random(["hi", "en"]),
+        locale_data: %{}
+      })
+
+    group
+  end
+
+  def create_program() do
+    group = Seed.create_group()
+
+    {:ok, program} =
+      Programs.create_program(%{
+        name: Person.name(),
+        type: Enum.random(["Competitive", "Non Competitive"]),
+        sub_type: Enum.random(["Easy", "Moderate", "High"]),
+        mode: Enum.random(["Online", "Offline"]),
+        start_date: Faker.DateTime.between(~N[2015-05-19 00:00:00], ~N[2022-10-19 00:00:00]),
+        target_outreach: Enum.random(3000..10000),
+        product_used: Enum.random(["One", "Less than 5", "More than 5"]),
+        donor: Enum.random(["YES", "NO"]),
+        state:
           Enum.random([
             "HARYANA",
             "ASSAM",
@@ -72,16 +89,11 @@ defmodule Seed do
             "DELHI",
             "HIMACHAL PRADESH"
           ]),
-        batch_contact_hours_per_week: Enum.random(20..48),
-        group_input_schema: %{},
-        group_locale: Enum.random(["hi", "en"]),
-        group_locale_data: %{},
-        auth_type: ["jwt", "auth_layer"],
-        program_model: Enum.random(["Live Classes"]),
-        group_id: Seed.random_alphanumeric()
+        model: Enum.random(["Live Classes"]),
+        group_id: group.id
       })
 
-    group
+    program
   end
 
   def create_session() do
@@ -122,6 +134,29 @@ defmodule Seed do
       })
 
     session
+  end
+
+  def create_batch() do
+    {:ok, batch} =
+      Batches.create_batch(%{
+        name: Person.name(),
+        contact_hours_per_week: Enum.random(20..48)
+      })
+
+    batch
+  end
+
+  def create_batch_program() do
+    batch = Seed.create_batch()
+    program = Seed.create_program()
+
+    {:ok, batch_program} =
+      BatchPrograms.create_batch_program(%{
+        batch_id: batch.id,
+        program_id: program.id
+      })
+
+    batch_program
   end
 
   def create_session_occurence() do
@@ -239,7 +274,7 @@ defmodule Seed do
   def create_teacher() do
     school = Schools.School |> offset(^Enum.random(1..9)) |> limit(1) |> Repo.one()
     user = Seed.create_user()
-    program_manager = Users.User |> offset(^Enum.random(1..99)) |> limit(1) |> Repo.one()
+    manager = Users.User |> offset(^Enum.random(1..99)) |> limit(1) |> Repo.one()
 
     {:ok, teacher} =
       Users.create_teacher(%{
@@ -248,7 +283,7 @@ defmodule Seed do
         grade: Enum.random(["KG", "1", "2", "3", "4", "5", "6", "7", "8", "9", "10"]),
         user_id: user.id,
         school_id: school.id,
-        program_manager_id: program_manager.id,
+        manager_id: manager.id,
         uuid: Seed.random_alphanumeric()
       })
 
@@ -258,7 +293,7 @@ defmodule Seed do
   def create_enrollment_record() do
     school = Schools.School |> offset(^Enum.random(1..9)) |> limit(1) |> Repo.one()
     student = Users.Student |> offset(^Enum.random(1..99)) |> limit(1) |> Repo.one()
-    group = Seed.create_group()
+    group = Seed.create_group_type()
 
     {:ok, enrollment_record} =
       Schools.create_enrollment_record(%{
@@ -294,11 +329,11 @@ defmodule Seed do
 
   def create_group_session() do
     session = Sessions.Session |> offset(^Enum.random(1..49)) |> limit(1) |> Repo.one()
-    group = Seed.create_group()
+    group_type = Seed.create_group_type()
 
     {:ok, group_session} =
       GroupSessions.create_group_session(%{
-        group_id: group.id,
+        group_type_id: group_type.id,
         session_id: session.id
       })
 
@@ -306,21 +341,30 @@ defmodule Seed do
   end
 
   def create_group_user() do
-    group = Seed.create_group()
+    group_type = Seed.create_group_type()
     user = Seed.create_user()
-    program_manager = Users.User |> offset(^Enum.random(1..99)) |> limit(1) |> Repo.one()
+    manager = Users.User |> offset(^Enum.random(1..99)) |> limit(1) |> Repo.one()
 
     {:ok, group_user} =
       GroupUsers.create_group_user(%{
-        group_id: group.id,
+        group_type_id: group_type.id,
         user_id: user.id,
-        program_manager_id: program_manager.id,
-        program_date_of_joining:
-          Faker.DateTime.between(~N[2015-05-19 00:00:00], ~N[2022-10-19 00:00:00]),
-        program_student_language: Enum.random(["English", "Hindi"])
+        manager_id: manager.id,
+        date_of_joining: Faker.DateTime.between(~N[2015-05-19 00:00:00], ~N[2022-10-19 00:00:00]),
+        student_language: Enum.random(["English", "Hindi"])
       })
 
     group_user
+  end
+
+  def create_group_type() do
+    {:ok, group_type} =
+      GroupTypes.create_group_type(%{
+        type: Enum.random(["batch", "program", "group"]),
+        child_id: Enum.random(1..50)
+      })
+
+    group_type
   end
 end
 
@@ -333,8 +377,12 @@ Repo.delete_all(Sessions.SessionOccurence)
 Repo.delete_all(Groups.GroupSession)
 Repo.delete_all(Groups.GroupUser)
 Repo.delete_all(Sessions.Session)
+Repo.delete_all(Groups.GroupType)
+Repo.delete_all(Batches.BatchProgram)
+Repo.delete_all(Programs.Program)
 Repo.delete_all(Groups.Group)
 Repo.delete_all(Users.User)
+Repo.delete_all(Batches.Batch)
 
 if Mix.env() == :dev do
   # create some users
@@ -390,5 +438,25 @@ if Mix.env() == :dev do
   # create some group_session
   for count <- 1..100 do
     Seed.create_group_session()
+  end
+
+  # create some program
+  for count <- 1..100 do
+    Seed.create_program()
+  end
+
+  # create some batch
+  for count <- 1..100 do
+    Seed.create_batch()
+  end
+
+  # create some batch_program
+  for count <- 1..100 do
+    Seed.create_batch_program()
+  end
+
+  # create some group_type
+  for count <- 1..100 do
+    Seed.create_group_type()
   end
 end
