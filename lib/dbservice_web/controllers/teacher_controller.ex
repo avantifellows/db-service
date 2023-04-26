@@ -31,20 +31,23 @@ defmodule DbserviceWeb.TeacherController do
   end
 
   def index(conn, params) do
-    param = Enum.map(params, fn {key, value} -> {String.to_existing_atom(key), value} end)
+    query =
+      from m in Teacher,
+        order_by: [asc: m.id],
+        offset: ^params["offset"],
+        limit: ^params["limit"]
 
-    teacher =
-      Enum.reduce(param, Teacher, fn
-        {key, value}, query ->
-          from u in query, where: field(u, ^key) == ^value
-
-        _, query ->
-          query
+    query =
+      Enum.reduce(params, query, fn {key, value}, acc ->
+        case String.to_existing_atom(key) do
+          :offset -> acc
+          :limit -> acc
+          atom -> from u in acc, where: field(u, ^atom) == ^value
+        end
       end)
-      |> Repo.all()
-      |> Repo.preload([:user])
 
-    render(conn, "show_with_user.json", teacher: teacher)
+    teacher = Repo.all(query) |> Repo.preload([:user])
+    render(conn, "index.json", teacher: teacher)
   end
 
   swagger_path :create do
