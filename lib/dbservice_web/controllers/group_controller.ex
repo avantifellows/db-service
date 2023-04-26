@@ -23,18 +23,22 @@ defmodule DbserviceWeb.GroupController do
   end
 
   def index(conn, params) do
-    param = Enum.map(params, fn {key, value} -> {String.to_existing_atom(key), value} end)
+    query =
+      from m in Group,
+        order_by: [asc: m.id],
+        offset: ^params["offset"],
+        limit: ^params["limit"]
 
-    group =
-      Enum.reduce(param, Group, fn
-        {key, value}, query ->
-          from u in query, where: field(u, ^key) == ^value
-
-        _, query ->
-          query
+    query =
+      Enum.reduce(params, query, fn {key, value}, acc ->
+        case String.to_existing_atom(key) do
+          :offset -> acc
+          :limit -> acc
+          atom -> from u in acc, where: field(u, ^atom) == ^value
+        end
       end)
-      |> Repo.all()
 
+    group = Repo.all(query)
     render(conn, "index.json", group: group)
   end
 

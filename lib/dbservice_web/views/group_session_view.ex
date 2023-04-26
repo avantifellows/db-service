@@ -13,7 +13,7 @@ defmodule DbserviceWeb.GroupSessionView do
   def render("group_session.json", %{group_session: group_session}) do
     %{
       id: group_session.id,
-      group_id: group_session.group_id,
+      group_type_id: group_session.group_type_id,
       session_id: group_session.session_id
     }
   end

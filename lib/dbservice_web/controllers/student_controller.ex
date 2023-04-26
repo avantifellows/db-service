@@ -32,26 +32,23 @@ defmodule DbserviceWeb.StudentController do
   end
 
   def index(conn, params) do
-    query_params = Map.delete(params, "response_size")
+    query =
+      from m in Student,
+        order_by: [asc: m.id],
+        offset: ^params["offset"],
+        limit: ^params["limit"]
 
-    param = Enum.map(query_params, fn {key, value} -> {String.to_existing_atom(key), value} end)
-
-    student =
-      Enum.reduce(param, Student, fn
-        {key, value}, query ->
-          from u in query, where: field(u, ^key) == ^value
-
-        _, query ->
-          query
+    query =
+      Enum.reduce(params, query, fn {key, value}, acc ->
+        case String.to_existing_atom(key) do
+          :offset -> acc
+          :limit -> acc
+          atom -> from u in acc, where: field(u, ^atom) == ^value
+        end
       end)
-      |> Repo.all()
-      |> Repo.preload([:user])
 
-    if !Map.has_key?(params, "response_size") || params["response_size"] != "compact" do
-      render(conn, "show_with_user.json", student: student)
-    else
-      render(conn, "show_student_user_with_compact_fields.json", student: student)
-    end
+    student = Repo.all(query) |> Repo.preload([:user])
+    render(conn, "index.json", student: student)
   end
 
   swagger_path :create do
