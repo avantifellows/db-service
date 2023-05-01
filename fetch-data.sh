@@ -18,15 +18,13 @@ local_db_password="postgres"
 # Dump file name
 dump_file="dump.sql"
 
-# Determine the path of pg_dump and psql using the which command
-pg_dump_path=$(which pg_dump)  # retrieves the path of the pg_dump executable
-psql_path=$(which psql)        # retrieves the path of the psql executable
+# Find the location of pg_dump and psql executables
+pg_dump_path=$(which pg_dump)
+psql_path=$(which psql)
 
-# Check if PostgreSQL client tools are installed
-if [ -z "$pg_dump_path" ] || [ -z "$psql_path" ]; then
-  echo "Error: PostgreSQL client tools not found on this system"
-  exit 1
-fi
+# Remove all existing tables from the local database
+echo "Removing existing tables from local database..."
+PGPASSWORD="$local_db_password" "$psql_path" --host="$local_db_host" --port=5432 --username="$local_db_user" --dbname="$local_db_name" --command="DROP SCHEMA public CASCADE; CREATE SCHEMA public;"
 
 # Fetch the data dump from the production database
 echo "Fetching data dump from production database..."
