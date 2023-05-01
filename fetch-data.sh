@@ -4,10 +4,10 @@
 # sudo apt-get install postgresql-client
 
 # Production database credentials
-production_db_host="plio-small.ct2k2vwmh0ce.ap-south-1.rds.amazonaws.com"
-production_db_name="staging_af_db_gigalixir"
+production_db_host="xxx.rds.amazonaws.com"
+production_db_name="xxx"
 production_db_user="postgres"
-production_db_password="a362du2azIpn"
+production_db_password="xxx"
 
 # Local database credentials
 local_db_host="localhost"
