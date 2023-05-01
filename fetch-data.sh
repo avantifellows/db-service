@@ -15,7 +15,6 @@ local_db_name="dbservice_dev"
 local_db_user="postgres"
 local_db_password="postgres"
 
-
 # Dump file name
 dump_file="dump.sql"
 
