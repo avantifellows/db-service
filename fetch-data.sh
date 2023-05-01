@@ -18,9 +18,9 @@ local_db_password="postgres"
 # Dump file name
 dump_file="dump.sql"
 
-# Find the location of pg_dump and psql
-pg_dump_path=$(which pg_dump)
-psql_path=$(which psql)
+# Determine the path of pg_dump and psql using the which command
+pg_dump_path=$(which pg_dump)  # retrieves the path of the pg_dump executable
+psql_path=$(which psql)        # retrieves the path of the psql executable
 
 # Check if PostgreSQL client tools are installed
 if [ -z "$pg_dump_path" ] || [ -z "$psql_path" ]; then
