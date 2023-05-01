@@ -16,17 +16,19 @@ defmodule DbserviceWeb.DomainWhitelistPlug do
     if allowed_domains?(conn) do
       conn
     else
-      send_resp(conn, 403, "Not Authorized")
+      conn
+      |> send_resp(403, "Not Authorized")
+      |> halt()
     end
   end
 
   defp allowed_domains?(conn) do
-    whitelisted_domains = System.get_env("WHITELISTED_DOMAINS")
-
     allowed_domains =
-      if is_nil(whitelisted_domains),
-        do: ["localhost"],
-        else: String.split(whitelisted_domains, ",")
+      case Application.get_env(:dbservice, :env) do
+        :dev -> ["localhost"]
+        :test -> ["www.example.com"]
+        _ -> System.get_env("WHITELISTED_DOMAINS") |> String.split(",")
+      end
 
     Enum.member?(allowed_domains, conn.host)
   end

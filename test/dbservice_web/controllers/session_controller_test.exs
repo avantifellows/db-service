@@ -51,12 +51,13 @@ defmodule DbserviceWeb.SessionControllerTest do
     "name",
     "owner_id",
     "platform",
+    "platform_id",
     "platform_link",
     "portal_link",
     "purpose",
     "repeat_schedule",
-    "start_time",
-    "uuid"
+    "session_id",
+    "start_time"
   ]
 
   setup %{conn: conn} do

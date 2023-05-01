@@ -28,7 +28,9 @@ defmodule Dbservice.Groups do
       iex> get_group!(456)
       ** (Ecto.NoResultsError)
   """
-  def get_group!(id), do: Repo.get!(Group, id)
+  def get_group!(id) do
+    Repo.get!(Group, id) |> Repo.preload(:group_type)
+  end
 
   @doc """
   Creates a group.

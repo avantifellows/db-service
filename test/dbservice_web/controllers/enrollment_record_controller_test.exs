@@ -31,8 +31,10 @@ defmodule DbserviceWeb.EnrollmentRecordControllerTest do
   @valid_fields [
     "academic_year",
     "board_medium",
-    "date_of_enrollment",
+    "date_of_group_enrollment",
+    "date_of_school_enrollment",
     "grade",
+    "group_id",
     "id",
     "is_current",
     "school_id",
