@@ -25,7 +25,7 @@ defmodule DbserviceWeb.SessionOccurenceController do
 
   swagger_path :index do
     get("/api/session-occurrence")
-    response(200, "OK", Schema.ref(:SessionOccurences))
+    response(200, "OK", Schema.ref(:SessionOccurrences))
   end
 
   def index(conn, params) do
@@ -80,7 +80,7 @@ defmodule DbserviceWeb.SessionOccurenceController do
       )
     end
 
-    response(200, "OK", Schema.ref(:SessionOccurenceWithUser))
+    response(200, "OK", Schema.ref(:SessionOccurrenceWithUser))
   end
 
   def show(conn, %{"id" => id}) do
