@@ -2,19 +2,20 @@ defmodule DbserviceWeb.FormSchemaController do
   use DbserviceWeb, :controller
 
   import Ecto.Query
+  alias Dbservice.FormSchemas
+  alias Dbservice.FormSchemas.FormSchema
 
   action_fallback DbserviceWeb.FallbackController
 
   use PhoenixSwagger
 
-  alias DbserviceWeb.SwaggerSchema.User, as: SwaggerSchemaUser
-  alias DbserviceWeb.SwaggerSchema.Common, as: SwaggerSchemaCommon
+  alias DbserviceWeb.SwaggerSchema.FormSchema, as: SwaggerSchemaFormSchema
 
   def swagger_definitions do
       Map.merge(
-        SwaggerSchemaUser.form_schema(),
-        SwaggerSchemaUser.form_schemas()
-      ),
+        SwaggerSchemaFormSchema.form_schema(),
+        SwaggerSchemaFormSchema.form_schemas()
+      )
   end
 
   swagger_path :index do
@@ -38,7 +39,7 @@ defmodule DbserviceWeb.FormSchemaController do
         end
       end)
 
-    user = Repo.all(query)
+    form_schema = Repo.all(query)
     render(conn, "index.json", form_schema: form_schema)
   end
 
@@ -88,7 +89,7 @@ defmodule DbserviceWeb.FormSchemaController do
   end
 
   def update(conn, params) do
-    user = FormSchemas.get_form_schema!(params["id"])
+    form_schema = FormSchemas.get_form_schema!(params["id"])
 
     with {:ok, %FormSchema{} = form_schema} <- FormSchemas.update_form_schema(form_schema, params) do
       render(conn, "show.json", form_schema: form_schema)
@@ -112,3 +113,4 @@ defmodule DbserviceWeb.FormSchemaController do
       send_resp(conn, :no_content, "")
     end
   end
+end
