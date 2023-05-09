@@ -1,6 +1,6 @@
 defmodule Dbservice.FormSchemas do
   @moduledoc """
-  The Groups context.
+  The Form Schemas context.
   """
 
   import Ecto.Query, warn: false
@@ -46,9 +46,9 @@ defmodule Dbservice.FormSchemas do
   @doc """
   Updates a form_schema.
   ## Examples
-      iex> update_form_schema(group, %{field: new_value})
+      iex> update_form_schema(form_schema, %{field: new_value})
       {:ok, %FormSchema{}}
-      iex> update_form_schema(group, %{field: bad_value})
+      iex> update_form_schema(form_schema, %{field: bad_value})
       {:error, %Ecto.Changeset{}}
   """
   def update_form_schema(%FormSchema{} = form_schema, attrs) do
