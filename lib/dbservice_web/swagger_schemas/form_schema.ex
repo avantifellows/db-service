@@ -17,7 +17,7 @@ defmodule DbserviceWeb.SwaggerSchema.FormSchema do
 
           example(%{
             name: "Registration",
-            data: %{
+            attributes: %{
               "label" => "First Name"
             },
           })

@@ -54,7 +54,7 @@ defmodule DbserviceWeb.FormSchemaController do
   end
 
   def create(conn, params) do
-    with {:ok, %FormSchema{} = form_schema} <- FormSchema.create_form_schema(params) do
+    with {:ok, %FormSchema{} = form_schema} <- FormSchemas.create_form_schema(params) do
       conn
       |> put_status(:created)
       |> put_resp_header("location", Routes.form_schema_path(conn, :show, form_schema))
