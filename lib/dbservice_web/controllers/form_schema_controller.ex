@@ -2,10 +2,11 @@ defmodule DbserviceWeb.FormSchemaController do
   use DbserviceWeb, :controller
 
   import Ecto.Query
+  alias Dbservice.Repo
   alias Dbservice.FormSchemas
   alias Dbservice.FormSchemas.FormSchema
 
-  action_fallback DbserviceWeb.FallbackController
+  action_fallback(DbserviceWeb.FallbackController)
 
   use PhoenixSwagger
 
@@ -25,17 +26,18 @@ defmodule DbserviceWeb.FormSchemaController do
 
   def index(conn, params) do
     query =
-      from m in FormSchema,
+      from(m in FormSchema,
         order_by: [asc: m.id],
         offset: ^params["offset"],
         limit: ^params["limit"]
+      )
 
     query =
       Enum.reduce(params, query, fn {key, value}, acc ->
         case String.to_existing_atom(key) do
           :offset -> acc
           :limit -> acc
-          atom -> from u in acc, where: field(u, ^atom) == ^value
+          atom -> from(u in acc, where: field(u, ^atom) == ^value)
         end
       end)
 
