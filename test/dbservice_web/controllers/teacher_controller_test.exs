@@ -33,7 +33,8 @@ defmodule DbserviceWeb.TeacherControllerTest do
     "program_manager_id",
     "school_id",
     "subject",
-    "user_id"
+    "user",
+    "uuid"
   ]
 
   setup %{conn: conn} do

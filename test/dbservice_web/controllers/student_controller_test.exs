@@ -12,7 +12,7 @@ defmodule DbserviceWeb.StudentControllerTest do
     mother_name: "some mother_name",
     mother_phone: "some mother_phone",
     stream: "some stream",
-    uuid: "some uuid",
+    student_id: "some updated student id",
     physically_handicapped: false,
     family_income: "some family income",
     father_profession: "some father profession",
@@ -30,7 +30,7 @@ defmodule DbserviceWeb.StudentControllerTest do
     mother_name: "some updated mother name",
     mother_phone: "some updated mother phone",
     stream: "some updated stream",
-    uuid: "some updated uuid",
+    student_id: "some updated student id",
     physically_handicapped: false,
     family_income: "some updated family income",
     father_profession: "some updated father profession",
@@ -63,6 +63,7 @@ defmodule DbserviceWeb.StudentControllerTest do
   }
   @valid_fields [
     "category",
+    "contact_hours_per_week",
     "family_income",
     "father_education_level",
     "father_name",
@@ -70,6 +71,7 @@ defmodule DbserviceWeb.StudentControllerTest do
     "father_profession",
     "has_internet_access",
     "id",
+    "is_dropper",
     "mother_education_level",
     "mother_name",
     "mother_phone",
@@ -78,9 +80,9 @@ defmodule DbserviceWeb.StudentControllerTest do
     "primary_smartphone_owner",
     "primary_smartphone_owner_profession",
     "stream",
+    "student_id",
     "time_of_device_availability",
-    "user_id",
-    "uuid"
+    "user"
   ]
 
   setup %{conn: conn} do
@@ -110,7 +112,7 @@ defmodule DbserviceWeb.StudentControllerTest do
                "mother_name" => "some mother_name",
                "mother_phone" => "some mother_phone",
                "stream" => "some stream",
-               "uuid" => "some uuid",
+               "student_id" => "some updated student id",
                "physically_handicapped" => false,
                "family_income" => "some family income",
                "father_profession" => "some father profession",
@@ -146,7 +148,7 @@ defmodule DbserviceWeb.StudentControllerTest do
                "mother_name" => "some updated mother name",
                "mother_phone" => "some updated mother phone",
                "stream" => "some updated stream",
-               "uuid" => "some updated uuid",
+               "student_id" => "some updated student id",
                "physically_handicapped" => false,
                "family_income" => "some updated family income",
                "father_profession" => "some updated father profession",

@@ -16,24 +16,14 @@ defmodule DbserviceWeb.GroupControllerTest do
     program_donor: "some program donor",
     program_state: "some program state",
     batch_contact_hours_per_week: Enum.random(20..48),
-    group_input_schema: %{},
-    group_locale: "some locale",
-    group_locale_data: %{}
+    input_schema: %{},
+    locale: "some locale",
+    locale_data: %{}
   }
   @update_attrs %{
-    name: "some updated name",
-    type: "program",
-    program_type: "some updated program type",
-    program_sub_type: "some updated program subtype",
-    program_mode: "some updated program mode",
-    program_start_date: ~U[2022-04-28 13:58:00Z],
-    program_target_outreach: Enum.random(3000..9999),
-    program_donor: "some updated program donor",
-    program_state: "some updated program state",
-    batch_contact_hours_per_week: Enum.random(20..48),
-    group_input_schema: %{},
-    group_locale: "some updated locale",
-    group_locale_data: %{}
+    input_schema: %{},
+    locale: "some updated locale",
+    locale_data: %{}
   }
   @invalid_attrs %{
     name: nil,
@@ -51,24 +41,12 @@ defmodule DbserviceWeb.GroupControllerTest do
     group_locale_data: nil
   }
   @valid_fields [
-    "batch_contact_hours_per_week",
-    "group_input_schema",
-    "group_locale",
-    "group_locale_data",
     "id",
-    "name",
-    "parent_id",
-    "program_donor",
-    "program_mode",
-    "program_product_used",
-    "program_start_date",
-    "program_state",
-    "program_sub_type",
-    "program_target_outreach",
-    "program_type",
-    "type"
+    "input_schema",
+    "locale",
+    "locale_data",
+    "name"
   ]
-
   setup %{conn: conn} do
     {:ok, conn: put_req_header(conn, "accept", "application/json")}
   end
@@ -90,8 +68,9 @@ defmodule DbserviceWeb.GroupControllerTest do
 
       assert %{
                "id" => ^id,
-               "name" => "some name",
-               "type" => "program"
+               "input_schema" => %{},
+               "locale" => "some locale",
+               "locale_data" => %{}
              } = json_response(conn, 200)
     end
 
@@ -112,8 +91,9 @@ defmodule DbserviceWeb.GroupControllerTest do
 
       assert %{
                "id" => ^id,
-               "name" => "some updated name",
-               "type" => "program"
+               "input_schema" => %{},
+               "locale" => "some updated locale",
+               "locale_data" => %{}
              } = json_response(conn, 200)
     end
 

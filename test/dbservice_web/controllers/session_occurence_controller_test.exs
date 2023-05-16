@@ -21,6 +21,8 @@ defmodule DbserviceWeb.SessionOccurenceControllerTest do
   @valid_fields [
     "end_time",
     "id",
+    "session_fk",
+    "session_id",
     "start_time"
   ]
 

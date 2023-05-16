@@ -12,18 +12,9 @@ defmodule Dbservice.GroupsFixtures do
       attrs
       |> Enum.into(%{
         name: "some name",
-        type: Enum.random(["cohort", "batch", "program"]),
-        program_type: "some program type",
-        program_sub_type: "some program subtype",
-        program_mode: "some program mode",
-        program_start_date: ~U[2022-04-28 13:58:00Z],
-        program_target_outreach: Enum.random(3000..9999),
-        program_donor: "some program donor",
-        program_state: "some program state",
-        batch_contact_hours_per_week: Enum.random(20..48),
-        group_input_schema: %{},
-        group_locale: "some locale",
-        group_locale_data: %{}
+        input_schema: %{},
+        locale: "some locale",
+        locale_data: %{}
       })
       |> Dbservice.Groups.create_group()
 
