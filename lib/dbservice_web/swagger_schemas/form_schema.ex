@@ -19,7 +19,7 @@ defmodule DbserviceWeb.SwaggerSchema.FormSchema do
             name: "Registration",
             attributes: %{
               "label" => "First Name"
-            },
+            }
           })
         end
     }

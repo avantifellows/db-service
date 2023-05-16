@@ -12,10 +12,10 @@ defmodule DbserviceWeb.FormSchemaController do
   alias DbserviceWeb.SwaggerSchema.FormSchema, as: SwaggerSchemaFormSchema
 
   def swagger_definitions do
-      Map.merge(
-        SwaggerSchemaFormSchema.form_schema(),
-        SwaggerSchemaFormSchema.form_schemas()
-      )
+    Map.merge(
+      SwaggerSchemaFormSchema.form_schema(),
+      SwaggerSchemaFormSchema.form_schemas()
+    )
   end
 
   swagger_path :index do
