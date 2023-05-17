@@ -46,7 +46,7 @@ defmodule DbserviceWeb.FormSchemaController do
   end
 
   swagger_path :create do
-    post("/api/form_schema")
+    post("/api/form-schema")
 
     parameters do
       body(:body, Schema.ref(:FormSchema), "Form Schema to create", required: true)
