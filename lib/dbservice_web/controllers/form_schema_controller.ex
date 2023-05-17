@@ -80,7 +80,7 @@ defmodule DbserviceWeb.FormSchemaController do
   end
 
   swagger_path :update do
-    patch("/api/form_schema/{formSchemaId}")
+    patch("/api/form-schema/{formSchemaId}")
 
     parameters do
       formSchemaId(:path, :integer, "The id of the form schema record", required: true)
