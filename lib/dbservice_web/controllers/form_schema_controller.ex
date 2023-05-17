@@ -65,7 +65,7 @@ defmodule DbserviceWeb.FormSchemaController do
   end
 
   swagger_path :show do
-    get("/api/form_schema/{formSchemaId}")
+    get("/api/form-schema/{formSchemaId}")
 
     parameters do
       formSchemaId(:path, :integer, "The id of the form schema record", required: true)
