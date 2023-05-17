@@ -22,6 +22,7 @@ alias Dbservice.Batches
 alias Dbservice.GroupTypes
 alias Dbservice.Batches
 alias Dbservice.BatchPrograms
+alias Dbservice.FormSchemas
 
 alias Faker.Person
 alias Faker.Internet
@@ -366,6 +367,18 @@ defmodule Seed do
 
     group_type
   end
+
+  def create_form_schema() do
+    {:ok, group_type} =
+      FormSchemas.create_form_schema(%{
+        name: Person.name(),
+        attributes: %{
+          "label" => Enum.random(["First Name", "Middle Name", "Last Name"])
+        }
+      })
+
+    group_type
+  end
 end
 
 Repo.delete_all(Users.Teacher)
@@ -458,5 +471,10 @@ if Mix.env() == :dev do
   # create some group_type
   for count <- 1..100 do
     Seed.create_group_type()
+  end
+
+  # create some form_schema
+  for count <- 1..100 do
+    Seed.create_form_schema()
   end
 end

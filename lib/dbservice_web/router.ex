@@ -3,35 +3,36 @@ defmodule DbserviceWeb.Router do
   use PhoenixSwagger
 
   pipeline :api do
-    plug :accepts, ["json"]
+    plug(:accepts, ["json"])
   end
 
   scope "/api", DbserviceWeb do
-    pipe_through :api
+    pipe_through(:api)
 
-    resources "/group", GroupController, except: [:new, :edit]
-    post "/group-type/:id/update-users", GroupTypeController, :update_users
-    post "/group-type/:id/update-sessions", GroupTypeController, :update_sessions
+    resources("/group", GroupController, except: [:new, :edit])
+    post("/group-type/:id/update-users", GroupTypeController, :update_users)
+    post("/group-type/:id/update-sessions", GroupTypeController, :update_sessions)
 
-    resources "/user", UserController, only: [:index, :create, :update, :show]
-    post "/user/:id/update-groups", UserController, :update_groups
-    resources "/student", StudentController, except: [:new, :edit]
-    post "/student/register", StudentController, :register
-    patch "/student/register/:id", StudentController, :update_student_with_user
-    resources "/teacher", TeacherController, except: [:new, :edit]
-    post "/teacher/register", TeacherController, :register
-    patch "/teacher/register/:id", TeacherController, :update_teacher_with_user
-    resources "/school", SchoolController, except: [:new, :edit]
-    resources "/enrollment-record", EnrollmentRecordController, except: [:new, :edit]
-    resources "/session", SessionController, only: [:index, :create, :update, :show]
-    post "/session/:id/update-groups", SessionController, :update_groups
-    resources "/session-occurrence", SessionOccurenceController, except: [:new, :edit]
-    resources "/user-session", UserSessionController, except: [:new, :edit]
-    resources "/group-session", GroupSessionController, except: [:new, :edit]
-    resources "/program", ProgramController, except: [:new, :edit]
-    resources "/batch", BatchController, except: [:new, :edit]
-    resources "/batch-program", BatchProgramController, except: [:new, :edit]
-    resources "/group-type", GroupTypeController, except: [:new, :edit]
+    resources("/user", UserController, only: [:index, :create, :update, :show])
+    post("/user/:id/update-groups", UserController, :update_groups)
+    resources("/student", StudentController, except: [:new, :edit])
+    post("/student/register", StudentController, :register)
+    patch("/student/register/:id", StudentController, :update_student_with_user)
+    resources("/teacher", TeacherController, except: [:new, :edit])
+    post("/teacher/register", TeacherController, :register)
+    patch("/teacher/register/:id", TeacherController, :update_teacher_with_user)
+    resources("/school", SchoolController, except: [:new, :edit])
+    resources("/enrollment-record", EnrollmentRecordController, except: [:new, :edit])
+    resources("/session", SessionController, only: [:index, :create, :update, :show])
+    post("/session/:id/update-groups", SessionController, :update_groups)
+    resources("/session-occurrence", SessionOccurenceController, except: [:new, :edit])
+    resources("/user-session", UserSessionController, except: [:new, :edit])
+    resources("/group-session", GroupSessionController, except: [:new, :edit])
+    resources("/program", ProgramController, except: [:new, :edit])
+    resources("/batch", BatchController, except: [:new, :edit])
+    resources("/batch-program", BatchProgramController, except: [:new, :edit])
+    resources("/group-type", GroupTypeController, except: [:new, :edit])
+    resources("/form-schema", FormSchemaController)
 
     def swagger_info do
       %{
@@ -44,10 +45,11 @@ defmodule DbserviceWeb.Router do
   end
 
   scope "/docs/swagger" do
-    forward "/", PhoenixSwagger.Plug.SwaggerUI,
+    forward("/", PhoenixSwagger.Plug.SwaggerUI,
       otp_app: :dbservice,
       swagger_file: "swagger.json",
       opts: [disable_validator: true]
+    )
   end
 
   # Enables LiveDashboard only for development
@@ -61,9 +63,9 @@ defmodule DbserviceWeb.Router do
     import Phoenix.LiveDashboard.Router
 
     scope "/" do
-      pipe_through [:fetch_session, :protect_from_forgery]
+      pipe_through([:fetch_session, :protect_from_forgery])
 
-      live_dashboard "/dashboard", metrics: DbserviceWeb.Telemetry
+      live_dashboard("/dashboard", metrics: DbserviceWeb.Telemetry)
     end
   end
 
@@ -73,9 +75,9 @@ defmodule DbserviceWeb.Router do
   # node running the Phoenix server.
   if Mix.env() == :dev do
     scope "/dev" do
-      pipe_through [:fetch_session, :protect_from_forgery]
+      pipe_through([:fetch_session, :protect_from_forgery])
 
-      forward "/mailbox", Plug.Swoosh.MailboxPreview
+      forward("/mailbox", Plug.Swoosh.MailboxPreview)
     end
   end
 end
