@@ -99,7 +99,7 @@ defmodule DbserviceWeb.FormSchemaController do
   end
 
   swagger_path :delete do
-    PhoenixSwagger.Path.delete("/api/form_schema/{formSchemaId}")
+    PhoenixSwagger.Path.delete("/api/form-schema/{formSchemaId}")
 
     parameters do
       formSchemaId(:path, :integer, "The id of the form schema record", required: true)
