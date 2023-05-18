@@ -14,7 +14,7 @@ defmodule DbserviceWeb.Router do
     post("/group-type/:id/update-sessions", GroupTypeController, :update_sessions)
 
     resources("/user", UserController, only: [:index, :create, :update, :show])
-    post("/user/:id/update-groups", UserController, :update_groups)
+    post("/user/:id/update-groups", UserController, :update_group_type)
     resources("/student", StudentController, except: [:new, :edit])
     post("/student/register", StudentController, :register)
     patch("/student/register/:id", StudentController, :update_student_with_user)

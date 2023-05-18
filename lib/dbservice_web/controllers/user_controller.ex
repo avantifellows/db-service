@@ -133,9 +133,9 @@ defmodule DbserviceWeb.UserController do
     response(200, "OK", Schema.ref(:User))
   end
 
-  def update_groups(conn, %{"id" => user_id, "group_ids" => group_ids})
-      when is_list(group_ids) do
-    with {:ok, %User{} = user} <- Users.update_groups(user_id, group_ids) do
+  def update_group_type(conn, %{"id" => user_id, "group_type_ids" => group_type_ids})
+      when is_list(group_type_ids) do
+    with {:ok, %User{} = user} <- Users.update_group_type(user_id, group_type_ids) do
       render(conn, "show.json", user: user)
     end
   end
