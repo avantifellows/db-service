@@ -5,7 +5,7 @@ defmodule Dbservice.Sessions.Session do
   import Ecto.Changeset
 
   alias Dbservice.Users.User
-  alias Dbservice.Groups.Group
+  alias Dbservice.Groups.GroupType
 
   schema "session" do
     field :end_time, :utc_datetime
@@ -26,7 +26,7 @@ defmodule Dbservice.Sessions.Session do
     timestamps()
 
     many_to_many :users, User, join_through: "user_session", on_replace: :delete
-    many_to_many :group, Group, join_through: "group_session", on_replace: :delete
+    many_to_many :group_type, GroupType, join_through: "group_session", on_replace: :delete
   end
 
   @doc false
@@ -54,9 +54,9 @@ defmodule Dbservice.Sessions.Session do
     ])
   end
 
-  def changeset_update_groups(session, groups) do
+  def changeset_update_groups(session, group_types) do
     session
     |> change()
-    |> put_assoc(:group, groups)
+    |> put_assoc(:group_type, group_types)
   end
 end

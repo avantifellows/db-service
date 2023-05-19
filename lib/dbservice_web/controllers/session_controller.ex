@@ -134,9 +134,9 @@ defmodule DbserviceWeb.SessionController do
     response(200, "OK", Schema.ref(:Session))
   end
 
-  def update_groups(conn, %{"id" => session_id, "group_ids" => group_ids})
-      when is_list(group_ids) do
-    with {:ok, %Session{} = session} <- Sessions.update_groups(session_id, group_ids) do
+  def update_groups(conn, %{"id" => session_id, "group_type_ids" => group_type_ids})
+      when is_list(group_type_ids) do
+    with {:ok, %Session{} = session} <- Sessions.update_group_types(session_id, group_type_ids) do
       render(conn, "show.json", session: session)
     end
   end
