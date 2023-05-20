@@ -26,4 +26,4 @@ jobs:
         run: |
           echo "$SSH_PRIVATE_KEY" > deploy_key
           chmod 600 deploy_key
-          sudo ssh -i deploy_key ubuntu@staging-db.avantifellows.org "cd /var/www/html/db-service && git pull origin develop && mix deps.get && mix phx.digest && mix ecto.migrate && MIX_ENV=prod mix phx.server"
+          sudo ssh -o StrictHostKeyChecking=no -i deploy_key ubuntu@staging-db.avantifellows.org "cd /var/www/html/db-service && git pull origin develop && mix deps.get && mix phx.digest && mix ecto.migrate && MIX_ENV=prod mix phx.server"
