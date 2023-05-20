@@ -29,9 +29,11 @@ jobs:
           touch ~/.ssh/known_hosts
           ssh-keyscan 3.108.135.26 >> ~/.ssh/known_hosts
 
-          
+      - name: Copy .env file
+        run: cp .env ubuntu@3.108.135.26:/var/www/html/db-service/.env
+    
       - name: Deploy to EC2
         run: |
           echo "$SSH_PRIVATE_KEY" > deploy_key
           chmod 600 deploy_key
-           ssh -i deploy_key ubuntu@3.108.135.26 "cd /var/www/html/db-service && echo "Pulling latest code" && git pull origin develop && echo "Getting depes" && mix deps.get && echo "Remove swagger" && echo "Run migration" && sudo mix ecto.migrate && sudo rm /var/www/html/db-service/priv/static/swagger.json && echo "Generate swagger" && mix phx.swagger.generate && echo "Run server" && MIX_ENV=prod mix phx.server"
+           ssh -i deploy_key ubuntu@3.108.135.26 "cd /var/www/html/db-service && echo "Pulling latest code" && git pull origin develop && echo "Getting depes" && mix deps.get && echo "Remove swagger" && echo "Run migration" && sudo mix ecto.migrate && sudo rm /var/www/html/db-service/priv/static/swagger.json && echo "Generate swagger" && mix phx.swagger.generate && echo "Run server" && source /var/www/html/db-service/.env && MIX_ENV=prod mix phx.server"
