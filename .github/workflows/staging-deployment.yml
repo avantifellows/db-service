@@ -29,6 +29,7 @@ jobs:
           touch ~/.ssh/known_hosts
           ssh-keyscan 3.108.135.26 >> ~/.ssh/known_hosts
 
+          
       - name: Deploy to EC2
         run: |
           echo "$SSH_PRIVATE_KEY" > deploy_key
