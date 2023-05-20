@@ -18,10 +18,10 @@ jobs:
         uses: webfactory/ssh-agent@v0.5.0
         with:
           ssh-private-key: ${{ secrets.SSH_PRIVATE_KEY }}
-          
+
       - name: Set up SSH known hosts
         run: ssh-keyscan 3.108.135.26 >> ~/.ssh/known_hosts
 
       - name: Deploy to EC2
         run: |
-          sudo ssh -A ubuntu@3.108.135.26 "cd /var/www/html/db-service && git pull origin develop && mix deps.get && mix phx.digest && mix ecto.migrate && MIX_ENV=prod mix phx.server"
+          sudo ssh -i ubuntu@3.108.135.26 "cd /var/www/html/db-service && git pull origin develop && mix deps.get && mix phx.digest && mix ecto.migrate && MIX_ENV=prod mix phx.server"
