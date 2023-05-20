@@ -21,4 +21,4 @@ jobs:
 
       - name: Deploy to EC2
         run: |
-          sudo ssh -o StrictHostKeyChecking=no -A ubuntu@3.108.135.26 "cd /var/www/html/db-service && git pull origin develop && mix deps.get && mix phx.digest && mix ecto.migrate && MIX_ENV=prod mix phx.server"
+          sudo ssh -A ubuntu@3.108.135.26 "cd /var/www/html/db-service && git pull origin develop && mix deps.get && mix phx.digest && mix ecto.migrate && MIX_ENV=prod mix phx.server"
