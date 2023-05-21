@@ -8,7 +8,12 @@
 import Config
 import Dotenv
 
+Logger.debug("Before Dotenv.load()")
 Dotenv.load()
+Logger.debug("After Dotenv.load()")
+
+Logger.info("Loaded environment variables:")
+Enum.each(System.get_env(), fn {key, value} -> Logger.info("#{key}: #{value}") end)
 
 config :dbservice,
   ecto_repos: [Dbservice.Repo]
