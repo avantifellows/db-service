@@ -17,6 +17,7 @@ jobs:
         POOL_SIZE: ${{ secrets.POOL_SIZE }}
 
     steps:
+
       - name: Echo Environment Variables
         run: |
           echo "DATABASE_URL: $DATABASE_URL"
@@ -24,8 +25,7 @@ jobs:
           echo "PHX_HOST: $PHX_HOST"
           echo "WHITELISTED_DOMAINS: $WHITELISTED_DOMAINS"
           echo "POOL_SIZE: $POOL_SIZE"
-
-    steps:
+          
       - name: Checkout code
         uses: actions/checkout@v2
 
