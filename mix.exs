@@ -50,7 +50,7 @@ defmodule Dbservice.MixProject do
       {:ex_check, "~> 0.14.0", only: [:dev], runtime: false},
       {:dialyxir, ">= 0.0.0", only: [:dev], runtime: false},
       {:credo, ">= 0.0.0", only: [:dev], runtime: false},
-      {:dotenv, "~> 2.0"}
+      {:dotenvy, "~> 0.8.0"}
     ]
   end
 
