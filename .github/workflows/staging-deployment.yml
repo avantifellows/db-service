@@ -17,6 +17,15 @@ jobs:
         POOL_SIZE: ${{ secrets.POOL_SIZE }}
 
     steps:
+      - name: Echo Environment Variables
+        run: |
+          echo "DATABASE_URL: $DATABASE_URL"
+          echo "SECRET_KEY_BASE: $SECRET_KEY_BASE"
+          echo "PHX_HOST: $PHX_HOST"
+          echo "WHITELISTED_DOMAINS: $WHITELISTED_DOMAINS"
+          echo "POOL_SIZE: $POOL_SIZE"
+
+    steps:
       - name: Checkout code
         uses: actions/checkout@v2
 
@@ -34,12 +43,6 @@ jobs:
           mkdir -p ~/.ssh
           touch ~/.ssh/known_hosts
           ssh-keyscan 3.108.135.26 >> ~/.ssh/known_hosts
-
-      # - name: Copy .env file
-      #   run: cp .env ubuntu@3.108.135.26:/var/www/html/db-service/.env
-
-      # - name: Install Dotenv
-      #   run: mix archive.install hex dotenv
     
       - name: Deploy to EC2
         run: |
