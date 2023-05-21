@@ -31,6 +31,9 @@ jobs:
 
       # - name: Copy .env file
       #   run: cp .env ubuntu@3.108.135.26:/var/www/html/db-service/.env
+
+      - name: Install Dotenv
+        run: mix archive.install hex dotenv
     
       - name: Deploy to EC2
         run: |
