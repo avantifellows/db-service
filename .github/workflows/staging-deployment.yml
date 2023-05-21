@@ -9,12 +9,12 @@ on:
 jobs:
   deploy:
     runs-on: ubuntu-latest
-  env:
-      DATABASE_URL: ${{ secrets.DATABASE_URL }}
-      SECRET_KEY_BASE: ${{ secrets.SECRET_KEY_BASE }}
-      PHX_HOST: ${{ secrets.PHX_HOST }}
-      WHITELISTED_DOMAINS: ${{ secrets.WHITELISTED_DOMAINS }}
-      POOL_SIZE: ${{ secrets.POOL_SIZE }}
+    env:
+        DATABASE_URL: ${{ secrets.DATABASE_URL }}
+        SECRET_KEY_BASE: ${{ secrets.SECRET_KEY_BASE }}
+        PHX_HOST: ${{ secrets.PHX_HOST }}
+        WHITELISTED_DOMAINS: ${{ secrets.WHITELISTED_DOMAINS }}
+        POOL_SIZE: ${{ secrets.POOL_SIZE }}
 
     steps:
       - name: Checkout code
