@@ -7,7 +7,7 @@ source(["config/.env", "config/.env.#{config_env()}"])
 
 if config_env() == :prod do
   config :dbservice, Dbservice.Repo,
-    database_url: env!("DATABASE_URL", :string!),
+    url: env!("DATABASE_URL", :string!),
     secret_key_base: env!("SECRET_KEY_BASE", :string!),
     # username: env!("USERNAME", :string),
     # password: env!("PASSWORD", :string),
