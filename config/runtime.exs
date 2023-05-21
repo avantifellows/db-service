@@ -8,11 +8,12 @@ source(["config/.env", "config/.env.#{config_env()}"])
 if config_env() == :prod do
   config :dbservice, Dbservice.Repo,
     url: env!("DATABASE_URL", :string!),
-    secret_key_base: env!("SECRET_KEY_BASE", :string!),
-    # username: env!("USERNAME", :string),
-    # password: env!("PASSWORD", :string),
-    host: env!("PHX_HOST", :string!),
     pool_size: env!("POOL_SIZE", :integer) || 10
+
+  config :dbservice, DbserviceWeb.Endpoint,
+    load_from_system_env: false,
+    url: [host: env!("PHX_HOST", :string!), port: 443],
+    secret_key_base: env!("SECRET_KEY_BASE", :string!)
 end
 
 
