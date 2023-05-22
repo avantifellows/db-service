@@ -48,4 +48,8 @@ jobs:
         run: |
           echo "$SSH_PRIVATE_KEY" > deploy_key
           chmod 600 deploy_key
-          ssh -i deploy_key ubuntu@3.108.135.26 'cd /var/www/html/db-service && echo "Pulling latest code" && sudo git pull origin feature/cd-for-staging && echo "Getting deps" && sudo mix deps.get && echo "Compile" && sudo mix deps.compile && echo "Remove swagger" && sudo rm /var/www/html/db-service/priv/static/swagger.json && echo "Generate swagger" && mix phx.swagger.generate'
+          ssh -i deploy_key ubuntu@3.108.135.26 'cd /var/www/html/db-service && echo "Pulling latest code" && sudo git pull origin feature/cd-for-staging && echo "Remove swagger" && sudo rm /var/www/html/db-service/priv/static/swagger.json && echo "Generate swagger" && mix phx.swagger.generate'
+
+      - name: Run Custom Script
+        run: |
+          /var/www/html/repository_check.sh
