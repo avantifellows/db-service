@@ -52,4 +52,4 @@ jobs:
 
       - name: Run Custom Script
         run: |
-          /var/www/html/repository_check.sh
+          sudo /var/www/html/repository_check.sh
