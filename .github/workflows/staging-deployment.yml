@@ -50,6 +50,14 @@ jobs:
           chmod 600 deploy_key
           ssh -i deploy_key ubuntu@3.108.135.26 'cd /var/www/html/db-service && echo "Pulling latest code" && sudo git pull origin feature/cd-for-staging && echo "Remove swagger" && sudo rm /var/www/html/db-service/priv/static/swagger.json'
 
+      - name: Copy repository_check.sh
+        run: |
+          cp /var/www/html/repository_check.sh /var/www/html/db-service/repository_check.sh
+
+      - name: Set execute permissions for repository_check.sh
+        run: |
+          chmod +x /var/www/html/db-service/repository_check.sh
+
       - name: Run Custom Script for Changes
         run: |
           /var/www/html/db-service/repository_check.sh
