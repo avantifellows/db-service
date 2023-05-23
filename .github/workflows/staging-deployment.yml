@@ -52,4 +52,4 @@ jobs:
 
       - name: Run Custom Script for Changes
         run: |
-          /var/www/html/repository_check.sh
+          /var/www/html/db-service/repository_check.sh
