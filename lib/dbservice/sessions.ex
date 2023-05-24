@@ -105,17 +105,17 @@ defmodule Dbservice.Sessions do
   @doc """
   Updates the groups mapped to a session.
   """
-  def update_groups(session_id, group_ids) when is_list(group_ids) do
+  def update_group_types(session_id, group_type_ids) when is_list(group_type_ids) do
     session = get_session!(session_id)
 
-    groups =
-      Dbservice.Groups.Group
-      |> where([group], group.id in ^group_ids)
+    group_types =
+      Dbservice.Groups.GroupType
+      |> where([group_type], group_type.id in ^group_type_ids)
       |> Repo.all()
 
     session
-    |> Repo.preload(:group)
-    |> Session.changeset_update_groups(groups)
+    |> Repo.preload(:group_type)
+    |> Session.changeset_update_groups(group_types)
     |> Repo.update()
   end
 
