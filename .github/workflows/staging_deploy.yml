@@ -53,6 +53,7 @@ jobs:
           
       - name: Run tmux commands for deployment
         run: |
+          tmux
           tmux switch-session -t 0
 
           tmux send-keys -t 0 C-c
@@ -63,7 +64,7 @@ jobs:
           tmux send-keys -t 0 'sudo mix phx.swagger.generate' Enter
           tmux send-keys -t 0 'MIX_ENV=prod mix phx.server' Enter
       
-      - name: Clean up
-        run: |
-          # Kill the tmux session
-          tmux kill-session -t 0
+      # - name: Clean up
+      #   run: |
+      #     # Kill the tmux session
+      #     tmux kill-session -t 0
