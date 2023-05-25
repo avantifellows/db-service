@@ -61,8 +61,6 @@ jobs:
           tmux send-keys -t 0 'sudo mix deps.compile' Enter
           tmux send-keys -t 0 'sudo mix ecto.migrate' Enter
           tmux send-keys -t 0 'sudo mix phx.swagger.generate' Enter
-
-
           tmux send-keys -t 0 'MIX_ENV=prod mix phx.server' Enter
       
       - name: Clean up
