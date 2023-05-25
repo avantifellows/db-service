@@ -32,7 +32,7 @@ jobs:
           
             #Now we have got the access of EC2 and we will start the deploy .
             cd /var/www/html/db-service &&
-            git pull origin feature/cd-deployment
+            sudo git pull origin feature/cd-deployment
           '
 
 # jobs:
