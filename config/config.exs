@@ -12,7 +12,7 @@ config :dbservice,
 
 # Configures the endpoint
 config :dbservice, DbserviceWeb.Endpoint,
-  load_from_system_env: true,
+  load_from_system_env: false,
   url: [host: "localhost"],
   render_errors: [view: DbserviceWeb.ErrorView, accepts: ~w(json), layout: false],
   pubsub_server: Dbservice.PubSub,
@@ -20,10 +20,10 @@ config :dbservice, DbserviceWeb.Endpoint,
 
 # Configures the mailer
 #
-# By default it uses the "Local" adapter which stores the emails
+# By default, it uses the "Local" adapter which stores the emails
 # locally. You can see the emails in your browser, at "/dev/mailbox".
 #
-# For production it's recommended to configure a different adapter
+# For production, it's recommended to configure a different adapter
 # at the `config/runtime.exs`.
 config :dbservice, Dbservice.Mailer, adapter: Swoosh.Adapters.Local
 
@@ -43,7 +43,7 @@ config :dbservice, :phoenix_swagger,
     "priv/static/swagger.json" => [
       # phoenix routes will be converted to swagger paths
       router: DbserviceWeb.Router,
-      # (optional) endpoint config used to set host, port and https schemes.
+      # (optional) endpoint config used to set host, port, and https schemes.
       endpoint: DbserviceWeb.Endpoint
     ]
   }
@@ -57,7 +57,7 @@ config :dbservice, Dbservice.Repo,
   queue_target: 15_000,
   queue_interval: 100_000
 
-# Import environment specific config. This must remain at the bottom
+# Import environment-specific config. This must remain at the bottom
 # of this file so it overrides the configuration defined above.
 import_config "#{config_env()}.exs"
 

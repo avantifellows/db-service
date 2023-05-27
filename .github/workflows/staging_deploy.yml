@@ -32,7 +32,11 @@ jobs:
           
             #Now we have got the access of EC2 and we will start the deploy .
             cd /var/www/html/db-service &&
-            bash repository_check.sh
+            sudo git pull origin feature/cd-deployment &&
+            sudo mix deps.compile
+            sudo mix ecto.migrate
+            sudo mix phx.swagger.generate
+            sudo MIX_ENV=prod mix phx.server
           '
 
 # jobs:
