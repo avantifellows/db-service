@@ -38,7 +38,6 @@ jobs:
             sudo mix deps.compile
             sudo mix ecto.migrate
             sudo mix phx.swagger.generate
-            sudo MIX_ENV=prod mix phx.server
           '
 
 # jobs:
