@@ -34,52 +34,8 @@ jobs:
             sudo su &&
             cd /var/www/html/db-service &&
             sudo git pull origin feature/cd-deployment &&
-            sudo mix deps.get
-            sudo mix deps.compile
-            sudo mix ecto.migrate
-            sudo mix phx.swagger.generate
+            sudo MIX_ENV=prod mix deps.get
+            sudo MIX_ENV=prod mix deps.compile
+            sudo MIX_ENV=prod mix ecto.migrate
+            sudo MIX_ENV=prod mix phx.swagger.generate
           '
-
-# jobs:
-#   deploy:
-    # runs-on: ubuntu-latest
-    # env:
-    #     DATABASE_URL: ${{ secrets.DATABASE_URL }}
-    #     SECRET_KEY_BASE: ${{ secrets.SECRET_KEY_BASE }}
-    #     PHX_HOST: ${{ secrets.PHX_HOST }}
-    #     WHITELISTED_DOMAINS: ${{ secrets.WHITELISTED_DOMAINS }}
-    #     POOL_SIZE: ${{ secrets.POOL_SIZE }}
-
-    # steps:
-
-    #   - name: Echo Environment Variables
-    #     run: |
-    #       echo "DATABASE_URL: $DATABASE_URL"
-    #       echo "SECRET_KEY_BASE: $SECRET_KEY_BASE"
-    #       echo "PHX_HOST: $PHX_HOST"
-    #       echo "WHITELISTED_DOMAINS: $WHITELISTED_DOMAINS"
-    #       echo "POOL_SIZE: $POOL_SIZE"
-
-    #   - name: Checkout code
-    #     uses: actions/checkout@v2
-
-    #   - name: Configure SSH
-    #     uses: webfactory/ssh-agent@v0.5.0
-    #     with:
-    #       ssh-private-key: ${{ secrets.SSH_PRIVATE_KEY }}
-
-    #   - name: Clear SSH known hosts
-    #     run: |
-    #       rm -f ~/.ssh/known_hosts
-
-    #   - name: Set up SSH known hosts
-    #     run: |
-    #       mkdir -p ~/.ssh
-    #       touch ~/.ssh/known_hosts
-    #       ssh-keyscan 3.108.135.26 >> ~/.ssh/known_hosts
-    
-    #   - name: Deploy to EC2
-    #     run: |
-    #       echo "$SSH_PRIVATE_KEY" > deploy_key
-    #       chmod 600 deploy_key
-    #       ssh -i deploy_key ubuntu@3.108.135.26 'cd /var/www/html/db-service && echo "Pulling latest code" && sudo git pull origin feature/cd-for-staging && echo "Remove swagger" && sudo rm /var/www/html/db-service/priv/static/swagger.json && bash '
