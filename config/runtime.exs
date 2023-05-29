@@ -1,9 +1,7 @@
 import Config
 import Dotenvy
 
-
 source(["config/.env", "config/.env.#{config_env()}"])
-
 
 if config_env() == :prod do
   config :dbservice, Dbservice.Repo,
@@ -15,7 +13,6 @@ if config_env() == :prod do
     url: [host: env!("PHX_HOST", :string!), port: 443],
     secret_key_base: env!("SECRET_KEY_BASE", :string!)
 end
-
 
 # config/runtime.exs is executed for all environments, including
 # during releases. It is executed after compilation and before the
