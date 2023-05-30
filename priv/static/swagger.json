@@ -334,7 +334,7 @@
       "example": {
         "address": "Bandra Complex, Kurla Road",
         "city": "Mumbai",
-        "date_of_birth": "2003/08/06",
+        "date_of_birth": "2003-08-22",
         "district": "Mumbai",
         "email": "rahul.sharma@example.com",
         "full_name": "Rahul Sharma",
