@@ -26,7 +26,8 @@ defmodule DbserviceWeb.SessionView do
       session_id: session.session_id,
       purpose: session.purpose,
       repeat_schedule: session.repeat_schedule,
-      platform_id: session.platform_id
+      platform_id: session.platform_id,
+      form_schema_id: session.form_schema_id
     }
   end
 end

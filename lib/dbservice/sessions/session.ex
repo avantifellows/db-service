@@ -6,27 +6,29 @@ defmodule Dbservice.Sessions.Session do
 
   alias Dbservice.Users.User
   alias Dbservice.Groups.GroupType
+  alias Dbservice.FormSchemas.FormSchema
 
   schema "session" do
-    field :end_time, :utc_datetime
-    field :meta_data, :map
-    field :name, :string
-    field :platform, :string
-    field :platform_link, :string
-    field :portal_link, :string
-    field :start_time, :utc_datetime
-    field :owner_id, :id
-    field :created_by_id, :id
-    field :session_id, :string
-    field :is_active, :boolean
-    field :purpose, :map
-    field :repeat_schedule, :map
-    field :platform_id, :string
+    field(:end_time, :utc_datetime)
+    field(:meta_data, :map)
+    field(:name, :string)
+    field(:platform, :string)
+    field(:platform_link, :string)
+    field(:portal_link, :string)
+    field(:start_time, :utc_datetime)
+    field(:owner_id, :id)
+    field(:created_by_id, :id)
+    field(:session_id, :string)
+    field(:is_active, :boolean)
+    field(:purpose, :map)
+    field(:repeat_schedule, :map)
+    field(:platform_id, :string)
 
     timestamps()
 
-    many_to_many :users, User, join_through: "user_session", on_replace: :delete
-    many_to_many :group_type, GroupType, join_through: "group_session", on_replace: :delete
+    many_to_many(:users, User, join_through: "user_session", on_replace: :delete)
+    many_to_many(:group_type, GroupType, join_through: "group_session", on_replace: :delete)
+    belongs_to(:form_schema, FormSchema)
   end
 
   @doc false
