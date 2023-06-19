@@ -21,6 +21,14 @@ defmodule DbserviceWeb.UserSessionController do
 
   swagger_path :index do
     get("/api/user-session")
+
+    parameters do
+      params(:query, :string, "The id the user",
+        required: false,
+        name: "user_id"
+      )
+    end
+
     response(200, "OK", Schema.ref(:UserSessions))
   end
 

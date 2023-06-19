@@ -26,6 +26,18 @@ defmodule DbserviceWeb.SessionController do
 
   swagger_path :index do
     get("/api/session?session_id=c714-e1d4-5a42-0f9f-36b3")
+
+    parameters do
+      params(:query, :string, "The id the session",
+        required: false,
+        name: "session_id"
+      )
+
+      params(:query, :string, "The name the session", required: false, name: "name")
+
+      params(:query, :string, "The platform id the session", required: false, name: "platform_id")
+    end
+
     response(200, "OK", Schema.ref(:Sessions))
   end
 

@@ -6,7 +6,7 @@ defmodule DbserviceWeb.SessionOccurenceController do
   alias Dbservice.Sessions
   alias Dbservice.Sessions.SessionOccurence
 
-  action_fallback DbserviceWeb.FallbackController
+  action_fallback(DbserviceWeb.FallbackController)
 
   use PhoenixSwagger
 
@@ -25,22 +25,31 @@ defmodule DbserviceWeb.SessionOccurenceController do
 
   swagger_path :index do
     get("/api/session-occurrence")
+
+    parameters do
+      params(:query, :string, "The id the session",
+        required: false,
+        name: "session_id"
+      )
+    end
+
     response(200, "OK", Schema.ref(:SessionOccurrences))
   end
 
   def index(conn, params) do
     query =
-      from m in SessionOccurence,
+      from(m in SessionOccurence,
         order_by: [asc: m.id],
         offset: ^params["offset"],
         limit: ^params["limit"]
+      )
 
     query =
       Enum.reduce(params, query, fn {key, value}, acc ->
         case String.to_existing_atom(key) do
           :offset -> acc
           :limit -> acc
-          atom -> from u in acc, where: field(u, ^atom) == ^value
+          atom -> from(u in acc, where: field(u, ^atom) == ^value)
         end
       end)
 

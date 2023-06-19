@@ -6,7 +6,7 @@ defmodule DbserviceWeb.BatchController do
   alias Dbservice.Batches
   alias Dbservice.Batches.Batch
 
-  action_fallback DbserviceWeb.FallbackController
+  action_fallback(DbserviceWeb.FallbackController)
 
   use PhoenixSwagger
 
@@ -18,23 +18,34 @@ defmodule DbserviceWeb.BatchController do
   end
 
   swagger_path :index do
-    get("/api/batch?name=Delhi-12-NEET")
+    get("/api/batch")
+
+    parameters do
+      params(:query, :string, "The name the batch", required: false, name: "name")
+
+      params(:query, :string, "The contact hours per week of the batch",
+        required: false,
+        name: "contact_hours_per_week"
+      )
+    end
+
     response(200, "OK", Schema.ref(:Batches))
   end
 
   def index(conn, params) do
     query =
-      from m in Batch,
+      from(m in Batch,
         order_by: [asc: m.id],
         offset: ^params["offset"],
         limit: ^params["limit"]
+      )
 
     query =
       Enum.reduce(params, query, fn {key, value}, acc ->
         case String.to_existing_atom(key) do
           :offset -> acc
           :limit -> acc
-          atom -> from u in acc, where: field(u, ^atom) == ^value
+          atom -> from(u in acc, where: field(u, ^atom) == ^value)
         end
       end)
 

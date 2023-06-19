@@ -20,7 +20,18 @@ defmodule DbserviceWeb.SchoolController do
   end
 
   swagger_path :index do
-    get("/api/school?board_medium=en")
+    get("/api/school")
+
+    parameters do
+      params(:query, :string, "The name the school",
+        required: false,
+        name: "name"
+      )
+
+      params(:query, :string, "The code the school", required: false, name: "code")
+      params(:query, :string, "The udise code the school", required: false, name: "udise_code")
+    end
+
     response(200, "OK", Schema.ref(:Schools))
   end
 

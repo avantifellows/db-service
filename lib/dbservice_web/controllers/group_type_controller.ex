@@ -29,7 +29,17 @@ defmodule DbserviceWeb.GroupTypeController do
   end
 
   swagger_path :index do
-    get("/api/group-type?type=program&child_id=24")
+    get("/api/group-type")
+
+    parameters do
+      params(:query, :string, "The type the group", required: false, name: "type")
+
+      params(:query, :string, "The child id the group type",
+        required: false,
+        name: "child_id"
+      )
+    end
+
     response(200, "OK", Schema.ref(:GroupTypes))
   end
 
