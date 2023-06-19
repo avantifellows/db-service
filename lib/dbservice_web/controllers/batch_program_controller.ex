@@ -24,9 +24,9 @@ defmodule DbserviceWeb.BatchProgramController do
     get("/api/batch-program")
 
     parameters do
-      params(:query, :string, "The id the batch", required: false, name: "batch_id")
+      params(:query, :integer, "The id the batch", required: false, name: "batch_id")
 
-      params(:query, :string, "The id the program",
+      params(:query, :integer, "The id the program",
         required: false,
         name: "program"
       )

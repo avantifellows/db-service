@@ -30,7 +30,7 @@ defmodule DbserviceWeb.UserController do
       params(:query, :string, "The email of the user", required: false, name: "email")
       params(:query, :string, "The full name of the user", required: false, name: "full_name")
 
-      params(:query, :string, "The date of birth of the user",
+      params(:query, :date, "The date of birth of the user",
         required: false,
         name: "date_of_birth"
       )

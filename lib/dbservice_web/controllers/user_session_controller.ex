@@ -23,7 +23,7 @@ defmodule DbserviceWeb.UserSessionController do
     get("/api/user-session")
 
     parameters do
-      params(:query, :string, "The id the user",
+      params(:query, :integer, "The id the user",
         required: false,
         name: "user_id"
       )

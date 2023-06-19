@@ -23,7 +23,7 @@ defmodule DbserviceWeb.BatchController do
     parameters do
       params(:query, :string, "The name the batch", required: false, name: "name")
 
-      params(:query, :string, "The contact hours per week of the batch",
+      params(:query, :integer, "The contact hours per week of the batch",
         required: false,
         name: "contact_hours_per_week"
       )

@@ -1482,7 +1482,7 @@
             "in": "query",
             "name": "date_of_birth",
             "required": false,
-            "type": "string"
+            "type": "date"
           },
           {
             "description": "The phone of the user",
@@ -2455,13 +2455,6 @@
             "name": "name",
             "required": false,
             "type": "string"
-          },
-          {
-            "description": "The attributes of the form schema",
-            "in": "query",
-            "name": "attributes",
-            "required": false,
-            "type": "string"
           }
         ],
         "responses": {
@@ -2515,14 +2508,14 @@
             "in": "query",
             "name": "batch_id",
             "required": false,
-            "type": "string"
+            "type": "integer"
           },
           {
             "description": "The id the program",
             "in": "query",
             "name": "program",
             "required": false,
-            "type": "string"
+            "type": "integer"
           }
         ],
         "responses": {
@@ -2803,14 +2796,14 @@
             "in": "query",
             "name": "group_type_id",
             "required": false,
-            "type": "string"
+            "type": "integer"
           },
           {
             "description": "The id the user",
             "in": "query",
             "name": "user_id",
             "required": false,
-            "type": "string"
+            "type": "integer"
           }
         ],
         "responses": {
@@ -2864,7 +2857,7 @@
             "in": "query",
             "name": "user_id",
             "required": false,
-            "type": "string"
+            "type": "integer"
           }
         ],
         "responses": {
@@ -3120,7 +3113,7 @@
             "in": "query",
             "name": "contact_hours_per_week",
             "required": false,
-            "type": "string"
+            "type": "integer"
           }
         ],
         "responses": {
@@ -3454,7 +3447,7 @@
             "in": "query",
             "name": "child_id",
             "required": false,
-            "type": "string"
+            "type": "integer"
           }
         ],
         "responses": {
@@ -3569,18 +3562,18 @@
         "operationId": "DbserviceWeb.GroupSessionController.index",
         "parameters": [
           {
-            "description": "The id the group_type",
+            "description": "The id the group type",
             "in": "query",
             "name": "group_type_id",
             "required": false,
-            "type": "string"
+            "type": "integer"
           },
           {
             "description": "The id the session",
             "in": "query",
             "name": "session_id",
             "required": false,
-            "type": "string"
+            "type": "integer"
           }
         ],
         "responses": {

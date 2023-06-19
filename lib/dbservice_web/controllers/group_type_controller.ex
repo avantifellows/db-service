@@ -34,7 +34,7 @@ defmodule DbserviceWeb.GroupTypeController do
     parameters do
       params(:query, :string, "The type the group", required: false, name: "type")
 
-      params(:query, :string, "The child id the group type",
+      params(:query, :integer, "The child id the group type",
         required: false,
         name: "child_id"
       )
