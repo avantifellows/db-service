@@ -24,6 +24,12 @@ defmodule DbserviceWeb.SwaggerSchema.Session do
             is_active(:boolean, "Tells whether session is active or not")
             session_id(:string, "Id for the session")
             form_schema_id(:string, "Id for the form schema")
+            type(:string, "Type of session")
+            auth_type(:string, "Authentication methods used for session")
+            activate_signup(:boolean, "Is sign up allowed for this session")
+            id_generation(:boolean, "Is ID being generated for this session")
+            redirection(:boolean, "Is the session redirecting to some other platform")
+            pop_up_form(:boolean, "Is the session showing a pop up form")
           end
 
           example(%{
