@@ -30,6 +30,7 @@ jobs:
             #Now we have got the access of EC2 and we will start the deploy .
             sudo su &&
             cd /var/www/html/db-service-prod/ &&
+            rm /var/www/html/db-service/priv/static/swagger.json &&
             sudo git pull origin main &&
             sudo MIX_ENV=prod mix deps.get &&
             sudo MIX_ENV=prod mix deps.compile &&
