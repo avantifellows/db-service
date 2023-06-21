@@ -30,7 +30,7 @@ jobs:
 
             #Now we have got the access of EC2 and we will start the deploy .
             sudo su &&
-            cd /var/www/html/db-service &&
+            cd /var/www/html/db-service && git checkout main &&
             sudo git pull origin main &&
             sudo MIX_ENV=staging mix deps.get &&
             sudo MIX_ENV=staging mix deps.compile &&
