@@ -25,14 +25,13 @@ jobs:
           USER_NAME: ${{ secrets.USER_NAME  }}
 
         run: |
-          branch_name="${GITHUB_REF#refs/heads/}"
           echo "$PRIVATE_KEY" > private_key && chmod 600 private_key
           ssh -o StrictHostKeyChecking=no -i private_key ${USER_NAME}@${HOSTNAME} '
 
             #Now we have got the access of EC2 and we will start the deploy .
             sudo su &&
             cd /var/www/html/db-service &&
-            sudo git pull origin "$branch_name" &&
+            sudo git pull origin main &&
             sudo MIX_ENV=staging mix deps.get &&
             sudo MIX_ENV=staging mix deps.compile &&
             sudo MIX_ENV=staging mix ecto.migrate &&
