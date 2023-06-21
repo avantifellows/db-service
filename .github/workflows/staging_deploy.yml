@@ -1,8 +1,8 @@
-name: Deploy to EC2
+name: Deploy to EC2 staging
 
 on:
   pull_request:
-    push:
+  push:
     branches: ["main"]
 
 jobs:
@@ -36,5 +36,5 @@ jobs:
             sudo MIX_ENV=prod mix deps.get &&
             sudo MIX_ENV=prod mix deps.compile &&
             sudo MIX_ENV=prod mix ecto.migrate &&
-            sudo MIX_ENV=prod mix phx.swagger.generate 
+            sudo MIX_ENV=prod mix phx.swagger.generate
           '
