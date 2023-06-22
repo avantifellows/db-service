@@ -25,10 +25,10 @@ defmodule Dbservice.Sessions.Session do
     field(:platform_id, :string)
     field(:type, :string)
     field(:auth_type, :string)
-    field(:activate_signup, :boolean)
-    field(:id_generation, :boolean)
-    field(:redirection, :boolean)
-    field(:pop_up_form, :boolean)
+    field(:activate_signup, :string)
+    field(:id_generation, :string)
+    field(:redirection, :string)
+    field(:pop_up_form, :string)
 
     timestamps()
 
@@ -55,7 +55,12 @@ defmodule Dbservice.Sessions.Session do
       :purpose,
       :repeat_schedule,
       :platform_id,
-      :type
+      :type,
+      :auth_type,
+      :activate_signup,
+      :id_generation,
+      :redirection,
+      :pop_up_form
     ])
     |> validate_required([
       :name,
