@@ -1,4 +1,5 @@
 defmodule DbserviceWeb.SessionOccurenceController do
+  require Logger
   use DbserviceWeb, :controller
 
   import Ecto.Query
@@ -6,7 +7,7 @@ defmodule DbserviceWeb.SessionOccurenceController do
   alias Dbservice.Sessions
   alias Dbservice.Sessions.SessionOccurence
 
-  action_fallback DbserviceWeb.FallbackController
+  action_fallback(DbserviceWeb.FallbackController)
 
   use PhoenixSwagger
 
@@ -29,18 +30,22 @@ defmodule DbserviceWeb.SessionOccurenceController do
   end
 
   def index(conn, params) do
+    Logger.info("Logging this text!")
+    Logger.debug("Var value: #{inspect(params)}")
+
     query =
-      from m in SessionOccurence,
+      from(m in SessionOccurence,
         order_by: [asc: m.id],
         offset: ^params["offset"],
         limit: ^params["limit"]
+      )
 
     query =
       Enum.reduce(params, query, fn {key, value}, acc ->
         case String.to_existing_atom(key) do
           :offset -> acc
           :limit -> acc
-          atom -> from u in acc, where: field(u, ^atom) == ^value
+          atom -> from(u in acc, where: field(u, ^atom) == ^value)
         end
       end)
 
