@@ -42,12 +42,12 @@ defmodule DbserviceWeb.SwaggerSchema.Group do
           description("Relation between group and session")
 
           properties do
-            group_id(:integer, "Id of a particular group")
+            group_type_id(:integer, "Id of a particular group")
             session_id(:integer, "Id of a particular group")
           end
 
           example(%{
-            group_id: 1,
+            group_type_id: 1,
             session_id: 1
           })
         end

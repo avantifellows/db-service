@@ -37,7 +37,7 @@ defmodule DbserviceWeb.SwaggerSchema.User do
             pincode: "400011",
             role: "student",
             whatsapp_phone: "9998887777",
-            date_of_birth: "2003/08/06"
+            date_of_birth: "2003-08-22"
           })
         end
     }
