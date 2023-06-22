@@ -32,7 +32,7 @@ jobs:
             sudo su &&
             cd /var/www/html/db-service &&
             rm /var/www/html/db-service/priv/static/swagger.json &&
-            sudo git pull origin "$branch_name" &&
+            sudo git pull origin \"$branch_name\" &&
             sudo MIX_ENV=prod mix deps.get &&
             sudo MIX_ENV=prod mix deps.compile &&
             sudo MIX_ENV=prod mix ecto.migrate &&
