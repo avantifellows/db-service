@@ -5,10 +5,10 @@ defmodule Dbservice.Repo.Migrations.AlterSessionTable do
     alter table(:session) do
       add(:type, :string)
       add(:auth_type, :string)
-      add(:activate_signup, :boolean)
-      add(:id_generation, :boolean)
-      add(:redirection, :boolean)
-      add(:pop_up_form, :boolean)
+      add(:activate_signup, :string)
+      add(:id_generation, :string)
+      add(:redirection, :string)
+      add(:pop_up_form, :string)
     end
   end
 end
