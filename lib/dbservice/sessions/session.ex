@@ -62,7 +62,8 @@ defmodule Dbservice.Sessions.Session do
       :id_generation,
       :redirection,
       :pop_up_form,
-      :number_of_fields_in_pop_form
+      :number_of_fields_in_pop_form,
+      :form_schema_id
     ])
     |> validate_required([
       :name,
