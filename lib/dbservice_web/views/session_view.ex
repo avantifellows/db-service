@@ -33,7 +33,8 @@ defmodule DbserviceWeb.SessionView do
       activate_signup: session.activate_signup,
       id_generation: session.id_generation,
       redirection: session.redirection,
-      pop_up_form: session.pop_up_form
+      pop_up_form: session.pop_up_form,
+      number_of_fields_in_pop_form: session.number_of_fields_in_pop_form
     }
   end
 end
