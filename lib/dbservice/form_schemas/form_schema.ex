@@ -4,11 +4,15 @@ defmodule Dbservice.FormSchemas.FormSchema do
   use Ecto.Schema
   import Ecto.Changeset
 
+  alias Dbservice.Sessions.Session
+
   schema "form_schema" do
-    field :name, :string
-    field :attributes, :map
+    field(:name, :string)
+    field(:attributes, :map)
 
     timestamps()
+
+    has_many(:session, Session)
   end
 
   @doc false

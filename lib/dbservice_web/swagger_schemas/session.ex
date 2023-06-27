@@ -23,6 +23,13 @@ defmodule DbserviceWeb.SwaggerSchema.Session do
             created_by_id(:integer, "User ID for the session creator")
             is_active(:boolean, "Tells whether session is active or not")
             session_id(:string, "Id for the session")
+            form_schema_id(:string, "Id for the form schema")
+            type(:string, "Type of session")
+            auth_type(:string, "Authentication methods used for session")
+            activate_signup(:boolean, "Is sign up allowed for this session")
+            id_generation(:boolean, "Is ID being generated for this session")
+            redirection(:boolean, "Is the session redirecting to some other platform")
+            pop_up_form(:boolean, "Is the session showing a pop up form")
           end
 
           example(%{
@@ -42,7 +49,8 @@ defmodule DbserviceWeb.SwaggerSchema.Session do
             owner_id: 2,
             created_by_id: 1,
             is_active: true,
-            session_id: "c714-e1d4-5a42-0f9f-36b3"
+            session_id: "c714-e1d4-5a42-0f9f-36b3",
+            form_schema_id: 1
           })
         end
     }
