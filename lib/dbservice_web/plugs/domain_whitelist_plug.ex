@@ -7,6 +7,11 @@ defmodule DbserviceWeb.DomainWhitelistPlug do
   If the request domain is on the whitelist, the plug chain will continue
   """
   import Plug.Conn
+  import Dotenvy
+
+  
+	
+ #IO.inspect(String.split(env!("WHITELISTED_DOMAINS", :string!)))
 
   def init(options) do
     options
@@ -23,12 +28,19 @@ defmodule DbserviceWeb.DomainWhitelistPlug do
   end
 
   defp allowed_domains?(conn) do
+  source(["config/.env", "config/.env"])
+
+  whitelisted_domains = env!("WHITELISTED_DOMAINS", :string!)
+  IO.inspect(whitelisted_domains)
+
+  #IO.inspect(String.split(env!("WHITELISTED_DOMAINS", :string!))) 
+
+ #whitelisted_domains = Dotenvy.get("WHITELISTED_DOMAINS", "localhost")
+
     allowed_domains =
-      case Application.get_env(:dbservice, :env) do
-        :dev -> ["localhost"]
-        :test -> ["www.example.com"]
-        _ -> System.get_env("WHITELISTED_DOMAINS") |> String.split(",")
-      end
+      if is_nil(whitelisted_domains),
+        do: ["localhost"],
+        else: String.split(whitelisted_domains, ",")
 
     Enum.member?(allowed_domains, conn.host)
   end
