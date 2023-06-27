@@ -28,8 +28,8 @@ jobs:
           branch_name="${GITHUB_HEAD_REF:-${GITHUB_REF#refs/heads/}}"
           echo "$PRIVATE_KEY" > private_key && chmod 600 private_key
           ssh -o StrictHostKeyChecking=no -i private_key ${USER_NAME}@${HOSTNAME} "
-            cd /var/www/html &&
-            ./kill_process_on_port_4000.sh &&
+            cd /var/www/html
+            sudo ./kill_process_on_port_4000.sh
             cd /var/www/html/db-service &&
             sudo  rm /var/www/html/db-service/priv/static/swagger.json &&
             sudo git pull origin \"$branch_name\" &&
