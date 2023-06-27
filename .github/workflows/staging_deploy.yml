@@ -25,7 +25,7 @@ jobs:
           USER_NAME: ${{ secrets.USER_NAME  }}
 
         run: |
-          branch_name="${GITHUB_REF#refs/heads/}"
+          branch_name="${GITHUB_HEAD_REF:-${GITHUB_REF#refs/heads/}}"
           echo "$PRIVATE_KEY" > private_key && chmod 600 private_key
           ssh -o StrictHostKeyChecking=no -i private_key ${USER_NAME}@${HOSTNAME} "
             sudo su &&
@@ -35,5 +35,6 @@ jobs:
             sudo MIX_ENV=prod mix deps.get &&
             sudo MIX_ENV=prod mix deps.compile &&
             sudo MIX_ENV=prod mix ecto.migrate &&
-            sudo MIX_ENV=prod mix phx.swagger.generate
+            sudo MIX_ENV=prod mix phx.swagger.generate &&
+            sudo MIX_ENV=prod elixir --erl "-detached" -S mix phx.server
           "

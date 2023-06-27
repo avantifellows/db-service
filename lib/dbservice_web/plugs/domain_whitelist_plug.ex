@@ -9,10 +9,6 @@ defmodule DbserviceWeb.DomainWhitelistPlug do
   import Plug.Conn
   import Dotenvy
 
-  
-	
- #IO.inspect(String.split(env!("WHITELISTED_DOMAINS", :string!)))
-
   def init(options) do
     options
   end
@@ -28,14 +24,9 @@ defmodule DbserviceWeb.DomainWhitelistPlug do
   end
 
   defp allowed_domains?(conn) do
-  source(["config/.env", "config/.env"])
+    source(["config/.env", "config/.env"])
 
-  whitelisted_domains = env!("WHITELISTED_DOMAINS", :string!)
-  IO.inspect(whitelisted_domains)
-
-  #IO.inspect(String.split(env!("WHITELISTED_DOMAINS", :string!))) 
-
- #whitelisted_domains = Dotenvy.get("WHITELISTED_DOMAINS", "localhost")
+    whitelisted_domains = env!("WHITELISTED_DOMAINS", :string!)
 
     allowed_domains =
       if is_nil(whitelisted_domains),
