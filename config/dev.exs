@@ -4,8 +4,8 @@ import Config
 config :dbservice, Dbservice.Repo,
   username: "postgres",
   password: "postgres",
-  hostname: "localhost",
-  database: "dbservice_dev",
+  hostname: "af-db.ct2k2vwmh0ce.ap-south-1.rds.amazonaws.com",
+  database: "staging_af_db",
   show_sensitive_data_on_connection_error: true,
   pool_size: 10
 
