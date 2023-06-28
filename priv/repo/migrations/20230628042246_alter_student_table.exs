@@ -3,6 +3,7 @@ defmodule :"Elixir.Dbservice.Repo.Migrations.Alter student table" do
 
   def change do
     alter table(:student) do
-      modify :time_of_device_availability, :string
+      modify(:time_of_device_availability, :string)
+    end
   end
 end
