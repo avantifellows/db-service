@@ -7,7 +7,7 @@ defmodule Dbservice.MixProject do
       version: "0.1.0",
       elixir: "~> 1.12",
       elixirc_paths: elixirc_paths(Mix.env()),
-      compilers: [:phoenix, :gettext] ++ Mix.compilers() ++ [:phoenix_swagger],
+      compilers: [:phoenix] ++ Mix.compilers() ++ [:phoenix_swagger],
       start_permanent: Mix.env() == :prod,
       aliases: aliases(),
       deps: deps()
@@ -49,7 +49,8 @@ defmodule Dbservice.MixProject do
       {:faker, "~> 0.17", only: [:test, :dev]},
       {:ex_check, "~> 0.14.0", only: [:dev], runtime: false},
       {:dialyxir, ">= 0.0.0", only: [:dev], runtime: false},
-      {:credo, ">= 0.0.0", only: [:dev], runtime: false}
+      {:credo, ">= 0.0.0", only: [:dev], runtime: false},
+      {:dotenvy, "~> 0.8.0"}
     ]
   end
 
