@@ -31,6 +31,7 @@ jobs:
             cd /var/www/html
             sudo ./kill_process_on_port_8080.sh
             cd /var/www/html/db-service-prod/ &&
+            sudo git checkout . &&
             if [ -f /var/www/html/db-service-prod/priv/static/swagger.json ]; then
               sudo rm /var/www/html/db-service/priv/static/swagger.json
             fi
