@@ -1,4 +1,4 @@
-defmodule :"Elixir.Dbservice.Repo.Migrations.Alter student table" do
+defmodule :"Elixir.Dbservice.Repo.Migrations.AlterStudentTable" do
   use Ecto.Migration
 
   def change do
