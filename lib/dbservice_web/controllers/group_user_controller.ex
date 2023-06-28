@@ -12,6 +12,16 @@ defmodule DbserviceWeb.GroupUserController do
 
   swagger_path :index do
     get("/api/group-user")
+
+    parameters do
+      params(:query, :integer, "The id the group type", required: false, name: "group_type_id")
+
+      params(:query, :integer, "The id the user",
+        required: false,
+        name: "user_id"
+      )
+    end
+
     response(200, "OK", Schema.ref(:GroupUsers))
   end
 

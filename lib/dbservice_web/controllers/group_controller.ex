@@ -18,7 +18,17 @@ defmodule DbserviceWeb.GroupController do
   end
 
   swagger_path :index do
-    get("/api/group?name=DelhiStudents")
+    get("/api/group")
+
+    parameters do
+      params(:query, :string, "The name the group", required: false, name: "name")
+
+      params(:query, :string, "The locale the group",
+        required: false,
+        name: "locale"
+      )
+    end
+
     response(200, "OK", Schema.ref(:Groups))
   end
 

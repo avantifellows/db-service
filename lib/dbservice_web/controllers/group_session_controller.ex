@@ -12,6 +12,16 @@ defmodule DbserviceWeb.GroupSessionController do
 
   swagger_path :index do
     get("/api/group-session")
+
+    parameters do
+      params(:query, :integer, "The id the group type", required: false, name: "group_type_id")
+
+      params(:query, :integer, "The id the session",
+        required: false,
+        name: "session_id"
+      )
+    end
+
     response(200, "OK", Schema.ref(:GroupSessions))
   end
 
