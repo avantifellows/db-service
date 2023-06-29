@@ -40,11 +40,12 @@ defmodule DbserviceWeb.Router do
     def swagger_info do
       source(["config/.env", "config/.env"])
 
+      base_url = env!("PHX_HOST", :string!)
+
       host =
-        case Mix.env() do
-          :prod -> env!("PHX_HOST", :string!)
-          _ -> "localhost:4000"
-        end
+        if is_nil(base_url),
+          do: "localhost:4000",
+          else: base_url
 
       %{
         info: %{
