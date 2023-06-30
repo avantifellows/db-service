@@ -2,6 +2,8 @@ defmodule DbserviceWeb.Router do
   use DbserviceWeb, :router
   use PhoenixSwagger
 
+  import Dotenvy
+
   pipeline :api do
     plug(:accepts, ["json"])
   end
@@ -36,11 +38,21 @@ defmodule DbserviceWeb.Router do
     resources("/group-user", GroupUserController)
 
     def swagger_info do
+      source(["config/.env", "config/.env"])
+
+      host =
+        if Application.get_env(:dbservice, :environment) == :dev do
+          "localhost:4000"
+        else
+          env!("PHX_HOST", :string!)
+        end
+
       %{
         info: %{
           version: "1.0",
           title: "DB Service application"
-        }
+        },
+        host: host
       }
     end
   end

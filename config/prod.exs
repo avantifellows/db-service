@@ -45,3 +45,5 @@ config :logger, level: :info
 #
 #     config :dbservice, DbserviceWeb.Endpoint,
 #       force_ssl: [hsts: true]
+
+config :dbservice, :environment, :prod
