@@ -8,27 +8,27 @@ defmodule Dbservice.Users.Student do
   alias Dbservice.Schools.EnrollmentRecord
 
   schema "student" do
-    field :category, :string
-    field :father_name, :string
-    field :father_phone, :string
-    field :mother_name, :string
-    field :mother_phone, :string
-    field :stream, :string
-    field :student_id, :string
-    field :physically_handicapped, :boolean
-    field :family_income, :string
-    field :father_profession, :string
-    field :father_education_level, :string
-    field :mother_profession, :string
-    field :mother_education_level, :string
-    field :time_of_device_availability, :date
-    field :has_internet_access, :boolean
-    field :primary_smartphone_owner, :string
-    field :primary_smartphone_owner_profession, :string
-    field :is_dropper, :boolean
-    field :contact_hours_per_week, :integer
-    belongs_to :user, User
-    has_many :enrollment_record, EnrollmentRecord
+    field(:category, :string)
+    field(:father_name, :string)
+    field(:father_phone, :string)
+    field(:mother_name, :string)
+    field(:mother_phone, :string)
+    field(:stream, :string)
+    field(:student_id, :string)
+    field(:physically_handicapped, :boolean)
+    field(:family_income, :string)
+    field(:father_profession, :string)
+    field(:father_education_level, :string)
+    field(:mother_profession, :string)
+    field(:mother_education_level, :string)
+    field(:time_of_device_availability, :date)
+    field(:has_internet_access, :string)
+    field(:primary_smartphone_owner, :string)
+    field(:primary_smartphone_owner_profession, :string)
+    field(:is_dropper, :boolean)
+    field(:contact_hours_per_week, :integer)
+    belongs_to(:user, User)
+    has_many(:enrollment_record, EnrollmentRecord)
 
     timestamps()
   end
