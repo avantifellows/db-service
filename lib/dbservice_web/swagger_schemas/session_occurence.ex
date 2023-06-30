@@ -11,15 +11,17 @@ defmodule DbserviceWeb.SwaggerSchema.SessionOccurence do
           description("A session occurrence for a session")
 
           properties do
-            session_id(:integer, "Session ID")
+            session_id(:string, "ID of the session")
             start_time(:timestamp, "Session occurrence start time")
             end_time(:timestamp, "Session occurrence finish time")
+            session_fk(:integer, "The primary key for session's table")
           end
 
           example(%{
-            session_id: 1,
+            session_id: "DelhiStudents_B01_44725_unv-nkyh-hnb",
             start_time: "2022-02-02T11:00:00Z",
-            end_time: "2022-02-02T11:30:00Z"
+            end_time: "2022-02-02T11:30:00Z",
+            session_fk: 1
           })
         end
     }
