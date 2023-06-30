@@ -6,7 +6,7 @@ defmodule DbserviceWeb.StudentController do
   alias Dbservice.Users
   alias Dbservice.Users.Student
 
-  action_fallback DbserviceWeb.FallbackController
+  action_fallback(DbserviceWeb.FallbackController)
 
   use PhoenixSwagger
 
@@ -27,23 +27,35 @@ defmodule DbserviceWeb.StudentController do
   end
 
   swagger_path :index do
-    get("/api/student?student_id=120180101057")
+    get("/api/student")
+
+    parameters do
+      params(:query, :string, "The id of the student", required: false, name: "student_id")
+      params(:query, :string, "The stream of the student", required: false, name: "stream")
+
+      params(:query, :string, "The father's name of the student",
+        required: false,
+        name: "father_name"
+      )
+    end
+
     response(200, "OK", Schema.ref(:Students))
   end
 
   def index(conn, params) do
     query =
-      from m in Student,
+      from(m in Student,
         order_by: [asc: m.id],
         offset: ^params["offset"],
         limit: ^params["limit"]
+      )
 
     query =
       Enum.reduce(params, query, fn {key, value}, acc ->
         case String.to_existing_atom(key) do
           :offset -> acc
           :limit -> acc
-          atom -> from u in acc, where: field(u, ^atom) == ^value
+          atom -> from(u in acc, where: field(u, ^atom) == ^value)
         end
       end)
 

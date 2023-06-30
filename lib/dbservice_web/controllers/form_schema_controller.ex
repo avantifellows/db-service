@@ -20,7 +20,12 @@ defmodule DbserviceWeb.FormSchemaController do
   end
 
   swagger_path :index do
-    get("/api/form-schema?name=Registration")
+    get("/api/form-schema")
+
+    parameters do
+      params(:query, :string, "The name of the form schema", required: false, name: "name")
+    end
+
     response(200, "OK", Schema.ref(:FormSchemas))
   end
 
