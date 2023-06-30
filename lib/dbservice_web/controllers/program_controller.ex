@@ -18,7 +18,17 @@ defmodule DbserviceWeb.ProgramController do
   end
 
   swagger_path :index do
-    get("/api/program?mode=Offline")
+    get("/api/program")
+
+    parameters do
+      params(:query, :string, "The name the program", required: false, name: "name")
+
+      params(:query, :string, "The type the program",
+        required: false,
+        name: "type"
+      )
+    end
+
     response(200, "OK", Schema.ref(:Programs))
   end
 

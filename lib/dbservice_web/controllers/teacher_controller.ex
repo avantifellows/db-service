@@ -26,7 +26,17 @@ defmodule DbserviceWeb.TeacherController do
   end
 
   swagger_path :index do
-    get("/api/teacher?designation=Vice Principal")
+    get("/api/teacher")
+
+    parameters do
+      params(:query, :string, "The uuid the teacher",
+        required: false,
+        name: "uuid"
+      )
+
+      params(:query, :string, "The designation the teacher", required: false, name: "designation")
+    end
+
     response(200, "OK", Schema.ref(:Teachers))
   end
 
