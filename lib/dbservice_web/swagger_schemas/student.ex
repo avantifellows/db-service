@@ -24,7 +24,8 @@ defmodule DbserviceWeb.SwaggerSchema.Student do
             father_profession(:string, "Father's profession")
             mother_profession(:String, "Mother's profession")
             mother_education_level(:string, "Mother's education level")
-            has_internet_access(:boolean, "If the family has internet access")
+            time_of_device_availability(:string, "Time of device availability for a student")
+            has_internet_access(:string, "If the family has internet access")
             primary_smartphone_owner(:string, "Primary smartphone owner")
             primary_smartphone_owner_profession(:string, "Profession of primary smartphone owner")
           end
@@ -45,7 +46,7 @@ defmodule DbserviceWeb.SwaggerSchema.Student do
             mother_profession: "Housewife",
             mother_education_level: "UG",
             time_of_device_availability: "2022-10-07",
-            has_internet_access: true,
+            has_internet_access: "Yes",
             primary_smartphone_owner: "Father",
             primary_smartphone_owner_profession: "Employed"
           })
