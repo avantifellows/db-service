@@ -40,12 +40,12 @@ defmodule DbserviceWeb.Router do
     def swagger_info do
       source(["config/.env", "config/.env"])
 
-      base_url = env!("PHX_HOST", :string!)
-
       host =
-        if is_nil(base_url),
-          do: "localhost:4000",
-          else: base_url
+        if Application.get_env(:dbservice, :environment) == :dev do
+          "localhost:4000"
+        else
+          env!("PHX_HOST", :string!)
+        end
 
       %{
         info: %{
