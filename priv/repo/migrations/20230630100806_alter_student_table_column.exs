@@ -3,7 +3,7 @@ defmodule Dbservice.Repo.Migrations.AlterStudentTable do
 
   def change do
     alter table(:session) do
-      add(:has_internet_access, :string)
+      modify(:has_internet_access, :string)
     end
   end
 end
