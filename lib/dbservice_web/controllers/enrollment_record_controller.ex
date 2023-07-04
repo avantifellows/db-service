@@ -6,7 +6,7 @@ defmodule DbserviceWeb.EnrollmentRecordController do
   alias Dbservice.Schools
   alias Dbservice.Schools.EnrollmentRecord
 
-  action_fallback DbserviceWeb.FallbackController
+  action_fallback(DbserviceWeb.FallbackController)
 
   use PhoenixSwagger
 
@@ -21,22 +21,41 @@ defmodule DbserviceWeb.EnrollmentRecordController do
 
   swagger_path :index do
     get("/api/enrollment-record")
+
+    parameters do
+      params(:query, :string, "The academic year of the student's enrollment",
+        required: false,
+        name: "academic_year"
+      )
+
+      params(:query, :string, "The grade of the student's enrollment",
+        required: false,
+        name: "grade"
+      )
+
+      params(:query, :string, "The board medium of the student's enrollment",
+        required: false,
+        name: "board_medium"
+      )
+    end
+
     response(200, "OK", Schema.ref(:EnrollmentRecords))
   end
 
   def index(conn, params) do
     query =
-      from m in EnrollmentRecord,
+      from(m in EnrollmentRecord,
         order_by: [asc: m.id],
         offset: ^params["offset"],
         limit: ^params["limit"]
+      )
 
     query =
       Enum.reduce(params, query, fn {key, value}, acc ->
         case String.to_existing_atom(key) do
           :offset -> acc
           :limit -> acc
-          atom -> from u in acc, where: field(u, ^atom) == ^value
+          atom -> from(u in acc, where: field(u, ^atom) == ^value)
         end
       end)
 
