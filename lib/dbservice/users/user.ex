@@ -11,33 +11,37 @@ defmodule Dbservice.Users.User do
   alias Dbservice.Groups.GroupType
 
   schema "user" do
-    field :address, :string
-    field :city, :string
-    field :district, :string
-    field :email, :string
-    field :full_name, :string
-    field :gender, :string
-    field :phone, :string
-    field :pincode, :string
-    field :role, :string
-    field :state, :string
-    field :whatsapp_phone, :string
-    field :date_of_birth, :date
-    field :country, :string
+    field(:address, :string)
+    field(:city, :string)
+    field(:district, :string)
+    field(:email, :string)
+    field(:first_name, :string)
+    field(:middle_name, :string)
+    field(:last_name, :string)
+    field(:gender, :string)
+    field(:phone, :string)
+    field(:pincode, :string)
+    field(:role, :string)
+    field(:state, :string)
+    field(:whatsapp_phone, :string)
+    field(:date_of_birth, :date)
+    field(:country, :string)
 
     timestamps()
 
-    many_to_many :sessions, SessionOccurence, join_through: "user_session", on_replace: :delete
-    has_one :teacher, Teacher
-    has_one :student, Student
-    many_to_many :group_type, GroupType, join_through: "group_user", on_replace: :delete
+    many_to_many(:sessions, SessionOccurence, join_through: "user_session", on_replace: :delete)
+    has_one(:teacher, Teacher)
+    has_one(:student, Student)
+    many_to_many(:group_type, GroupType, join_through: "group_user", on_replace: :delete)
   end
 
   @doc false
   def changeset(user, attrs) do
     user
     |> cast(attrs, [
-      :full_name,
+      :first_name,
+      :middle_name,
+      :last_name,
       :email,
       :phone,
       :gender,
