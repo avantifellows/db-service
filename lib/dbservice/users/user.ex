@@ -11,20 +11,20 @@ defmodule Dbservice.Users.User do
   alias Dbservice.Groups.GroupType
 
   schema "user" do
-    field(:address, :string)
-    field(:city, :string)
-    field(:district, :string)
-    field(:email, :string)
     field(:first_name, :string)
     field(:middle_name, :string)
     field(:last_name, :string)
-    field(:gender, :string)
+    field(:email, :string)
     field(:phone, :string)
+    field(:date_of_birth, :date)
+    field(:gender, :string)
+    field(:whatsapp_phone, :string)
+    field(:address, :string)
+    field(:city, :string)
+    field(:district, :string)
+    field(:state, :string)
     field(:pincode, :string)
     field(:role, :string)
-    field(:state, :string)
-    field(:whatsapp_phone, :string)
-    field(:date_of_birth, :date)
     field(:country, :string)
 
     timestamps()
