@@ -75,7 +75,7 @@ defmodule Dbservice.Users.Student do
       :has_category_certificate,
       :stream,
       :physically_handicapped,
-      :physical_handicapped_certificate,
+      :physically_handicapped_certificate,
       :annual_family_income,
       :monthly_family_income,
       :time_of_device_availability,
