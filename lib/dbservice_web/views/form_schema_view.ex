@@ -13,7 +13,8 @@ defmodule DbserviceWeb.FormSchemaView do
   def render("form_schema.json", %{form_schema: form_schema}) do
     %{
       name: form_schema.name,
-      attributes: form_schema.attributes
+      attributes: form_schema.attributes,
+      meta_data: form_schema.meta_data
     }
   end
 end
