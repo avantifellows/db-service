@@ -30,7 +30,7 @@ defmodule DbserviceWeb.SwaggerSchema.Session do
             id_generation(:boolean, "Is ID being generated for this session")
             redirection(:boolean, "Is the session redirecting to some other platform")
             pop_up_form(:boolean, "Is the session showing a pop up form")
-            number_of_fields_in_pop_form(:string, "Number of fields in the pop form")
+            number_of_fields_in_pop_form(:integer, "Number of fields in the pop form")
           end
 
           example(%{

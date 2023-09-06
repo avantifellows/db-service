@@ -29,7 +29,7 @@ defmodule Dbservice.Sessions.Session do
     field(:id_generation, :boolean)
     field(:redirection, :boolean)
     field(:pop_up_form, :boolean)
-    field(:number_of_fields_in_pop_form, :string)
+    field(:number_of_fields_in_pop_form, :integer)
 
     timestamps()
 
