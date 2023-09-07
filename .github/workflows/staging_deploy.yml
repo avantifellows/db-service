@@ -29,13 +29,13 @@ jobs:
           echo "$PRIVATE_KEY" > private_key && chmod 600 private_key
           ssh -o StrictHostKeyChecking=no -i private_key ${USER_NAME}@${HOSTNAME} "
           cd /var/www/html/db-service/config
-          sed -i "s|DATABASE_URL=.*|DATABASE_URL=${{ secrets.DATABASE_URL }}|" /var/www/html/db-service/config/.env
-          sed -i "s|SECRET_KEY_BASE=.*|SECRET_KEY_BASE=${{ secrets.SECRET_KEY_BASE }}|" /var/www/html/db-service/config/.env
-          sed -i "s|PHX_HOST=.*|PHX_HOST=${{ secrets.PHX_HOST }}|" /var/www/html/db-service/config/.env
-          sed -i "s|WHITELISTED_DOMAINS=.*|WHITELISTED_DOMAINS=${{ secrets.WHITELISTED_DOMAINS }}|" /var/www/html/db-service/config/.env
-          sed -i "s|POOL_SIZE=.*|POOL_SIZE=${{ secrets.POOL_SIZE }}|" /var/www/html/db-service/config/.env
-          sed -i "s|PORT=.*|PORT=${{ secrets.PORT }}|" /var/www/html/db-service/config/.env
-          sed -i "s|STAGING_BEARER_TOKEN=.*|STAGING_BEARER_TOKEN=${{ secrets.STAGING_BEARER_TOKEN }}|" /var/www/html/db-service/config/.env
+          sed -i 's|DATABASE_URL=.*|DATABASE_URL=${{ secrets.DATABASE_URL }}|'' /var/www/html/db-service/config/.env
+          sed -i 's|SECRET_KEY_BASE=.*|SECRET_KEY_BASE=${{ secrets.SECRET_KEY_BASE }}|' /var/www/html/db-service/config/.env
+          sed -i 's|PHX_HOST=.*|PHX_HOST=${{ secrets.PHX_HOST }}|' /var/www/html/db-service/config/.env
+          sed -i 's|WHITELISTED_DOMAINS=.*|WHITELISTED_DOMAINS=${{ secrets.WHITELISTED_DOMAINS }}|' /var/www/html/db-service/config/.env
+          sed -i 's|POOL_SIZE=.*|POOL_SIZE=${{ secrets.POOL_SIZE }}|' /var/www/html/db-service/config/.env
+          sed -i 's|PORT=.*|PORT=${{ secrets.PORT }}|' /var/www/html/db-service/config/.env
+          sed -i 's|STAGING_BEARER_TOKEN=.*|STAGING_BEARER_TOKEN=${{ secrets.STAGING_BEARER_TOKEN }}|' /var/www/html/db-service/config/.env
             cd /var/www/html
             sudo ./kill_process_on_port_4000.sh
             cd /var/www/html/db-service &&
