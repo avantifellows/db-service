@@ -1,4 +1,13 @@
 defmodule DbserviceWeb.AuthenticationMiddleware do
+  @moduledoc """
+  This module provides a Plug middleware for handling API key-based authentication.
+
+  The middleware checks the 'Authorization' header of incoming HTTP requests to ensure that
+  it matches a predefined API key stored in the 'BEARER_TOKEN' environment variable.
+
+  If the API key is valid, the request is allowed to proceed; otherwise, a '401 Unauthorized'
+  response is sent, and further processing is halted.
+  """
   import Plug.Conn
   import Dotenvy
 
