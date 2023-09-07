@@ -30,7 +30,7 @@ jobs:
 
       - name: Update environment variables in .env
         run: |
-          cd /var/www/html/dbservice/config
+          cd /var/www/html/db-service/config
           sed -i "s|DATABASE_URL=.*|DATABASE_URL=${{ secrets.DATABASE_URL }}|" .env
           sed -i "s|SECRET_KEY_BASE=.*|SECRET_KEY_BASE=${{ secrets.SECRET_KEY_BASE }}|" .env
           sed -i "s|PHX_HOST=.*|PHX_HOST=${{ secrets.PHX_HOST }}|" .env
