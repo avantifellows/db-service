@@ -35,7 +35,7 @@ jobs:
             sed -i 's|WHITELISTED_DOMAINS=.*|WHITELISTED_DOMAINS=${{ secrets.WHITELISTED_DOMAINS }}|' .env
             sed -i 's|POOL_SIZE=.*|POOL_SIZE=${{ secrets.POOL_SIZE }}|' .env
             sed -i 's|PORT=.*|PORT=${{ secrets.PORT }}|' .env
-            sed -i 's|STAGING_BEARER_TOKEN=.*|STAGING_BEARER_TOKEN=${{ secrets.STAGING_BEARER_TOKEN }}|' .env
+            sed -i 's|BEARER_TOKEN=.*|BEARER_TOKEN=${{ secrets.STAGING_BEARER_TOKEN }}|' .env
             cd /var/www/html
             sudo ./kill_process_on_port_4000.sh
             cd /var/www/html/db-service &&
