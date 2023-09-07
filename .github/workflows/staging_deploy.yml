@@ -29,12 +29,12 @@ jobs:
           echo "$PRIVATE_KEY" > private_key && chmod 600 private_key
           ssh -o StrictHostKeyChecking=no -i private_key ${USER_NAME}@${HOSTNAME} "
             cd /var/www/html/db-service/config
-            sed -i 's|DATABASE_URL=.*|DATABASE_URL=${{ secrets.DATABASE_URL }}|' .env
-            sed -i 's|SECRET_KEY_BASE=.*|SECRET_KEY_BASE=${{ secrets.SECRET_KEY_BASE }}|' .env
-            sed -i 's|PHX_HOST=.*|PHX_HOST=${{ secrets.PHX_HOST }}|' .env
-            sed -i 's|WHITELISTED_DOMAINS=.*|WHITELISTED_DOMAINS=${{ secrets.WHITELISTED_DOMAINS }}|' .env
-            sed -i 's|POOL_SIZE=.*|POOL_SIZE=${{ secrets.POOL_SIZE }}|' .env
-            sed -i 's|PORT=.*|PORT=${{ secrets.PORT }}|' .env
+            sed -i 's|DATABASE_URL=.*|DATABASE_URL=${{ secrets.STAGING_DATABASE_URL }}|' .env
+            sed -i 's|SECRET_KEY_BASE=.*|SECRET_KEY_BASE=${{ secrets.STAGING_SECRET_KEY_BASE }}|' .env
+            sed -i 's|PHX_HOST=.*|PHX_HOST=${{ secrets.STAGING_PHX_HOST }}|' .env
+            sed -i 's|WHITELISTED_DOMAINS=.*|WHITELISTED_DOMAINS=${{ secrets.STAGING_WHITELISTED_DOMAINS }}|' .env
+            sed -i 's|POOL_SIZE=.*|POOL_SIZE=${{ secrets.STAGING_POOL_SIZE }}|' .env
+            sed -i 's|PORT=.*|PORT=${{ secrets.STAGING_PORT }}|' .env
             sed -i 's|BEARER_TOKEN=.*|BEARER_TOKEN=${{ secrets.STAGING_BEARER_TOKEN }}|' .env
             cd /var/www/html
             sudo ./kill_process_on_port_4000.sh
