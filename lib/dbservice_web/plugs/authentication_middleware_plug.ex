@@ -15,7 +15,6 @@ defmodule DbserviceWeb.AuthenticationMiddleware do
 
   def call(conn, _opts) do
     source(["config/.env", "config/.env"])
-    IO.inspect(conn)
 
     referer =
       get_req_header(conn, "referer")
