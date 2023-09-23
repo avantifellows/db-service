@@ -15,15 +15,28 @@ defmodule DbserviceWeb.AuthenticationMiddleware do
 
   def call(conn, _opts) do
     source(["config/.env", "config/.env"])
+    IO.inspect(conn)
+
+    referer =
+      get_req_header(conn, "referer")
+      |> List.first()
+      |> to_string()
+
+    request_path = conn.request_path
 
     api_key = get_req_header(conn, "authorization")
 
-    if api_key == ["Bearer " <> env!("BEARER_TOKEN", :string!)] do
+    if api_key == ["Bearer " <> env!("BEARER_TOKEN", :string!)] ||
+         is_swagger_request?(referer, request_path) do
       conn
     else
       conn
       |> send_resp(401, "Not Authorized")
       |> halt()
     end
+  end
+
+  defp is_swagger_request?(referer, request_path) do
+    String.contains?(referer, "swagger") || String.contains?(request_path, "swagger")
   end
 end
