@@ -31,9 +31,14 @@ config :dbservice, Dbservice.Mailer, adapter: Swoosh.Adapters.Local
 config :swoosh, :api_client, false
 
 # Configures Elixir's Logger
-config :logger, :console,
+config :logger,
+  backends: [:console, {LoggerFileBackend, :error_log}],
   format: "$time $metadata[$level] $message\n",
   metadata: [:request_id]
+
+config :logger, :error_log,
+  path: "logs/info.log",
+  level: :debug
 
 # Use Jason for JSON parsing in Phoenix
 config :phoenix, :json_library, Jason
