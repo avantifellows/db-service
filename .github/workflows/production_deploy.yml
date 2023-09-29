@@ -26,6 +26,15 @@ jobs:
         run: |
           echo "$PRIVATE_KEY" > private_key && chmod 600 private_key
           ssh -o StrictHostKeyChecking=no -i private_key ${USER_NAME}@${HOSTNAME} '
+            #Setting environment variables .
+            cd /var/www/html/db-service/config
+            sed -i 's|DATABASE_URL=.*|DATABASE_URL=${{ secrets.PRODUCTION_DATABASE_URL }}|' .env
+            sed -i 's|SECRET_KEY_BASE=.*|SECRET_KEY_BASE=${{ secrets.PRODUCTION_SECRET_KEY_BASE }}|' .env
+            sed -i 's|PHX_HOST=.*|PHX_HOST=${{ secrets.PRODUCTION_PHX_HOST }}|' .env
+            sed -i 's|WHITELISTED_DOMAINS=.*|WHITELISTED_DOMAINS=${{ secrets.PRODUCTION_WHITELISTED_DOMAINS }}|' .env
+            sed -i 's|POOL_SIZE=.*|POOL_SIZE=${{ secrets.PRODUCTION_POOL_SIZE }}|' .env
+            sed -i 's|PORT=.*|PORT=${{ secrets.PRODUCTION_PORT }}|' .env
+            sed -i 's|BEARER_TOKEN=.*|BEARER_TOKEN=${{ secrets.PRODUCTION_BEARER_TOKEN }}|' .env
 
             #Now we have got the access of EC2 and we will start the deploy .
             cd /var/www/html
