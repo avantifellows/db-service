@@ -44,7 +44,8 @@ defmodule DbserviceWeb.Endpoint do
   plug Plug.MethodOverride
   plug Plug.Head
   plug Plug.Session, @session_options
-  plug DbserviceWeb.DomainWhitelistPlug
+  plug CORSPlug
+  plug DbserviceWeb.AuthenticationMiddleware
 
   plug DbserviceWeb.Router
 end
