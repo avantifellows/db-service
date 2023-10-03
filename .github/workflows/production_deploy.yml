@@ -27,7 +27,7 @@ jobs:
           echo "$PRIVATE_KEY" > private_key && chmod 600 private_key
           ssh -o StrictHostKeyChecking=no -i private_key ${USER_NAME}@${HOSTNAME} '
             #Setting environment variables .
-            cd /var/www/html/db-service/config
+            cd /var/www/html/db-service-prod/config
             sed -i 's|DATABASE_URL=.*|DATABASE_URL=${{ secrets.PRODUCTION_DATABASE_URL }}|' .env
             sed -i 's|SECRET_KEY_BASE=.*|SECRET_KEY_BASE=${{ secrets.PRODUCTION_SECRET_KEY_BASE }}|' .env
             sed -i 's|PHX_HOST=.*|PHX_HOST=${{ secrets.PRODUCTION_PHX_HOST }}|' .env
