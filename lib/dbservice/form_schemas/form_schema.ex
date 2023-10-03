@@ -8,6 +8,7 @@ defmodule Dbservice.FormSchemas.FormSchema do
 
   schema "form_schema" do
     field(:name, :string)
+    field(:meta_data, :map)
     field(:attributes, :map)
 
     timestamps()
@@ -20,7 +21,8 @@ defmodule Dbservice.FormSchemas.FormSchema do
     form_schema
     |> cast(attrs, [
       :name,
-      :attributes
+      :attributes,
+      :meta_data
     ])
     |> validate_required([:name])
   end

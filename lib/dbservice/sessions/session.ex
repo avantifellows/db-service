@@ -25,11 +25,11 @@ defmodule Dbservice.Sessions.Session do
     field(:platform_id, :string)
     field(:type, :string)
     field(:auth_type, :string)
-    field(:activate_signup, :string)
-    field(:id_generation, :string)
-    field(:redirection, :string)
-    field(:pop_up_form, :string)
-    field(:number_of_fields_in_pop_form, :string)
+    field(:activate_signup, :boolean)
+    field(:id_generation, :boolean)
+    field(:redirection, :boolean)
+    field(:pop_up_form, :boolean)
+    field(:number_of_fields_in_pop_form, :integer)
 
     timestamps()
 

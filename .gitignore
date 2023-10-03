@@ -22,3 +22,8 @@ erl_crash.dump
 # Ignore package tarball (built via "mix hex.build").
 dbservice-*.tar
 
+# Ignore .env
+/config/.env
+
+# Ignore log file
+/logs/info.log

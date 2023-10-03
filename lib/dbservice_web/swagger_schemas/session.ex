@@ -26,11 +26,11 @@ defmodule DbserviceWeb.SwaggerSchema.Session do
             form_schema_id(:string, "Id for the form schema")
             type(:string, "Type of session")
             auth_type(:string, "Authentication methods used for session")
-            activate_signup(:string, "Is sign up allowed for this session")
-            id_generation(:string, "Is ID being generated for this session")
-            redirection(:string, "Is the session redirecting to some other platform")
-            pop_up_form(:string, "Is the session showing a pop up form")
-            number_of_fields_in_pop_form(:string, "Number of fields in the pop form")
+            activate_signup(:boolean, "Is sign up allowed for this session")
+            id_generation(:boolean, "Is ID being generated for this session")
+            redirection(:boolean, "Is the session redirecting to some other platform")
+            pop_up_form(:boolean, "Is the session showing a pop up form")
+            number_of_fields_in_pop_form(:integer, "Number of fields in the pop form")
           end
 
           example(%{
