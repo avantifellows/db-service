@@ -32,11 +32,11 @@ config :swoosh, :api_client, false
 
 # Configures Elixir's Logger
 config :logger,
-  backends: [:console, {LoggerFileBackend, :info}],
+  backends: [:console, {LoggerFileBackend, :file_log}],
   format: "$time $metadata[$level] $message\n",
   metadata: [:request_id]
 
-config :logger, :info, path: "logs/info.log"
+config :logger, :file_log, path: "logs/info.log"
 
 # Use Jason for JSON parsing in Phoenix
 config :phoenix, :json_library, Jason
