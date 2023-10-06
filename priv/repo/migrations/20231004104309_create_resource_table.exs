@@ -8,7 +8,7 @@ defmodule Dbservice.Repo.Migrations.CreateResourceTable do
       add(:type_params, :map)
       add(:difficulty_level, :string)
       add(:curriculum_id, references(:curriculum, on_delete: :nothing))
-      add(:chapter_id, references(:chapter, on_delete:  :nothing))
+      add(:chapter_id, references(:chapter, on_delete: :nothing))
       add(:topic_id, references(:topic, on_delete: :nothing))
       add(:source_id, references(:source, on_delete: :nothing))
       add(:purpose_id, references(:purpose, on_delete: :nothing))

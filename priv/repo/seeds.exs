@@ -228,7 +228,8 @@ defmodule Seed do
             "Unemployed"
           ]),
         mother_education_level: Enum.random(["UG", "PG", "NA"]),
-        time_of_device_availability: Enum.random(["Between 8am-10am", "Between 5pm-7pm", "Between 10pm-11pm"]),
+        time_of_device_availability:
+          Enum.random(["Between 8am-10am", "Between 5pm-7pm", "Between 10pm-11pm"]),
         has_internet_access: Enum.random(["yes", "no"]),
         primary_smartphone_owner: Enum.random(["Father", "Mother"]),
         primary_smartphone_owner_profession: Enum.random(["Employed", "Unemployed"]),
@@ -238,7 +239,8 @@ defmodule Seed do
         guardian_relation: Enum.random(["Parent", "Sibling", "Aunt", "Uncle"]),
         guardian_phone: Phone.PtPt.number(),
         guardian_education_level: Enum.random(["UG", "PG", "NA"]),
-        guardian_profession: Enum.random(["Self-employed", "Unemployed", "Private employee", "Government employee"]),
+        guardian_profession:
+          Enum.random(["Self-employed", "Unemployed", "Private employee", "Government employee"]),
         has_category_certificate: Enum.random([true, false]),
         category_certificate: Seed.random_alphanumeric(),
         physically_handicapped_certificate: Seed.random_alphanumeric(),
@@ -251,9 +253,12 @@ defmodule Seed do
         has_air_conditioner: Enum.random([true, false]),
         goes_for_tuition_or_other_coaching: Enum.random(["yes", "no"]),
         know_about_avanti: Enum.random(["yes", "no"]),
-        percentage_in_grade_10_science: Enum.random([">49%", "50-59%", "60-69%", "70-79%", "80-89%", ">90%"]),
-        percentage_in_grade_10_math: Enum.random([">49%", "50-59%", "60-69%", "70-79%", "80-89%", ">90%"]),
-        percentage_in_grade_10_english: Enum.random([">49%", "50-59%", "60-69%", "70-79%", "80-89%", ">90%"]),
+        percentage_in_grade_10_science:
+          Enum.random([">49%", "50-59%", "60-69%", "70-79%", "80-89%", ">90%"]),
+        percentage_in_grade_10_math:
+          Enum.random([">49%", "50-59%", "60-69%", "70-79%", "80-89%", ">90%"]),
+        percentage_in_grade_10_english:
+          Enum.random([">49%", "50-59%", "60-69%", "70-79%", "80-89%", ">90%"]),
         grade_10_marksheet: Seed.random_alphanumeric(),
         photo: Seed.random_alphanumeric()
       })

@@ -42,7 +42,7 @@ defmodule DbserviceWeb.Router do
     resources("/subject", SubjectController, except: [:new, :edit])
     resources("/chapter", ChapterController, except: [:new, :edit])
     resources("/topic", TopicController, except: [:new, :edit])
-  resources("/concept", ConceptController, except: [:new, :edit])
+    resources("/concept", ConceptController, except: [:new, :edit])
     resources("/learning-objective", LearningObjectiveController, except: [:new, :edit])
     resources("/source", SourceController, except: [:new, :edit])
     resources("/purpose", PurposeController, except: [:new, :edit])

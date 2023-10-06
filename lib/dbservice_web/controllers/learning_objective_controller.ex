@@ -64,10 +64,14 @@ defmodule DbserviceWeb.LearningObjectiveController do
   end
 
   def create(conn, params) do
-    with {:ok, %LearningObjective{} = learning_objective} <- LearningObjectives.create_learning_objective(params) do
+    with {:ok, %LearningObjective{} = learning_objective} <-
+           LearningObjectives.create_learning_objective(params) do
       conn
       |> put_status(:created)
-      |> put_resp_header("location", Routes.learning_objective_path(conn, :show, learning_objective))
+      |> put_resp_header(
+        "location",
+        Routes.learning_objective_path(conn, :show, learning_objective)
+      )
       |> render("show.json", learning_objective: learning_objective)
     end
   end
@@ -76,7 +80,9 @@ defmodule DbserviceWeb.LearningObjectiveController do
     get("/api/learning-objective/{learningObjectiveId}")
 
     parameters do
-      learningObjectiveId(:path, :integer, "The id of the learning_objective record", required: true)
+      learningObjectiveId(:path, :integer, "The id of the learning_objective record",
+        required: true
+      )
     end
 
     response(200, "OK", Schema.ref(:LearningObjective))
@@ -91,7 +97,10 @@ defmodule DbserviceWeb.LearningObjectiveController do
     patch("/api/learning-objective/{learningObjectiveId}")
 
     parameters do
-      learningObjectiveId(:path, :integer, "The id of the learning objective record", required: true)
+      learningObjectiveId(:path, :integer, "The id of the learning objective record",
+        required: true
+      )
+
       body(:body, Schema.ref(:LearningObjective), "LearningObjective to create", required: true)
     end
 
@@ -101,7 +110,8 @@ defmodule DbserviceWeb.LearningObjectiveController do
   def update(conn, params) do
     learning_objective = LearningObjectives.get_learning_objective!(params["id"])
 
-    with {:ok, %LearningObjective{} = learning_objective} <- LearningObjectives.update_learning_objective(learning_objective, params) do
+    with {:ok, %LearningObjective{} = learning_objective} <-
+           LearningObjectives.update_learning_objective(learning_objective, params) do
       render(conn, "show.json", learning_objective: learning_objective)
     end
   end
@@ -119,7 +129,8 @@ defmodule DbserviceWeb.LearningObjectiveController do
   def delete(conn, %{"id" => id}) do
     learning_objective = LearningObjectives.get_learning_objective!(id)
 
-    with {:ok, %LearningObjective{}} <- LearningObjectives.delete_learning_objective(learning_objective) do
+    with {:ok, %LearningObjective{}} <-
+           LearningObjectives.delete_learning_objective(learning_objective) do
       send_resp(conn, :no_content, "")
     end
   end
