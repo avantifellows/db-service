@@ -36,6 +36,17 @@ defmodule DbserviceWeb.Router do
     resources("/group-type", GroupTypeController, except: [:new, :edit])
     resources("/form-schema", FormSchemaController)
     resources("/group-user", GroupUserController)
+    resources("/tag", TagController, except: [:new, :edit])
+    resources("/curriculum", CurriculumController, except: [:new, :edit])
+    resources("/grade", GradeController, except: [:new, :edit])
+    resources("/subject", SubjectController, except: [:new, :edit])
+    resources("/chapter", ChapterController, except: [:new, :edit])
+    resources("/topic", TopicController, except: [:new, :edit])
+  resources("/concept", ConceptController, except: [:new, :edit])
+    resources("/learning-objective", LearningObjectiveController, except: [:new, :edit])
+    resources("/source", SourceController, except: [:new, :edit])
+    resources("/purpose", PurposeController, except: [:new, :edit])
+    resources("/resource", ResourceController, except: [:new, :edit])
 
     def swagger_info do
       source(["config/.env", "config/.env"])
