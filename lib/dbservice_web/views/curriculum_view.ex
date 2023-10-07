@@ -11,6 +11,14 @@ defmodule DbserviceWeb.CurriculumView do
   end
 
   def render("curriculum.json", %{curriculum: curriculum}) do
+    if is_list(curriculum) do
+      curriculum |> Enum.map(&render_curriculum/1)
+    else
+      render_curriculum(curriculum)
+    end
+  end
+
+  defp render_curriculum(curriculum) do
     %{
       id: curriculum.id,
       name: curriculum.name,

@@ -66,11 +66,14 @@ defmodule DbserviceWeb.CurriculumController do
   end
 
   def create(conn, params) do
-    with {:ok, %Curriculum{} = curriculum} <- Curriculums.create_curriculum(params) do
-      conn
-      |> put_status(:created)
-      |> put_resp_header("location", Routes.curriculum_path(conn, :show, curriculum))
-      |> render("show.json", curriculum: curriculum)
+    case params do
+      %{"_json" => curriculum_list} ->
+        # Handles the case where params is a list of curriculums
+        create_curriculums(conn, curriculum_list)
+
+      _ ->
+        # Handles the case where params is a single curriculum
+        create_curriculum(conn, params)
     end
   end
 
@@ -123,6 +126,30 @@ defmodule DbserviceWeb.CurriculumController do
 
     with {:ok, %Curriculum{}} <- Curriculums.delete_curriculum(curriculum) do
       send_resp(conn, :no_content, "")
+    end
+  end
+
+  defp create_curriculums(conn, curriculum_list) do
+    case Curriculums.create_curriculums(curriculum_list) do
+      {:ok, curriculums} ->
+        conn
+        |> put_status(:created)
+        |> put_resp_header("location", Routes.curriculum_path(conn, :index))
+        |> render("curriculum.json", curriculum: curriculums)
+
+      {:error, changeset} ->
+        conn
+        |> put_status(:unprocessable_entity)
+        |> render(DbserviceWeb.ChangesetView, "error.json", changeset: changeset)
+    end
+  end
+
+  defp create_curriculum(conn, params) do
+    with {:ok, %Curriculum{} = curriculum} <- Curriculums.create_curriculum(params) do
+      conn
+      |> put_status(:created)
+      |> put_resp_header("location", Routes.curriculum_path(conn, :show, curriculum))
+      |> render("show.json", curriculum: curriculum)
     end
   end
 end

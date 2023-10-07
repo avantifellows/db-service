@@ -30,6 +30,32 @@ defmodule Dbservice.Curriculums do
   def get_curriculum!(id), do: Repo.get!(Curriculum, id)
 
   @doc """
+  Creates one or more curriculums.
+
+  ## Examples
+      iex> create_curriculums([%{field: value}])
+      {:ok, [%Curriculum{}]}
+      iex> create_curriculums([%{field: value}, %{field: value}])
+      {:ok, [%Curriculum{}, %Curriculum{}]}
+      iex> create_curriculums([%{field: bad_value}])
+      {:error, %{}}
+  """
+
+  def create_curriculums([]), do: {:error, %{}}
+
+  def create_curriculums(params) do
+    Enum.reduce(params, {:ok, []}, fn attrs, {:ok, curriculums} ->
+      case create_curriculum(attrs) do
+        {:ok, curriculum} ->
+          {:ok, [curriculum | curriculums]}
+
+        {:error, _changeset} ->
+          {:error, %{}}
+      end
+    end)
+  end
+
+  @doc """
   Creates a curriculum.
   ## Examples
       iex> create_curriculum(%{field: value})
