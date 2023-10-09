@@ -44,7 +44,7 @@ defmodule DbserviceWeb.SessionController do
   def index(conn, params) do
     query =
       from m in Session,
-        order_by: [asc: m.id],
+        order_by: [desc: m.id],
         offset: ^params["offset"],
         limit: ^params["limit"]
 
