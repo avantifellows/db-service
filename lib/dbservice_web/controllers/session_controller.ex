@@ -51,12 +51,18 @@ defmodule DbserviceWeb.SessionController do
     query =
       Enum.reduce(params, query, fn {key, value}, acc ->
         case String.to_existing_atom(key) do
-          :offset -> acc
-          :limit -> acc
+          :offset ->
+            acc
+
+          :limit ->
+            acc
+
           :session_id_is_null when value == "true" ->
             # filter for session_id being null
             from u in acc, where: is_nil(u.session_id)
-          atom -> from u in acc, where: field(u, ^atom) == ^value
+
+          atom ->
+            from u in acc, where: field(u, ^atom) == ^value
         end
       end)
 
