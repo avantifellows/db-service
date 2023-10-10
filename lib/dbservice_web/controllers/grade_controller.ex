@@ -43,9 +43,25 @@ defmodule DbserviceWeb.GradeController do
     query =
       Enum.reduce(params, query, fn {key, value}, acc ->
         case String.to_existing_atom(key) do
-          :offset -> acc
-          :limit -> acc
-          atom -> from(u in acc, where: field(u, ^atom) == ^value)
+          :offset ->
+            acc
+
+          :limit ->
+            acc
+
+          atom ->
+            case value do
+              # Skip the key if the value is an empty string
+              "" ->
+                acc
+
+              # Skip the key if the value is "undefined"
+              "undefined" ->
+                acc
+
+              _ ->
+                from(u in acc, where: field(u, ^atom) == ^value)
+            end
         end
       end)
 
@@ -64,11 +80,14 @@ defmodule DbserviceWeb.GradeController do
   end
 
   def create(conn, params) do
-    with {:ok, %Grade{} = grade} <- Grades.create_grade(params) do
-      conn
-      |> put_status(:created)
-      |> put_resp_header("location", Routes.grade_path(conn, :show, grade))
-      |> render("show.json", grade: grade)
+    case params do
+      %{"_json" => grade_list} ->
+        # Handles the case where params is a list of grades
+        create_grades(conn, grade_list)
+
+      _ ->
+        # Handles the case where params is a single grade
+        create_grade(conn, params)
     end
   end
 
@@ -121,6 +140,30 @@ defmodule DbserviceWeb.GradeController do
 
     with {:ok, %Grade{}} <- Grades.delete_grade(grade) do
       send_resp(conn, :no_content, "")
+    end
+  end
+
+  defp create_grades(conn, grade_list) do
+    case Grades.create_grades(grade_list) do
+      {:ok, grades} ->
+        conn
+        |> put_status(:created)
+        |> put_resp_header("location", Routes.grade_path(conn, :index))
+        |> render("grade.json", grade: grades)
+
+      {:error, changeset} ->
+        conn
+        |> put_status(:unprocessable_entity)
+        |> render(DbserviceWeb.ChangesetView, "error.json", changeset: changeset)
+    end
+  end
+
+  defp create_grade(conn, params) do
+    with {:ok, %Grade{} = grade} <- Grades.create_grade(params) do
+      conn
+      |> put_status(:created)
+      |> put_resp_header("location", Routes.grade_path(conn, :show, grade))
+      |> render("show.json", grade: grade)
     end
   end
 end

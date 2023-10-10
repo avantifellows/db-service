@@ -11,6 +11,14 @@ defmodule DbserviceWeb.GradeView do
   end
 
   def render("grade.json", %{grade: grade}) do
+    if is_list(grade) do
+      grade |> Enum.map(&render_grade/1)
+    else
+      render_grade(grade)
+    end
+  end
+
+  defp render_grade(grade) do
     %{
       id: grade.id,
       number: grade.number,

@@ -69,11 +69,14 @@ defmodule DbserviceWeb.SubjectController do
   end
 
   def create(conn, params) do
-    with {:ok, %Subject{} = subject} <- Subjects.create_subject(params) do
-      conn
-      |> put_status(:created)
-      |> put_resp_header("location", Routes.subject_path(conn, :show, subject))
-      |> render("show.json", subject: subject)
+    case params do
+      %{"_json" => subject_list} ->
+        # Handles the case where params is a list of subjects
+        create_subjects(conn, subject_list)
+
+      _ ->
+        # Handles the case where params is a single subject
+        create_subject(conn, params)
     end
   end
 
@@ -126,6 +129,30 @@ defmodule DbserviceWeb.SubjectController do
 
     with {:ok, %Subject{}} <- Subjects.delete_subject(subject) do
       send_resp(conn, :no_content, "")
+    end
+  end
+
+  defp create_subjects(conn, subject_list) do
+    case Subjects.create_subjects(subject_list) do
+      {:ok, subjects} ->
+        conn
+        |> put_status(:created)
+        |> put_resp_header("location", Routes.subject_path(conn, :index))
+        |> render("subject.json", subject: subjects)
+
+      {:error, changeset} ->
+        conn
+        |> put_status(:unprocessable_entity)
+        |> render(DbserviceWeb.ChangesetView, "error.json", changeset: changeset)
+    end
+  end
+
+  defp create_subject(conn, params) do
+    with {:ok, %Subject{} = subject} <- Subjects.create_subject(params) do
+      conn
+      |> put_status(:created)
+      |> put_resp_header("location", Routes.subject_path(conn, :show, subject))
+      |> render("show.json", subject: subject)
     end
   end
 end

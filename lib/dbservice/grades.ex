@@ -30,6 +30,32 @@ defmodule Dbservice.Grades do
   def get_grade!(id), do: Repo.get!(Grade, id)
 
   @doc """
+  Creates one or more grades.
+
+  ## Examples
+      iex> create_grades([%{field: value}])
+      {:ok, [%Grade{}]}
+      iex> create_grades([%{field: value}, %{field: value}])
+      {:ok, [%Grade{}, %Grade{}]}
+      iex> create_grades([%{field: bad_value}])
+      {:error, %{}}
+  """
+
+  def create_grades([]), do: {:error, %{}}
+
+  def create_grades(params) do
+    Enum.reduce(params, {:ok, []}, fn attrs, {:ok, grades} ->
+      case create_grade(attrs) do
+        {:ok, grade} ->
+          {:ok, [grade | grades]}
+
+        {:error, _changeset} ->
+          {:error, %{}}
+      end
+    end)
+  end
+
+  @doc """
   Creates a grade.
   ## Examples
       iex> create_grade(%{field: value})
