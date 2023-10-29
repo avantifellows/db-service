@@ -33,6 +33,12 @@ defmodule DbserviceWeb.GradeController do
   end
 
   def index(conn, params) do
+    query = build_query(params)
+    grade = Repo.all(query)
+    render(conn, "index.json", grade: grade)
+  end
+
+  defp build_query(params) do
     query =
       from(m in Grade,
         order_by: [asc: m.id],
@@ -40,33 +46,29 @@ defmodule DbserviceWeb.GradeController do
         limit: ^params["limit"]
       )
 
-    query =
-      Enum.reduce(params, query, fn {key, value}, acc ->
-        case String.to_existing_atom(key) do
-          :offset ->
-            acc
+    Enum.reduce(params, query, fn {key, value}, acc ->
+      case String.to_existing_atom(key) do
+        :offset ->
+          acc
 
-          :limit ->
-            acc
+        :limit ->
+          acc
 
-          atom ->
-            case value do
-              # Skip the key if the value is an empty string
-              "" ->
-                acc
+        atom ->
+          case value do
+            # Skip the key if the value is an empty string
+            "" ->
+              acc
 
-              # Skip the key if the value is "undefined"
-              "undefined" ->
-                acc
+            # Skip the key if the value is "undefined"
+            "undefined" ->
+              acc
 
-              _ ->
-                from(u in acc, where: field(u, ^atom) == ^value)
-            end
-        end
-      end)
-
-    grade = Repo.all(query)
-    render(conn, "index.json", grade: grade)
+            _ ->
+              from(u in acc, where: field(u, ^atom) == ^value)
+          end
+      end
+    end)
   end
 
   swagger_path :create do
