@@ -40,25 +40,28 @@ defmodule DbserviceWeb.GradeController do
         limit: ^params["limit"]
       )
 
-    query =
-      Enum.reduce(params, query, fn {key, value}, acc ->
-        if String.to_existing_atom(key) == :offset do
-          acc
-        else
-          if String.to_existing_atom(key) == :limit do
-            acc
-          else
-            if value == "" or value == "undefined" do
-              acc
-            else
-              from(u in acc, where: field(u, ^String.to_existing_atom(key)) == ^value)
-            end
-          end
-        end
-      end)
+    query = apply_filters(query, params)
 
     grade = Repo.all(query)
     render(conn, "index.json", grade: grade)
+  end
+
+  defp apply_filters(query, params) do
+    Enum.reduce(params, query, fn {key, value}, acc ->
+      case String.to_existing_atom(key) do
+        :offset ->
+          acc
+
+        :limit ->
+          acc
+
+        atom when is_binary(value) and value != "" and value != "undefined" ->
+          from(u in acc, where: field(u, ^atom) == ^value)
+
+        _ ->
+          acc
+      end
+    end)
   end
 
   swagger_path :create do
