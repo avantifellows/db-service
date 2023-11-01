@@ -5,6 +5,7 @@ defmodule Dbservice.Users.Student do
   import Ecto.Changeset
 
   alias Dbservice.Users.User
+  alias Dbservice.Profiles.StudentProfile
   alias Dbservice.Schools.EnrollmentRecord
 
   schema "student" do
@@ -48,6 +49,7 @@ defmodule Dbservice.Users.Student do
     field(:photo, :string)
 
     belongs_to(:user, User)
+    has_one(:student_profile, StudentProfile)
     has_many(:enrollment_record, EnrollmentRecord)
 
     timestamps()

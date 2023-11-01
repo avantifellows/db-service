@@ -5,6 +5,7 @@ defmodule Dbservice.Users.Teacher do
   import Ecto.Changeset
 
   alias Dbservice.Users.User
+  alias Dbservice.Profiles.TeacherProfile
   alias Dbservice.Schools.School
 
   schema "teacher" do
@@ -15,6 +16,7 @@ defmodule Dbservice.Users.Teacher do
     belongs_to :user, User
     belongs_to :school, School
     belongs_to :program_manager, User
+    has_one :teacher_profile, TeacherProfile
 
     timestamps()
   end
