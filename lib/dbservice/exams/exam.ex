@@ -9,8 +9,6 @@ defmodule Dbservice.Exams.Exam do
     field :registration_deadline, :utc_datetime
     field :date, :utc_datetime
 
-    has_many :student_exam, StudentExamRecord
-
     timestamps()
   end
 
