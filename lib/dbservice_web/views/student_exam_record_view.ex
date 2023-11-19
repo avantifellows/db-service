@@ -13,7 +13,7 @@ defmodule DbserviceWeb.StudentExamRecordView do
   def render("student_exam_record.json", %{student_exam_record: student_exam_record}) do
     %{
       id: student_exam_record.id,
-      student_id: student_exam_record.name,
+      student_id: student_exam_record.student_id,
       exam_id: student_exam_record.exam_id,
       application_number: student_exam_record.application_number,
       application_password: student_exam_record.application_password,
