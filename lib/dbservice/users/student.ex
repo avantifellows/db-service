@@ -47,7 +47,7 @@ defmodule Dbservice.Users.Student do
     field(:percentage_in_grade_10_english, :string)
     field(:grade_10_marksheet, :string)
     field(:photo, :string)
-    field(:planned_competitive_exams, :string)
+    field(:planned_competitive_exams, {:array, :integer})
 
     belongs_to(:user, User)
     has_many(:enrollment_record, EnrollmentRecord)
