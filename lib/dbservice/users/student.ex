@@ -96,7 +96,8 @@ defmodule Dbservice.Users.Student do
       :percentage_in_grade_10_math,
       :percentage_in_grade_10_english,
       :grade_10_marksheet,
-      :photo
+      :photo,
+      :planned_competitive_exams
     ])
     |> validate_required([:user_id])
   end
