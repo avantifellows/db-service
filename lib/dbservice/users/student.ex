@@ -6,6 +6,7 @@ defmodule Dbservice.Users.Student do
 
   alias Dbservice.Users.User
   alias Dbservice.Schools.EnrollmentRecord
+  alias Dbservice.Exams.StudentExamRecord
 
   schema "student" do
     field(:student_id, :string)
@@ -46,9 +47,11 @@ defmodule Dbservice.Users.Student do
     field(:percentage_in_grade_10_english, :string)
     field(:grade_10_marksheet, :string)
     field(:photo, :string)
+    field(:planned_competitive_exams, {:array, :integer})
 
     belongs_to(:user, User)
     has_many(:enrollment_record, EnrollmentRecord)
+    has_many(:student_exam_record, StudentExamRecord)
 
     timestamps()
   end
@@ -93,7 +96,8 @@ defmodule Dbservice.Users.Student do
       :percentage_in_grade_10_math,
       :percentage_in_grade_10_english,
       :grade_10_marksheet,
-      :photo
+      :photo,
+      :planned_competitive_exams
     ])
     |> validate_required([:user_id])
   end
