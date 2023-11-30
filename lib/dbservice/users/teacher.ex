@@ -11,7 +11,7 @@ defmodule Dbservice.Users.Teacher do
     field :designation, :string
     field :grade, :string
     field :subject, :string
-    field :uuid, :string
+    field :teacher_id, :string
     belongs_to :user, User
     belongs_to :school, School
     belongs_to :program_manager, User
@@ -29,7 +29,7 @@ defmodule Dbservice.Users.Teacher do
       :designation,
       :subject,
       :grade,
-      :uuid
+      :teacher_id
     ])
     |> validate_required([:user_id])
   end

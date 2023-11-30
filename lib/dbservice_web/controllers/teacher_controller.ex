@@ -29,9 +29,9 @@ defmodule DbserviceWeb.TeacherController do
     get("/api/teacher")
 
     parameters do
-      params(:query, :string, "The uuid the teacher",
+      params(:query, :string, "The ID the teacher",
         required: false,
-        name: "uuid"
+        name: "teacher_id"
       )
 
       params(:query, :string, "The designation the teacher", required: false, name: "designation")
