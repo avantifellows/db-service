@@ -17,7 +17,7 @@ defmodule DbserviceWeb.SwaggerSchema.Teacher do
             user_id(:integer, "User ID for the teacher")
             school_id(:integer, "School ID for the teacher")
             program_manager_id(:integer, "Program manager user ID for the teacher")
-            uuid(:string, "UUID for the teacher")
+            teacher_id(:string, "ID for the teacher")
           end
 
           example(%{
@@ -27,7 +27,7 @@ defmodule DbserviceWeb.SwaggerSchema.Teacher do
             user_id: 1,
             school_id: 2,
             program_manager_id: 3,
-            uuid: "3bc6b53e7bbbc883b9ab"
+            teacher_id: "3bc6b53e7bbbc883b9ab"
           })
         end
     }
@@ -56,7 +56,7 @@ defmodule DbserviceWeb.SwaggerSchema.Teacher do
             designation(:string, "Designation for the teacher")
             grade(:string, "Grade level in which a teacher instructs")
             subject(:string, "Subject taught by the teacher")
-            uuid(:string, "UUID of the teacher")
+            teacher_id(:string, "ID of the teacher")
             school_id(:integer, "ID of the school associated with the teacher")
             full_name(:string, "Full name")
             email(:string, "Email")
@@ -73,7 +73,7 @@ defmodule DbserviceWeb.SwaggerSchema.Teacher do
           example(%{
             designation: "Principal",
             grade: "High School",
-            uuid: "AF419",
+            teacher_id: "AF419",
             category: "general",
             stream: "PCB",
             full_name: "Aman Bahuguna",
@@ -103,14 +103,14 @@ defmodule DbserviceWeb.SwaggerSchema.Teacher do
             designation(:string, "Designation for the teacher")
             grade(:string, "Grade level in which a teacher instructs")
             subject(:string, "Subject taught by the teacher")
-            uuid(:string, "UUID of the teacher")
+            teacher_id(:string, "ID of the teacher")
             user(:map, "User details associated with the teacher")
           end
 
           example(%{
             designation: "Principal",
             grade: "High School",
-            uuid: "AF419",
+            teacher_id: "AF419",
             category: "general",
             stream: "PCB",
             school_id: 2,
