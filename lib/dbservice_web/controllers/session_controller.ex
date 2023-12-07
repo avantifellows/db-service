@@ -42,27 +42,40 @@ defmodule DbserviceWeb.SessionController do
   end
 
   def index(conn, params) do
+    sort_order =
+      case params["sort_order"] do
+        "asc" -> :asc
+        # default
+        _ -> :desc
+      end
+
     query =
       from m in Session,
-        order_by: [desc: m.id],
+        order_by: [{^sort_order, m.id}],
         offset: ^params["offset"],
         limit: ^params["limit"]
 
     query =
       Enum.reduce(params, query, fn {key, value}, acc ->
-        case String.to_existing_atom(key) do
-          :offset ->
+        case key do
+          "offset" ->
             acc
 
-          :limit ->
+          "limit" ->
             acc
 
-          :session_id_is_null when value == "true" ->
-            # filter for session_id being null
-            from u in acc, where: is_nil(u.session_id)
+          "sort_order" ->
+            acc
 
-          atom ->
-            from u in acc, where: field(u, ^atom) == ^value
+          "session_id_is_null" ->
+            case value do
+              "true" -> from u in acc, where: is_nil(u.session_id)
+              "false" -> from u in acc, where: not is_nil(u.session_id)
+              _ -> acc
+            end
+
+          _ ->
+            from u in acc, where: fragment("? = ?", field(u, ^key), ^value)
         end
       end)
 
