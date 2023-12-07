@@ -42,12 +42,7 @@ defmodule DbserviceWeb.SessionController do
   end
 
   def index(conn, params) do
-    sort_order =
-      case params["sort_order"] do
-        "asc" -> :asc
-        # default
-        _ -> :desc
-      end
+    sort_order = extract_sort_order(params)
 
     query =
       from m in Session,
@@ -68,11 +63,7 @@ defmodule DbserviceWeb.SessionController do
             acc
 
           "session_id_is_null" ->
-            case value do
-              "true" -> from u in acc, where: is_nil(u.session_id)
-              "false" -> from u in acc, where: not is_nil(u.session_id)
-              _ -> acc
-            end
+            apply_session_id_null_filter(value, acc)
 
           _ ->
             from u in acc, where: fragment("? = ?", field(u, ^key), ^value)
@@ -81,6 +72,21 @@ defmodule DbserviceWeb.SessionController do
 
     session = Repo.all(query)
     render(conn, "index.json", session: session)
+  end
+
+  defp extract_sort_order(params) do
+    case params["sort_order"] do
+      "asc" -> :asc
+      _ -> :desc
+    end
+  end
+
+  defp apply_session_id_null_filter(value, acc) do
+    case value do
+      "true" -> from u in acc, where: is_nil(u.session_id)
+      "false" -> from u in acc, where: not is_nil(u.session_id)
+      _ -> acc
+    end
   end
 
   swagger_path :create do
