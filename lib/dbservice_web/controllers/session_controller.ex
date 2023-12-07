@@ -66,7 +66,7 @@ defmodule DbserviceWeb.SessionController do
             apply_session_id_null_filter(value, acc)
 
           _ ->
-            from u in acc, where: fragment("? = ?", field(u, ^key), ^value)
+            from u in acc, where: field(u, ^key) == ^value
         end
       end)
 
