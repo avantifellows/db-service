@@ -52,22 +52,21 @@ defmodule DbserviceWeb.SessionController do
 
     query =
       Enum.reduce(params, query, fn {key, value}, acc ->
-        case key do
-          "offset" ->
+        case String.to_existing_atom(key) do
+          :offset ->
             acc
 
-          "limit" ->
+          :limit ->
             acc
 
-          "sort_order" ->
+          :sort_order ->
             acc
 
-          "session_id_is_null" ->
+          :session_id_is_null ->
             apply_session_id_null_filter(value, acc)
 
-          _ ->
-            field_name = String.to_existing_atom(key)
-            from u in acc, where: field(u, ^field_name) == ^value
+          atom ->
+            from(u in acc, where: field(u, ^atom) == ^value)
         end
       end)
 
