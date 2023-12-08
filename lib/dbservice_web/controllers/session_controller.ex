@@ -66,7 +66,8 @@ defmodule DbserviceWeb.SessionController do
             apply_session_id_null_filter(value, acc)
 
           _ ->
-            from u in acc, where: field(u, ^key) == ^value
+            field_name = String.to_existing_atom(key)
+            from u in acc, where: field(u, ^field_name) == ^value
         end
       end)
 
