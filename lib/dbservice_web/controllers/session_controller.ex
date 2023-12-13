@@ -42,23 +42,51 @@ defmodule DbserviceWeb.SessionController do
   end
 
   def index(conn, params) do
+    sort_order = extract_sort_order(params)
+
     query =
       from m in Session,
-        order_by: [asc: m.id],
+        order_by: [{^sort_order, m.id}],
         offset: ^params["offset"],
         limit: ^params["limit"]
 
     query =
       Enum.reduce(params, query, fn {key, value}, acc ->
         case String.to_existing_atom(key) do
-          :offset -> acc
-          :limit -> acc
-          atom -> from u in acc, where: field(u, ^atom) == ^value
+          :offset ->
+            acc
+
+          :limit ->
+            acc
+
+          :sort_order ->
+            acc
+
+          :session_id_is_null ->
+            apply_session_id_null_filter(value, acc)
+
+          atom ->
+            from(u in acc, where: field(u, ^atom) == ^value)
         end
       end)
 
     session = Repo.all(query)
     render(conn, "index.json", session: session)
+  end
+
+  defp extract_sort_order(params) do
+    case params["sort_order"] do
+      "asc" -> :asc
+      _ -> :desc
+    end
+  end
+
+  defp apply_session_id_null_filter(value, acc) do
+    case value do
+      "true" -> from u in acc, where: is_nil(u.session_id)
+      "false" -> from u in acc, where: not is_nil(u.session_id)
+      _ -> acc
+    end
   end
 
   swagger_path :create do

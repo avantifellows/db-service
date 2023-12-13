@@ -47,6 +47,8 @@ defmodule DbserviceWeb.Router do
     resources("/source", SourceController, except: [:new, :edit])
     resources("/purpose", PurposeController, except: [:new, :edit])
     resources("/resource", ResourceController, except: [:new, :edit])
+    resources("/exam", ExamController)
+    resources("/student-exam-record", StudentExamRecordController)
 
     def swagger_info do
       source(["config/.env", "config/.env"])
