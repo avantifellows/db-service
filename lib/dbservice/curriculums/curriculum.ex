@@ -6,6 +6,7 @@ defmodule Dbservice.Curriculums.Curriculum do
 
   alias Dbservice.Tags.Tag
   alias Dbservice.Resources.Resource
+  alias Dbservice.Chapters.Chapter
 
   schema "curriculum" do
     field(:name, :string)
@@ -14,6 +15,7 @@ defmodule Dbservice.Curriculums.Curriculum do
     timestamps()
 
     has_many(:resource, Resource)
+    has_many(:chapter, Chapter)
     belongs_to(:tag, Tag)
   end
 
