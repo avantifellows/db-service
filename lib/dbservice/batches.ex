@@ -1,6 +1,6 @@
 defmodule Dbservice.Batches do
   @moduledoc """
-  The Groups context.
+  The Batches context.
   """
 
   import Ecto.Query, warn: false
@@ -12,8 +12,8 @@ defmodule Dbservice.Batches do
   @doc """
   Returns the list of batch.
   ## Examples
-      iex> list_group()
-      [%Group{}, ...]
+      iex> list_batch()
+      [%Batch{}, ...]
   """
   def list_batch do
     Repo.all(Batch)
@@ -21,10 +21,10 @@ defmodule Dbservice.Batches do
 
   @doc """
   Gets a single batch.
-  Raises `Ecto.NoResultsError` if the Group does not exist.
+  Raises `Ecto.NoResultsError` if the batch does not exist.
   ## Examples
       iex> get_batch!(123)
-      %Group{}
+      %Batch{}
       iex> get_batch!(456)
       ** (Ecto.NoResultsError)
   """
@@ -34,7 +34,7 @@ defmodule Dbservice.Batches do
   Creates a batch.
   ## Examples
       iex> create_batch(%{field: value})
-      {:ok, %Group{}}
+      {:ok, %Batch{}}
       iex> create_batch(%{field: bad_value})
       {:error, %Ecto.Changeset{}}
   """
@@ -49,7 +49,7 @@ defmodule Dbservice.Batches do
   Updates a batch.
   ## Examples
       iex> update_batch(batch, %{field: new_value})
-      {:ok, %Group{}}
+      {:ok, %Batch{}}
       iex> update_batch(batch, %{field: bad_value})
       {:error, %Ecto.Changeset{}}
   """
@@ -63,7 +63,7 @@ defmodule Dbservice.Batches do
   Deletes a batch.
   ## Examples
       iex> delete_batch(batch)
-      {:ok, %GroupUser{}}
+      {:ok, %Batch{}}
       iex> delete_batch(batch)
       {:error, %Ecto.Changeset{}}
   """
@@ -72,10 +72,10 @@ defmodule Dbservice.Batches do
   end
 
   @doc """
-  Returns an `%Ecto.Changeset{}` for tracking group changes.
+  Returns an `%Ecto.Changeset{}` for tracking batch changes.
   ## Examples
       iex> change_batch(batch)
-      %Ecto.Changeset{data: %Groupuser{}}
+      %Ecto.Changeset{data: %Batch{}}
   """
   def change_batch(%Batch{} = batch, attrs \\ %{}) do
     Batch.changeset(batch, attrs)
