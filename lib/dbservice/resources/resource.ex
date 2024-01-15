@@ -12,6 +12,7 @@ defmodule Dbservice.Resources.Resource do
   alias Dbservice.Concepts.Concept
   alias Dbservice.LearningObjectives.LearningObjective
   alias Dbservice.Tags.Tag
+  alias Dbservice.Users.Teacher
 
   schema "resource" do
     field(:name, :string)
@@ -29,6 +30,7 @@ defmodule Dbservice.Resources.Resource do
     belongs_to(:concept, Concept)
     belongs_to(:learning_objective, LearningObjective)
     belongs_to(:tag, Tag)
+    belongs_to(:teacher, Teacher)
   end
 
   @doc false
@@ -46,7 +48,8 @@ defmodule Dbservice.Resources.Resource do
       :purpose_id,
       :concept_id,
       :learning_objective_id,
-      :tag_id
+      :tag_id,
+      :teacher_id
     ])
   end
 end

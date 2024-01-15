@@ -24,7 +24,8 @@ defmodule DbserviceWeb.ResourceView do
       purpose_id: resource.purpose_id,
       concept_id: resource.concept_id,
       learning_objective_id: resource.learning_objective_id,
-      tag_id: resource.tag_id
+      tag_id: resource.tag_id,
+      teacher_id: resource.teacher_id
     }
   end
 end

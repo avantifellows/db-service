@@ -22,6 +22,7 @@ defmodule DbserviceWeb.SwaggerSchema.Resource do
             concept_id(:integer, "Concept id associated with the resource")
             learning_objective_id(:integer, "Learning objective id associated with the resource")
             tag_id(:integer, "Tag id associated with the resource")
+            teacher_id(:integer, "Teacher id associated with the resource")
           end
 
           example(%{
@@ -37,7 +38,8 @@ defmodule DbserviceWeb.SwaggerSchema.Resource do
             purpose_id: 1,
             concept_id: 1,
             learning_objective_id: 1,
-            tag_id: 5
+            tag_id: 5,
+            teacher_id: 1
           })
         end
     }
