@@ -26,7 +26,7 @@ defmodule DbserviceWeb.AuthenticationMiddleware do
     api_key = get_req_header(conn, "authorization")
 
     if api_key == ["Bearer " <> env!("BEARER_TOKEN", :string!)] ||
-         is_swagger_request?(referer, request_path) do
+         swagger_request?(referer, request_path) do
       conn
     else
       conn
@@ -35,7 +35,7 @@ defmodule DbserviceWeb.AuthenticationMiddleware do
     end
   end
 
-  defp is_swagger_request?(referer, request_path) do
+  defp swagger_request?(referer, request_path) do
     String.contains?(referer, "swagger") || String.contains?(request_path, "swagger")
   end
 end
