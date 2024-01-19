@@ -27,3 +27,6 @@ dbservice-*.tar
 
 # Ignore log file
 /logs/info.log
+
+# Ignore mix.lock file
+mix.lock
