@@ -38,6 +38,24 @@ defmodule Dbservice.Schools do
   def get_school!(id), do: Repo.get!(School, id)
 
   @doc """
+  Gets a school by code.
+
+  Raises `Ecto.NoResultsError` if the School does not exist.
+
+  ## Examples
+
+      iex> get_school_by_code(872931)
+      %School{}
+
+      iex> get_school_by_code(872931)
+      ** (Ecto.NoResultsError)
+
+  """
+  def get_school_by_code(code) do
+    Repo.get_by(School, code: code)
+  end
+
+  @doc """
   Creates a school.
 
   ## Examples
