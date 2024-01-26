@@ -11,6 +11,7 @@ defmodule Dbservice.Batches.Batch do
     field :name, :string
     field :contact_hours_per_week, :integer
     field :batch_id, :string
+    field :parent_id, :integer
 
     has_many :group_type, GroupType, foreign_key: :child_id, where: [type: "batch"]
     many_to_many :program, Program, join_through: "batch_program", on_replace: :delete
@@ -24,7 +25,8 @@ defmodule Dbservice.Batches.Batch do
     |> cast(attrs, [
       :name,
       :contact_hours_per_week,
-      :batch_id
+      :batch_id,
+      :parent_id
     ])
     |> validate_required([:name])
   end
