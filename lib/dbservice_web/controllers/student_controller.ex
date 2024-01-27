@@ -179,7 +179,7 @@ defmodule DbserviceWeb.StudentController do
     with {:ok, %Student{} = student} <- Users.update_student(existing_student, params) do
       conn
       |> put_status(:ok)
-      |> render(conn, "show.json", student: student)
+      |> render("show.json", student: student)
     end
   end
 end

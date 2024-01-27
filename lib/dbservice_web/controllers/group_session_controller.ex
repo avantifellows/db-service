@@ -136,7 +136,7 @@ defmodule DbserviceWeb.GroupSessionController do
            GroupSessions.update_group_session(existing_group_session, params) do
       conn
       |> put_status(:ok)
-      |> render(conn, "show.json", group_session: group_session)
+      |> render("show.json", group_session: group_session)
     end
   end
 end

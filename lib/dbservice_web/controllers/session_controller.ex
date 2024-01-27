@@ -195,7 +195,7 @@ defmodule DbserviceWeb.SessionController do
     with {:ok, %Session{} = session} <- Sessions.update_session(existing_session, params) do
       conn
       |> put_status(:ok)
-      |> render(conn, "show.json", session: session)
+      |> render("show.json", session: session)
     end
   end
 end

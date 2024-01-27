@@ -138,7 +138,7 @@ defmodule DbserviceWeb.BatchController do
     with {:ok, %Batch{} = batch} <- Batches.update_batch(existing_batch, params) do
       conn
       |> put_status(:ok)
-      |> render(conn, "show.json", batch: batch)
+      |> render("show.json", batch: batch)
     end
   end
 end
