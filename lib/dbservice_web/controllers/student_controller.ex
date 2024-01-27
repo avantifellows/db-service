@@ -74,7 +74,7 @@ defmodule DbserviceWeb.StudentController do
   end
 
   def create(conn, params) do
-    case Students.get_student_by_student_id(params["student_id"]) do
+    case Users.get_student_by_student_id(params["student_id"]) do
       nil ->
         create_new_student(conn, params)
 
