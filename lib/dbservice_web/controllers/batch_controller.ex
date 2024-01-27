@@ -64,11 +64,12 @@ defmodule DbserviceWeb.BatchController do
   end
 
   def create(conn, params) do
-    with {:ok, %Batch{} = batch} <- Batches.create_batch(params) do
-      conn
-      |> put_status(:created)
-      |> put_resp_header("location", Routes.batch_path(conn, :show, batch))
-      |> render("show.json", batch: batch)
+    case Batches.get_batch_by_batch_id(params["batch_id"]) do
+      nil ->
+        create_new_batch(conn, params)
+
+      existing_batch ->
+        update_existing_batch(conn, existing_batch, params)
     end
   end
 
@@ -121,6 +122,23 @@ defmodule DbserviceWeb.BatchController do
 
     with {:ok, %Batch{}} <- Batches.delete_batch(batch) do
       send_resp(conn, :no_content, "")
+    end
+  end
+
+  defp create_new_batch(conn, params) do
+    with {:ok, %Batch{} = batch} <- Batches.create_batch(params) do
+      conn
+      |> put_status(:created)
+      |> put_resp_header("location", Routes.batch_path(conn, :show, batch))
+      |> render("show.json", batch: batch)
+    end
+  end
+
+  defp update_existing_batch(conn, existing_batch, params) do
+    with {:ok, %Batch{} = batch} <- Batches.update_batch(existing_batch, params) do
+      conn
+      |> put_status(:ok)
+      |> render(conn, "show.json", batch: batch)
     end
   end
 end

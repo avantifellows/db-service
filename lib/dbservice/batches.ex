@@ -31,6 +31,19 @@ defmodule Dbservice.Batches do
   def get_batch!(id), do: Repo.get!(Batch, id)
 
   @doc """
+  Gets a Batch by batch ID.
+  Raises `Ecto.NoResultsError` if the Batch does not exist.
+  ## Examples
+      iex> get_batch_by_batch_id(1234)
+      %Batch{}
+      iex> get_batch_by_batch_id(abc)
+      ** (Ecto.NoResultsError)
+  """
+  def get_batch_by_batch_id(batch_id) do
+    Repo.get_by(Batch, batch_id: batch_id)
+  end
+
+  @doc """
   Creates a batch.
   ## Examples
       iex> create_batch(%{field: value})
