@@ -71,11 +71,12 @@ defmodule DbserviceWeb.TeacherController do
   end
 
   def create(conn, params) do
-    with {:ok, %Teacher{} = teacher} <- Users.create_teacher(params) do
-      conn
-      |> put_status(:created)
-      |> put_resp_header("location", Routes.teacher_path(conn, :show, teacher))
-      |> render("show.json", teacher: teacher)
+    case Users.get_teacher_by_teacher_id(params["teacher_id"]) do
+      nil ->
+        create_new_teacher(conn, params)
+
+      existing_teacher ->
+        update_existing_teacher(conn, existing_teacher, params)
     end
   end
 
@@ -156,6 +157,23 @@ defmodule DbserviceWeb.TeacherController do
     user = Users.get_user!(teacher.user_id)
 
     with {:ok, %Teacher{} = teacher} <- Users.update_teacher_with_user(teacher, user, params) do
+      conn
+      |> put_status(:ok)
+      |> render("show.json", teacher: teacher)
+    end
+  end
+
+  defp create_new_teacher(conn, params) do
+    with {:ok, %Teacher{} = teacher} <- Users.create_teacher(params) do
+      conn
+      |> put_status(:created)
+      |> put_resp_header("location", Routes.teacher_path(conn, :show, teacher))
+      |> render("show.json", teacher: teacher)
+    end
+  end
+
+  defp update_existing_teacher(conn, existing_teacher, params) do
+    with {:ok, %Teacher{} = teacher} <- Users.update_teacher(existing_teacher, params) do
       conn
       |> put_status(:ok)
       |> render("show.json", teacher: teacher)

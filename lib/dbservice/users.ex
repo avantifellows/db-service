@@ -304,6 +304,19 @@ defmodule Dbservice.Users do
   def get_teacher!(id), do: Repo.get!(Teacher, id)
 
   @doc """
+  Gets a Teacher by teacher ID.
+  Raises `Ecto.NoResultsError` if the Batch does not exist.
+  ## Examples
+      iex> get_teacher_by_teacher_id(1234)
+      %Teacher{}
+      iex> get_teacher_by_teacher_id(abc)
+      ** (Ecto.NoResultsError)
+  """
+  def get_teacher_by_teacher_id(teacher_id) do
+    Repo.get_by(Teacher, teacher_id: teacher_id)
+  end
+
+  @doc """
   Creates a teacher.
 
   ## Examples
