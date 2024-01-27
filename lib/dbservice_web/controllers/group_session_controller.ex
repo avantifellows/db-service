@@ -56,15 +56,12 @@ defmodule DbserviceWeb.GroupSessionController do
   end
 
   def create(conn, params) do
-    with {:ok, %GroupSession{} = group_session} <-
-           GroupSessions.create_group_session(params) do
-      conn
-      |> put_status(:created)
-      |> put_resp_header(
-        "location",
-        Routes.group_session_path(conn, :show, group_session)
-      )
-      |> render("show.json", group_session: group_session)
+    case GroupSessions.get_group_session_by_session_id(params["session_id"]) do
+      nil ->
+        create_new_group_session(conn, params)
+
+      existing_group_session ->
+        update_existing_group_session(conn, existing_group_session, params)
     end
   end
 
@@ -118,6 +115,28 @@ defmodule DbserviceWeb.GroupSessionController do
 
     with {:ok, %GroupSession{}} <- GroupSessions.delete_group_session(group_session) do
       send_resp(conn, :no_content, "")
+    end
+  end
+
+  defp create_new_group_session(conn, params) do
+    with {:ok, %GroupSession{} = group_session} <-
+           GroupSessions.create_group_session(params) do
+      conn
+      |> put_status(:created)
+      |> put_resp_header(
+        "location",
+        Routes.group_session_path(conn, :show, group_session)
+      )
+      |> render("show.json", group_session: group_session)
+    end
+  end
+
+  defp update_existing_group_session(conn, existing_group_session, params) do
+    with {:ok, %GroupSession{} = group_session} <-
+           GroupSessions.update_group_session(existing_group_session, params) do
+      conn
+      |> put_status(:ok)
+      |> render(conn, "show.json", group_session: group_session)
     end
   end
 end
