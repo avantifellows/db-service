@@ -151,6 +151,19 @@ defmodule Dbservice.Users do
   def get_student!(id), do: Repo.get!(Student, id)
 
   @doc """
+  Gets a student by student ID.
+  Raises `Ecto.NoResultsError` if the Student does not exist.
+  ## Examples
+      iex> get_student_by_student_id(1234)
+      %Student{}
+      iex> get_student_by_student_id(abc)
+      ** (Ecto.NoResultsError)
+  """
+  def get_student_by_student_id(student_id) do
+    Repo.get_by(Student, student_id: student_id)
+  end
+
+  @doc """
   Creates a student.
 
   ## Examples
