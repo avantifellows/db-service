@@ -61,11 +61,12 @@ defmodule DbserviceWeb.ExamController do
   end
 
   def create(conn, params) do
-    with {:ok, %Exam{} = exam} <- Exams.create_exam(params) do
-      conn
-      |> put_status(:created)
-      |> put_resp_header("location", Routes.exam_path(conn, :show, exam))
-      |> render("show.json", exam: exam)
+    case Exams.get_exam_by_name(params["name"]) do
+      nil ->
+        create_new_exam(conn, params)
+
+      existing_exam ->
+        update_existing_exam(conn, existing_exam, params)
     end
   end
 
@@ -118,6 +119,23 @@ defmodule DbserviceWeb.ExamController do
 
     with {:ok, %Exam{}} <- Exams.delete_exam(exam) do
       send_resp(conn, :no_content, "")
+    end
+  end
+
+  defp create_new_exam(conn, params) do
+    with {:ok, %Exam{} = exam} <- Exams.create_exam(params) do
+      conn
+      |> put_status(:created)
+      |> put_resp_header("location", Routes.exam_path(conn, :show, exam))
+      |> render("show.json", exam: exam)
+    end
+  end
+
+  defp update_existing_exam(conn, existing_exam, params) do
+    with {:ok, %Exam{} = exam} <- Exams.update_exam(existing_exam, params) do
+      conn
+      |> put_status(:ok)
+      |> render("show.json", exam: exam)
     end
   end
 end
