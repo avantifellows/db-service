@@ -32,6 +32,19 @@ defmodule Dbservice.Exams do
   end
 
   @doc """
+  Gets a Exam by name.
+  Raises `Ecto.NoResultsError` if the Exam does not exist.
+  ## Examples
+      iex> get_exam_by_name(JEE)
+      %Exam{}
+      iex> get_exam_by_name(123)
+      ** (Ecto.NoResultsError)
+  """
+  def get_exam_by_name(name) do
+    Repo.get_by(Exam, name: name)
+  end
+
+  @doc """
   Creates a exam.
   ## Examples
       iex> create_exam(%{field: value})

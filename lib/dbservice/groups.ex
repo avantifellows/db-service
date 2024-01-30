@@ -33,6 +33,19 @@ defmodule Dbservice.Groups do
   end
 
   @doc """
+  Gets a Group by name.
+  Raises `Ecto.NoResultsError` if the Group does not exist.
+  ## Examples
+      iex> get_group_by_name(DelhiStudents)
+      %Group{}
+      iex> get_group_by_name(abc)
+      ** (Ecto.NoResultsError)
+  """
+  def get_group_by_name(name) do
+    Repo.get_by(Group, name: name)
+  end
+
+  @doc """
   Creates a group.
   ## Examples
       iex> create_group(%{field: value})

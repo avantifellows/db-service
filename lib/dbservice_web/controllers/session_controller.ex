@@ -100,11 +100,12 @@ defmodule DbserviceWeb.SessionController do
   end
 
   def create(conn, params) do
-    with {:ok, %Session{} = session} <- Sessions.create_session(params) do
-      conn
-      |> put_status(:created)
-      |> put_resp_header("location", Routes.session_path(conn, :show, session))
-      |> render("show.json", session: session)
+    case Sessions.get_session_by_session_id(params["session_id"]) do
+      nil ->
+        create_new_session(conn, params)
+
+      existing_session ->
+        update_existing_session(conn, existing_session, params)
     end
   end
 
@@ -178,6 +179,23 @@ defmodule DbserviceWeb.SessionController do
       when is_list(group_type_ids) do
     with {:ok, %Session{} = session} <- Sessions.update_group_types(session_id, group_type_ids) do
       render(conn, "show.json", session: session)
+    end
+  end
+
+  defp create_new_session(conn, params) do
+    with {:ok, %Session{} = session} <- Sessions.create_session(params) do
+      conn
+      |> put_status(:created)
+      |> put_resp_header("location", Routes.session_path(conn, :show, session))
+      |> render("show.json", session: session)
+    end
+  end
+
+  defp update_existing_session(conn, existing_session, params) do
+    with {:ok, %Session{} = session} <- Sessions.update_session(existing_session, params) do
+      conn
+      |> put_status(:ok)
+      |> render("show.json", session: session)
     end
   end
 end
