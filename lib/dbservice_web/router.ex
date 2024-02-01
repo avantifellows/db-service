@@ -25,7 +25,7 @@ defmodule DbserviceWeb.Router do
     patch("/teacher/register/:id", TeacherController, :update_teacher_with_user)
     resources("/school", SchoolController, except: [:new, :edit])
     resources("/enrollment-record", EnrollmentRecordController, except: [:new, :edit])
-    resources("/session", SessionController, only: [:index, :create, :update, :show])
+    resources("/session", SessionController, only: [:index, :create, :update, :show, :delete])
     post("/session/:id/update-groups", SessionController, :update_groups)
     resources("/session-occurrence", SessionOccurenceController, except: [:new, :edit])
     resources("/user-session", UserSessionController, except: [:new, :edit])
