@@ -38,6 +38,19 @@ defmodule Dbservice.Users do
   def get_user!(id), do: Repo.get!(User, id)
 
   @doc """
+  Gets a user by user ID.
+  Raises `Ecto.NoResultsError` if the User does not exist.
+  ## Examples
+      iex> get_user_by_user_id(1234)
+      %User{}
+      iex> get_user_by_user_id(abc)
+      ** (Ecto.NoResultsError)
+  """
+  def get_user_by_user_id(user_id) do
+    Repo.get_by(User, user_id: user_id)
+  end
+
+  @doc """
   Creates a user.
 
   ## Examples
