@@ -14,6 +14,7 @@ defmodule DbserviceWeb.SessionScheduleView do
 
   def render("session_schedule.json", %{session_schedule: session_schedule}) do
     session_schedule = Repo.preload(session_schedule, :session)
+
     %{
       id: session_schedule.id,
       session_id: session_schedule.session_id,
