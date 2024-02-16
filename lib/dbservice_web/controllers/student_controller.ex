@@ -148,10 +148,12 @@ defmodule DbserviceWeb.StudentController do
   end
 
   def register(conn, params) do
-    with {:ok, %Student{} = student} <- Users.create_student_with_user(params) do
-      conn
-      |> put_status(:created)
-      |> render("show.json", student: student)
+    case Users.get_student_by_student_id(params["student_id"]) do
+      nil ->
+        create_student_with_user(conn, params)
+
+      existing_student ->
+        update_existing_student(conn, existing_student, params)
     end
   end
 
@@ -179,6 +181,14 @@ defmodule DbserviceWeb.StudentController do
     with {:ok, %Student{} = student} <- Users.update_student(existing_student, params) do
       conn
       |> put_status(:ok)
+      |> render("show.json", student: student)
+    end
+  end
+
+  defp create_student_with_user(conn, params) do
+    with {:ok, %Student{} = student} <- Users.create_student_with_user(params) do
+      conn
+      |> put_status(:created)
       |> render("show.json", student: student)
     end
   end
