@@ -79,7 +79,7 @@ defmodule DbserviceWeb.StudentController do
         create_student_with_user(conn, params)
 
       existing_student ->
-        update_existing_student(conn, existing_student, params)
+        update_existing_student_with_user(conn, existing_student, params)
     end
   end
 
@@ -146,8 +146,8 @@ defmodule DbserviceWeb.StudentController do
     end
   end
 
-  defp update_existing_student(conn, existing_student, params) do
-    with {:ok, %Student{} = student} <- Users.update_student(existing_student, params) do
+  defp update_existing_student_with_user(conn, existing_student, params) do
+    with {:ok, %Student{} = student} <- Users.update_student_with_user(existing_student, params) do
       conn
       |> put_status(:ok)
       |> render("show.json", student: student)

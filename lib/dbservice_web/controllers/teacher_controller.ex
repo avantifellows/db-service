@@ -151,8 +151,8 @@ defmodule DbserviceWeb.TeacherController do
     end
   end
 
-  defp update_existing_teacher(conn, existing_teacher, params) do
-    with {:ok, %Teacher{} = teacher} <- Users.update_teacher(existing_teacher, params) do
+  defp update_existing_teacher_with_user(conn, existing_teacher, params) do
+    with {:ok, %Teacher{} = teacher} <- Users.update_teacher_with_user(existing_teacher, params) do
       conn
       |> put_status(:ok)
       |> render("show.json", teacher: teacher)
