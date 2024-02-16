@@ -76,7 +76,7 @@ defmodule DbserviceWeb.StudentController do
   def create(conn, params) do
     case Users.get_student_by_student_id(params["student_id"]) do
       nil ->
-        create_new_student(conn, params)
+        create_student_with_user(conn, params)
 
       existing_student ->
         update_existing_student(conn, existing_student, params)
@@ -135,28 +135,6 @@ defmodule DbserviceWeb.StudentController do
     end
   end
 
-  swagger_path :register do
-    post("/api/student/register")
-
-    parameters do
-      body(:body, Schema.ref(:StudentRegistration), "Student to create along with user",
-        required: true
-      )
-    end
-
-    response(201, "Created", Schema.ref(:StudentWithUser))
-  end
-
-  def register(conn, params) do
-    case Users.get_student_by_student_id(params["student_id"]) do
-      nil ->
-        create_student_with_user(conn, params)
-
-      existing_student ->
-        update_existing_student(conn, existing_student, params)
-    end
-  end
-
   def update_student_with_user(conn, params) do
     student = Users.get_student!(params["id"])
     user = Users.get_user!(student.user_id)
@@ -164,15 +142,6 @@ defmodule DbserviceWeb.StudentController do
     with {:ok, %Student{} = student} <- Users.update_student_with_user(student, user, params) do
       conn
       |> put_status(:ok)
-      |> render("show.json", student: student)
-    end
-  end
-
-  defp create_new_student(conn, params) do
-    with {:ok, %Student{} = student} <- Users.create_student(params) do
-      conn
-      |> put_status(:created)
-      |> put_resp_header("location", Routes.student_path(conn, :show, student))
       |> render("show.json", student: student)
     end
   end
