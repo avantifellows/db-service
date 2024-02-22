@@ -23,6 +23,25 @@ defmodule DbserviceWeb.Router do
     resources("/teacher", TeacherController, except: [:new, :edit])
     post("/teacher/register", TeacherController, :register)
     patch("/teacher/register/:id", TeacherController, :update_teacher_with_user)
+    resources("/user-profile", UserProfileController, only: [:index, :create, :update, :show])
+    resources("/student-profile", StudentProfileController, except: [:new, :edit])
+    post("/student-profile/setup", StudentProfileController, :setup)
+
+    patch(
+      "/student-profile/setup/:id",
+      StudentProfileController,
+      :update_student_profile_with_user_profile
+    )
+
+    resources("/teacher-profile", TeacherProfileController, except: [:new, :edit])
+    post("/teacher-profile/setup", TeacherProfileController, :setup)
+
+    patch(
+      "/teacher-profile/setup/:id",
+      TeacherProfileController,
+      :update_teacher_profile_with_user_profile
+    )
+
     resources("/school", SchoolController, except: [:new, :edit])
     resources("/enrollment-record", EnrollmentRecordController, except: [:new, :edit])
     resources("/session", SessionController, only: [:index, :create, :update, :show])
