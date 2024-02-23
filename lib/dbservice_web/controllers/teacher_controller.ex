@@ -64,10 +64,10 @@ defmodule DbserviceWeb.TeacherController do
     post("/api/teacher")
 
     parameters do
-      body(:body, Schema.ref(:Teacher), "Teacher to create", required: true)
+      body(:body, Schema.ref(:Teacher), "Teacher to create along with user", required: true)
     end
 
-    response(201, "Created", Schema.ref(:Teacher))
+    response(201, "Created", Schema.ref(:TeacherWithUser))
   end
 
   def create(conn, params) do

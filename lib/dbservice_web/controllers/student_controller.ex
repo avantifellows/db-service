@@ -67,10 +67,10 @@ defmodule DbserviceWeb.StudentController do
     post("/api/student")
 
     parameters do
-      body(:body, Schema.ref(:Student), "Student to create", required: true)
+      body(:body, Schema.ref(:Student), "Student to create along with user", required: true)
     end
 
-    response(201, "Created", Schema.ref(:Student))
+    response(201, "Created", Schema.ref(:StudentWithUser))
   end
 
   def create(conn, params) do
