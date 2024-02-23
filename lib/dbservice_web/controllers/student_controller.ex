@@ -105,7 +105,7 @@ defmodule DbserviceWeb.StudentController do
 
     parameters do
       id(:path, :integer, "The id of the student record", required: true)
-      body(:body, Schema.ref(:Student), "Student to create", required: true)
+      body(:body, Schema.ref(:Student), "Student to update along with user", required: true)
     end
 
     response(200, "Updated", Schema.ref(:Student))
@@ -114,7 +114,7 @@ defmodule DbserviceWeb.StudentController do
   def update(conn, params) do
     student = Users.get_student!(params["id"])
 
-    with {:ok, %Student{} = student} <- Users.update_student(student, params) do
+    with {:ok, %Student{} = student} <- update_existing_student_with_user(conn, student, params) do
       render(conn, "show.json", student: student)
     end
   end

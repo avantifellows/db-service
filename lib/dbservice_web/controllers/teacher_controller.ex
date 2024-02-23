@@ -100,7 +100,7 @@ defmodule DbserviceWeb.TeacherController do
   def update(conn, params) do
     teacher = Users.get_teacher!(params["id"])
 
-    with {:ok, %Teacher{} = teacher} <- Users.update_teacher(teacher, params) do
+    with {:ok, %Teacher{} = teacher} <- update_existing_teacher_with_user(conn, teacher, params) do
       render(conn, "show.json", teacher: teacher)
     end
   end
@@ -110,7 +110,7 @@ defmodule DbserviceWeb.TeacherController do
 
     parameters do
       id(:path, :integer, "The id of the teacher record", required: true)
-      body(:body, Schema.ref(:Teacher), "Teacher to create", required: true)
+      body(:body, Schema.ref(:Teacher), "Teacher to update along with user", required: true)
     end
 
     response(200, "Updated", Schema.ref(:Teacher))
