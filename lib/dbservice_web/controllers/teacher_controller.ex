@@ -76,7 +76,7 @@ defmodule DbserviceWeb.TeacherController do
         create_teacher_with_user(conn, params)
 
       existing_teacher ->
-        update_existing_teacher(conn, existing_teacher, params)
+        update_existing_teacher_with_user(conn, existing_teacher, params)
     end
   end
 
