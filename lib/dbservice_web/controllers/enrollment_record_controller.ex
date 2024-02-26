@@ -59,10 +59,9 @@ defmodule DbserviceWeb.EnrollmentRecordController do
         end
       end)
 
-    enrollment_record =
-      Repo.all(query)
-      |> put_status(:created)
-      |> render(conn, "index.json", enrollment_record: enrollment_record)
+    enrollment_record = Repo.all(query)
+
+    render(conn, "index.json", enrollment_record: enrollment_record)
   end
 
   swagger_path :create do
