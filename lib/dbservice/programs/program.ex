@@ -7,6 +7,7 @@ defmodule Dbservice.Programs.Program do
   alias Dbservice.Groups.Group
   alias Dbservice.Batches.Batch
   alias Dbservice.Groups.GroupType
+  alias Dbservice.Schools.EnrollmentRecord
 
   schema "program" do
     field :name, :string
@@ -23,6 +24,7 @@ defmodule Dbservice.Programs.Program do
     belongs_to :group, Group
     has_many :group_type, GroupType, foreign_key: :child_id, where: [type: "program"]
     many_to_many :batch, Batch, join_through: "batch_program", on_replace: :delete
+    has_many :group_fk_id, EnrollmentRecord, foreign_key: :group_id
 
     timestamps()
   end

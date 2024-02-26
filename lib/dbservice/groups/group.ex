@@ -6,6 +6,7 @@ defmodule Dbservice.Groups.Group do
 
   alias Dbservice.Programs.Program
   alias Dbservice.Groups.GroupType
+  alias Dbservice.Schools.EnrollmentRecord
 
   schema "group" do
     field :name, :string
@@ -15,6 +16,7 @@ defmodule Dbservice.Groups.Group do
 
     has_many :program, Program
     has_many :group_type, GroupType, foreign_key: :child_id, where: [type: "group"]
+    has_many :group_fk_id, EnrollmentRecord, foreign_key: :group_id
 
     timestamps()
   end
