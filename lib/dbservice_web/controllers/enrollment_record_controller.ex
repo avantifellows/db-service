@@ -77,7 +77,8 @@ defmodule DbserviceWeb.EnrollmentRecordController do
     case index(conn, %{
            "student_id" => params["student_id"],
            "school_id" => params["school_id"],
-           "group_id" => params["group_id"]
+           "group_id" => params["group_id"],
+           "group_type" => params["group_type"]
          }) do
       nil ->
         create_new_enrollment_record(conn, params)
