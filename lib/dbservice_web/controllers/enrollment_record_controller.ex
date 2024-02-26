@@ -74,15 +74,16 @@ defmodule DbserviceWeb.EnrollmentRecordController do
   end
 
   def create(conn, params) do
-    with {:ok, %EnrollmentRecord{} = enrollment_record} <-
-           Schools.create_enrollment_record(params) do
-      conn
-      |> put_status(:created)
-      |> put_resp_header(
-        "location",
-        Routes.enrollment_record_path(conn, :show, enrollment_record)
-      )
-      |> render("show.json", enrollment_record: enrollment_record)
+    case index(conn, %{
+           "student_id" => params["student_id"],
+           "school_id" => params["school_id"],
+           "group_id" => params["group_id"]
+         }) do
+      nil ->
+        create_new_enrollment_record(conn, params)
+
+      existing_enrollment_record ->
+        update_existing_enrollment_record(conn, existing_enrollment_record, params)
     end
   end
 
@@ -136,6 +137,28 @@ defmodule DbserviceWeb.EnrollmentRecordController do
 
     with {:ok, %EnrollmentRecord{}} <- Schools.delete_enrollment_record(enrollment_record) do
       send_resp(conn, :no_content, "")
+    end
+  end
+
+  def create_new_enrollment_record(conn, params) do
+    with {:ok, %EnrollmentRecord{} = enrollment_record} <-
+           Schools.create_enrollment_record(params) do
+      conn
+      |> put_status(:created)
+      |> put_resp_header(
+        "location",
+        Routes.enrollment_record_path(conn, :show, enrollment_record)
+      )
+      |> render("show.json", enrollment_record: enrollment_record)
+    end
+  end
+
+  defp update_existing_enrollment_record(conn, existing_enrollment_record, params) do
+    with {:ok, %EnrollmentRecord{} = enrollment_record} <-
+           Schools.update_enrollment_record(existing_enrollment_record, params) do
+      conn
+      |> put_status(:ok)
+      |> render("show.json", enrollment_record: enrollment_record)
     end
   end
 end

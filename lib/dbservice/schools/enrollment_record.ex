@@ -36,7 +36,7 @@ defmodule Dbservice.Schools.EnrollmentRecord do
       :group_id,
       :group_type
     ])
-    |> validate_required([:student_id, :school_id, :group_id])
+    |> validate_required([:student_id, :school_id, :group_id, :group_type])
     |> validate_date_of_enrollment
   end
 
