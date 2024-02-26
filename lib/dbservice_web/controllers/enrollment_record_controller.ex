@@ -59,8 +59,10 @@ defmodule DbserviceWeb.EnrollmentRecordController do
         end
       end)
 
-    enrollment_record = Repo.all(query)
-    render(conn, "index.json", enrollment_record: enrollment_record)
+    enrollment_record =
+      Repo.all(query)
+      |> put_status(:created)
+      |> render(conn, "index.json", enrollment_record: enrollment_record)
   end
 
   swagger_path :create do
@@ -79,7 +81,8 @@ defmodule DbserviceWeb.EnrollmentRecordController do
         "student_id" => params["student_id"],
         "school_id" => params["school_id"],
         "group_id" => params["group_id"],
-        "group_type" => params["group_type"]
+        "group_type" => params["group_type"],
+        "academic_year" => params["academic_year"]
       })
 
     case existing_record do
