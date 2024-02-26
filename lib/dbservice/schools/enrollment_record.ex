@@ -33,6 +33,7 @@ defmodule Dbservice.Schools.EnrollmentRecord do
       :academic_year,
       :is_current,
       :board_medium,
+      :date_of_enrollment,
       :group_id,
       :group_type
     ])
