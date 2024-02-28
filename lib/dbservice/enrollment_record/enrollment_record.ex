@@ -23,8 +23,6 @@ defmodule Dbservice.EnrollmentRecords.EnrollmentRecord do
 
   @doc false
   def changeset(enrollment_record, attrs) do
-    IO.inspect(attrs)
-
     enrollment_record
     |> cast(attrs, [
       :student_id,
@@ -42,7 +40,6 @@ defmodule Dbservice.EnrollmentRecords.EnrollmentRecord do
 
   defp validate_date_of_enrollment(changeset) do
     if get_field(changeset, :date_of_enrollment) != nil do
-      IO.inspect(:date_of_enrollment)
       invalidate_future_date(changeset, :date_of_enrollment)
     else
       changeset
