@@ -4,6 +4,7 @@ defmodule DbserviceWeb.EnrollmentRecordController do
   import Ecto.Query
   alias Dbservice.Repo
   alias Dbservice.EnrollmentRecords.EnrollmentRecord
+  alias Dbservice.EnrollmentRecords
 
   action_fallback(DbserviceWeb.FallbackController)
 
@@ -73,7 +74,7 @@ defmodule DbserviceWeb.EnrollmentRecordController do
   end
 
   def create(conn, params) do
-    case EnrollmentRecords.get_enrollment_record_by_params(
+    case EnrollmentRecords.get_enrollment_record_by_params!(
            params["student_id"],
            params["group_id"],
            params["group_type"],
