@@ -23,6 +23,17 @@ alias Dbservice.GroupTypes
 alias Dbservice.Batches
 alias Dbservice.BatchPrograms
 alias Dbservice.FormSchemas
+alias Dbservice.Tags
+alias Dbservice.Curriculums
+alias Dbservice.Grades
+alias Dbservice.Subjects
+alias Dbservice.Chapters
+alias Dbservice.Topics
+alias Dbservice.Concepts
+alias Dbservice.LearningObjectives
+alias Dbservice.Sources
+alias Dbservice.Purposes
+alias Dbservice.Resources
 
 alias Faker.Person
 alias Faker.Internet
@@ -205,7 +216,6 @@ defmodule Seed do
         stream: Enum.random(["Science", "Commerce", "Arts"]),
         user_id: user.id,
         physically_handicapped: Enum.random([true, false]),
-        family_income: Enum.random(["1LPA-3LPA", "3LPA-6LPA", ">6LPA"]),
         father_profession:
           Enum.random(["Self-employed", "Unemployed", "Private employee", "Government employee"]),
         father_education_level: Enum.random(["UG", "PG", "NA"]),
@@ -218,12 +228,39 @@ defmodule Seed do
             "Unemployed"
           ]),
         mother_education_level: Enum.random(["UG", "PG", "NA"]),
-        time_of_device_availability: Faker.DateTime.forward(Enum.random(1..10)),
-        has_internet_access: Enum.random([true, false]),
+        time_of_device_availability:
+          Enum.random(["Between 8am-10am", "Between 5pm-7pm", "Between 10pm-11pm"]),
+        has_internet_access: Enum.random(["yes", "no"]),
         primary_smartphone_owner: Enum.random(["Father", "Mother"]),
         primary_smartphone_owner_profession: Enum.random(["Employed", "Unemployed"]),
         is_dropper: Enum.random([true, false]),
-        contact_hours_per_week: Enum.random(20..48)
+        contact_hours_per_week: Enum.random(20..48),
+        guardian_name: Person.name(),
+        guardian_relation: Enum.random(["Parent", "Sibling", "Aunt", "Uncle"]),
+        guardian_phone: Phone.PtPt.number(),
+        guardian_education_level: Enum.random(["UG", "PG", "NA"]),
+        guardian_profession:
+          Enum.random(["Self-employed", "Unemployed", "Private employee", "Government employee"]),
+        has_category_certificate: Enum.random([true, false]),
+        category_certificate: Seed.random_alphanumeric(),
+        physically_handicapped_certificate: Seed.random_alphanumeric(),
+        annual_family_income: Enum.random(["1LPA-3LPA", "3LPA-6LPA", ">6LPA"]),
+        monthly_family_income: Enum.random(["5K-20K", "20K-50K", ">50K"]),
+        number_of_smartphones: Enum.random(["1", "2", "3", "4", ">4"]),
+        family_type: Enum.random(["Joint", "Nuclear", "Other"]),
+        number_of_four_wheelers: Enum.random(["1", "2", "3", "4", ">4"]),
+        number_of_two_wheelers: Enum.random(["1", "2", "3", "4", ">4"]),
+        has_air_conditioner: Enum.random([true, false]),
+        goes_for_tuition_or_other_coaching: Enum.random(["yes", "no"]),
+        know_about_avanti: Enum.random(["yes", "no"]),
+        percentage_in_grade_10_science:
+          Enum.random([">49%", "50-59%", "60-69%", "70-79%", "80-89%", ">90%"]),
+        percentage_in_grade_10_math:
+          Enum.random([">49%", "50-59%", "60-69%", "70-79%", "80-89%", ">90%"]),
+        percentage_in_grade_10_english:
+          Enum.random([">49%", "50-59%", "60-69%", "70-79%", "80-89%", ">90%"]),
+        grade_10_marksheet: Seed.random_alphanumeric(),
+        photo: Seed.random_alphanumeric()
       })
 
     student
@@ -379,6 +416,225 @@ defmodule Seed do
 
     group_type
   end
+
+  def create_tag() do
+    {:ok, tag} =
+      Tags.create_tag(%{
+        name: Person.name(),
+        description: Faker.Lorem.sentence()
+      })
+
+    tag
+  end
+
+  def create_curriculum() do
+    tag = Tags.Tag |> offset(^Enum.random(1..9)) |> limit(1) |> Repo.one()
+
+    {:ok, curriculum} =
+      Curriculums.create_curriculum(%{
+        name: Faker.Lorem.word(),
+        code: Faker.Lorem.word(),
+        tag_id: tag.id
+      })
+
+    curriculum
+  end
+
+  def create_grade() do
+    tag = Tags.Tag |> offset(^Enum.random(1..9)) |> limit(1) |> Repo.one()
+
+    {:ok, grade} =
+      Grades.create_grade(%{
+        number: Enum.random([9, 10, 11, 12]),
+        tag_id: tag.id
+      })
+
+    grade
+  end
+
+  def create_subject() do
+    tag = Tags.Tag |> offset(^Enum.random(1..9)) |> limit(1) |> Repo.one()
+
+    {:ok, subject} =
+      Subjects.create_subject(%{
+        name: Enum.random(["Physics", "Chemistry", "Maths", "Biology"]),
+        code: Faker.Lorem.word(),
+        tag_id: tag.id
+      })
+
+    subject
+  end
+
+  def create_chapter() do
+    grade = Grades.Grade |> offset(^Enum.random(1..9)) |> limit(1) |> Repo.one()
+    subject = Subjects.Subject |> offset(^Enum.random(1..9)) |> limit(1) |> Repo.one()
+    tag = Tags.Tag |> offset(^Enum.random(1..9)) |> limit(1) |> Repo.one()
+
+    {:ok, chapter} =
+      Chapters.create_chapter(%{
+        name:
+          Enum.random([
+            "Electrostatics",
+            "Electronic Devices",
+            "Electrochemistry",
+            "Polymers",
+            "Differential Equations"
+          ]),
+        code: Faker.Lorem.word(),
+        grade_id: grade.id,
+        subject_id: subject.id,
+        tag_id: tag.id
+      })
+
+    chapter
+  end
+
+  def create_topic() do
+    grade = Grades.Grade |> offset(^Enum.random(1..9)) |> limit(1) |> Repo.one()
+    chapter = Chapters.Chapter |> offset(^Enum.random(1..9)) |> limit(1) |> Repo.one()
+    tag = Tags.Tag |> offset(^Enum.random(1..9)) |> limit(1) |> Repo.one()
+
+    {:ok, topic} =
+      Topics.create_topic(%{
+        name:
+          Enum.random([
+            "Coulomb's Law",
+            "Transistors",
+            "Electrolysis",
+            "Hydrocarbons",
+            "Determinant Properties"
+          ]),
+        code: Faker.Lorem.word(),
+        grade_id: grade.id,
+        chapter_id: chapter.id,
+        tag_id: tag.id
+      })
+
+    topic
+  end
+
+  def create_concept() do
+    topic = Topics.Topic |> offset(^Enum.random(1..9)) |> limit(1) |> Repo.one()
+    tag = Tags.Tag |> offset(^Enum.random(1..9)) |> limit(1) |> Repo.one()
+
+    {:ok, concept} =
+      Concepts.create_concept(%{
+        name:
+          Enum.random([
+            "Electric Field Lines",
+            "Transistor Amplification",
+            "Oxidation and Reduction",
+            "Polymer Structures",
+            "Rolle's Theorem and Mean Value Theorem"
+          ]),
+        topic_id: 1,
+        tag_id: 1
+      })
+
+    concept
+  end
+
+  def create_learning_objective() do
+    concept = Concepts.Concept |> offset(^Enum.random(1..9)) |> limit(1) |> Repo.one()
+    tag = Tags.Tag |> offset(^Enum.random(1..9)) |> limit(1) |> Repo.one()
+
+    {:ok, learning_objective} =
+      LearningObjectives.create_learning_objective(%{
+        title:
+          Enum.random([
+            "Calculate the electrostatic force between two point charges using Coulomb's Law and understand its dependence on charge and distance",
+            "Explain the properties and behavior of semiconductor materials, including their role in the operation of diodes and transistors",
+            "Define oxidation and reduction reactions, identify redox reactions, and balance chemical equations involving electron transfer",
+            "Classify hydrocarbons into alkanes, alkenes, and alkynes based on their structure and understand the nomenclature of organic compounds",
+            "Calculate the inverse of a square matrix and understand the conditions under which a matrix is invertible"
+          ]),
+        concept_id: concept.id,
+        tag_id: tag.id
+      })
+
+    learning_objective
+  end
+
+  def create_source() do
+    tag = Tags.Tag |> offset(^Enum.random(1..9)) |> limit(1) |> Repo.one()
+
+    {:ok, source} =
+      Sources.create_source(%{
+        name:
+          Enum.random([
+            "youtube",
+            "CMS",
+            "plio",
+            "tictaclearn",
+            "diksha"
+          ]),
+        link: Seed.random_alphanumeric(),
+        tag_id: tag.id
+      })
+
+    source
+  end
+
+  def create_purpose() do
+    tag = Tags.Tag |> offset(^Enum.random(1..9)) |> limit(1) |> Repo.one()
+
+    {:ok, purpose} =
+      Purposes.create_purpose(%{
+        name:
+          Enum.random([
+            "introVideo",
+            "conceptVideo",
+            "problemSolvingVideo",
+            "learningModule ",
+            "conceptTest"
+          ]),
+        description: Faker.Lorem.sentence(),
+        tag_id: tag.id
+      })
+
+    purpose
+  end
+
+  def create_resource() do
+    curriculum = Curriculums.Curriculum |> offset(^Enum.random(1..9)) |> limit(1) |> Repo.one()
+    chapter = Chapters.Chapter |> offset(^Enum.random(1..9)) |> limit(1) |> Repo.one()
+    topic = Topics.Topic |> offset(^Enum.random(1..9)) |> limit(1) |> Repo.one()
+    source = Sources.Source |> offset(^Enum.random(1..9)) |> limit(1) |> Repo.one()
+    purpose = Purposes.Purpose |> offset(^Enum.random(1..9)) |> limit(1) |> Repo.one()
+    concept = Concepts.Concept |> offset(^Enum.random(1..9)) |> limit(1) |> Repo.one()
+
+    learning_objective =
+      LearningObjectives.LearningObjective |> offset(^Enum.random(1..9)) |> limit(1) |> Repo.one()
+
+    tag = Tags.Tag |> offset(^Enum.random(1..9)) |> limit(1) |> Repo.one()
+
+    {:ok, resource} =
+      Resources.create_resource(%{
+        name:
+          Enum.random([
+            "1. 9C01 Introduction - हमारे आस पास के पदार्थ | Matter in our Surroundings",
+            "2. 9C01.1 CV1 पदार्थ क्या है? | What is matter?",
+            "3. 9C01.1 CV2 पदार्थ की भौतिक प्रकृति | Physical Nature of Matter",
+            "4. 9C01.1 CV3 पदार्थ के कण | Particles of Matter ",
+            "5. 9C01.1 CV4 पदार्थ के कण - क्रियाकलाप | Particles of Matter - Activity"
+          ]),
+        type: Enum.random(["video", "test"]),
+        type_params: %{
+          "duration" => Enum.random(["30 min", "45 min", "1 hr"])
+        },
+        difficulty_level: Enum.random(["easy", "medium", "hard"]),
+        curriculum_id: curriculum.id,
+        chapter_id: chapter.id,
+        topic_id: topic.id,
+        source_id: source.id,
+        purpose_id: purpose.id,
+        concept_id: concept.id,
+        learning_objective_id: learning_objective.id,
+        tag_id: tag.id
+      })
+
+    resource
+  end
 end
 
 Repo.delete_all(Users.Teacher)
@@ -396,6 +652,17 @@ Repo.delete_all(Programs.Program)
 Repo.delete_all(Groups.Group)
 Repo.delete_all(Users.User)
 Repo.delete_all(Batches.Batch)
+Repo.delete_all(Curriculums.Curriculum)
+Repo.delete_all(Grades.Grade)
+Repo.delete_all(Subjects.Subject)
+Repo.delete_all(Chapters.Chapter)
+Repo.delete_all(Topics.Topic)
+Repo.delete_all(Concepts.Concept)
+Repo.delete_all(LearningObjectives.LearningObjective)
+Repo.delete_all(Sources.Source)
+Repo.delete_all(Purposes.Purpose)
+Repo.delete_all(Resources.Resource)
+Repo.delete_all(Tags.Tag)
 
 if Mix.env() == :dev do
   # create some users
@@ -476,5 +743,60 @@ if Mix.env() == :dev do
   # create some form_schema
   for count <- 1..100 do
     Seed.create_form_schema()
+  end
+
+  # create some tag
+  for count <- 1..100 do
+    Seed.create_tag()
+  end
+
+  # create some curriculum
+  for count <- 1..100 do
+    Seed.create_curriculum()
+  end
+
+  # create some grade
+  for count <- 1..100 do
+    Seed.create_grade()
+  end
+
+  # create some subject
+  for count <- 1..100 do
+    Seed.create_subject()
+  end
+
+  # create some chapter
+  for count <- 1..100 do
+    Seed.create_chapter()
+  end
+
+  # create some topic
+  for count <- 1..100 do
+    Seed.create_topic()
+  end
+
+  # create some concept
+  for count <- 1..100 do
+    Seed.create_concept()
+  end
+
+  # create some learning_objective
+  for count <- 1..100 do
+    Seed.create_learning_objective()
+  end
+
+  # create some source
+  for count <- 1..100 do
+    Seed.create_source()
+  end
+
+  # create some purpose
+  for count <- 1..100 do
+    Seed.create_purpose()
+  end
+
+  # create some resource
+  for count <- 1..100 do
+    Seed.create_resource()
   end
 end
