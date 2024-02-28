@@ -1,4 +1,4 @@
-defmodule Dbservice.Schools.EnrollmentRecord do
+defmodule Dbservice.EnrollmentRecords.EnrollmentRecord do
   @moduledoc false
 
   use Ecto.Schema
@@ -6,7 +6,6 @@ defmodule Dbservice.Schools.EnrollmentRecord do
   import Dbservice.Utils.Util
 
   alias Dbservice.Users.Student
-  alias Dbservice.Schools.School
 
   schema "enrollment_record" do
     field(:academic_year, :string)
