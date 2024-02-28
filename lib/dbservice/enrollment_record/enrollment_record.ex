@@ -39,7 +39,10 @@ defmodule Dbservice.EnrollmentRecords.EnrollmentRecord do
   end
 
   defp validate_date_of_enrollment(changeset) do
+    IO.inspect(get_field(changeset, :date_of_enrollment))
+
     if get_field(changeset, :date_of_enrollment) != nil do
+      IO.inspect(:date_of_enrollment)
       invalidate_future_date(changeset, :date_of_enrollment)
     else
       changeset
