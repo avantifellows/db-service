@@ -71,11 +71,12 @@ defmodule DbserviceWeb.SchoolController do
   end
 
   def create(conn, params) do
-    with {:ok, %School{} = school} <- Schools.create_school(params) do
-      conn
-      |> put_status(:created)
-      |> put_resp_header("location", Routes.school_path(conn, :show, school))
-      |> render("show.json", school: school)
+    case Schools.get_school_by_code(params["code"]) do
+      nil ->
+        create_new_school(conn, params)
+
+      existing_school ->
+        update_existing_school(conn, existing_school, params)
     end
   end
 
@@ -128,6 +129,23 @@ defmodule DbserviceWeb.SchoolController do
 
     with {:ok, %School{}} <- Schools.delete_school(school) do
       send_resp(conn, :no_content, "")
+    end
+  end
+
+  defp create_new_school(conn, params) do
+    with {:ok, %School{} = school} <- Schools.create_school(params) do
+      conn
+      |> put_status(:created)
+      |> put_resp_header("location", Routes.school_path(conn, :show, school))
+      |> render("show.json", school: school)
+    end
+  end
+
+  defp update_existing_school(conn, existing_school, params) do
+    with {:ok, %School{} = school} <- Schools.update_school(existing_school, params) do
+      conn
+      |> put_status(:ok)
+      |> render("show.json", school: school)
     end
   end
 end

@@ -38,6 +38,19 @@ defmodule Dbservice.Users do
   def get_user!(id), do: Repo.get!(User, id)
 
   @doc """
+  Gets a user by user ID.
+  Raises `Ecto.NoResultsError` if the User does not exist.
+  ## Examples
+      iex> get_user_by_user_id(1234)
+      %User{}
+      iex> get_user_by_user_id(abc)
+      ** (Ecto.NoResultsError)
+  """
+  def get_user_by_user_id(user_id) do
+    Repo.get_by(User, user_id: user_id)
+  end
+
+  @doc """
   Creates a user.
 
   ## Examples
@@ -149,6 +162,19 @@ defmodule Dbservice.Users do
 
   """
   def get_student!(id), do: Repo.get!(Student, id)
+
+  @doc """
+  Gets a student by student ID.
+  Raises `Ecto.NoResultsError` if the Student does not exist.
+  ## Examples
+      iex> get_student_by_student_id(1234)
+      %Student{}
+      iex> get_student_by_student_id(abc)
+      ** (Ecto.NoResultsError)
+  """
+  def get_student_by_student_id(student_id) do
+    Repo.get_by(Student, student_id: student_id)
+  end
 
   @doc """
   Creates a student.
@@ -289,6 +315,19 @@ defmodule Dbservice.Users do
 
   """
   def get_teacher!(id), do: Repo.get!(Teacher, id)
+
+  @doc """
+  Gets a Teacher by teacher ID.
+  Raises `Ecto.NoResultsError` if the Batch does not exist.
+  ## Examples
+      iex> get_teacher_by_teacher_id(1234)
+      %Teacher{}
+      iex> get_teacher_by_teacher_id(abc)
+      ** (Ecto.NoResultsError)
+  """
+  def get_teacher_by_teacher_id(teacher_id) do
+    Repo.get_by(Teacher, teacher_id: teacher_id)
+  end
 
   @doc """
   Creates a teacher.
