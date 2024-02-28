@@ -7,7 +7,7 @@ defmodule Dbservice.Programs.Program do
   alias Dbservice.Groups.Group
   alias Dbservice.Batches.Batch
   alias Dbservice.Groups.GroupType
-  alias Dbservice.Schools.EnrollmentRecord
+  alias Dbservice.EnrollmentRecords.EnrollmentRecord
 
   schema "program" do
     field :name, :string

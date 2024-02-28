@@ -4,7 +4,7 @@ defmodule Dbservice.Schools.School do
   use Ecto.Schema
   import Ecto.Changeset
 
-  alias Dbservice.Schools.EnrollmentRecord
+  alias Dbservice.EnrollmentRecords.EnrollmentRecord
 
   schema "school" do
     field :code, :string
