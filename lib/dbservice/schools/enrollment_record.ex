@@ -18,7 +18,6 @@ defmodule Dbservice.Schools.EnrollmentRecord do
     field(:group_type, :string)
 
     belongs_to(:student, Student)
-    belongs_to(:school, School)
 
     timestamps()
   end
@@ -28,7 +27,6 @@ defmodule Dbservice.Schools.EnrollmentRecord do
     enrollment_record
     |> cast(attrs, [
       :student_id,
-      :school_id,
       :grade,
       :academic_year,
       :is_current,
@@ -37,7 +35,7 @@ defmodule Dbservice.Schools.EnrollmentRecord do
       :group_id,
       :group_type
     ])
-    |> validate_required([:student_id, :school_id, :group_id, :group_type])
+    |> validate_required([:student_id, :group_id, :group_type])
     |> validate_date_of_enrollment
   end
 

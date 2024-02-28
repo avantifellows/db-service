@@ -13,8 +13,8 @@ defmodule Dbservice.Batches.Batch do
     field :contact_hours_per_week, :integer
 
     has_many :group_type, GroupType, foreign_key: :child_id, where: [type: "batch"]
+    has_many :group_fk, EnrollmentRecord, foreign_key: :group_id, where: [group_type: "batch"]
     many_to_many :program, Program, join_through: "batch_program", on_replace: :delete
-    has_many :group_fk_id, EnrollmentRecord, foreign_key: :group_id
 
     timestamps()
   end

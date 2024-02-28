@@ -16,7 +16,7 @@ defmodule Dbservice.Groups.Group do
 
     has_many :program, Program
     has_many :group_type, GroupType, foreign_key: :child_id, where: [type: "group"]
-    has_many :group_fk_id, EnrollmentRecord, foreign_key: :group_id
+    has_many :group_fk, EnrollmentRecord, foreign_key: :group_id, where: [group_type: "group"]
 
     timestamps()
   end
