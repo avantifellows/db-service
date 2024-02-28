@@ -51,11 +51,17 @@ defmodule Dbservice.EnrollmentRecords do
       ** (Ecto.NoResultsError)
 
   """
-  def get_enrollment_record_by_params!(student_id, group_id, group_type, grade, academic_year) do
+  def get_enrollment_record_by_params!(
+        student_id,
+        grouping_id,
+        grouping_type,
+        grade,
+        academic_year
+      ) do
     Repo.get!(EnrollmentRecord,
       student_id: student_id,
-      group_id: group_id,
-      group_type: group_type,
+      grouping_id: grouping_id,
+      grouping_type: grouping_type,
       grade: grade,
       academic_year: academic_year
     )

@@ -15,8 +15,8 @@ defmodule Dbservice.Batches.Batch do
     has_many :group_type, GroupType, foreign_key: :child_id, where: [type: "batch"]
 
     has_many :enrollment_record, EnrollmentRecord,
-      foreign_key: :group_id,
-      where: [group_type: "batch"]
+      foreign_key: :grouping_id,
+      where: [grouping_type: "batch"]
 
     many_to_many :program, Program, join_through: "batch_program", on_replace: :delete
 

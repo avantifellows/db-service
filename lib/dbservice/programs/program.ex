@@ -26,8 +26,8 @@ defmodule Dbservice.Programs.Program do
     many_to_many :batch, Batch, join_through: "batch_program", on_replace: :delete
 
     has_many :enrollment_record, EnrollmentRecord,
-      foreign_key: :group_id,
-      where: [group_type: "program"]
+      foreign_key: :grouping_id,
+      where: [grouping_type: "program"]
 
     timestamps()
   end

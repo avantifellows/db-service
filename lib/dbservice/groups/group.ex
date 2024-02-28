@@ -18,8 +18,8 @@ defmodule Dbservice.Groups.Group do
     has_many :group_type, GroupType, foreign_key: :child_id, where: [type: "group"]
 
     has_many :enrollment_record, EnrollmentRecord,
-      foreign_key: :group_id,
-      where: [group_type: "group"]
+      foreign_key: :grouping_id,
+      where: [grouping_type: "group"]
 
     timestamps()
   end

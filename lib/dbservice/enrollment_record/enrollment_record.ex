@@ -13,8 +13,8 @@ defmodule Dbservice.EnrollmentRecords.EnrollmentRecord do
     field(:is_current, :boolean, default: false)
     field(:board_medium, :string)
     field(:date_of_enrollment, :date)
-    field(:group_id, :integer)
-    field(:group_type, :string)
+    field(:grouping_id, :integer)
+    field(:grouping_type, :string)
 
     belongs_to(:student, Student)
 
@@ -31,10 +31,10 @@ defmodule Dbservice.EnrollmentRecords.EnrollmentRecord do
       :is_current,
       :board_medium,
       :date_of_enrollment,
-      :group_id,
-      :group_type
+      :grouping_id,
+      :grouping_type
     ])
-    |> validate_required([:student_id, :group_id, :group_type, :date_of_enrollment])
+    |> validate_required([:student_id, :grouping_id, :grouping_type, :date_of_enrollment])
     |> validate_date_of_enrollment
   end
 
