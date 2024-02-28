@@ -38,6 +38,30 @@ defmodule Dbservice.EnrollmentRecords do
   def get_enrollment_record!(id), do: Repo.get!(EnrollmentRecord, id)
 
   @doc """
+  Gets enrollment_record based on certain parameters.
+
+  Raises `Ecto.NoResultsError` if the Enrollment record does not exist.
+
+  ## Examples
+
+      iex> get_enrollment_record_by_params!(123, 1, "batch", 9, 2023-2024)
+      %EnrollmentRecord{}
+
+      iex> get_enrollment_record_by_params!(456, 1, "program", 9, 2023-2024)
+      ** (Ecto.NoResultsError)
+
+  """
+  def get_enrollment_record_by_params!(student_id, group_id, group_type, grade, academic_year) do
+    Repo.get!(EnrollmentRecord,
+      student_id: student_id,
+      group_id: group_id,
+      group_type: group_type,
+      grade: grade,
+      academic_year: academic_year
+    )
+  end
+
+  @doc """
   Creates a enrollment_record.
 
   ## Examples
