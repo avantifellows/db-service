@@ -6,6 +6,7 @@ defmodule Dbservice.Repo.Migrations.UpdateEnrollmentRecordTable do
       remove :date_of_school_enrollment
       remove :date_of_group_enrollment
       remove :group_id
+      remove :school_id
 
       add :date_of_enrollment, :date
       add :grouping_id, :integer

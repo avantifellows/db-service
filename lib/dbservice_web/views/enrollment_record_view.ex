@@ -18,10 +18,9 @@ defmodule DbserviceWeb.EnrollmentRecordView do
       is_current: enrollment_record.is_current,
       board_medium: enrollment_record.board_medium,
       student_id: enrollment_record.student_id,
-      school_id: enrollment_record.school_id,
-      date_of_school_enrollment: enrollment_record.date_of_school_enrollment,
-      date_of_group_enrollment: enrollment_record.date_of_group_enrollment,
-      group_id: enrollment_record.group_id
+      date_of_enrollment: enrollment_record.date_of_enrollment,
+      grouping_id: enrollment_record.grouping_id,
+      grouping_type: enrollment_record.grouping_type
     }
   end
 end
