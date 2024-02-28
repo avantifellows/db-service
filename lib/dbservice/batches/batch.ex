@@ -7,10 +7,13 @@ defmodule Dbservice.Batches.Batch do
   alias Dbservice.Programs.Program
   alias Dbservice.Groups.GroupType
   alias Dbservice.EnrollmentRecords.EnrollmentRecord
+  alias Dbservice.Sessions.SessionSchedule
 
   schema "batch" do
     field :name, :string
     field :contact_hours_per_week, :integer
+    field :batch_id, :string
+    field :parent_id, :integer
 
     has_many :group_type, GroupType, foreign_key: :child_id, where: [type: "batch"]
 
@@ -19,6 +22,7 @@ defmodule Dbservice.Batches.Batch do
       where: [grouping_type: "batch"]
 
     many_to_many :program, Program, join_through: "batch_program", on_replace: :delete
+    has_one :session_schedule, SessionSchedule
 
     timestamps()
   end
@@ -28,7 +32,9 @@ defmodule Dbservice.Batches.Batch do
     batch
     |> cast(attrs, [
       :name,
-      :contact_hours_per_week
+      :contact_hours_per_week,
+      :batch_id,
+      :parent_id
     ])
     |> validate_required([:name])
   end
