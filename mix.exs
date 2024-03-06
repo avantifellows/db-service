@@ -52,7 +52,8 @@ defmodule Dbservice.MixProject do
       {:credo, ">= 0.0.0", only: [:dev], runtime: false},
       {:dotenvy, "~> 0.8.0"},
       {:cors_plug, "~> 3.0"},
-      {:logger_file_backend, "~> 0.0.13"}
+      {:logger_file_backend, "~> 0.0.13"},
+      {:calendar, "~> 1.0.0"}
     ]
   end
 

@@ -14,7 +14,9 @@ defmodule DbserviceWeb.BatchView do
     %{
       id: batch.id,
       name: batch.name,
-      contact_hours_per_week: batch.contact_hours_per_week
+      contact_hours_per_week: batch.contact_hours_per_week,
+      batch_id: batch.batch_id,
+      parent_id: batch.parent_id
     }
   end
 end

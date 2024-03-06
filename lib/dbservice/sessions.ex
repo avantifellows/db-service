@@ -38,6 +38,19 @@ defmodule Dbservice.Sessions do
   def get_session!(id), do: Repo.get!(Session, id)
 
   @doc """
+  Gets a session by session ID.
+  Raises `Ecto.NoResultsError` if the Session does not exist.
+  ## Examples
+      iex> get_session_by_session_id(AFStudents)
+      %Session{}
+      iex> get_session_by_session_id(AvantiStudents)
+      ** (Ecto.NoResultsError)
+  """
+  def get_session_by_session_id(session_id) do
+    Repo.get_by(Session, session_id: session_id)
+  end
+
+  @doc """
   Creates a session.
 
   ## Examples

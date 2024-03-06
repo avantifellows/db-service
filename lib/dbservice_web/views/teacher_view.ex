@@ -37,7 +37,7 @@ defmodule DbserviceWeb.TeacherView do
       designation: teacher.designation,
       grade: teacher.grade,
       subject: teacher.subject,
-      uuid: teacher.uuid,
+      teacher_id: teacher.teacher_id,
       school_id: teacher.school_id,
       program_manager_id: teacher.program_manager_id,
       user: render_one(teacher.user, UserView, "user.json")
