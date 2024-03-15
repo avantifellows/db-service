@@ -1,5 +1,5 @@
 defmodule Dbservice.SchoolsFixtures do
-  alias Dbservice.Schools
+  alias Dbservice.EnrollmentRecords
 
   @moduledoc """
   This module defines test helpers for creating
@@ -48,19 +48,19 @@ defmodule Dbservice.SchoolsFixtures do
         student_id: get_student_id(),
         school_id: get_school_id()
       })
-      |> Dbservice.Schools.create_enrollment_record()
+      |> EnrollmentRecords.create_enrollment_record()
 
     enrollment_record
   end
 
   def get_school_id do
-    [head | _tail] = Schools.list_enrollment_record()
+    [head | _tail] = EnrollmentRecords.list_enrollment_record()
     school_id = head.school_id
     school_id
   end
 
   def get_student_id do
-    [head | _tail] = Schools.list_enrollment_record()
+    [head | _tail] = EnrollmentRecords.list_enrollment_record()
     student_id = head.student_id
     student_id
   end

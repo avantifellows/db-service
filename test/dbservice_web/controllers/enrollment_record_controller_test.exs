@@ -3,7 +3,7 @@ defmodule DbserviceWeb.EnrollmentRecordControllerTest do
 
   import Dbservice.SchoolsFixtures
 
-  alias Dbservice.Schools.EnrollmentRecord
+  alias Dbservice.EnrollmentRecords.EnrollmentRecord
 
   @create_attrs %{
     academic_year: "some academic_year",
