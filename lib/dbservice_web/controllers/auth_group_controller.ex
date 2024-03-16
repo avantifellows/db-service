@@ -134,7 +134,8 @@ defmodule DbserviceWeb.AuthGroupController do
   end
 
   defp update_existing_auth_group(conn, existing_auth_group, params) do
-    with {:ok, %AuthGroup{} = auth_group} <- AuthGroups.update_auth_group(existing_auth_group, params) do
+    with {:ok, %AuthGroup{} = auth_group} <-
+           AuthGroups.update_auth_group(existing_auth_group, params) do
       conn
       |> put_status(:ok)
       |> render("show.json", auth_group: auth_group)
