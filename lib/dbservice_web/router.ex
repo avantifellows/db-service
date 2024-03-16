@@ -11,7 +11,7 @@ defmodule DbserviceWeb.Router do
   scope "/api", DbserviceWeb do
     pipe_through(:api)
 
-    resources("/group", GroupController, except: [:new, :edit])
+    resources("/auth-group", AuthGroupController, except: [:new, :edit])
     post("/group-type/:id/update-users", GroupTypeController, :update_users)
     post("/group-type/:id/update-sessions", GroupTypeController, :update_sessions)
 

@@ -3,18 +3,18 @@ defmodule DbserviceWeb.SwaggerSchema.Group do
 
   use PhoenixSwagger
 
-  def group do
+  def auth_group do
     %{
-      Group:
+      AuthGroup:
         swagger_schema do
-          title("Group")
-          description("A group in the application")
+          title("AuthGroup")
+          description("An auth-group in the application")
 
           properties do
-            name(:string, "Name of a group")
+            name(:string, "Name of the auth group")
             input_schema(:map, "Input schema")
-            locale(:string, "The configured locale for the group")
-            locale_data(:map, "Meta data about locale settings for the group")
+            locale(:string, "The configured locale for the auth-group")
+            locale_data(:map, "Meta data about locale settings for the auth-group")
           end
 
           example(%{
@@ -80,14 +80,14 @@ defmodule DbserviceWeb.SwaggerSchema.Group do
     }
   end
 
-  def groups do
+  def auth_groups do
     %{
-      Groups:
+      AuthGroups:
         swagger_schema do
-          title("Groups")
-          description("All the groups")
+          title("AuthGroups")
+          description("All the auth-groups")
           type(:array)
-          items(Schema.ref(:Group))
+          items(Schema.ref(:AuthGroup))
         end
     }
   end
