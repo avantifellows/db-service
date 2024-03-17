@@ -13,15 +13,17 @@ defmodule Dbservice.Batches.Batch do
     field :name, :string
     field :contact_hours_per_week, :integer
     field :batch_id, :string
-    field :parent_id, :integer
+    field :parent_id, :integer,
+    field :start_date, :date,
+    field :end_date, :date
+
+    belongs_to :program, Program
 
     has_many :group, Group, foreign_key: :child_id, where: [type: "batch"]
-
     has_many :enrollment_record, EnrollmentRecord,
-      foreign_key: :grouping_id,
-      where: [grouping_type: "batch"]
+      foreign_key: :group_id,
+      where: [group_type: "batch"]
 
-    many_to_many :program, Program, join_through: "batch_program", on_replace: :delete
     has_one :session_schedule, SessionSchedule
 
     timestamps()
@@ -34,7 +36,10 @@ defmodule Dbservice.Batches.Batch do
       :name,
       :contact_hours_per_week,
       :batch_id,
-      :parent_id
+      :parent_id,
+      :start_date,
+      :end_date,
+      :program_id
     ])
     |> validate_required([:name])
   end

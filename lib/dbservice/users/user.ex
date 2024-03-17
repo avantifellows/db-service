@@ -12,7 +12,6 @@ defmodule Dbservice.Users.User do
 
   schema "user" do
     field(:first_name, :string)
-    field(:middle_name, :string)
     field(:last_name, :string)
     field(:email, :string)
     field(:phone, :string)
@@ -40,7 +39,6 @@ defmodule Dbservice.Users.User do
     user
     |> cast(attrs, [
       :first_name,
-      :middle_name,
       :last_name,
       :email,
       :phone,

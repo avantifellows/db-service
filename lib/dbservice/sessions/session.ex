@@ -26,11 +26,12 @@ defmodule Dbservice.Sessions.Session do
     field(:platform_id, :string)
     field(:type, :string)
     field(:auth_type, :string)
-    field(:activate_signup, :boolean)
+    field(:signup_form, :boolean)
+    field(:signup_form_id, :integer)
     field(:id_generation, :boolean)
     field(:redirection, :boolean)
-    field(:pop_up_form, :boolean)
-    field(:number_of_fields_in_pop_form, :integer)
+    field(:popup_form, :boolean)
+    field(:popup_form_id, :integer)
 
     timestamps()
 
@@ -60,15 +61,17 @@ defmodule Dbservice.Sessions.Session do
       :platform_id,
       :type,
       :auth_type,
-      :activate_signup,
+      :signup_form,
       :id_generation,
       :redirection,
       :pop_up_form,
-      :number_of_fields_in_pop_form,
-      :form_schema_id
+      :popup_form_id
+      :signup_form_id
     ])
     |> validate_required([
       :name,
+      :session_id,
+      :start_time,
       :platform
     ])
   end

@@ -12,7 +12,9 @@ defmodule Dbservice.Exams.StudentExamRecord do
     field :application_password, :string
     field :date, :utc_datetime
     field :score, :float
-    field :rank, :integer
+    field :percentile, :float
+    field :all_india_rank, :integer
+    field :category_rank, :integer
 
     belongs_to(:exam, Exam)
     belongs_to(:student, Student)
@@ -30,8 +32,10 @@ defmodule Dbservice.Exams.StudentExamRecord do
       :application_password,
       :date,
       :score,
-      :rank
+      :percentile,
+      :all_india_rank,
+      :category_rank
     ])
-    |> validate_required([:student_id, :exam_id])
+    |> validate_required([:student_id, :exam_id, :date])
   end
 end

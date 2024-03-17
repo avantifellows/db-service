@@ -10,8 +10,8 @@ defmodule Dbservice.Schools.School do
     field :code, :string
     field :name, :string
     field :udise_code, :string
-    field :type, :string
-    field :category, :string
+    field :gender_type, :string
+    field :af_school_category, :string
     field :region, :string
     field :state_code, :string
     field :state, :string
@@ -36,8 +36,8 @@ defmodule Dbservice.Schools.School do
       :code,
       :name,
       :udise_code,
-      :type,
-      :category,
+      :gender_type,
+      :af_school_categorycategory,
       :region,
       :state_code,
       :state,

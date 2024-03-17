@@ -5,16 +5,15 @@ defmodule Dbservice.Users.Teacher do
   import Ecto.Changeset
 
   alias Dbservice.Users.User
-  alias Dbservice.Schools.School
+  alias Dbservice.EnrollmentRecords.EnrollmentRecord
 
   schema "teacher" do
     field :designation, :string
-    field :grade, :string
-    field :subject, :string
     field :teacher_id, :string
+
     belongs_to :user, User
-    belongs_to :school, School
-    belongs_to :program_manager, User
+
+    has_many(:enrollment_record, EnrollmentRecord)
 
     timestamps()
   end
@@ -24,13 +23,9 @@ defmodule Dbservice.Users.Teacher do
     teacher
     |> cast(attrs, [
       :user_id,
-      :school_id,
-      :program_manager_id,
       :designation,
-      :subject,
-      :grade,
       :teacher_id
     ])
-    |> validate_required([:user_id])
+    |> validate_required([:user_id, :teacher_id])
   end
 end

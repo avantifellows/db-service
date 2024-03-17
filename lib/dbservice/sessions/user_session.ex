@@ -6,37 +6,36 @@ defmodule Dbservice.Sessions.UserSession do
   import Dbservice.Utils.Util
 
   alias Dbservice.Sessions.SessionOccurence
+  alias Dbservice.Users.User
 
   schema "user_session" do
-    field :end_time, :utc_datetime
-    field :start_time, :utc_datetime
+    field :timestamp, :utc_datetime
     field :data, :map
-    field :is_user_valid, :boolean
-    field :user_id, :string
+    field :type, :string
 
     timestamps()
 
     belongs_to :session_occurrence, SessionOccurence
+    belongs_to :user, User
   end
 
   @doc false
   def changeset(user_session, attrs) do
     user_session
     |> cast(attrs, [
-      :start_time,
-      :end_time,
+      :timestamp,
+      :type,
       :data,
       :session_occurrence_id,
-      :is_user_valid,
       :user_id
     ])
-    |> validate_required([:start_time])
+    |> validate_required([:user_id, :session_occurrence_id, :timestamp, :type])
     |> validate_start_end_date_time
   end
 
   defp validate_start_end_date_time(changeset) do
-    if get_field(changeset, :start_time, :end_time) do
-      validate_start_end_datetime(changeset, :start_time, :end_time)
+    if get_field(changeset, :timestamp) do
+      validate_start_end_datetime(changeset, :timestamp)
     else
       changeset
     end
