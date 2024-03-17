@@ -1,4 +1,4 @@
-defmodule Dbservice.Groups.GroupType do
+defmodule Dbservice.Groups.Group do
   @moduledoc false
 
   use Ecto.Schema
@@ -6,7 +6,7 @@ defmodule Dbservice.Groups.GroupType do
   alias Dbservice.Users.User
   alias Dbservice.Sessions.Session
 
-  schema "group_type" do
+  schema "group" do
     field :type, :string
     field :child_id, :integer
 
@@ -17,8 +17,8 @@ defmodule Dbservice.Groups.GroupType do
   end
 
   @doc false
-  def changeset(group_type, attrs) do
-    group_type
+  def changeset(group, attrs) do
+    group
     |> cast(attrs, [
       :type,
       :child_id

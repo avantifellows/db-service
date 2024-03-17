@@ -5,7 +5,7 @@ defmodule Dbservice.Batches.Batch do
   import Ecto.Changeset
 
   alias Dbservice.Programs.Program
-  alias Dbservice.Groups.GroupType
+  alias Dbservice.Groups.Group
   alias Dbservice.EnrollmentRecords.EnrollmentRecord
   alias Dbservice.Sessions.SessionSchedule
 
@@ -15,7 +15,7 @@ defmodule Dbservice.Batches.Batch do
     field :batch_id, :string
     field :parent_id, :integer
 
-    has_many :group_type, GroupType, foreign_key: :child_id, where: [type: "batch"]
+    has_many :group_type, Group, foreign_key: :child_id, where: [type: "batch"]
 
     has_many :enrollment_record, EnrollmentRecord,
       foreign_key: :grouping_id,

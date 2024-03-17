@@ -4,9 +4,9 @@ defmodule Dbservice.Programs.Program do
   use Ecto.Schema
   import Ecto.Changeset
 
-  alias Dbservice.Groups.Group
+  alias Dbservice.Groups.AuthGroup
   alias Dbservice.Batches.Batch
-  alias Dbservice.Groups.GroupType
+  alias Dbservice.Groups.Group
   alias Dbservice.EnrollmentRecords.EnrollmentRecord
 
   schema "program" do
@@ -21,8 +21,8 @@ defmodule Dbservice.Programs.Program do
     field :state, :string
     field :model, :string
 
-    belongs_to :group, Group
-    has_many :group_type, GroupType, foreign_key: :child_id, where: [type: "program"]
+    belongs_to :auth_group, AuthGroup
+    has_many :group_type, Group, foreign_key: :child_id, where: [type: "program"]
     many_to_many :batch, Batch, join_through: "batch_program", on_replace: :delete
 
     has_many :enrollment_record, EnrollmentRecord,
@@ -46,7 +46,7 @@ defmodule Dbservice.Programs.Program do
       :donor,
       :state,
       :model,
-      :group_id
+      :auth_group_id
     ])
     |> validate_required([:name])
   end

@@ -12,8 +12,8 @@ defmodule DbserviceWeb.Router do
     pipe_through(:api)
 
     resources("/auth-group", AuthGroupController, except: [:new, :edit])
-    post("/group-type/:id/update-users", GroupTypeController, :update_users)
-    post("/group-type/:id/update-sessions", GroupTypeController, :update_sessions)
+    post("/group/:id/update-users", GroupController, :update_users)
+    post("/group/:id/update-sessions", GroupController, :update_sessions)
 
     resources("/user", UserController, only: [:index, :create, :update, :show])
     post("/user/:id/update-groups", UserController, :update_group_type)
@@ -29,7 +29,7 @@ defmodule DbserviceWeb.Router do
     resources("/program", ProgramController, except: [:new, :edit])
     resources("/batch", BatchController, except: [:new, :edit])
     resources("/batch-program", BatchProgramController, except: [:new, :edit])
-    resources("/group-type", GroupTypeController, except: [:new, :edit])
+    resources("/group", GroupController, except: [:new, :edit])
     resources("/form-schema", FormSchemaController)
     resources("/group-user", GroupUserController)
     resources("/tag", TagController, except: [:new, :edit])
