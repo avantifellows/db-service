@@ -7,7 +7,7 @@ defmodule Dbservice.Exams.Exam do
   schema "exam" do
     field :name, :string
     field :registration_deadline, :utc_datetime
-    field :date, :utc_datetime,
+    field :date, :utc_datetime
     field :cutoff, :map
 
     timestamps()

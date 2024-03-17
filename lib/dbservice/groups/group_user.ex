@@ -7,7 +7,6 @@ defmodule Dbservice.Groups.GroupUser do
   import Ecto.Changeset
 
   schema "group_user" do
-
     belongs_to :group, Group
     belongs_to :user, User
 
