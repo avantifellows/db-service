@@ -19,7 +19,7 @@ defmodule Dbservice.Groups.AuthGroup do
 
     has_many :enrollment_record, EnrollmentRecord,
       foreign_key: :group_id,
-      where: [group_type: "auth-group"]
+      where: [group: "auth-group"]
 
     timestamps()
   end

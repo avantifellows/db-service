@@ -28,7 +28,7 @@ defmodule Dbservice.AuthGroups do
       ** (Ecto.NoResultsError)
   """
   def get_auth_group!(id) do
-    Repo.get!(AuthGroup, id) |> Repo.preload(:group_type)
+    Repo.get!(AuthGroup, id) |> Repo.preload(:group)
   end
 
   @doc """
@@ -55,7 +55,7 @@ defmodule Dbservice.AuthGroups do
   def create_auth_group(attrs \\ %{}) do
     %AuthGroup{}
     |> AuthGroup.changeset(attrs)
-    |> Ecto.Changeset.put_assoc(:group_type, [
+    |> Ecto.Changeset.put_assoc(:group, [
       %Group{type: "auth_group", child_id: attrs["id"]}
     ])
     |> Repo.insert()

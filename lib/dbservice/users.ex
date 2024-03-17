@@ -116,19 +116,19 @@ defmodule Dbservice.Users do
   end
 
   @doc """
-  Updates the group_type mapped to a user.
+  Updates the group mapped to a user.
   """
-  def update_group_type(user_id, group_type_ids) when is_list(group_type_ids) do
+  def update_group(user_id, group_ids) when is_list(group_ids) do
     user = get_user!(user_id)
 
-    group_types =
+    groups =
       Dbservice.Groups.Group
-      |> where([group_type], group_type.id in ^group_type_ids)
+      |> where([group], group.id in ^group_ids)
       |> Repo.all()
 
     user
-    |> Repo.preload(:group_type)
-    |> User.changeset_update_group_types(group_types)
+    |> Repo.preload(:group)
+    |> User.changeset_update_groups(groups)
     |> Repo.update()
   end
 

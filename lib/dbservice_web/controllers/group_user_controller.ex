@@ -14,7 +14,7 @@ defmodule DbserviceWeb.GroupUserController do
     get("/api/group-user")
 
     parameters do
-      params(:query, :integer, "The id the group type", required: false, name: "group_type_id")
+      params(:query, :integer, "The id the group type", required: false, name: "group_id")
 
       params(:query, :integer, "The id the user",
         required: false,

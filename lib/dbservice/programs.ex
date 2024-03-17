@@ -41,7 +41,7 @@ defmodule Dbservice.Programs do
   def create_program(attrs \\ %{}) do
     %Program{}
     |> Program.changeset(attrs)
-    |> Ecto.Changeset.put_assoc(:group_type, [%Group{type: "program", child_id: attrs["id"]}])
+    |> Ecto.Changeset.put_assoc(:group, [%Group{type: "program", child_id: attrs["id"]}])
     |> Repo.insert()
   end
 

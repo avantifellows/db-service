@@ -54,7 +54,7 @@ defmodule Dbservice.Batches do
   def create_batch(attrs \\ %{}) do
     %Batch{}
     |> Batch.changeset(attrs)
-    |> Ecto.Changeset.put_assoc(:group_type, [%Group{type: "batch", child_id: attrs["id"]}])
+    |> Ecto.Changeset.put_assoc(:group, [%Group{type: "batch", child_id: attrs["id"]}])
     |> Repo.insert()
   end
 

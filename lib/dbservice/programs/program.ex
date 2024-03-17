@@ -22,7 +22,7 @@ defmodule Dbservice.Programs.Program do
     field :model, :string
 
     belongs_to :auth_group, AuthGroup
-    has_many :group_type, Group, foreign_key: :child_id, where: [type: "program"]
+    has_many :group, Group, foreign_key: :child_id, where: [type: "program"]
     many_to_many :batch, Batch, join_through: "batch_program", on_replace: :delete
 
     has_many :enrollment_record, EnrollmentRecord,

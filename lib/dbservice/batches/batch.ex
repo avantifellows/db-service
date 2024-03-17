@@ -15,7 +15,7 @@ defmodule Dbservice.Batches.Batch do
     field :batch_id, :string
     field :parent_id, :integer
 
-    has_many :group_type, Group, foreign_key: :child_id, where: [type: "batch"]
+    has_many :group, Group, foreign_key: :child_id, where: [type: "batch"]
 
     has_many :enrollment_record, EnrollmentRecord,
       foreign_key: :grouping_id,
