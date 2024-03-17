@@ -10,7 +10,7 @@ defmodule Dbservice.EnrollmentRecords.EnrollmentRecord do
   schema "enrollment_record" do
     field :start_date, :date
     field :end_date, :date
-    field :is_current, :boolean, default :true
+    field :is_current, :boolean, default(true)
     field :academic_year, :string
     field :group_id, :integer
     field :group_type, :string
@@ -37,10 +37,8 @@ defmodule Dbservice.EnrollmentRecords.EnrollmentRecord do
   end
 
   defp validate_dates_of_enrollment(changeset) do
-    if get_field(changeset, :start_end) != nil do
-      invalidate_future_date(changeset, :start_end)
-    else if get_field(changeset, :end_date) != nil do
-      invalidate_future_date(changeset, :end_date)
+    if get_field(changeset, :start_end, :end_date) != nil do
+      invalidate_future_date(changeset, :start_end, :end_date)
     else
       changeset
     end

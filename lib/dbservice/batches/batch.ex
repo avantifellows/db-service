@@ -13,13 +13,14 @@ defmodule Dbservice.Batches.Batch do
     field :name, :string
     field :contact_hours_per_week, :integer
     field :batch_id, :string
-    field :parent_id, :integer,
-    field :start_date, :date,
+    field :parent_id, :integer
+    field :start_date, :date
     field :end_date, :date
 
     belongs_to :program, Program
 
     has_many :group, Group, foreign_key: :child_id, where: [type: "batch"]
+
     has_many :enrollment_record, EnrollmentRecord,
       foreign_key: :group_id,
       where: [group_type: "batch"]
