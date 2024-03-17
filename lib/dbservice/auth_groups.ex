@@ -1,4 +1,4 @@
-defmodule Dbservice.AuthGroup do
+defmodule Dbservice.AuthGroups do
   @moduledoc """
   The AuthGroup context.
   """

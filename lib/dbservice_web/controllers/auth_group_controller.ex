@@ -4,7 +4,7 @@ defmodule DbserviceWeb.AuthGroupController do
   import Ecto.Query
   alias Dbservice.Repo
   alias Dbservice.AuthGroups
-  alias Dbservice.Groups.AuthGroups
+  alias Dbservice.Groups.AuthGroup
 
   action_fallback DbserviceWeb.FallbackController
 
