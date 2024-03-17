@@ -6,7 +6,7 @@ defmodule Dbservice.AuthGroups do
   import Ecto.Query, warn: false
   alias Dbservice.Repo
 
-  alias Dbservice.Groups.Group.AuthGroup
+  alias Dbservice.Groups.AuthGroup
 
   @doc """
   Returns the list of auth groups.
