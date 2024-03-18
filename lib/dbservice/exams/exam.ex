@@ -8,6 +8,7 @@ defmodule Dbservice.Exams.Exam do
     field :name, :string
     field :registration_deadline, :utc_datetime
     field :date, :utc_datetime
+    field :cutoff, :map
 
     timestamps()
   end
@@ -18,7 +19,8 @@ defmodule Dbservice.Exams.Exam do
     |> cast(attrs, [
       :name,
       :registration_deadline,
-      :date
+      :date,
+      :cutoff
     ])
     |> validate_required([:name])
   end

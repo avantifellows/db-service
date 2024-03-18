@@ -28,7 +28,6 @@ defmodule DbserviceWeb.Router do
     resources("/group-session", GroupSessionController, except: [:new, :edit])
     resources("/program", ProgramController, except: [:new, :edit])
     resources("/batch", BatchController, except: [:new, :edit])
-    resources("/batch-program", BatchProgramController, except: [:new, :edit])
     resources("/group", GroupController, except: [:new, :edit])
     resources("/form-schema", FormSchemaController)
     resources("/group-user", GroupUserController)

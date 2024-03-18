@@ -7,11 +7,8 @@ defmodule Dbservice.Groups.GroupUser do
   import Ecto.Changeset
 
   schema "group_user" do
-    field :program_date_of_joining, :utc_datetime
-    field :program_student_language, :string
     belongs_to :group, Group
     belongs_to :user, User
-    belongs_to :program_manager, User
 
     timestamps()
   end
@@ -21,10 +18,7 @@ defmodule Dbservice.Groups.GroupUser do
     group_user
     |> cast(attrs, [
       :group_id,
-      :user_id,
-      :program_manager_id,
-      :program_date_of_joining,
-      :program_student_language
+      :user_id
     ])
     |> validate_required([:group_id, :user_id])
   end

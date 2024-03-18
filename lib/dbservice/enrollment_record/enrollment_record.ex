@@ -5,18 +5,17 @@ defmodule Dbservice.EnrollmentRecords.EnrollmentRecord do
   import Ecto.Changeset
   import Dbservice.Utils.Util
 
-  alias Dbservice.Users.Student
+  alias Dbservice.Users.User
 
   schema "enrollment_record" do
-    field(:academic_year, :string)
-    field(:grade, :string)
-    field(:is_current, :boolean, default: false)
-    field(:board_medium, :string)
-    field(:date_of_enrollment, :date)
-    field(:grouping_id, :integer)
-    field(:grouping_type, :string)
+    field :start_date, :date
+    field :end_date, :date
+    field :is_current, :boolean, default: true
+    field :academic_year, :string
+    field :group_id, :integer
+    field :group_type, :string
 
-    belongs_to(:student, Student)
+    belongs_to(:user, User)
 
     timestamps()
   end
@@ -25,22 +24,21 @@ defmodule Dbservice.EnrollmentRecords.EnrollmentRecord do
   def changeset(enrollment_record, attrs) do
     enrollment_record
     |> cast(attrs, [
-      :student_id,
-      :grade,
-      :academic_year,
+      :user_id,
+      :start_date,
+      :end_date,
       :is_current,
-      :board_medium,
-      :date_of_enrollment,
-      :grouping_id,
-      :grouping_type
+      :academic_year,
+      :group_id,
+      :group_type
     ])
-    |> validate_required([:student_id, :grouping_id, :grouping_type, :date_of_enrollment])
-    |> validate_date_of_enrollment
+    |> validate_required([:user_id, :group_id, :group_type, :start_date, :academic_year])
+    |> validate_dates_of_enrollment
   end
 
-  defp validate_date_of_enrollment(changeset) do
-    if get_field(changeset, :date_of_enrollment) != nil do
-      invalidate_future_date(changeset, :date_of_enrollment)
+  defp validate_dates_of_enrollment(changeset) do
+    if get_field(changeset, :start_end, :end_date) != nil do
+      validate_start_end_datetime(changeset, :start_end, :end_date)
     else
       changeset
     end
