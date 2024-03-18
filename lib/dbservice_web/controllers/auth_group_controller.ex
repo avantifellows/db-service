@@ -63,7 +63,7 @@ defmodule DbserviceWeb.AuthGroupController do
   end
 
   def create(conn, params) do
-    case AuthGroup.get_auth_group_by_name(params["name"]) do
+    case AuthGroups.get_auth_group_by_name(params["name"]) do
       nil ->
         create_new_auth_group(conn, params)
 
