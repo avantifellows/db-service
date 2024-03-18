@@ -49,7 +49,7 @@ defmodule DbserviceWeb.SwaggerSchema.Group do
     }
   end
 
-    def groupsessions do
+  def groupsessions do
     %{
       GroupSessions:
         swagger_schema do

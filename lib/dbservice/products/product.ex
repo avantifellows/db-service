@@ -4,6 +4,8 @@ defmodule Dbservice.Products.Product do
   use Ecto.Schema
   import Ecto.Changeset
 
+  alias Dbservice.Groups.Group
+  
   schema "product" do
     field :name, :string
     field :mode, :string
