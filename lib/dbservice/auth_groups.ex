@@ -56,7 +56,7 @@ defmodule Dbservice.AuthGroups do
     %AuthGroup{}
     |> AuthGroup.changeset(attrs)
     |> Ecto.Changeset.put_assoc(:group, [
-      %Group{type: "auth_group", child_id: attrs["id"]}
+      %AuthGroup{type: "auth_group", child_id: attrs["id"]}
     ])
     |> Repo.insert()
   end
