@@ -11,7 +11,6 @@ defmodule DbserviceWeb.GroupController do
   use PhoenixSwagger
 
   alias DbserviceWeb.SwaggerSchema.Group, as: SwaggerSchemaGroup
-  alias DbserviceWeb.SwaggerSchema.AuthGroup, as: SwaggerSchemaAuthGroup
   alias DbserviceWeb.SwaggerSchema.Common, as: SwaggerSchemaCommon
 
   def swagger_definitions do
