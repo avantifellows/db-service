@@ -10,7 +10,7 @@ defmodule Dbservice.EnrollmentRecords.EnrollmentRecord do
   schema "enrollment_record" do
     field :start_date, :date
     field :end_date, :date
-    field :is_current, :boolean, default(true)
+    field :is_current, :boolean, default: true
     field :academic_year, :string
     field :group_id, :integer
     field :group_type, :string
