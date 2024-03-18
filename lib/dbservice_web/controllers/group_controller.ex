@@ -11,7 +11,6 @@ defmodule DbserviceWeb.GroupController do
   use PhoenixSwagger
 
   alias DbserviceWeb.SwaggerSchema.Group, as: SwaggerSchemaGroup
-  alias DbserviceWeb.SwaggerSchema.AuthGroup, as: SwaggerSchemaAuthGroup
   alias DbserviceWeb.SwaggerSchema.Common, as: SwaggerSchemaCommon
 
   def swagger_definitions do
@@ -141,9 +140,7 @@ defmodule DbserviceWeb.GroupController do
     parameters do
       groupId(:path, :integer, "The id of the group record", required: true)
 
-      body(:body, Schema.ref(:UserIds), "List of user ids to update for the group",
-        required: true
-      )
+      body(:body, Schema.ref(:UserIds), "List of user ids to update for the group", required: true)
     end
 
     response(200, "OK", Schema.ref(:GroupUsers))

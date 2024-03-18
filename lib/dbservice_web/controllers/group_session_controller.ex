@@ -14,7 +14,7 @@ defmodule DbserviceWeb.GroupSessionController do
     get("/api/group-session")
 
     parameters do
-      params(:query, :integer, "The id the group type", required: false, name: "group_id")
+      params(:query, :integer, "The id the group", required: false, name: "group_id")
 
       params(:query, :integer, "The id the session",
         required: false,

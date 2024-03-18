@@ -7,6 +7,7 @@ defmodule Dbservice.AuthGroups do
   alias Dbservice.Repo
 
   alias Dbservice.Groups.AuthGroup
+  alias Dbservice.Groups.Group
 
   @doc """
   Returns the list of auth groups.
