@@ -35,7 +35,7 @@ defmodule Dbservice.Sessions.UserSession do
 
   defp validate_start_end_date_time(changeset) do
     if get_field(changeset, :timestamp) do
-      validate_start_end_datetime(changeset, :timestamp)
+      invalidate_future_date(changeset, :timestamp)
     else
       changeset
     end

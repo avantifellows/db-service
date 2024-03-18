@@ -5,15 +5,12 @@ defmodule Dbservice.Users.Teacher do
   import Ecto.Changeset
 
   alias Dbservice.Users.User
-  alias Dbservice.EnrollmentRecords.EnrollmentRecord
 
   schema "teacher" do
     field :designation, :string
     field :teacher_id, :string
 
     belongs_to :user, User
-
-    has_many(:enrollment_record, EnrollmentRecord)
 
     timestamps()
   end

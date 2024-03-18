@@ -9,6 +9,7 @@ defmodule Dbservice.Users.User do
   alias Dbservice.Users.Teacher
   alias Dbservice.Users.Student
   alias Dbservice.Groups.Group
+  alias Dbservice.EnrollmentRecords.EnrollmentRecord
 
   schema "user" do
     field(:first_name, :string)
@@ -31,6 +32,7 @@ defmodule Dbservice.Users.User do
     many_to_many(:sessions, SessionOccurence, join_through: "user_session", on_replace: :delete)
     has_one(:teacher, Teacher)
     has_one(:student, Student)
+    has_many(:enrollment_record, EnrollmentRecord)
     many_to_many(:group, Group, join_through: "group_user", on_replace: :delete)
   end
 

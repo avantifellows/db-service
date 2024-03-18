@@ -23,8 +23,8 @@ defmodule Dbservice.Schools.School do
     field :board_medium, :string
 
     has_many :enrollment_record, EnrollmentRecord,
-      foreign_key: :grouping_id,
-      where: [grouping_type: "school"]
+      foreign_key: :group_id,
+      where: [group_type: "school"]
 
     timestamps()
   end
