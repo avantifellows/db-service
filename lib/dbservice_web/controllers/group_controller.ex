@@ -42,7 +42,6 @@ defmodule DbserviceWeb.GroupController do
     response(200, "OK", Schema.ref(:Groups))
   end
 
-  @spec index(Plug.Conn.t(), any) :: Plug.Conn.t()
   def index(conn, params) do
     query =
       from m in Group,
