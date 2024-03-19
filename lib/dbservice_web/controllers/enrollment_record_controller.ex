@@ -76,8 +76,8 @@ defmodule DbserviceWeb.EnrollmentRecordController do
   def create(conn, params) do
     case EnrollmentRecords.get_enrollment_record_by_params(
            params["student_id"],
-           params["grouping_id"],
-           params["grouping_type"],
+           params["group_id"],
+           params["group_type"],
            params["grade"],
            params["academic_year"]
          ) do

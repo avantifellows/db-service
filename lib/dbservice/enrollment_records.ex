@@ -53,15 +53,15 @@ defmodule Dbservice.EnrollmentRecords do
   """
   def get_enrollment_record_by_params(
         student_id,
-        grouping_id,
-        grouping_type,
+        group_id,
+        group_type,
         grade,
         academic_year
       ) do
     Repo.get_by(EnrollmentRecord,
       student_id: student_id,
-      grouping_id: grouping_id,
-      grouping_type: grouping_type,
+      group_id: group_id,
+      group_type: group_type,
       grade: grade,
       academic_year: academic_year
     )
