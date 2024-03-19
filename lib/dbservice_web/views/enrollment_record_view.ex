@@ -19,7 +19,9 @@ defmodule DbserviceWeb.EnrollmentRecordView do
       end_date: enrollment_record.end_date,
       group_id: enrollment_record.group_id,
       group_type: enrollment_record.group_type,
-      user_id: enrollment_record.user_id
+      user_id: enrollment_record.user_id,
+      grade: enrollment_record.grade,
+      subject: enrollment_record.subject
     }
   end
 end
