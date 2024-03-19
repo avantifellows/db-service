@@ -15,7 +15,8 @@ defmodule DbserviceWeb.ExamView do
       id: exam.id,
       name: exam.name,
       registration_deadline: exam.registration_deadline,
-      date: exam.date
+      date: exam.date,
+      cutoff: exam.cutoff
     }
   end
 end

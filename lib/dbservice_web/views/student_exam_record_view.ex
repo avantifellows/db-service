@@ -19,7 +19,9 @@ defmodule DbserviceWeb.StudentExamRecordView do
       application_password: student_exam_record.application_password,
       date: student_exam_record.date,
       score: student_exam_record.score,
-      rank: student_exam_record.rank
+      percentile: student_exam_record.percentile,
+      all_india_rank: student_exam_record.all_india_rank,
+      category_rank: student_exam_record.category_rank
     }
   end
 end

@@ -27,14 +27,14 @@ defmodule DbserviceWeb.SessionView do
       purpose: session.purpose,
       repeat_schedule: session.repeat_schedule,
       platform_id: session.platform_id,
-      form_schema_id: session.form_schema_id,
       type: session.type,
       auth_type: session.auth_type,
-      activate_signup: session.activate_signup,
+      signup_form: session.signup_form,
       id_generation: session.id_generation,
       redirection: session.redirection,
-      pop_up_form: session.pop_up_form,
-      number_of_fields_in_pop_form: session.number_of_fields_in_pop_form
+      popup_form: session.popup_form,
+      signup_form_id: session.signup_form_id,
+      popup_form_id: session.popup_form_id,
     }
   end
 end
