@@ -8,7 +8,7 @@ defmodule Dbservice.Repo.Migrations.AlterSessionSchoolTables do
     rename table("session"), :pop_up_form, to: :popup_form
     rename table("session"), :activate_signup, to: :signup_form
     rename table("session"), :form_schema_id, to: :signup_form_id
-    
+
     alter table("session") do
       remove :number_of_fields_in_pop_form
 

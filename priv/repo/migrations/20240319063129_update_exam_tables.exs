@@ -16,9 +16,8 @@ defmodule Dbservice.Repo.Migrations.UpdateExamTables do
       add :category_rank, :integer
 
       modify :student_id, :integer, null: false
-      modify :exam_id, :integer,  null: false
+      modify :exam_id, :integer, null: false
       modify :date, :date, null: false
     end
-
   end
 end
