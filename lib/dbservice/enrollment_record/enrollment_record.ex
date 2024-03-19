@@ -37,8 +37,8 @@ defmodule Dbservice.EnrollmentRecords.EnrollmentRecord do
   end
 
   defp validate_dates_of_enrollment(changeset) do
-    if get_field(changeset, :start_end, :end_date) != nil do
-      validate_start_end_datetime(changeset, :start_end, :end_date)
+    if get_field(changeset, :start_date, :end_date) != nil do
+      validate_start_end_datetime(changeset, :start_date, :end_date)
     else
       changeset
     end
