@@ -37,7 +37,7 @@ defmodule Dbservice.Schools.School do
       :name,
       :udise_code,
       :gender_type,
-      :af_school_categorycategory,
+      :af_school_category,
       :region,
       :state_code,
       :state,
