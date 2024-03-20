@@ -14,7 +14,7 @@ defmodule DbserviceWeb.GroupUserView do
     %{
       id: group_user.id,
       group_id: group_user.group_id,
-      user_id: group_user.user_id,
+      user_id: group_user.user_id
     }
   end
 end

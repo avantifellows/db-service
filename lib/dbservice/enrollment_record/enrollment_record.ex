@@ -39,7 +39,14 @@ defmodule Dbservice.EnrollmentRecords.EnrollmentRecord do
       :grade_id,
       :subject_id
     ])
-    |> validate_required([:user_id, :group_id, :group_type, :start_date, :academic_year, :grade_id])
+    |> validate_required([
+      :user_id,
+      :group_id,
+      :group_type,
+      :start_date,
+      :academic_year,
+      :grade_id
+    ])
     |> validate_dates_of_enrollment
   end
 

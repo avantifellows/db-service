@@ -34,7 +34,7 @@ defmodule DbserviceWeb.SessionView do
       redirection: session.redirection,
       popup_form: session.popup_form,
       signup_form_id: session.signup_form_id,
-      popup_form_id: session.popup_form_id,
+      popup_form_id: session.popup_form_id
     }
   end
 end
