@@ -31,7 +31,7 @@ defmodule DbserviceWeb.GroupController do
     get("/api/group")
 
     parameters do
-      params(:query, :string, "The type of the group", required: false, name: "type")
+      params(:query, :string, "The type of group", required: false, name: "type")
 
       params(:query, :integer, "The child id of the group",
         required: false,
