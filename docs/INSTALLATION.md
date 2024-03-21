@@ -80,3 +80,17 @@ production_db_password="xxx"
 ## Editor Support
 
 For enhanced development experience with Elixir, consider installing [`ElixirLS: Elixir support and debugger`](https://marketplace.visualstudio.com/items?itemName=JakeBecker.elixir-ls) from the Visual Studio Marketplace.
+
+### ElixirLS support matrix
+
+|  OTP Versions   | Elixir Versions | Supports ElixirLS |
+| :-------------: | :-------------: | :---------------: |
+|      any        |     <= 1.12     |        No         |
+|      22         |       1.12      |        Yes        |
+|      23         |   1.12 - 1.14   |        Yes        |
+|      24         |   1.12 - 1.16   |        Yes        |
+|      25         |  1.13.4 - 1.16  |        Yes        |
+| 26.0.0 - 26.0.1 |       any       |        No         |
+| 26.0.2 - 26.1.2    |  1.14.5 - 1.16  |    *nix only      |
+|   >= 26.2.0     |  1.14.5 - 1.16  |        Yes        |
+|      any        |     1.15.5      |        Yes        |
