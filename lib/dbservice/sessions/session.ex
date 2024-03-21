@@ -68,7 +68,6 @@ defmodule Dbservice.Sessions.Session do
     ])
     |> validate_required([
       :name,
-      :session_id,
       :start_time,
       :platform
     ])

@@ -139,9 +139,7 @@ defmodule DbserviceWeb.GroupController do
     parameters do
       groupId(:path, :integer, "The id of the group record", required: true)
 
-      body(:body, Schema.ref(:UserIds), "List of user ids to update for the group",
-        required: true
-      )
+      body(:body, Schema.ref(:UserIds), "List of user ids to update for the group", required: true)
     end
 
     response(200, "OK", Schema.ref(:GroupUsers))
