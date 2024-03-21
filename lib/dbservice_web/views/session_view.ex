@@ -3,6 +3,7 @@ defmodule DbserviceWeb.SessionView do
   alias DbserviceWeb.SessionView
 
   def render("index.json", %{session: session}) do
+    IO.inspect(session)
     render_many(session, SessionView, "session.json")
   end
 

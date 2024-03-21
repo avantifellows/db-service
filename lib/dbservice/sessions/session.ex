@@ -6,7 +6,6 @@ defmodule Dbservice.Sessions.Session do
 
   alias Dbservice.Users.User
   alias Dbservice.Groups.Group
-  alias Dbservice.FormSchemas.FormSchema
   alias Dbservice.Sessions.SessionSchedule
 
   schema "session" do
@@ -37,7 +36,6 @@ defmodule Dbservice.Sessions.Session do
 
     many_to_many(:users, User, join_through: "user_session", on_replace: :delete)
     many_to_many(:group, Group, join_through: "group_session", on_replace: :delete)
-    belongs_to(:form_schema, FormSchema)
     has_many(:session_schedule, SessionSchedule)
   end
 
@@ -64,7 +62,7 @@ defmodule Dbservice.Sessions.Session do
       :signup_form,
       :id_generation,
       :redirection,
-      :pop_up_form,
+      :popup_form,
       :popup_form_id,
       :signup_form_id
     ])
