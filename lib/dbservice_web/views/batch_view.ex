@@ -19,7 +19,8 @@ defmodule DbserviceWeb.BatchView do
       parent_id: batch.parent_id,
       start_date: batch.start_date,
       end_date: batch.end_date,
-      program_id: batch.program_id
+      program_id: batch.program_id,
+      auth_group_id: batch.auth_group_id
     }
   end
 end

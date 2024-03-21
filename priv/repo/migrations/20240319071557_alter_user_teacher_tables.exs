@@ -4,7 +4,6 @@ defmodule Dbservice.Repo.Migrations.AlterUserTeacherTables do
   def change do
     alter table("user") do
       remove :middle_name
-      modify :subject_id, references("subject")
     end
 
     alter table("student") do
@@ -12,8 +11,11 @@ defmodule Dbservice.Repo.Migrations.AlterUserTeacherTables do
     end
 
     alter table("teacher") do
+      add :subject_id, references("subject")
+
       remove :grade
       remove :school_id
+      remove :subject
       remove :program_manager_id
     end
   end
