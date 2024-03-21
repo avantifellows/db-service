@@ -2,6 +2,7 @@ defmodule DbserviceWeb.TeacherView do
   use DbserviceWeb, :view
   alias DbserviceWeb.TeacherView
   alias DbserviceWeb.UserView
+  alias DbserviceWeb.SubjectView
   alias Dbservice.Repo
 
   def render("index.json", %{teacher: teacher}) do
@@ -22,7 +23,8 @@ defmodule DbserviceWeb.TeacherView do
     %{
       id: teacher.id,
       designation: teacher.designation,
-      subject: teacher.subject,
+      teacher_id: teacher.teacher_id,
+      subject: render_one(teacher.subject, SubjectView, "subject.json"),
       user: render_one(teacher.user, UserView, "user.json")
     }
   end
@@ -32,6 +34,7 @@ defmodule DbserviceWeb.TeacherView do
       id: teacher.id,
       designation: teacher.designation,
       teacher_id: teacher.teacher_id,
+      subject: render_one(teacher.subject, SubjectView, "subject.json"),
       user: render_one(teacher.user, UserView, "user.json")
     }
   end
