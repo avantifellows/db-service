@@ -4,7 +4,7 @@ defmodule Dbservice.Groups.AuthGroup do
   use Ecto.Schema
   import Ecto.Changeset
 
-  alias Dbservice.Programs.Program
+  alias Dbservice.Batches.Batch
   alias Dbservice.Groups.Group
   alias Dbservice.EnrollmentRecords.EnrollmentRecord
 
@@ -14,7 +14,7 @@ defmodule Dbservice.Groups.AuthGroup do
     field :locale, :string
     field :locale_data, :map
 
-    has_many :program, Program
+    has_many :batch, Batch
     has_many :group, Group, foreign_key: :child_id, where: [type: "auth-group"]
 
     has_many :enrollment_record, EnrollmentRecord,
