@@ -44,6 +44,13 @@ Install the following packages using your favorite package manager. Links are pr
     CREATE EXTENSION "uuid-ossp";
     ```
 
+### Recommended Versions
+
+For development, we recommend using the following versions:
+
+- Elixir: 1.14.2
+- Erlang/OTP: 25
+
 ## Installation steps
 
 Follow the steps below to set up the repo for development
