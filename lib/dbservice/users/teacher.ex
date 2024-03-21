@@ -5,6 +5,7 @@ defmodule Dbservice.Users.Teacher do
   import Ecto.Changeset
 
   alias Dbservice.Users.User
+  alias Dbservice.Subjects.Subject
 
   schema "teacher" do
     field :designation, :string

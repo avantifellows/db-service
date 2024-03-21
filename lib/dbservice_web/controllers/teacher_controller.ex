@@ -56,7 +56,7 @@ defmodule DbserviceWeb.TeacherController do
         end
       end)
 
-    teacher = Repo.all(query) |> Repo.preload([:user])
+    teacher = Repo.all(query) |> Repo.preload([:user]) |> Repo.preload([:subject])
     render(conn, "index.json", teacher: teacher)
   end
 
