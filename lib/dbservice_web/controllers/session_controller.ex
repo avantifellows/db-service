@@ -70,9 +70,7 @@ defmodule DbserviceWeb.SessionController do
         end
       end)
 
-    IO.inspect(query)
     session = Repo.all(query)
-    IO.inspect(session)
     render(conn, "index.json", session: session)
   end
 
