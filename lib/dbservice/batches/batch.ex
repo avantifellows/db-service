@@ -8,6 +8,7 @@ defmodule Dbservice.Batches.Batch do
   alias Dbservice.Groups.Group
   alias Dbservice.EnrollmentRecords.EnrollmentRecord
   alias Dbservice.Sessions.SessionSchedule
+  alias Dbservice.Groups.AuthGroup
 
   schema "batch" do
     field :name, :string
@@ -18,7 +19,7 @@ defmodule Dbservice.Batches.Batch do
     field :end_date, :date
 
     belongs_to :program, Program
-
+    belongs_to :auth_group, AuthGroup
     has_many :group, Group, foreign_key: :child_id, where: [type: "batch"]
 
     has_many :enrollment_record, EnrollmentRecord,
@@ -40,7 +41,8 @@ defmodule Dbservice.Batches.Batch do
       :parent_id,
       :start_date,
       :end_date,
-      :program_id
+      :program_id,
+      :auth_group_id
     ])
     |> validate_required([:name])
   end

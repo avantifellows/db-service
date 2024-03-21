@@ -4,7 +4,6 @@ defmodule Dbservice.Programs.Program do
   use Ecto.Schema
   import Ecto.Changeset
 
-  alias Dbservice.Groups.AuthGroup
   alias Dbservice.Products.Product
   alias Dbservice.Groups.Group
   alias Dbservice.EnrollmentRecords.EnrollmentRecord
@@ -15,7 +14,6 @@ defmodule Dbservice.Programs.Program do
     field :donor, :string
     field :state, :string
 
-    belongs_to :auth_group, AuthGroup
     belongs_to :product, Product
     has_many :group, Group, foreign_key: :child_id, where: [type: "program"]
 
@@ -34,8 +32,7 @@ defmodule Dbservice.Programs.Program do
       :target_outreach,
       :donor,
       :state,
-      :product_id,
-      :auth_group_id
+      :product_id
     ])
     |> validate_required([:name])
   end
