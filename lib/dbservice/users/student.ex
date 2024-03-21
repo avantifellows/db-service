@@ -49,6 +49,8 @@ defmodule Dbservice.Users.Student do
     field(:planned_competitive_exams, {:array, :integer})
 
     belongs_to(:user, User)
+    belongs_to(:grade, Grade)
+
     has_many(:student_exam_record, StudentExamRecord)
 
     timestamps()
@@ -59,6 +61,7 @@ defmodule Dbservice.Users.Student do
     |> cast(attrs, [
       :student_id,
       :user_id,
+      :grade_id,
       :father_name,
       :father_phone,
       :father_education_level,

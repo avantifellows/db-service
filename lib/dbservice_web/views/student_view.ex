@@ -26,6 +26,7 @@ defmodule DbserviceWeb.StudentView do
     %{
       id: student.id,
       student_id: student.student_id,
+      grade_id: student.grade_id,
       father_name: student.father_name,
       father_phone: student.father_phone,
       father_education_level: student.father_education_level,

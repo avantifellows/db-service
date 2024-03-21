@@ -17,7 +17,8 @@ defmodule DbserviceWeb.ProgramView do
       target_outreach: program.target_outreach,
       donor: program.donor,
       state: program.state,
-      product_id: program.product_id
+      product_id: program.product_id,
+      auth_group_id: program.auth_group_id
     }
   end
 end

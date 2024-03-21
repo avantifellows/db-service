@@ -11,6 +11,7 @@ defmodule Dbservice.Users.Teacher do
     field :teacher_id, :string
 
     belongs_to :user, User
+    belongs_to :subject, Subject
 
     timestamps()
   end
@@ -21,7 +22,8 @@ defmodule Dbservice.Users.Teacher do
     |> cast(attrs, [
       :user_id,
       :designation,
-      :teacher_id
+      :teacher_id,
+      :subject_id
     ])
     |> validate_required([:user_id, :teacher_id])
   end
