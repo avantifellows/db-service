@@ -26,6 +26,7 @@ defmodule DbserviceWeb.Router do
     resources("/session-occurrence", SessionOccurenceController, except: [:new, :edit])
     resources("/user-session", UserSessionController, except: [:new, :edit])
     resources("/group-session", GroupSessionController, except: [:new, :edit])
+    resources("/product", ProductController)
     resources("/program", ProgramController, except: [:new, :edit])
     resources("/batch", BatchController, except: [:new, :edit])
     resources("/group", GroupController, except: [:new, :edit])

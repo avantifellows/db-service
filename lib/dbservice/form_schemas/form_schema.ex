@@ -12,8 +12,6 @@ defmodule Dbservice.FormSchemas.FormSchema do
     field(:attributes, :map)
 
     timestamps()
-
-    has_many(:session, Session)
   end
 
   @doc false
