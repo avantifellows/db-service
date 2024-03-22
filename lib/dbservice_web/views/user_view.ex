@@ -18,7 +18,6 @@ defmodule DbserviceWeb.UserView do
     %{
       id: user.id,
       first_name: user.first_name,
-      middle_name: user.middle_name,
       last_name: user.last_name,
       email: user.email,
       phone: user.phone,
