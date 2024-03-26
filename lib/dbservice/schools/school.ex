@@ -4,6 +4,8 @@ defmodule Dbservice.Schools.School do
   use Ecto.Schema
   import Ecto.Changeset
 
+  alias Dbservice.EnrollmentRecords.EnrollmentRecord
+
   schema "school" do
     field :code, :string
     field :name, :string
@@ -19,6 +21,10 @@ defmodule Dbservice.Schools.School do
     field :block_name, :string
     field :board, :string
     field :board_medium, :string
+
+    has_many :enrollment_record, EnrollmentRecord,
+      foreign_key: :grouping_id,
+      where: [grouping_type: "school"]
 
     timestamps()
   end

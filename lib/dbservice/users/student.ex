@@ -5,7 +5,7 @@ defmodule Dbservice.Users.Student do
   import Ecto.Changeset
 
   alias Dbservice.Users.User
-  alias Dbservice.Schools.EnrollmentRecord
+  alias Dbservice.EnrollmentRecords.EnrollmentRecord
   alias Dbservice.Exams.StudentExamRecord
 
   schema "student" do

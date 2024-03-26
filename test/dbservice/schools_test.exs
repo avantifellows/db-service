@@ -131,7 +131,7 @@ defmodule Dbservice.SchoolsTest do
   end
 
   describe "enrollment_record" do
-    alias Dbservice.Schools.EnrollmentRecord
+    alias Dbservice.EnrollmentRecords.EnrollmentRecord
 
     import Dbservice.SchoolsFixtures
 
