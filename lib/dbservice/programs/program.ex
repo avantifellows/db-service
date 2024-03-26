@@ -4,30 +4,22 @@ defmodule Dbservice.Programs.Program do
   use Ecto.Schema
   import Ecto.Changeset
 
+  alias Dbservice.Products.Product
   alias Dbservice.Groups.Group
-  alias Dbservice.Batches.Batch
-  alias Dbservice.Groups.GroupType
   alias Dbservice.EnrollmentRecords.EnrollmentRecord
 
   schema "program" do
     field :name, :string
-    field :type, :string
-    field :sub_type, :string
-    field :mode, :string
-    field :start_date, :date
     field :target_outreach, :integer
-    field :product_used, :string
     field :donor, :string
     field :state, :string
-    field :model, :string
 
-    belongs_to :group, Group
-    has_many :group_type, GroupType, foreign_key: :child_id, where: [type: "program"]
-    many_to_many :batch, Batch, join_through: "batch_program", on_replace: :delete
+    belongs_to :product, Product
+    has_many :group, Group, foreign_key: :child_id, where: [type: "program"]
 
     has_many :enrollment_record, EnrollmentRecord,
-      foreign_key: :grouping_id,
-      where: [grouping_type: "program"]
+      foreign_key: :group_id,
+      where: [group_type: "program"]
 
     timestamps()
   end
@@ -37,16 +29,10 @@ defmodule Dbservice.Programs.Program do
     program
     |> cast(attrs, [
       :name,
-      :type,
-      :sub_type,
-      :mode,
-      :start_date,
       :target_outreach,
-      :product_used,
       :donor,
       :state,
-      :model,
-      :group_id
+      :product_id
     ])
     |> validate_required([:name])
   end

@@ -8,11 +8,11 @@ defmodule Dbservice.Users.User do
   alias Dbservice.Sessions.SessionOccurence
   alias Dbservice.Users.Teacher
   alias Dbservice.Users.Student
-  alias Dbservice.Groups.GroupType
+  alias Dbservice.Groups.Group
+  alias Dbservice.EnrollmentRecords.EnrollmentRecord
 
   schema "user" do
     field(:first_name, :string)
-    field(:middle_name, :string)
     field(:last_name, :string)
     field(:email, :string)
     field(:phone, :string)
@@ -32,7 +32,8 @@ defmodule Dbservice.Users.User do
     many_to_many(:sessions, SessionOccurence, join_through: "user_session", on_replace: :delete)
     has_one(:teacher, Teacher)
     has_one(:student, Student)
-    many_to_many(:group_type, GroupType, join_through: "group_user", on_replace: :delete)
+    has_many(:enrollment_record, EnrollmentRecord)
+    many_to_many(:group, Group, join_through: "group_user", on_replace: :delete)
   end
 
   @doc false
@@ -40,7 +41,6 @@ defmodule Dbservice.Users.User do
     user
     |> cast(attrs, [
       :first_name,
-      :middle_name,
       :last_name,
       :email,
       :phone,
@@ -59,10 +59,10 @@ defmodule Dbservice.Users.User do
     |> validate_date_of_birth
   end
 
-  def changeset_update_group_types(user, group_types) do
+  def changeset_update_groups(user, groups) do
     user
     |> change()
-    |> put_assoc(:group_type, group_types)
+    |> put_assoc(:group, groups)
   end
 
   defp validate_date_of_birth(changeset) do

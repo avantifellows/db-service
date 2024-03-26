@@ -17,8 +17,8 @@ defmodule DbserviceWeb.SwaggerSchema.EnrollmentRecord do
             student_id(:integer, "Student ID that the program enrollment belongs to")
             board_medium(:string, "Medium of the board")
             date_of_enrollment(:date, "Date of Enrollment")
-            grouping_id(:integer, "ID of what grouping the student belongs to")
-            grouping_type(:string, "What kind of grouping the grouping ID belongs to")
+            group_id(:integer, "ID of what group the student belongs to")
+            group_type(:string, "What kind of group the grouping ID belongs to")
           end
 
           example(%{
@@ -28,8 +28,8 @@ defmodule DbserviceWeb.SwaggerSchema.EnrollmentRecord do
             student_id: 1,
             board_medium: "English",
             date_of_enrollment: "02/03/2020",
-            grouping_id: 1,
-            grouping_type: "batch"
+            group_id: 1,
+            group_type: "batch"
           })
         end
     }

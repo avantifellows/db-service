@@ -3,36 +3,26 @@ defmodule Dbservice.Groups.Group do
 
   use Ecto.Schema
   import Ecto.Changeset
-
-  alias Dbservice.Programs.Program
-  alias Dbservice.Groups.GroupType
-  alias Dbservice.EnrollmentRecords.EnrollmentRecord
+  alias Dbservice.Users.User
+  alias Dbservice.Sessions.Session
 
   schema "group" do
-    field :name, :string
-    field :input_schema, :map
-    field :locale, :string
-    field :locale_data, :map
+    field :type, :string
+    field :child_id, :integer
 
-    has_many :program, Program
-    has_many :group_type, GroupType, foreign_key: :child_id, where: [type: "group"]
-
-    has_many :enrollment_record, EnrollmentRecord,
-      foreign_key: :grouping_id,
-      where: [grouping_type: "group"]
+    many_to_many :user, User, join_through: "group_user", on_replace: :delete
+    many_to_many :session, Session, join_through: "group_session", on_replace: :delete
 
     timestamps()
   end
 
   @doc false
-  def changeset(group_type, attrs) do
-    group_type
+  def changeset(group, attrs) do
+    group
     |> cast(attrs, [
-      :name,
-      :input_schema,
-      :locale,
-      :locale_data
+      :type,
+      :child_id
     ])
-    |> validate_required([:name])
+    |> validate_required([:type, :child_id])
   end
 end
