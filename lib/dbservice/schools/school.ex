@@ -4,6 +4,7 @@ defmodule Dbservice.Schools.School do
   use Ecto.Schema
   import Ecto.Changeset
 
+  alias Dbservice.Groups.Group
   alias Dbservice.EnrollmentRecords.EnrollmentRecord
 
   schema "school" do
@@ -21,6 +22,8 @@ defmodule Dbservice.Schools.School do
     field :block_name, :string
     field :board, :string
     field :board_medium, :string
+
+    has_many :group, Group, foreign_key: :child_id, where: [type: "school"]
 
     has_many :enrollment_record, EnrollmentRecord,
       foreign_key: :group_id,
