@@ -6,6 +6,7 @@ defmodule Dbservice.Schools do
   import Ecto.Query, warn: false
   alias Dbservice.Repo
 
+  alias Dbservice.Groups.Group
   alias Dbservice.Schools.School
 
   @doc """
@@ -70,6 +71,9 @@ defmodule Dbservice.Schools do
   def create_school(attrs \\ %{}) do
     %School{}
     |> School.changeset(attrs)
+    |> Ecto.Changeset.put_assoc(:group, [
+      %Group{type: "school", child_id: attrs["id"]}
+    ])
     |> Repo.insert()
   end
 
