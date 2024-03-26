@@ -1,4 +1,6 @@
 defmodule DbserviceWeb.GroupView do
+  alias DbserviceWeb.SchoolView
+  alias Dbservice.Schools.School
   use DbserviceWeb, :view
   alias DbserviceWeb.GroupView
   alias DbserviceWeb.AuthGroupView
@@ -44,6 +46,15 @@ defmodule DbserviceWeb.GroupView do
           id: group.id,
           type: group.type,
           child_id: render_one(batch, BatchView, "batch.json")
+        }
+
+      "school" ->
+        school = Repo.get!(School, group.child_id)
+
+        %{
+          id: group.id,
+          type: group.type,
+          child_id: render_one(school, SchoolView, "school.json")
         }
 
       _ ->
