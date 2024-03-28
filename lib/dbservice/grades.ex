@@ -30,6 +30,24 @@ defmodule Dbservice.Grades do
   def get_grade!(id), do: Repo.get!(Grade, id)
 
   @doc """
+  Gets a grade by number.
+
+  Raises `Ecto.NoResultsError` if the School does not exist.
+
+  ## Examples
+
+      iex> get_grade_by_number(12)
+      %School{}
+
+      iex> get_grade_by_number(12)
+      ** (Ecto.NoResultsError)
+
+  """
+  def get_grade_by_number(number) do
+    Repo.get_by(Grade, number: number)
+  end
+
+  @doc """
   Creates a grade.
   ## Examples
       iex> create_grade(%{field: value})

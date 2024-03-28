@@ -30,6 +30,24 @@ defmodule Dbservice.Curriculums do
   def get_curriculum!(id), do: Repo.get!(Curriculum, id)
 
   @doc """
+  Gets a curriculum by name.
+
+  Raises `Ecto.NoResultsError` if the School does not exist.
+
+  ## Examples
+
+      iex> get_curriculum_by_name(Sankalp)
+      %School{}
+
+      iex> get_curriculum_by_name(Sankalp)
+      ** (Ecto.NoResultsError)
+
+  """
+  def get_curriculum_by_name(name) do
+    Repo.get_by(Curriculum, name: name)
+  end
+
+  @doc """
   Creates a curriculum.
   ## Examples
       iex> create_curriculum(%{field: value})

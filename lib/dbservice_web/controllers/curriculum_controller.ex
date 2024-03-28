@@ -66,11 +66,12 @@ defmodule DbserviceWeb.CurriculumController do
   end
 
   def create(conn, params) do
-    with {:ok, %Curriculum{} = curriculum} <- Curriculums.create_curriculum(params) do
-      conn
-      |> put_status(:created)
-      |> put_resp_header("location", Routes.curriculum_path(conn, :show, curriculum))
-      |> render("show.json", curriculum: curriculum)
+    case Curriculums.get_curriculum_by_name(params["name"]) do
+      nil ->
+        create_new_curriculum(conn, params)
+
+      existing_curriculum ->
+        update_existing_curriculum(conn, existing_curriculum, params)
     end
   end
 
@@ -123,6 +124,24 @@ defmodule DbserviceWeb.CurriculumController do
 
     with {:ok, %Curriculum{}} <- Curriculums.delete_curriculum(curriculum) do
       send_resp(conn, :no_content, "")
+    end
+  end
+
+  defp create_new_curriculum(conn, params) do
+    with {:ok, %Curriculum{} = curriculum} <- Curriculums.create_curriculum(params) do
+      conn
+      |> put_status(:created)
+      |> put_resp_header("location", Routes.curriculum_path(conn, :show, curriculum))
+      |> render("show.json", curriculum: curriculum)
+    end
+  end
+
+  defp update_existing_curriculum(conn, existing_curriculum, params) do
+    with {:ok, %Curriculum{} = curriculum} <-
+           Curriculums.update_curriculum(existing_curriculum, params) do
+      conn
+      |> put_status(:ok)
+      |> render("show.json", curriculum: curriculum)
     end
   end
 end
