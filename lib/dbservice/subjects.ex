@@ -31,17 +31,17 @@ defmodule Dbservice.Subjects do
 
   @doc """
   Gets a subject by name.
-  
+
   Raises `Ecto.NoResultsError` if the School does not exist.
-  
+
   ## Examples
-  
+
       iex> get_subject_by_name(Sankalp)
       %School{}
-  
+
       iex> get_subject_by_name(Sankalp)
       ** (Ecto.NoResultsError)
-  
+
   """
   def get_subject_by_name(name) do
     Repo.get_by(Subject, name: name)
