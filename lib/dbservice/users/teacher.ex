@@ -6,17 +6,15 @@ defmodule Dbservice.Users.Teacher do
 
   alias Dbservice.Users.User
   alias Dbservice.Profiles.TeacherProfile
-  alias Dbservice.Schools.School
+  alias Dbservice.Subjects.Subject
 
   schema "teacher" do
     field :designation, :string
-    field :grade, :string
-    field :subject, :string
-    field :uuid, :string
+    field :teacher_id, :string
+
     belongs_to :user, User
-    belongs_to :school, School
-    belongs_to :program_manager, User
     has_one :teacher_profile, TeacherProfile
+    belongs_to :subject, Subject
 
     timestamps()
   end
@@ -26,13 +24,10 @@ defmodule Dbservice.Users.Teacher do
     teacher
     |> cast(attrs, [
       :user_id,
-      :school_id,
-      :program_manager_id,
       :designation,
-      :subject,
-      :grade,
-      :uuid
+      :teacher_id,
+      :subject_id
     ])
-    |> validate_required([:user_id])
+    |> validate_required([:user_id, :teacher_id])
   end
 end

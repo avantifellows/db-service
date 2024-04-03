@@ -26,6 +26,7 @@ defmodule DbserviceWeb.StudentView do
     %{
       id: student.id,
       student_id: student.student_id,
+      grade_id: student.grade_id,
       father_name: student.father_name,
       father_phone: student.father_phone,
       father_education_level: student.father_education_level,
@@ -106,6 +107,7 @@ defmodule DbserviceWeb.StudentView do
       percentage_in_grade_10_english: student.percentage_in_grade_10_english,
       grade_10_marksheet: student.grade_10_marksheet,
       photo: student.photo,
+      planned_competitive_exams: student.planned_competitive_exams,
       user: render_one(student.user, UserView, "user.json")
     }
   end

@@ -6,7 +6,7 @@ defmodule Dbservice.Users.Student do
 
   alias Dbservice.Users.User
   alias Dbservice.Profiles.StudentProfile
-  alias Dbservice.Schools.EnrollmentRecord
+  alias Dbservice.Exams.StudentExamRecord
 
   schema "student" do
     field(:student_id, :string)
@@ -47,10 +47,12 @@ defmodule Dbservice.Users.Student do
     field(:percentage_in_grade_10_english, :string)
     field(:grade_10_marksheet, :string)
     field(:photo, :string)
+    field(:planned_competitive_exams, {:array, :integer})
 
     belongs_to(:user, User)
     has_one(:student_profile, StudentProfile)
-    has_many(:enrollment_record, EnrollmentRecord)
+    belongs_to(:grade, Grade)
+    has_many(:student_exam_record, StudentExamRecord)
 
     timestamps()
   end
@@ -60,6 +62,7 @@ defmodule Dbservice.Users.Student do
     |> cast(attrs, [
       :student_id,
       :user_id,
+      :grade_id,
       :father_name,
       :father_phone,
       :father_education_level,
@@ -95,7 +98,8 @@ defmodule Dbservice.Users.Student do
       :percentage_in_grade_10_math,
       :percentage_in_grade_10_english,
       :grade_10_marksheet,
-      :photo
+      :photo,
+      :planned_competitive_exams
     ])
     |> validate_required([:user_id])
   end

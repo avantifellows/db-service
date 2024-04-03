@@ -11,37 +11,29 @@ defmodule DbserviceWeb.Router do
   scope "/api", DbserviceWeb do
     pipe_through(:api)
 
-    resources("/group", GroupController, except: [:new, :edit])
-    post("/group-type/:id/update-users", GroupTypeController, :update_users)
-    post("/group-type/:id/update-sessions", GroupTypeController, :update_sessions)
+    resources("/auth-group", AuthGroupController, except: [:new, :edit])
+    post("/group/:id/update-users", GroupController, :update_users)
+    post("/group/:id/update-sessions", GroupController, :update_sessions)
 
     resources("/user", UserController, only: [:index, :create, :update, :show])
-    post("/user/:id/update-groups", UserController, :update_group_type)
+    post("/user/:id/update-groups", UserController, :update_group)
     resources("/student", StudentController, except: [:new, :edit])
-    post("/student/register", StudentController, :register)
-    patch("/student/register/:id", StudentController, :update_student_with_user)
     resources("/teacher", TeacherController, except: [:new, :edit])
-    post("/teacher/register", TeacherController, :register)
-    patch("/teacher/register/:id", TeacherController, :update_teacher_with_user)
     resources("/user-profile", UserProfileController, only: [:index, :create, :update, :show])
     resources("/student-profile", StudentProfileController, except: [:new, :edit])
     post("/student-profile/setup", StudentProfileController, :setup)
-
     patch(
       "/student-profile/setup/:id",
       StudentProfileController,
       :update_student_profile_with_user_profile
     )
-
     resources("/teacher-profile", TeacherProfileController, except: [:new, :edit])
     post("/teacher-profile/setup", TeacherProfileController, :setup)
-
     patch(
       "/teacher-profile/setup/:id",
       TeacherProfileController,
       :update_teacher_profile_with_user_profile
     )
-
     resources("/school", SchoolController, except: [:new, :edit])
     resources("/enrollment-record", EnrollmentRecordController, except: [:new, :edit])
     resources("/session", SessionController, only: [:index, :create, :update, :show])
@@ -49,12 +41,26 @@ defmodule DbserviceWeb.Router do
     resources("/session-occurrence", SessionOccurenceController, except: [:new, :edit])
     resources("/user-session", UserSessionController, except: [:new, :edit])
     resources("/group-session", GroupSessionController, except: [:new, :edit])
+    resources("/product", ProductController)
     resources("/program", ProgramController, except: [:new, :edit])
     resources("/batch", BatchController, except: [:new, :edit])
-    resources("/batch-program", BatchProgramController, except: [:new, :edit])
-    resources("/group-type", GroupTypeController, except: [:new, :edit])
+    resources("/group", GroupController, except: [:new, :edit])
     resources("/form-schema", FormSchemaController)
     resources("/group-user", GroupUserController)
+    resources("/tag", TagController, except: [:new, :edit])
+    resources("/curriculum", CurriculumController, except: [:new, :edit])
+    resources("/grade", GradeController, except: [:new, :edit])
+    resources("/subject", SubjectController, except: [:new, :edit])
+    resources("/chapter", ChapterController, except: [:new, :edit])
+    resources("/topic", TopicController, except: [:new, :edit])
+    resources("/concept", ConceptController, except: [:new, :edit])
+    resources("/learning-objective", LearningObjectiveController, except: [:new, :edit])
+    resources("/source", SourceController, except: [:new, :edit])
+    resources("/purpose", PurposeController, except: [:new, :edit])
+    resources("/resource", ResourceController, except: [:new, :edit])
+    resources("/exam", ExamController)
+    resources("/student-exam-record", StudentExamRecordController)
+    resources("/session-schedule", SessionScheduleController)
 
     def swagger_info do
       source(["config/.env", "config/.env"])

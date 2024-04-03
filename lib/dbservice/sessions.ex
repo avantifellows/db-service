@@ -38,6 +38,19 @@ defmodule Dbservice.Sessions do
   def get_session!(id), do: Repo.get!(Session, id)
 
   @doc """
+  Gets a session by session ID.
+  Raises `Ecto.NoResultsError` if the Session does not exist.
+  ## Examples
+      iex> get_session_by_session_id(AFStudents)
+      %Session{}
+      iex> get_session_by_session_id(AvantiStudents)
+      ** (Ecto.NoResultsError)
+  """
+  def get_session_by_session_id(session_id) do
+    Repo.get_by(Session, session_id: session_id)
+  end
+
+  @doc """
   Creates a session.
 
   ## Examples
@@ -105,17 +118,17 @@ defmodule Dbservice.Sessions do
   @doc """
   Updates the groups mapped to a session.
   """
-  def update_group_types(session_id, group_type_ids) when is_list(group_type_ids) do
+  def update_groups(session_id, group_ids) when is_list(group_ids) do
     session = get_session!(session_id)
 
-    group_types =
-      Dbservice.Groups.GroupType
-      |> where([group_type], group_type.id in ^group_type_ids)
+    groups =
+      Dbservice.Groups.Group
+      |> where([group], group.id in ^group_ids)
       |> Repo.all()
 
     session
-    |> Repo.preload(:group_type)
-    |> Session.changeset_update_groups(group_types)
+    |> Repo.preload(:group)
+    |> Session.changeset_update_groups(groups)
     |> Repo.update()
   end
 

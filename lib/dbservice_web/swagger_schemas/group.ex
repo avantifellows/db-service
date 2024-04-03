@@ -8,28 +8,43 @@ defmodule DbserviceWeb.SwaggerSchema.Group do
       Group:
         swagger_schema do
           title("Group")
-          description("A group in the application")
+          description("A Group in application")
 
           properties do
-            name(:string, "Name of a group")
-            input_schema(:map, "Input schema")
-            locale(:string, "The configured locale for the group")
-            locale_data(:map, "Meta data about locale settings for the group")
+            type(:string, "The type of a group")
+            child_id(:integer, "The id of type")
           end
 
           example(%{
-            name: "DelhiStudents",
-            input_schema: %{},
-            locale: "hi",
-            locale_data: %{
-              "hi" => %{
-                "title" => "सत्र के लिए पंजीकरण करें"
-              },
-              "en" => %{
-                "title" => "Register for session"
-              }
+            id: 54,
+            type: "program",
+            child_id: %{
+              donor: "YES",
+              group_id: 29,
+              id: 24,
+              mode: "Offline",
+              model: "Live Classes",
+              name: "Mrs. Stefanie Goldner",
+              product_used: "One",
+              start_date: "2016-11-18",
+              state: "UTTARAKHAND",
+              sub_type: "High",
+              target_outreach: 4743,
+              type: "Competitive"
             }
           })
+        end
+    }
+  end
+
+  def groups do
+    %{
+      Groups:
+        swagger_schema do
+          title("Groups")
+          description("All the Groups")
+          type(:array)
+          items(Schema.ref(:Group))
         end
     }
   end
@@ -42,12 +57,12 @@ defmodule DbserviceWeb.SwaggerSchema.Group do
           description("Relation between group and session")
 
           properties do
-            group_type_id(:integer, "Id of a particular group")
+            group_id(:integer, "Id of a particular group")
             session_id(:integer, "Id of a particular group")
           end
 
           example(%{
-            group_type_id: 1,
+            group_id: 1,
             session_id: 1
           })
         end
@@ -76,18 +91,6 @@ defmodule DbserviceWeb.SwaggerSchema.Group do
             program_date_of_joining: "2020/01/06",
             program_student_language: "English"
           })
-        end
-    }
-  end
-
-  def groups do
-    %{
-      Groups:
-        swagger_schema do
-          title("Groups")
-          description("All the groups")
-          type(:array)
-          items(Schema.ref(:Group))
         end
     }
   end

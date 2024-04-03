@@ -72,11 +72,12 @@ defmodule DbserviceWeb.UserController do
   end
 
   def create(conn, params) do
-    with {:ok, %User{} = user} <- Users.create_user(params) do
-      conn
-      |> put_status(:created)
-      |> put_resp_header("location", Routes.user_path(conn, :show, user))
-      |> render("show.json", user: user)
+    case Users.get_user_by_user_id(params["user_id"]) do
+      nil ->
+        create_new_user(conn, params)
+
+      existing_user ->
+        update_existing_user(conn, existing_user, params)
     end
   end
 
@@ -146,10 +147,27 @@ defmodule DbserviceWeb.UserController do
     response(200, "OK", Schema.ref(:User))
   end
 
-  def update_group_type(conn, %{"id" => user_id, "group_type_ids" => group_type_ids})
-      when is_list(group_type_ids) do
-    with {:ok, %User{} = user} <- Users.update_group_type(user_id, group_type_ids) do
+  def update_group(conn, %{"id" => user_id, "group_ids" => group_ids})
+      when is_list(group_ids) do
+    with {:ok, %User{} = user} <- Users.update_group(user_id, group_ids) do
       render(conn, "show.json", user: user)
+    end
+  end
+
+  defp create_new_user(conn, params) do
+    with {:ok, %User{} = user} <- Users.create_user(params) do
+      conn
+      |> put_status(:created)
+      |> put_resp_header("location", Routes.user_path(conn, :show, user))
+      |> render("show.json", user: user)
+    end
+  end
+
+  defp update_existing_user(conn, existing_user, params) do
+    with {:ok, %User{} = user} <- Users.update_user(existing_user, params) do
+      conn
+      |> put_status(:ok)
+      |> render("show.json", user: user)
     end
   end
 end

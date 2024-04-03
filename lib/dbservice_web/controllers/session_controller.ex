@@ -42,23 +42,51 @@ defmodule DbserviceWeb.SessionController do
   end
 
   def index(conn, params) do
+    sort_order = extract_sort_order(params)
+
     query =
       from m in Session,
-        order_by: [asc: m.id],
+        order_by: [{^sort_order, m.id}],
         offset: ^params["offset"],
         limit: ^params["limit"]
 
     query =
       Enum.reduce(params, query, fn {key, value}, acc ->
         case String.to_existing_atom(key) do
-          :offset -> acc
-          :limit -> acc
-          atom -> from u in acc, where: field(u, ^atom) == ^value
+          :offset ->
+            acc
+
+          :limit ->
+            acc
+
+          :sort_order ->
+            acc
+
+          :session_id_is_null ->
+            apply_session_id_null_filter(value, acc)
+
+          atom ->
+            from(u in acc, where: field(u, ^atom) == ^value)
         end
       end)
 
     session = Repo.all(query)
     render(conn, "index.json", session: session)
+  end
+
+  defp extract_sort_order(params) do
+    case params["sort_order"] do
+      "asc" -> :asc
+      _ -> :desc
+    end
+  end
+
+  defp apply_session_id_null_filter(value, acc) do
+    case value do
+      "true" -> from u in acc, where: is_nil(u.session_id)
+      "false" -> from u in acc, where: not is_nil(u.session_id)
+      _ -> acc
+    end
   end
 
   swagger_path :create do
@@ -72,11 +100,12 @@ defmodule DbserviceWeb.SessionController do
   end
 
   def create(conn, params) do
-    with {:ok, %Session{} = session} <- Sessions.create_session(params) do
-      conn
-      |> put_status(:created)
-      |> put_resp_header("location", Routes.session_path(conn, :show, session))
-      |> render("show.json", session: session)
+    case Sessions.get_session_by_session_id(params["session_id"]) do
+      nil ->
+        create_new_session(conn, params)
+
+      existing_session ->
+        update_existing_session(conn, existing_session, params)
     end
   end
 
@@ -146,10 +175,27 @@ defmodule DbserviceWeb.SessionController do
     response(200, "OK", Schema.ref(:Session))
   end
 
-  def update_groups(conn, %{"id" => session_id, "group_type_ids" => group_type_ids})
-      when is_list(group_type_ids) do
-    with {:ok, %Session{} = session} <- Sessions.update_group_types(session_id, group_type_ids) do
+  def update_groups(conn, %{"id" => session_id, "group_ids" => group_ids})
+      when is_list(group_ids) do
+    with {:ok, %Session{} = session} <- Sessions.update_groups(session_id, group_ids) do
       render(conn, "show.json", session: session)
+    end
+  end
+
+  defp create_new_session(conn, params) do
+    with {:ok, %Session{} = session} <- Sessions.create_session(params) do
+      conn
+      |> put_status(:created)
+      |> put_resp_header("location", Routes.session_path(conn, :show, session))
+      |> render("show.json", session: session)
+    end
+  end
+
+  defp update_existing_session(conn, existing_session, params) do
+    with {:ok, %Session{} = session} <- Sessions.update_session(existing_session, params) do
+      conn
+      |> put_status(:ok)
+      |> render("show.json", session: session)
     end
   end
 end

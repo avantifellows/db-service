@@ -5,8 +5,8 @@ defmodule Dbservice.Sessions.Session do
   import Ecto.Changeset
 
   alias Dbservice.Users.User
-  alias Dbservice.Groups.GroupType
-  alias Dbservice.FormSchemas.FormSchema
+  alias Dbservice.Groups.Group
+  alias Dbservice.Sessions.SessionSchedule
 
   schema "session" do
     field(:end_time, :utc_datetime)
@@ -25,17 +25,18 @@ defmodule Dbservice.Sessions.Session do
     field(:platform_id, :string)
     field(:type, :string)
     field(:auth_type, :string)
-    field(:activate_signup, :boolean)
+    field(:signup_form, :boolean)
+    field(:signup_form_id, :integer)
     field(:id_generation, :boolean)
     field(:redirection, :boolean)
-    field(:pop_up_form, :boolean)
-    field(:number_of_fields_in_pop_form, :integer)
+    field(:popup_form, :boolean)
+    field(:popup_form_id, :integer)
 
     timestamps()
 
     many_to_many(:users, User, join_through: "user_session", on_replace: :delete)
-    many_to_many(:group_type, GroupType, join_through: "group_session", on_replace: :delete)
-    belongs_to(:form_schema, FormSchema)
+    many_to_many(:group, Group, join_through: "group_session", on_replace: :delete)
+    has_many(:session_schedule, SessionSchedule)
   end
 
   @doc false
@@ -58,22 +59,23 @@ defmodule Dbservice.Sessions.Session do
       :platform_id,
       :type,
       :auth_type,
-      :activate_signup,
+      :signup_form,
       :id_generation,
       :redirection,
-      :pop_up_form,
-      :number_of_fields_in_pop_form,
-      :form_schema_id
+      :popup_form,
+      :popup_form_id,
+      :signup_form_id
     ])
     |> validate_required([
       :name,
+      :start_time,
       :platform
     ])
   end
 
-  def changeset_update_groups(session, group_types) do
+  def changeset_update_groups(session, groups) do
     session
     |> change()
-    |> put_assoc(:group_type, group_types)
+    |> put_assoc(:group, groups)
   end
 end
