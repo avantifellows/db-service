@@ -25,4 +25,15 @@ defmodule Dbservice.Utils.Util do
       changeset
     end
   end
+
+  def validate_start_end_date(changeset, start_date_atom, end_date_atom) do
+    start_date = get_field(changeset, start_date_atom)
+    end_date = get_field(changeset, end_date_atom)
+
+    if start_date && end_date && Date.compare(start_date, end_date) == :gt do
+      add_error(changeset, start_date_atom, "cannot be later than end date")
+    else
+      changeset
+    end
+  end
 end
