@@ -124,8 +124,6 @@ defmodule Dbservice.EnrollmentRecords do
 
   """
   def update_enrollment_record(%EnrollmentRecord{} = enrollment_record, attrs) do
-    IO.inspect(attrs)
-
     enrollment_record
     |> EnrollmentRecord.changeset(attrs)
     |> Repo.update()
