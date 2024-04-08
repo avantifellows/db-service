@@ -1,145 +1,124 @@
 {
   "definitions": {
-    "BatchPrograms": {
-      "description": "All batch and program mappings",
-      "items": {
-        "$ref": "#/definitions/BatchProgram"
-      },
-      "title": "BatchPrograms",
-      "type": "array"
-    },
-    "Students": {
-      "description": "All students in the application",
-      "items": {
-        "$ref": "#/definitions/Student"
-      },
-      "title": "Students",
-      "type": "array"
-    },
-    "Sessions": {
-      "description": "All the sessions",
-      "items": {
-        "$ref": "#/definitions/Session"
-      },
-      "title": "Sessions",
-      "type": "array"
-    },
-    "UserSessions": {
-      "description": "All user and session occurence mappings",
-      "items": {
-        "$ref": "#/definitions/UserSession"
-      },
-      "title": "UserSessions",
-      "type": "array"
-    },
-    "User": {
-      "description": "A user in the application",
+    "GroupSessions": {
+      "description": "Relation between group and session",
       "example": {
-        "address": "Bandra Complex, Kurla Road",
-        "city": "Mumbai",
-        "date_of_birth": "2003-08-22",
-        "district": "Mumbai",
-        "email": "rahul.sharma@example.com",
-        "full_name": "Rahul Sharma",
-        "gender": "Male",
-        "phone": "9998887777",
-        "pincode": "400011",
-        "role": "student",
-        "state": "Maharashtra",
-        "whatsapp_phone": "9998887777"
+        "group_id": 1,
+        "session_id": 1
       },
       "properties": {
-        "address": {
-          "description": "Address",
-          "type": "string"
-        },
-        "city": {
-          "description": "City",
-          "type": "string"
-        },
-        "date_of_birth": {
-          "description": "Date of Birth",
-          "type": "date"
-        },
-        "district": {
-          "description": "District",
-          "type": "string"
-        },
-        "email": {
-          "description": "Email",
-          "type": "string"
-        },
-        "full_name": {
-          "description": "Full name",
-          "type": "string"
-        },
-        "gender": {
-          "description": "Gender",
-          "type": "string"
-        },
-        "phone": {
-          "description": "Phone number",
-          "type": "string"
-        },
-        "pincode": {
-          "description": "Pin code",
-          "type": "string"
-        },
-        "role": {
-          "description": "User role",
-          "type": "string"
-        },
-        "state": {
-          "description": "State",
-          "type": "string"
-        },
-        "whatsapp_phone": {
-          "description": "Whatsapp phone",
-          "type": "string"
-        }
-      },
-      "title": "User",
-      "type": "object"
-    },
-    "UserSession": {
-      "description": "A mapping between user and sesssion-occurence",
-      "example": {
-        "data": {
-          "substitute-teacher-name": "Ms. Poonam"
-        },
-        "end_time": "2022-02-02T11:30:00Z",
-        "is_user_valid": true,
-        "session_occurrence_id": 2,
-        "start_time": "2022-02-02T11:00:00Z",
-        "user_id": "12213221211"
-      },
-      "properties": {
-        "data": {
-          "description": "Additional data for user session",
-          "type": "map"
-        },
-        "end_time": {
-          "description": "User session end time",
-          "type": "timestamp"
-        },
-        "is_user_valid": {
-          "description": "Signifies whether the user exist or not",
-          "type": "boolean"
-        },
-        "session_occurrence_id": {
-          "description": "The id of the session occurrence",
+        "group_id": {
+          "description": "Id of a particular group",
           "type": "integer"
         },
-        "start_time": {
-          "description": "User session start time",
+        "session_id": {
+          "description": "Id of a particular group",
+          "type": "integer"
+        }
+      },
+      "title": "Group Session",
+      "type": "object"
+    },
+    "Session": {
+      "description": "A session in the application",
+      "example": {
+        "created_by_id": 1,
+        "end_time": "2022-02-02T11:30:00Z",
+        "is_active": true,
+        "meta_data": {
+          "substitute-teacher-name": "Ms. Poonam"
+        },
+        "name": "Kendriya Vidyalaya - Weekly Maths class 7",
+        "owner_id": 2,
+        "platform": "meet",
+        "platform_link": "https://meet.google.com/asl-skas-qwe",
+        "portal_link": "https://links.af.org/kv-wmc7",
+        "repeat_schedule": {
+          "repeat-till-date": "2022-12-31 11:59:59",
+          "repeat-type": "weekly"
+        },
+        "session_id": "c714-e1d4-5a42-0f9f-36b3",
+        "start_time": "2022-02-02T11:00:00Z"
+      },
+      "properties": {
+        "activate_signup": {
+          "description": "Is sign up allowed for this session",
+          "type": "boolean"
+        },
+        "auth_type": {
+          "description": "Authentication methods used for session",
+          "type": "string"
+        },
+        "created_by_id": {
+          "description": "User ID for the session creator",
+          "type": "integer"
+        },
+        "end_time": {
+          "description": "Session finish time",
           "type": "timestamp"
         },
-        "user_id": {
-          "description": "The id of the user",
+        "id_generation": {
+          "description": "Is ID being generated for this session",
+          "type": "boolean"
+        },
+        "is_active": {
+          "description": "Tells whether session is active or not",
+          "type": "boolean"
+        },
+        "meta_data": {
+          "description": "Additional meta data for the session",
+          "type": "map"
+        },
+        "name": {
+          "description": "First name",
+          "type": "string"
+        },
+        "number_of_fields_in_pop_form": {
+          "description": "Number of fields in the pop form",
+          "type": "integer"
+        },
+        "owner_id": {
+          "description": "User ID for the session owner",
+          "type": "integer"
+        },
+        "platform": {
+          "description": "Platform where session being hosted",
+          "type": "string"
+        },
+        "platform_link": {
+          "description": "Link for the platform",
+          "type": "string"
+        },
+        "pop_up_form": {
+          "description": "Is the session showing a pop up form",
+          "type": "boolean"
+        },
+        "portal_link": {
+          "description": "Link generated by the portal",
+          "type": "text"
+        },
+        "redirection": {
+          "description": "Is the session redirecting to some other platform",
+          "type": "boolean"
+        },
+        "repeat_schedule": {
+          "description": "Repeat type and repeat till date for session",
+          "type": "json"
+        },
+        "session_id": {
+          "description": "Id for the session",
+          "type": "string"
+        },
+        "start_time": {
+          "description": "Session start time",
+          "type": "timestamp"
+        },
+        "type": {
+          "description": "Type of session",
           "type": "string"
         }
       },
-      "title": "UserSession",
+      "title": "Session",
       "type": "object"
     },
     "GroupIds": {
@@ -156,6 +135,69 @@
         }
       },
       "type": "object"
+    },
+    "UserProfile": {
+      "description": "A user's profile in the application",
+      "example": {
+        "current_batch": "Photon",
+        "current_grade": "11",
+        "current_program": "HaryanaStudents",
+        "latest_session_accessed": "LiveClass_10",
+        "logged_in_atleast_once": true,
+        "user_id": 10
+      },
+      "properties": {
+        "current_batch": {
+          "description": "Current Batch",
+          "type": "string"
+        },
+        "current_grade": {
+          "description": "Current Grade",
+          "type": "string"
+        },
+        "current_program": {
+          "description": "Current Program",
+          "type": "string"
+        },
+        "latest_session_accessed": {
+          "description": "Name of the latest session accessed",
+          "type": "string"
+        },
+        "logged_in_atleast_once": {
+          "description": "Has user logged in atleast once?",
+          "type": "boolean"
+        },
+        "user_id": {
+          "description": "Corresponding user ID of the user",
+          "type": "integer"
+        }
+      },
+      "title": "User Profile",
+      "type": "object"
+    },
+    "Curriculums": {
+      "description": "All Curriculums in the application",
+      "items": {
+        "$ref": "#/definitions/Curriculum"
+      },
+      "title": "Curriculums",
+      "type": "array"
+    },
+    "UserProfiles": {
+      "description": "All user profiles in the application",
+      "items": {
+        "$ref": "#/definitions/UserProfile"
+      },
+      "title": "User Profiles",
+      "type": "array"
+    },
+    "Concepts": {
+      "description": "All concepts in the application",
+      "items": {
+        "$ref": "#/definitions/Concept"
+      },
+      "title": "Concepts",
+      "type": "array"
     },
     "SessionOccurrence": {
       "description": "A session occurrence for a session",
@@ -186,144 +228,170 @@
       "title": "SessionOccurrence",
       "type": "object"
     },
-    "Batches": {
-      "description": "All the batches",
-      "items": {
-        "$ref": "#/definitions/Batch"
-      },
-      "title": "Batches",
-      "type": "array"
-    },
-    "Groups": {
-      "description": "All the groups",
-      "items": {
-        "$ref": "#/definitions/Group"
-      },
-      "title": "Groups",
-      "type": "array"
-    },
-    "SessionOccurrences": {
-      "description": "All the session occurrences ",
-      "items": {
-        "$ref": "#/definitions/SessionOccurrence"
-      },
-      "title": "SessionOccurrences",
-      "type": "array"
-    },
-    "Users": {
-      "description": "All users in the application",
-      "items": {
-        "$ref": "#/definitions/User"
-      },
-      "title": "Users",
-      "type": "array"
-    },
-    "Session": {
-      "description": "A session in the application",
+    "SessionIds": {
       "example": {
-        "created_by_id": 1,
-        "end_time": "2022-02-02T11:30:00Z",
-        "form_schema_id": 1,
-        "is_active": true,
-        "meta_data": {
-          "substitute-teacher-name": "Ms. Poonam"
-        },
-        "name": "Kendriya Vidyalaya - Weekly Maths class 7",
-        "owner_id": 2,
-        "platform": "meet",
-        "platform_link": "https://meet.google.com/asl-skas-qwe",
-        "portal_link": "https://links.af.org/kv-wmc7",
-        "repeat_schedule": {
-          "repeat-till-date": "2022-12-31 11:59:59",
-          "repeat-type": "weekly"
-        },
-        "session_id": "c714-e1d4-5a42-0f9f-36b3",
-        "start_time": "2022-02-02T11:00:00Z"
+        "session_ids": [
+          1,
+          2
+        ]
       },
       "properties": {
-        "activate_signup": {
-          "description": "Is sign up allowed for this session",
-          "type": "string"
-        },
-        "auth_type": {
-          "description": "Authentication methods used for session",
-          "type": "string"
-        },
-        "created_by_id": {
-          "description": "User ID for the session creator",
-          "type": "integer"
-        },
-        "end_time": {
-          "description": "Session finish time",
-          "type": "timestamp"
-        },
-        "form_schema_id": {
-          "description": "Id for the form schema",
-          "type": "string"
-        },
-        "id_generation": {
-          "description": "Is ID being generated for this session",
-          "type": "string"
-        },
-        "is_active": {
-          "description": "Tells whether session is active or not",
-          "type": "boolean"
-        },
-        "meta_data": {
-          "description": "Additional meta data for the session",
-          "type": "map"
-        },
-        "name": {
-          "description": "First name",
-          "type": "string"
-        },
-        "number_of_fields_in_pop_form": {
-          "description": "Number of fields in the pop form",
-          "type": "string"
-        },
-        "owner_id": {
-          "description": "User ID for the session owner",
-          "type": "integer"
-        },
-        "platform": {
-          "description": "Platform where session being hosted",
-          "type": "string"
-        },
-        "platform_link": {
-          "description": "Link for the platform",
-          "type": "string"
-        },
-        "pop_up_form": {
-          "description": "Is the session showing a pop up form",
-          "type": "string"
-        },
-        "portal_link": {
-          "description": "Link generated by the portal",
-          "type": "text"
-        },
-        "redirection": {
-          "description": "Is the session redirecting to some other platform",
-          "type": "string"
-        },
-        "repeat_schedule": {
-          "description": "Repeat type and repeat till date for session",
-          "type": "json"
-        },
-        "session_id": {
-          "description": "Id for the session",
-          "type": "string"
-        },
-        "start_time": {
-          "description": "Session start time",
-          "type": "timestamp"
-        },
-        "type": {
-          "description": "Type of session",
-          "type": "string"
+        "session_ids": {
+          "description": "List of session ids",
+          "type": "array"
         }
       },
-      "title": "Session",
       "type": "object"
+    },
+    "Topics": {
+      "description": "All topics in the application",
+      "items": {
+        "$ref": "#/definitions/Topic"
+      },
+      "title": "Topics",
+      "type": "array"
+    },
+    "Chapter": {
+      "description": "A chapter in the application",
+      "example": {
+        "code": "9C01",
+        "curriculum_id": 1,
+        "grade_id": 1,
+        "name": "हमारे आस-पास के पदार्थ | Matter in Our Surroundings",
+        "subject_id": 1,
+        "tag_id": 4
+      },
+      "properties": {
+        "code": {
+          "description": "Chapter Code",
+          "type": "string"
+        },
+        "curriculum_id": {
+          "description": "Curriculum id associated with the chapter",
+          "type": "integer"
+        },
+        "grade_id": {
+          "description": "Grade id associated with the chapter",
+          "type": "integer"
+        },
+        "name": {
+          "description": "Chapter name",
+          "type": "string"
+        },
+        "subject_id": {
+          "description": "Subject id associated with the chapter",
+          "type": "integer"
+        },
+        "tag_id": {
+          "description": "Tag id associated with the chapter",
+          "type": "integer"
+        }
+      },
+      "title": "Chapter",
+      "type": "object"
+    },
+    "Resource": {
+      "description": "A resource in the application",
+      "example": {
+        "chapter_id": 1,
+        "concept_id": 1,
+        "curriculum_id": 1,
+        "difficulty_level": "medium",
+        "learning_objective_id": 1,
+        "name": "1. 9C01 Introduction - हमारे आस पास के पदार्थ | Matter in our Surroundings",
+        "purpose_id": 1,
+        "tag_id": 5,
+        "teacher_id": 1,
+        "topic_id": 1,
+        "type": "video",
+        "type_params": {
+          "duration": "45 minutes"
+        }
+      },
+      "properties": {
+        "chapter_id": {
+          "description": "Chapter id associated with the resource",
+          "type": "integer"
+        },
+        "concept_id": {
+          "description": "Concept id associated with the resource",
+          "type": "integer"
+        },
+        "curriculum_id": {
+          "description": "Curriculum id associated with the resource",
+          "type": "integer"
+        },
+        "difficulty_level": {
+          "description": "Difficulty level of a resource",
+          "type": "string"
+        },
+        "learning_objective_id": {
+          "description": "Learning objective id associated with the resource",
+          "type": "integer"
+        },
+        "name": {
+          "description": "Resource name",
+          "type": "string"
+        },
+        "purpose_id": {
+          "description": "Purpose id associated with the resource",
+          "type": "integer"
+        },
+        "tag_id": {
+          "description": "Tag id associated with the resource",
+          "type": "integer"
+        },
+        "teacher_id": {
+          "description": "Teacher id associated with the resource",
+          "type": "integer"
+        },
+        "topic_id": {
+          "description": "Topic id associated with the resource",
+          "type": "integer"
+        },
+        "type": {
+          "description": "Resource type",
+          "type": "string"
+        },
+        "type_params": {
+          "description": "Parameters of the resource type",
+          "type": "map"
+        }
+      },
+      "title": "Resource",
+      "type": "object"
+    },
+    "Schools": {
+      "description": "All schools in the application",
+      "items": {
+        "$ref": "#/definitions/School"
+      },
+      "title": "Schools",
+      "type": "array"
+    },
+    "UserSessions": {
+      "description": "All user and session occurence mappings",
+      "items": {
+        "$ref": "#/definitions/UserSession"
+      },
+      "title": "UserSessions",
+      "type": "array"
+    },
+    "Grades": {
+      "description": "All grades in the application",
+      "items": {
+        "$ref": "#/definitions/Grade"
+      },
+      "title": "Grades",
+      "type": "array"
+    },
+    "SessionSchedules": {
+      "description": "All session schedules in the application",
+      "items": {
+        "$ref": "#/definitions/SessionSchedule"
+      },
+      "title": "SessionSchedules",
+      "type": "array"
     },
     "StudentRegistration": {
       "description": "A student in the application along with user info",
@@ -424,116 +492,12 @@
       "title": "Student Registration",
       "type": "object"
     },
-    "Group": {
-      "description": "A group in the application",
-      "example": {
-        "input_schema": {},
-        "locale": "hi",
-        "locale_data": {
-          "en": {
-            "title": "Register for session"
-          },
-          "hi": {
-            "title": "सत्र के लिए पंजीकरण करें"
-          }
-        },
-        "name": "DelhiStudents"
-      },
-      "properties": {
-        "input_schema": {
-          "description": "Input schema",
-          "type": "map"
-        },
-        "locale": {
-          "description": "The configured locale for the group",
-          "type": "string"
-        },
-        "locale_data": {
-          "description": "Meta data about locale settings for the group",
-          "type": "map"
-        },
-        "name": {
-          "description": "Name of a group",
-          "type": "string"
-        }
-      },
-      "title": "Group",
-      "type": "object"
-    },
-    "TeacherWithUser": {
-      "description": "A teacher in the application along with user info",
-      "example": {
-        "category": "general",
-        "designation": "Principal",
-        "grade": "High School",
-        "school_id": 2,
-        "stream": "PCB",
-        "user": {
-          "address": "Bandra Complex, Kurla Road",
-          "city": "Mumbai",
-          "district": "Mumbai",
-          "email": "aman.bahuguna@example.com",
-          "full_name": "Aman Bahuguna",
-          "gender": "Male",
-          "phone": "8484515848",
-          "pincode": "400011",
-          "role": "principal",
-          "state": "Maharashtra"
-        },
-        "uuid": "AF419"
-      },
-      "properties": {
-        "designation": {
-          "description": "Designation for the teacher",
-          "type": "string"
-        },
-        "grade": {
-          "description": "Grade level in which a teacher instructs",
-          "type": "string"
-        },
-        "subject": {
-          "description": "Subject taught by the teacher",
-          "type": "string"
-        },
-        "user": {
-          "description": "User details associated with the teacher",
-          "type": "map"
-        },
-        "uuid": {
-          "description": "UUID of the teacher",
-          "type": "string"
-        }
-      },
-      "title": "Teacher with User",
-      "type": "object"
-    },
-    "FormSchema": {
-      "description": "A form schema in the application",
-      "example": {
-        "attributes": {
-          "label": "First Name"
-        },
-        "name": "Registration"
-      },
-      "properties": {
-        "attributes": {
-          "description": "Attribute data for form schema",
-          "type": "map"
-        },
-        "name": {
-          "description": "Name of a form schema",
-          "type": "string"
-        }
-      },
-      "title": "FormSchema",
-      "type": "object"
-    },
-    "GroupTypes": {
-      "description": "All the GroupTypes",
+    "Users": {
+      "description": "All users in the application",
       "items": {
-        "$ref": "#/definitions/GroupType"
+        "$ref": "#/definitions/User"
       },
-      "title": "GroupTypes",
+      "title": "Users",
       "type": "array"
     },
     "FormSchemas": {
@@ -544,177 +508,501 @@
       "title": "FormSchemas",
       "type": "array"
     },
-    "GroupType": {
-      "description": "A Group type in application",
+    "StudentProfile": {
+      "description": "A student's profile in the application",
       "example": {
-        "child_id": {
-          "donor": "YES",
-          "group_id": 29,
-          "id": 24,
-          "mode": "Offline",
-          "model": "Live Classes",
-          "name": "Mrs. Stefanie Goldner",
-          "product_used": "One",
-          "start_date": "2016-11-18",
-          "state": "UTTARAKHAND",
-          "sub_type": "High",
-          "target_outreach": 4743,
-          "type": "Competitive"
-        },
-        "id": 54,
-        "type": "program"
+        "attendance_in_classes_current_year": [
+          89.0,
+          90.2,
+          20.3,
+          35.7,
+          42.1,
+          66.4,
+          88.9,
+          91.2,
+          77.3,
+          54.6,
+          33.8,
+          10.1
+        ],
+        "attendance_in_tests_current_year": [
+          89.0,
+          90.2,
+          20.3,
+          35.7,
+          42.1,
+          66.4,
+          88.9,
+          91.2,
+          77.3,
+          54.6,
+          33.8,
+          10.1
+        ],
+        "average_batch_score_in_latest_test": 88.5,
+        "classes_activity_cohort": "Cohort A",
+        "max_batch_score_in_latest_test": 95,
+        "performance_trend_in_fst": "Improving",
+        "student_fk": 2,
+        "student_id": "120180101057",
+        "tests_activity_cohort": "Cohort B",
+        "tests_number_of_correct_questions": 75,
+        "tests_number_of_skipped_questions": 15,
+        "tests_number_of_wrong_questions": 10,
+        "took_class_atleast_once": true,
+        "took_test_atleast_once": true,
+        "total_number_of_live_classes": 50,
+        "total_number_of_tests": 20,
+        "user_profile_id": 3
       },
       "properties": {
-        "child_id": {
-          "description": "The id of type",
+        "attendance_in_classes_current_year": {
+          "description": "Attendance in classes for each month this year",
+          "type": "array"
+        },
+        "attendance_in_tests_current_year": {
+          "description": "Attendance in tests for each month this year",
+          "type": "array"
+        },
+        "average_batch_score_in_latest_test": {
+          "description": "Average batch score in latest test",
+          "type": "decimal"
+        },
+        "classes_activity_cohort": {
+          "description": "Classes activity cohort",
+          "type": "string"
+        },
+        "max_batch_score_in_latest_test": {
+          "description": "Max batch score in latest test",
           "type": "integer"
         },
-        "type": {
-          "description": "The type of a group",
+        "performance_trend_in_fst": {
+          "description": "Performance trend in FST",
+          "type": "string"
+        },
+        "student_fk": {
+          "description": "Student foreign key ID associated with the student's profile",
+          "type": "integer"
+        },
+        "student_id": {
+          "description": "Student ID",
+          "type": "string"
+        },
+        "tests_activity_cohort": {
+          "description": "Tests activity cohort",
+          "type": "string"
+        },
+        "tests_number_of_correct_questions": {
+          "description": "Total Number of correct questions in tests",
+          "type": "integer"
+        },
+        "tests_number_of_skipped_questions": {
+          "description": "Total Number of skipped questions in tests",
+          "type": "integer"
+        },
+        "tests_number_of_wrong_questions": {
+          "description": "Total Number of wrong questions in tests",
+          "type": "integer"
+        },
+        "took_class_atleast_once": {
+          "description": "Has the student participated in a class at least once",
+          "type": "boolean"
+        },
+        "took_test_atleast_once": {
+          "description": "Has the student taken a test at least once",
+          "type": "boolean"
+        },
+        "total_number_of_live_classes": {
+          "description": "Total number of live classes",
+          "type": "integer"
+        },
+        "total_number_of_tests": {
+          "description": "Total number of tests",
+          "type": "integer"
+        },
+        "user_profile_id": {
+          "description": "User profile ID associated with the student's profile",
+          "type": "integer"
+        }
+      },
+      "title": "Student Profile",
+      "type": "object"
+    },
+    "LearningObjective": {
+      "description": "A learning objective in the application",
+      "example": {
+        "concept_id": 1,
+        "tag_id": 6,
+        "title": "Understanding fundamental concept of Electromagnetism"
+      },
+      "properties": {
+        "concept_id": {
+          "description": "Concept id associated with the learning objective",
+          "type": "integer"
+        },
+        "tag_id": {
+          "description": "Tag id associated with the learning objective",
+          "type": "integer"
+        },
+        "title": {
+          "description": "Title of the learning objective",
           "type": "string"
         }
       },
-      "title": "GroupType",
+      "title": "LearningObjective",
       "type": "object"
     },
-    "EnrollmentRecords": {
-      "description": "All enrollment records",
+    "Exams": {
+      "description": "All the exams",
       "items": {
-        "$ref": "#/definitions/EnrollmentRecord"
+        "$ref": "#/definitions/Exam"
       },
-      "title": "EnrollmentRecords",
+      "title": "Exams",
       "type": "array"
     },
-    "GroupUsers": {
-      "description": "Relation between group and user",
+    "Programs": {
+      "description": "All the programs",
+      "items": {
+        "$ref": "#/definitions/Program"
+      },
+      "title": "Programs",
+      "type": "array"
+    },
+    "TeacherProfileWithUserProfile": {
+      "description": "A teacher's profile with associated user profile",
       "example": {
+        "avg_rating": 4.5,
+        "program_manager": "John Doe",
+        "school": "XYZ High School",
+        "teacher_fk": 2,
+        "teacher_id": "30",
+        "user_profile": {
+          "current_batch": "Photon",
+          "current_grade": "11",
+          "current_program": "HaryanaStudents",
+          "latest_session_accessed": "LiveClass_10",
+          "logged_in_atleast_once": false,
+          "user_id": 2
+        }
+      },
+      "properties": {
+        "avg_rating": {
+          "description": "Average rating of the teacher",
+          "type": "decimal"
+        },
+        "program_manager": {
+          "description": "Program manager for the teacher",
+          "type": "string"
+        },
+        "school": {
+          "description": "School where the teacher works",
+          "type": "string"
+        },
+        "teacher_fk": {
+          "description": "Teacher foreign key ID associated with the student's profile",
+          "type": "integer"
+        },
+        "teacher_id": {
+          "description": "Teacher ID associated with the teacher's profile",
+          "type": "string"
+        },
+        "user_profile": {
+          "description": "User Profile details associated with the teacher",
+          "type": "map"
+        }
+      },
+      "title": "TeacherProfile With UserProfile",
+      "type": "object"
+    },
+    "Source": {
+      "description": "A source in the application",
+      "example": {
+        "link": "https://www.youtube.com/watch?v=k01UwiIvo9o",
+        "name": "youtube",
+        "tag_id": 5
+      },
+      "properties": {
+        "link": {
+          "description": "Source Link",
+          "type": "text"
+        },
+        "name": {
+          "description": "Source name",
+          "type": "string"
+        },
+        "tag_id": {
+          "description": "Tag id associated with the source",
+          "type": "integer"
+        }
+      },
+      "title": "Source",
+      "type": "object"
+    },
+    "TeacherProfile": {
+      "description": "A teacher's profile in the application",
+      "example": {
+        "avg_rating": 4.5,
+        "program_manager": "John Doe",
+        "school": "XYZ High School",
+        "teacher_fk": 3,
+        "teacher_id": "20202",
+        "user_profile_id": 1
+      },
+      "properties": {
+        "avg_rating": {
+          "description": "Average rating of the teacher",
+          "type": "decimal"
+        },
+        "program_manager": {
+          "description": "Program manager for the teacher",
+          "type": "string"
+        },
+        "school": {
+          "description": "School where the teacher works",
+          "type": "string"
+        },
+        "teacher_fk": {
+          "description": "Teacher foreign key ID associated with the teacher's profile",
+          "type": "integer"
+        },
+        "teacher_id": {
+          "description": "Teacher ID associated with the teacher's profile",
+          "type": "string"
+        },
+        "user_profile_id": {
+          "description": "User profile ID associated with the teacher's profile",
+          "type": "integer"
+        }
+      },
+      "title": "TeacherProfile",
+      "type": "object"
+    },
+    "User": {
+      "description": "A user in the application",
+      "example": {
+        "address": "Bandra Complex, Kurla Road",
+        "city": "Mumbai",
+        "date_of_birth": "2003-08-22",
+        "district": "Mumbai",
+        "email": "rahul.sharma@example.com",
+        "full_name": "Rahul Sharma",
+        "gender": "Male",
+        "phone": "9998887777",
+        "pincode": "400011",
+        "role": "student",
+        "state": "Maharashtra",
+        "whatsapp_phone": "9998887777"
+      },
+      "properties": {
+        "address": {
+          "description": "Address",
+          "type": "string"
+        },
+        "city": {
+          "description": "City",
+          "type": "string"
+        },
+        "date_of_birth": {
+          "description": "Date of Birth",
+          "type": "date"
+        },
+        "district": {
+          "description": "District",
+          "type": "string"
+        },
+        "email": {
+          "description": "Email",
+          "type": "string"
+        },
+        "full_name": {
+          "description": "Full name",
+          "type": "string"
+        },
+        "gender": {
+          "description": "Gender",
+          "type": "string"
+        },
+        "phone": {
+          "description": "Phone number",
+          "type": "string"
+        },
+        "pincode": {
+          "description": "Pin code",
+          "type": "string"
+        },
+        "role": {
+          "description": "User role",
+          "type": "string"
+        },
+        "state": {
+          "description": "State",
+          "type": "string"
+        },
+        "whatsapp_phone": {
+          "description": "Whatsapp phone",
+          "type": "string"
+        }
+      },
+      "title": "User",
+      "type": "object"
+    },
+    "EnrollmentRecord": {
+      "description": "An enrollment record for the student",
+      "example": {
+        "academic_year": "2022",
+        "board_medium": "English",
+        "date_of_enrollment": "02/03/2020",
+        "grade": "7",
         "group_id": 1,
-        "program_date_of_joining": "2020/01/06",
-        "program_manager_id": 1,
-        "program_student_language": "English",
-        "user_id": 1
+        "group_type": "batch",
+        "is_current": true,
+        "student_id": 1
       },
       "properties": {
-        "group_id": {
-          "description": "Id of a particular group",
-          "type": "integer"
-        },
-        "program_date_of_joining": {
-          "description": "Date of joining a program",
-          "type": "utc_datetime"
-        },
-        "program_manager_id": {
-          "description": "ID of a program manager",
-          "type": "integer"
-        },
-        "program_student_language": {
-          "description": "Language used in an enrolled program",
+        "academic_year": {
+          "description": "Academic Year",
           "type": "string"
         },
-        "user_id": {
-          "description": "Id of a particular group",
-          "type": "integer"
-        }
-      },
-      "title": "Group User",
-      "type": "object"
-    },
-    "SessionIds": {
-      "example": {
-        "session_ids": [
-          1,
-          2
-        ]
-      },
-      "properties": {
-        "session_ids": {
-          "description": "List of session ids",
-          "type": "array"
-        }
-      },
-      "type": "object"
-    },
-    "Teacher": {
-      "description": "A teacher in the application",
-      "example": {
-        "designation": "Vice Principal",
-        "grade": "12",
-        "program_manager_id": 3,
-        "school_id": 2,
-        "subject": "Maths",
-        "user_id": 1,
-        "uuid": "3bc6b53e7bbbc883b9ab"
-      },
-      "properties": {
-        "designation": {
-          "description": "Designation",
+        "board_medium": {
+          "description": "Medium of the board",
           "type": "string"
+        },
+        "date_of_enrollment": {
+          "description": "Date of Enrollment",
+          "type": "date"
         },
         "grade": {
           "description": "Grade",
           "type": "string"
         },
-        "program_manager_id": {
-          "description": "Program manager user ID for the teacher",
+        "group_id": {
+          "description": "ID of what group the student belongs to",
           "type": "integer"
         },
-        "school_id": {
-          "description": "School ID for the teacher",
-          "type": "integer"
-        },
-        "subject": {
-          "description": "Core subject",
+        "group_type": {
+          "description": "What kind of group the grouping ID belongs to",
           "type": "string"
         },
-        "user_id": {
-          "description": "User ID for the teacher",
-          "type": "integer"
+        "is_current": {
+          "description": "Is current enrollment record for student",
+          "type": "boolean"
         },
-        "uuid": {
-          "description": "UUID for the teacher",
-          "type": "string"
-        }
-      },
-      "title": "Teacher",
-      "type": "object"
-    },
-    "GroupSessions": {
-      "description": "Relation between group and session",
-      "example": {
-        "group_type_id": 1,
-        "session_id": 1
-      },
-      "properties": {
-        "group_type_id": {
-          "description": "Id of a particular group",
-          "type": "integer"
-        },
-        "session_id": {
-          "description": "Id of a particular group",
+        "student_id": {
+          "description": "Student ID that the program enrollment belongs to",
           "type": "integer"
         }
       },
-      "title": "Group Session",
+      "title": "EnrollmentRecord",
       "type": "object"
     },
-    "Batch": {
-      "description": "A batch in application",
+    "Subject": {
+      "description": "A subject in the application",
       "example": {
-        "contact_hours_per_week": 48,
-        "name": "Delhi-12-NEET"
+        "code": "P11",
+        "name": "Physics"
       },
       "properties": {
-        "contact_hours_per_week": {
-          "description": "Contact hours per week of a batch",
-          "type": "integer"
+        "code": {
+          "description": "Subject Code",
+          "type": "string"
         },
         "name": {
-          "description": "The name of a batch",
+          "description": "Subject name",
+          "type": "string"
+        },
+        "tag_id": {
+          "description": "Tag id associated with the subject",
+          "type": "integer"
+        }
+      },
+      "title": "Subject",
+      "type": "object"
+    },
+    "School": {
+      "description": "A school in the application",
+      "example": {
+        "block_code": "DOEAIDED",
+        "board": "CBSE",
+        "board_medium": "en",
+        "category": "Government",
+        "code": "872931",
+        "district": "NORTH WEST DELHI",
+        "district_code": "0701",
+        "name": "Kendriya Vidyalaya - Rajori Garden",
+        "region": "Urban",
+        "state": "Delhi",
+        "state_code": "DL",
+        "type": "Open",
+        "udise_code": "05040120901"
+      },
+      "properties": {
+        "block_code": {
+          "description": "Block Code",
+          "type": "string"
+        },
+        "block_name": {
+          "description": "Block Name",
+          "type": "string"
+        },
+        "board": {
+          "description": "Board",
+          "type": "string"
+        },
+        "board_medium": {
+          "description": "Medium",
+          "type": "string"
+        },
+        "category": {
+          "description": "Category",
+          "type": "string"
+        },
+        "code": {
+          "description": "Code",
+          "type": "string"
+        },
+        "district": {
+          "description": "District",
+          "type": "string"
+        },
+        "district_code": {
+          "description": "District Code",
+          "type": "string"
+        },
+        "name": {
+          "description": "Name",
+          "type": "string"
+        },
+        "region": {
+          "description": "Region",
+          "type": "string"
+        },
+        "state": {
+          "description": "State",
+          "type": "string"
+        },
+        "state_code": {
+          "description": "State Code",
+          "type": "string"
+        },
+        "type": {
+          "description": "Type",
+          "type": "string"
+        },
+        "udise_code": {
+          "description": "Udise Code",
           "type": "string"
         }
       },
-      "title": "Batch",
+      "title": "School",
       "type": "object"
+    },
+    "TeacherProfiles": {
+      "description": "All teacher profiles in the application",
+      "items": {
+        "$ref": "#/definitions/TeacherProfile"
+      },
+      "title": "Teacher Profiles",
+      "type": "array"
     },
     "Program": {
       "description": "A program in application",
@@ -776,24 +1064,568 @@
       "title": "Program",
       "type": "object"
     },
-    "BatchProgram": {
-      "description": "A mapping between batch and program",
+    "StudentProfiles": {
+      "description": "All student profiles in the application",
+      "items": {
+        "$ref": "#/definitions/StudentProfile"
+      },
+      "title": "Student Profiles",
+      "type": "array"
+    },
+    "Tags": {
+      "description": "All tags in the application",
+      "items": {
+        "$ref": "#/definitions/Tag"
+      },
+      "title": "Tags",
+      "type": "array"
+    },
+    "FormSchema": {
+      "description": "A form schema in the application",
       "example": {
-        "batch_id": 1,
-        "program_id": 1
+        "attributes": {
+          "label": "First Name"
+        },
+        "name": "Registration"
       },
       "properties": {
-        "batch_id": {
-          "description": "The id of the batch",
+        "attributes": {
+          "description": "Attribute data for form schema",
+          "type": "map"
+        },
+        "name": {
+          "description": "Name of a form schema",
+          "type": "string"
+        }
+      },
+      "title": "FormSchema",
+      "type": "object"
+    },
+    "Grade": {
+      "description": "A grade in the application",
+      "example": {
+        "number": 12,
+        "tag_id": 1
+      },
+      "properties": {
+        "number": {
+          "description": "Grade in school",
           "type": "integer"
         },
-        "program_id": {
-          "description": "The id of the program",
+        "tag_id": {
+          "description": "Tag id associated with the grade",
           "type": "integer"
         }
       },
-      "title": "BatchProgram",
+      "title": "Grade",
       "type": "object"
+    },
+    "Sessions": {
+      "description": "All the sessions",
+      "items": {
+        "$ref": "#/definitions/Session"
+      },
+      "title": "Sessions",
+      "type": "array"
+    },
+    "Product": {
+      "description": "A product in application",
+      "example": {
+        "code": "TP-Sync",
+        "goal": "",
+        "led_by": "AF",
+        "mode": "Offline",
+        "model": "Live Classes",
+        "name": "TP-Sync",
+        "tech_modules": "Live Classes, Quizzes",
+        "type": "Test Prep"
+      },
+      "properties": {
+        "code": {
+          "description": "Product code",
+          "type": "string"
+        },
+        "goal": {
+          "description": "Goal of the product",
+          "type": "string"
+        },
+        "led_by": {
+          "description": "Who is leading the product",
+          "type": "string"
+        },
+        "mode": {
+          "description": "Mode of a product",
+          "type": "string"
+        },
+        "model": {
+          "description": "Product Model",
+          "type": "string"
+        },
+        "name": {
+          "description": "The name of a product",
+          "type": "name"
+        },
+        "tech_modules": {
+          "description": "Tech Modules being used in the product",
+          "type": "string"
+        },
+        "type": {
+          "description": "Product type",
+          "type": "string"
+        }
+      },
+      "title": "Product",
+      "type": "object"
+    },
+    "SessionOccurrences": {
+      "description": "All the session occurrences ",
+      "items": {
+        "$ref": "#/definitions/SessionOccurrence"
+      },
+      "title": "SessionOccurrences",
+      "type": "array"
+    },
+    "Purpose": {
+      "description": "A purpose in the application",
+      "example": {
+        "description": "workbook for the program",
+        "name": "learningModule",
+        "tag_id": 6
+      },
+      "properties": {
+        "description": {
+          "description": "Purpose description",
+          "type": "text"
+        },
+        "name": {
+          "description": "Purpose name",
+          "type": "string"
+        },
+        "tag_id": {
+          "description": "Tag id associated with the purpose",
+          "type": "integer"
+        }
+      },
+      "title": "Purpose",
+      "type": "object"
+    },
+    "TeacherRegistration": {
+      "description": "A teacher in the application along with user info",
+      "example": {
+        "address": "Bandra Complex, Kurla Road",
+        "category": "general",
+        "city": "Mumbai",
+        "designation": "Principal",
+        "district": "Mumbai",
+        "email": "aman.bahuguna@example.com",
+        "full_name": "Aman Bahuguna",
+        "gender": "Male",
+        "grade": "High School",
+        "phone": "8484515848",
+        "pincode": "400011",
+        "role": "principal",
+        "school_id": 2,
+        "state": "Maharashtra",
+        "stream": "PCB",
+        "teacher_id": "AF419"
+      },
+      "properties": {
+        "address": {
+          "description": "Address",
+          "type": "string"
+        },
+        "city": {
+          "description": "City",
+          "type": "string"
+        },
+        "designation": {
+          "description": "Designation for the teacher",
+          "type": "string"
+        },
+        "district": {
+          "description": "District",
+          "type": "string"
+        },
+        "email": {
+          "description": "Email",
+          "type": "string"
+        },
+        "full_name": {
+          "description": "Full name",
+          "type": "string"
+        },
+        "gender": {
+          "description": "Gender",
+          "type": "string"
+        },
+        "grade": {
+          "description": "Grade level in which a teacher instructs",
+          "type": "string"
+        },
+        "phone": {
+          "description": "Phone number",
+          "type": "string"
+        },
+        "pincode": {
+          "description": "Pin code",
+          "type": "string"
+        },
+        "role": {
+          "description": "User role",
+          "type": "string"
+        },
+        "school_id": {
+          "description": "ID of the school associated with the teacher",
+          "type": "integer"
+        },
+        "state": {
+          "description": "State",
+          "type": "string"
+        },
+        "subject": {
+          "description": "Subject taught by the teacher",
+          "type": "string"
+        },
+        "teacher_id": {
+          "description": "ID of the teacher",
+          "type": "string"
+        }
+      },
+      "title": "Teacher Registration",
+      "type": "object"
+    },
+    "Curriculum": {
+      "description": "A curriculum in the application",
+      "example": {
+        "code": "S-10",
+        "name": "Sankalp",
+        "tag_id": 1
+      },
+      "properties": {
+        "code": {
+          "description": "Code of the curriculum",
+          "type": "string"
+        },
+        "name": {
+          "description": "Name of the curriculum",
+          "type": "string"
+        },
+        "tag_id": {
+          "description": "Tag id associated with the curriculum",
+          "type": "integer"
+        }
+      },
+      "title": "Curriculum",
+      "type": "object"
+    },
+    "Teachers": {
+      "description": "All teachers in the application",
+      "items": {
+        "$ref": "#/definitions/Teacher"
+      },
+      "title": "Teachers",
+      "type": "array"
+    },
+    "UserIds": {
+      "example": {
+        "user_ids": [
+          1,
+          2
+        ]
+      },
+      "properties": {
+        "user_ids": {
+          "description": "List of user ids",
+          "type": "array"
+        }
+      },
+      "type": "object"
+    },
+    "TeacherWithUser": {
+      "description": "A teacher in the application along with user info",
+      "example": {
+        "category": "general",
+        "designation": "Principal",
+        "grade": "High School",
+        "school_id": 2,
+        "stream": "PCB",
+        "teacher_id": "AF419",
+        "user": {
+          "address": "Bandra Complex, Kurla Road",
+          "city": "Mumbai",
+          "district": "Mumbai",
+          "email": "aman.bahuguna@example.com",
+          "full_name": "Aman Bahuguna",
+          "gender": "Male",
+          "phone": "8484515848",
+          "pincode": "400011",
+          "role": "principal",
+          "state": "Maharashtra"
+        }
+      },
+      "properties": {
+        "designation": {
+          "description": "Designation for the teacher",
+          "type": "string"
+        },
+        "grade": {
+          "description": "Grade level in which a teacher instructs",
+          "type": "string"
+        },
+        "subject": {
+          "description": "Subject taught by the teacher",
+          "type": "string"
+        },
+        "teacher_id": {
+          "description": "ID of the teacher",
+          "type": "string"
+        },
+        "user": {
+          "description": "User details associated with the teacher",
+          "type": "map"
+        }
+      },
+      "title": "Teacher with User",
+      "type": "object"
+    },
+    "SessionOccurrenceWithUser": {
+      "description": "A single session occurrence with user details",
+      "example": {
+        "end_time": "2022-02-02T11:30:00Z",
+        "session_id": 1,
+        "start_time": "2022-02-02T11:00:00Z"
+      },
+      "properties": {
+        "end_time": {
+          "description": "Session occurrence finish time",
+          "type": "timestamp"
+        },
+        "session_id": {
+          "description": "Session ID",
+          "type": "integer"
+        },
+        "start_time": {
+          "description": "Session occurrence start time",
+          "type": "timestamp"
+        }
+      },
+      "title": "SessionOccurrenceWithUser",
+      "type": "object"
+    },
+    "Concept": {
+      "description": "A concept in the application",
+      "example": {
+        "name": "Coulomb's Law",
+        "tag_id": 6,
+        "topic_id": 5
+      },
+      "properties": {
+        "name": {
+          "description": "Concept name",
+          "type": "string"
+        },
+        "tag_id": {
+          "description": "Tag id associated with the concept",
+          "type": "integer"
+        },
+        "topic_id": {
+          "description": "Topic id associated with the concept",
+          "type": "integer"
+        }
+      },
+      "title": "Concept",
+      "type": "object"
+    },
+    "Tag": {
+      "description": "A tag in the application",
+      "example": {
+        "description": "Description of the tag",
+        "name": "A tag for resource"
+      },
+      "properties": {
+        "description": {
+          "description": "Description of the tag",
+          "type": "string"
+        },
+        "name": {
+          "description": "Name of the tag",
+          "type": "string"
+        }
+      },
+      "title": "Tag",
+      "type": "object"
+    },
+    "Teacher": {
+      "description": "A teacher in the application",
+      "example": {
+        "designation": "Vice Principal",
+        "grade": "12",
+        "program_manager_id": 3,
+        "school_id": 2,
+        "subject": "Maths",
+        "teacher_id": "3bc6b53e7bbbc883b9ab",
+        "user_id": 1
+      },
+      "properties": {
+        "designation": {
+          "description": "Designation",
+          "type": "string"
+        },
+        "grade": {
+          "description": "Grade",
+          "type": "string"
+        },
+        "program_manager_id": {
+          "description": "Program manager user ID for the teacher",
+          "type": "integer"
+        },
+        "school_id": {
+          "description": "School ID for the teacher",
+          "type": "integer"
+        },
+        "subject": {
+          "description": "Core subject",
+          "type": "string"
+        },
+        "teacher_id": {
+          "description": "ID for the teacher",
+          "type": "string"
+        },
+        "user_id": {
+          "description": "User ID for the teacher",
+          "type": "integer"
+        }
+      },
+      "title": "Teacher",
+      "type": "object"
+    },
+    "Groups": {
+      "description": "All the Groups",
+      "items": {
+        "$ref": "#/definitions/Group"
+      },
+      "title": "Groups",
+      "type": "array"
+    },
+    "SessionSchedule": {
+      "description": "Schedule of a session in the application",
+      "example": {
+        "batch_id": 1,
+        "day_of_week": "Monday",
+        "end_time": "11:30",
+        "session_id": 1,
+        "start_time": "11:00"
+      },
+      "properties": {
+        "batch_id": {
+          "description": "Batch id associated with the session schedule",
+          "type": "integer"
+        },
+        "day_of_week": {
+          "description": "Grade id associated with the topic",
+          "type": "integer"
+        },
+        "end_time": {
+          "description": "Session's end time",
+          "type": "time"
+        },
+        "session_id": {
+          "description": "Session id associated with the session schedule",
+          "type": "integer"
+        },
+        "start_time": {
+          "description": "Session's start time",
+          "type": "time"
+        }
+      },
+      "title": "SessionSchedule",
+      "type": "object"
+    },
+    "Batch": {
+      "description": "A batch in application",
+      "example": {
+        "batch_id": "DelhiStudents_11_Photon_Eng_23_001",
+        "contact_hours_per_week": 48,
+        "name": "Delhi-12-NEET",
+        "parent_id": 1
+      },
+      "properties": {
+        "batch_id": {
+          "description": "The id of a batch",
+          "type": "string"
+        },
+        "contact_hours_per_week": {
+          "description": "Contact hours per week of a batch",
+          "type": "integer"
+        },
+        "name": {
+          "description": "The name of a batch",
+          "type": "string"
+        },
+        "parent_id": {
+          "description": "The id of a parent batch",
+          "type": "string"
+        }
+      },
+      "title": "Batch",
+      "type": "object"
+    },
+    "Resources": {
+      "description": "All resources in the application",
+      "items": {
+        "$ref": "#/definitions/Resource"
+      },
+      "title": "Resources",
+      "type": "array"
+    },
+    "UserSession": {
+      "description": "A mapping between user and sesssion-occurence",
+      "example": {
+        "data": {
+          "substitute-teacher-name": "Ms. Poonam"
+        },
+        "end_time": "2022-02-02T11:30:00Z",
+        "is_user_valid": true,
+        "session_occurrence_id": 2,
+        "start_time": "2022-02-02T11:00:00Z",
+        "user_id": "12213221211"
+      },
+      "properties": {
+        "data": {
+          "description": "Additional data for user session",
+          "type": "map"
+        },
+        "end_time": {
+          "description": "User session end time",
+          "type": "timestamp"
+        },
+        "is_user_valid": {
+          "description": "Signifies whether the user exist or not",
+          "type": "boolean"
+        },
+        "session_occurrence_id": {
+          "description": "The id of the session occurrence",
+          "type": "integer"
+        },
+        "start_time": {
+          "description": "User session start time",
+          "type": "timestamp"
+        },
+        "user_id": {
+          "description": "The id of the user",
+          "type": "string"
+        }
+      },
+      "title": "UserSession",
+      "type": "object"
+    },
+    "Subjects": {
+      "description": "All subjects in the application",
+      "items": {
+        "$ref": "#/definitions/Subject"
+      },
+      "title": "Subjects",
+      "type": "array"
     },
     "Student": {
       "description": "A student in the application",
@@ -890,6 +1722,205 @@
       "title": "Student",
       "type": "object"
     },
+    "Products": {
+      "description": "All the products",
+      "items": {
+        "$ref": "#/definitions/Product"
+      },
+      "title": "Products",
+      "type": "array"
+    },
+    "StudentProfileWithUserProfile": {
+      "description": "A student's profile with associated user profile",
+      "example": {
+        "attendance_in_classes_current_year": [
+          89.0,
+          90.2,
+          20.3,
+          35.7,
+          42.1,
+          66.4,
+          88.9,
+          91.2,
+          77.3,
+          54.6,
+          33.8,
+          10.1
+        ],
+        "attendance_in_tests_current_year": [
+          89.0,
+          90.2,
+          20.3,
+          35.7,
+          42.1,
+          66.4,
+          88.9,
+          91.2,
+          77.3,
+          54.6,
+          33.8,
+          10.1
+        ],
+        "average_batch_score_in_latest_test": 88.5,
+        "classes_activity_cohort": "Cohort A",
+        "max_batch_score_in_latest_test": 95,
+        "performance_trend_in_fst": "Improving",
+        "student_fk": 1,
+        "student_id": "120180101057",
+        "tests_activity_cohort": "Cohort B",
+        "tests_number_of_correct_questions": 75,
+        "tests_number_of_skipped_questions": 15,
+        "tests_number_of_wrong_questions": 10,
+        "took_class_atleast_once": true,
+        "took_test_atleast_once": true,
+        "total_number_of_live_classes": 50,
+        "total_number_of_tests": 20,
+        "user_profile": {
+          "current_batch": "Batch A",
+          "current_grade": "11",
+          "current_program": "Science",
+          "latest_session_accessed": "LiveClass_10",
+          "logged_in_atleast_once": true,
+          "user_id": 1
+        }
+      },
+      "properties": {
+        "attendance_in_classes_current_year": {
+          "description": "Attendance in classes for each month this year",
+          "type": "array"
+        },
+        "attendance_in_tests_current_year": {
+          "description": "Attendance in tests for each month this year",
+          "type": "array"
+        },
+        "average_batch_score_in_latest_test": {
+          "description": "Average batch score in latest test",
+          "type": "decimal"
+        },
+        "classes_activity_cohort": {
+          "description": "Classes activity cohort",
+          "type": "string"
+        },
+        "max_batch_score_in_latest_test": {
+          "description": "Max batch score in latest test",
+          "type": "integer"
+        },
+        "performance_trend_in_fst": {
+          "description": "Performance trend in FST",
+          "type": "string"
+        },
+        "student_fk": {
+          "description": "Student foreign key ID associated with the student's profile",
+          "type": "integer"
+        },
+        "student_id": {
+          "description": "Student ID",
+          "type": "string"
+        },
+        "tests_activity_cohort": {
+          "description": "Tests activity cohort",
+          "type": "string"
+        },
+        "tests_number_of_correct_questions": {
+          "description": "Total Number of correct questions in tests",
+          "type": "integer"
+        },
+        "tests_number_of_skipped_questions": {
+          "description": "Total Number of skipped questions in tests",
+          "type": "integer"
+        },
+        "tests_number_of_wrong_questions": {
+          "description": "Total Number of wrong questions in tests",
+          "type": "integer"
+        },
+        "took_class_atleast_once": {
+          "description": "Has the student participated in a class at least once",
+          "type": "boolean"
+        },
+        "took_test_atleast_once": {
+          "description": "Has the student taken a test at least once",
+          "type": "boolean"
+        },
+        "total_number_of_live_classes": {
+          "description": "Total number of live classes",
+          "type": "integer"
+        },
+        "total_number_of_tests": {
+          "description": "Total number of tests",
+          "type": "integer"
+        },
+        "user_profile": {
+          "description": "User Profile details associated with the student",
+          "type": "map"
+        }
+      },
+      "title": "StudentProfile With UserProfile",
+      "type": "object"
+    },
+    "TeacherProfileSetup": {
+      "description": "A teacher's profile with associated user profile being set up",
+      "example": {
+        "avg_rating": 4.5,
+        "current_batch": "Photon",
+        "current_grade": "11",
+        "current_program": "HaryanaStudents",
+        "latest_session_accessed": "LiveClass_10",
+        "logged_in_atleast_once": false,
+        "program_manager": "John Doe",
+        "school": "XYZ High School",
+        "teacher_fk": 1,
+        "teacher_id": "20202",
+        "user_id": 2
+      },
+      "properties": {
+        "avg_rating": {
+          "description": "Average rating of the teacher",
+          "type": "decimal"
+        },
+        "current_batch": {
+          "description": "Current Batch",
+          "type": "string"
+        },
+        "current_grade": {
+          "description": "Current Grade",
+          "type": "string"
+        },
+        "current_program": {
+          "description": "Current Program",
+          "type": "string"
+        },
+        "latest_session_accessed": {
+          "description": "Name of the latest session accessed",
+          "type": "string"
+        },
+        "logged_in_atleast_once": {
+          "description": "Has user logged in atleast once?",
+          "type": "boolean"
+        },
+        "program_manager": {
+          "description": "Program manager for the teacher",
+          "type": "string"
+        },
+        "school": {
+          "description": "School where the teacher works",
+          "type": "string"
+        },
+        "teacher_fk": {
+          "description": "Teacher foreign key ID associated with the student's profile",
+          "type": "integer"
+        },
+        "teacher_id": {
+          "description": "Teacher ID associated with the teacher's profile",
+          "type": "string"
+        },
+        "user_id": {
+          "description": "User key id associated with user table for user profile",
+          "type": "integer"
+        }
+      },
+      "title": "TeacherProfile Setup",
+      "type": "object"
+    },
     "StudentWithUser": {
       "description": "A student in the application along with user info",
       "example": {
@@ -951,275 +1982,351 @@
       "title": "Student with User",
       "type": "object"
     },
-    "Teachers": {
-      "description": "All teachers in the application",
+    "EnrollmentRecords": {
+      "description": "All enrollment records",
       "items": {
-        "$ref": "#/definitions/Teacher"
+        "$ref": "#/definitions/EnrollmentRecord"
       },
-      "title": "Teachers",
+      "title": "EnrollmentRecords",
       "type": "array"
     },
-    "Programs": {
-      "description": "All the programs",
-      "items": {
-        "$ref": "#/definitions/Program"
-      },
-      "title": "Programs",
-      "type": "array"
-    },
-    "Schools": {
-      "description": "All schools in the application",
-      "items": {
-        "$ref": "#/definitions/School"
-      },
-      "title": "Schools",
-      "type": "array"
-    },
-    "School": {
-      "description": "A school in the application",
+    "GroupUsers": {
+      "description": "Relation between group and user",
       "example": {
-        "block_code": "DOEAIDED",
-        "board": "CBSE",
-        "board_medium": "en",
-        "category": "Government",
-        "code": "872931",
-        "district": "NORTH WEST DELHI",
-        "district_code": "0701",
-        "name": "Kendriya Vidyalaya - Rajori Garden",
-        "region": "Urban",
-        "state": "Delhi",
-        "state_code": "DL",
-        "type": "Open",
-        "udise_code": "05040120901"
+        "group_id": 1,
+        "program_date_of_joining": "2020/01/06",
+        "program_manager_id": 1,
+        "program_student_language": "English",
+        "user_id": 1
       },
       "properties": {
-        "block_code": {
-          "description": "Block Code",
-          "type": "string"
-        },
-        "block_name": {
-          "description": "Block Name",
-          "type": "string"
-        },
-        "board": {
-          "description": "Board",
-          "type": "string"
-        },
-        "board_medium": {
-          "description": "Medium",
-          "type": "string"
-        },
-        "category": {
-          "description": "Category",
-          "type": "string"
-        },
-        "code": {
-          "description": "Code",
-          "type": "string"
-        },
-        "district": {
-          "description": "District",
-          "type": "string"
-        },
-        "district_code": {
-          "description": "District Code",
-          "type": "string"
-        },
-        "name": {
-          "description": "Name",
-          "type": "string"
-        },
-        "region": {
-          "description": "Region",
-          "type": "string"
-        },
-        "state": {
-          "description": "State",
-          "type": "string"
-        },
-        "state_code": {
-          "description": "State Code",
-          "type": "string"
-        },
-        "type": {
-          "description": "Type",
-          "type": "string"
-        },
-        "udise_code": {
-          "description": "Udise Code",
-          "type": "string"
-        }
-      },
-      "title": "School",
-      "type": "object"
-    },
-    "TeacherRegistration": {
-      "description": "A teacher in the application along with user info",
-      "example": {
-        "address": "Bandra Complex, Kurla Road",
-        "category": "general",
-        "city": "Mumbai",
-        "designation": "Principal",
-        "district": "Mumbai",
-        "email": "aman.bahuguna@example.com",
-        "full_name": "Aman Bahuguna",
-        "gender": "Male",
-        "grade": "High School",
-        "phone": "8484515848",
-        "pincode": "400011",
-        "role": "principal",
-        "school_id": 2,
-        "state": "Maharashtra",
-        "stream": "PCB",
-        "uuid": "AF419"
-      },
-      "properties": {
-        "address": {
-          "description": "Address",
-          "type": "string"
-        },
-        "city": {
-          "description": "City",
-          "type": "string"
-        },
-        "designation": {
-          "description": "Designation for the teacher",
-          "type": "string"
-        },
-        "district": {
-          "description": "District",
-          "type": "string"
-        },
-        "email": {
-          "description": "Email",
-          "type": "string"
-        },
-        "full_name": {
-          "description": "Full name",
-          "type": "string"
-        },
-        "gender": {
-          "description": "Gender",
-          "type": "string"
-        },
-        "grade": {
-          "description": "Grade level in which a teacher instructs",
-          "type": "string"
-        },
-        "phone": {
-          "description": "Phone number",
-          "type": "string"
-        },
-        "pincode": {
-          "description": "Pin code",
-          "type": "string"
-        },
-        "role": {
-          "description": "User role",
-          "type": "string"
-        },
-        "school_id": {
-          "description": "ID of the school associated with the teacher",
+        "group_id": {
+          "description": "Id of a particular group",
           "type": "integer"
         },
-        "state": {
-          "description": "State",
-          "type": "string"
+        "program_date_of_joining": {
+          "description": "Date of joining a program",
+          "type": "utc_datetime"
         },
-        "subject": {
-          "description": "Subject taught by the teacher",
-          "type": "string"
-        },
-        "uuid": {
-          "description": "UUID of the teacher",
-          "type": "string"
-        }
-      },
-      "title": "Teacher Registration",
-      "type": "object"
-    },
-    "SessionOccurrenceWithUser": {
-      "description": "A single session occurrence with user details",
-      "example": {
-        "end_time": "2022-02-02T11:30:00Z",
-        "session_id": 1,
-        "start_time": "2022-02-02T11:00:00Z"
-      },
-      "properties": {
-        "end_time": {
-          "description": "Session occurrence finish time",
-          "type": "timestamp"
-        },
-        "session_id": {
-          "description": "Session ID",
+        "program_manager_id": {
+          "description": "ID of a program manager",
           "type": "integer"
         },
-        "start_time": {
-          "description": "Session occurrence start time",
-          "type": "timestamp"
+        "program_student_language": {
+          "description": "Language used in an enrolled program",
+          "type": "string"
+        },
+        "user_id": {
+          "description": "Id of a particular group",
+          "type": "integer"
         }
       },
-      "title": "SessionOccurrenceWithUser",
+      "title": "Group User",
       "type": "object"
     },
-    "UserIds": {
+    "Students": {
+      "description": "All students in the application",
+      "items": {
+        "$ref": "#/definitions/Student"
+      },
+      "title": "Students",
+      "type": "array"
+    },
+    "StudentProfileSetup": {
+      "description": "A student's profile being setup with user profile",
       "example": {
-        "user_ids": [
-          1,
-          2
-        ]
+        "attendance_in_classes_current_year": [
+          89.0,
+          90.2,
+          20.3,
+          35.7,
+          42.1,
+          66.4,
+          88.9,
+          91.2,
+          77.3,
+          54.6,
+          33.8,
+          10.1
+        ],
+        "attendance_in_tests_current_year": [
+          89.0,
+          90.2,
+          20.3,
+          35.7,
+          42.1,
+          66.4,
+          88.9,
+          91.2,
+          77.3,
+          54.6,
+          33.8,
+          10.1
+        ],
+        "average_batch_score_in_latest_test": 88.5,
+        "classes_activity_cohort": "Cohort A",
+        "current_batch": "Batch A",
+        "current_grade": "11",
+        "current_program": "Science",
+        "latest_session_accessed": "LiveClass_10",
+        "logged_in_atleast_once": true,
+        "max_batch_score_in_latest_test": 95,
+        "performance_trend_in_fst": "Improving",
+        "student_fk": 1,
+        "student_id": "120180101057",
+        "tests_activity_cohort": "Cohort B",
+        "tests_number_of_correct_questions": 75,
+        "tests_number_of_skipped_questions": 15,
+        "tests_number_of_wrong_questions": 10,
+        "took_class_atleast_once": true,
+        "took_test_atleast_once": true,
+        "total_number_of_live_classes": 50,
+        "total_number_of_tests": 20,
+        "user_id": 2
       },
       "properties": {
-        "user_ids": {
-          "description": "List of user ids",
+        "attendance_in_classes_current_year": {
+          "description": "Attendance in classes for each month this year",
           "type": "array"
-        }
-      },
-      "type": "object"
-    },
-    "EnrollmentRecord": {
-      "description": "An enrollment record for the student",
-      "example": {
-        "academic_year": "2022",
-        "board_medium": "English",
-        "date_of_enrollment": "02/03/2020",
-        "grade": "7",
-        "is_current": true,
-        "school_id": 1,
-        "student_id": 1
-      },
-      "properties": {
-        "academic_year": {
-          "description": "Academic Year",
+        },
+        "attendance_in_tests_current_year": {
+          "description": "Attendance in tests for each month this year",
+          "type": "array"
+        },
+        "average_batch_score_in_latest_test": {
+          "description": "Average batch score in latest test",
+          "type": "decimal"
+        },
+        "classes_activity_cohort": {
+          "description": "Classes activity cohort",
           "type": "string"
         },
-        "board_medium": {
-          "description": "Medium of the board",
+        "current_batch": {
+          "description": "Current Batch",
           "type": "string"
         },
-        "date_of_enrollment": {
-          "description": "Date of Enrollment",
-          "type": "date"
-        },
-        "grade": {
-          "description": "Grade",
+        "current_grade": {
+          "description": "Current Grade",
           "type": "string"
         },
-        "is_current": {
-          "description": "Is current enrollment record for student",
+        "current_program": {
+          "description": "Current Program",
+          "type": "string"
+        },
+        "latest_session_accessed": {
+          "description": "Name of the latest session accessed",
+          "type": "string"
+        },
+        "logged_in_atleast_once": {
+          "description": "Has user logged in atleast once?",
           "type": "boolean"
         },
-        "school_id": {
-          "description": "School ID that the program enrollment belongs to",
+        "max_batch_score_in_latest_test": {
+          "description": "Max batch score in latest test",
+          "type": "integer"
+        },
+        "performance_trend_in_fst": {
+          "description": "Performance trend in FST",
+          "type": "string"
+        },
+        "student_fk": {
+          "description": "Student foreign key ID associated with the student's profile",
           "type": "integer"
         },
         "student_id": {
-          "description": "Student ID that the program enrollment belongs to",
+          "description": "Student ID",
+          "type": "string"
+        },
+        "tests_activity_cohort": {
+          "description": "Tests activity cohort",
+          "type": "string"
+        },
+        "tests_number_of_correct_questions": {
+          "description": "Total Number of correct questions in tests",
+          "type": "integer"
+        },
+        "tests_number_of_skipped_questions": {
+          "description": "Total Number of skipped questions in tests",
+          "type": "integer"
+        },
+        "tests_number_of_wrong_questions": {
+          "description": "Total Number of wrong questions in tests",
+          "type": "integer"
+        },
+        "took_class_atleast_once": {
+          "description": "Has the student participated in a class at least once",
+          "type": "boolean"
+        },
+        "took_test_atleast_once": {
+          "description": "Has the student taken a test at least once",
+          "type": "boolean"
+        },
+        "total_number_of_live_classes": {
+          "description": "Total number of live classes",
+          "type": "integer"
+        },
+        "total_number_of_tests": {
+          "description": "Total number of tests",
+          "type": "integer"
+        },
+        "user_id": {
+          "description": "User foreign key",
           "type": "integer"
         }
       },
-      "title": "EnrollmentRecord",
+      "title": "StudentProfile Setup",
       "type": "object"
+    },
+    "Chapters": {
+      "description": "All chapters in the application",
+      "items": {
+        "$ref": "#/definitions/Chapter"
+      },
+      "title": "Chapters",
+      "type": "array"
+    },
+    "Sources": {
+      "description": "All sources in the application",
+      "items": {
+        "$ref": "#/definitions/Source"
+      },
+      "title": "Sources",
+      "type": "array"
+    },
+    "Group": {
+      "description": "A Group in application",
+      "example": {
+        "child_id": {
+          "donor": "YES",
+          "group_id": 29,
+          "id": 24,
+          "mode": "Offline",
+          "model": "Live Classes",
+          "name": "Mrs. Stefanie Goldner",
+          "product_used": "One",
+          "start_date": "2016-11-18",
+          "state": "UTTARAKHAND",
+          "sub_type": "High",
+          "target_outreach": 4743,
+          "type": "Competitive"
+        },
+        "id": 54,
+        "type": "program"
+      },
+      "properties": {
+        "child_id": {
+          "description": "The id of type",
+          "type": "integer"
+        },
+        "type": {
+          "description": "The type of a group",
+          "type": "string"
+        }
+      },
+      "title": "Group",
+      "type": "object"
+    },
+    "Batches": {
+      "description": "All the batches",
+      "items": {
+        "$ref": "#/definitions/Batch"
+      },
+      "title": "Batches",
+      "type": "array"
+    },
+    "AuthGroup": {
+      "description": "An auth-group in the application",
+      "example": {
+        "input_schema": {},
+        "locale": "hi",
+        "locale_data": {
+          "en": {
+            "title": "Register for session"
+          },
+          "hi": {
+            "title": "सत्र के लिए पंजीकरण करें"
+          }
+        },
+        "name": "DelhiStudents"
+      },
+      "properties": {
+        "input_schema": {
+          "description": "Input schema",
+          "type": "map"
+        },
+        "locale": {
+          "description": "The configured locale for the auth-group",
+          "type": "string"
+        },
+        "locale_data": {
+          "description": "Meta data about locale settings for the auth-group",
+          "type": "map"
+        },
+        "name": {
+          "description": "Name of the auth group",
+          "type": "string"
+        }
+      },
+      "title": "AuthGroup",
+      "type": "object"
+    },
+    "Purposes": {
+      "description": "All purposes in the application",
+      "items": {
+        "$ref": "#/definitions/Purpose"
+      },
+      "title": "Purposes",
+      "type": "array"
+    },
+    "Topic": {
+      "description": "A topic in the application",
+      "example": {
+        "code": "9C01.1",
+        "grade_id": 1,
+        "name": "What is Matter?",
+        "subject_id": 1,
+        "tag_id": 3
+      },
+      "properties": {
+        "chapter_id": {
+          "description": "Chapter id associated with the topic",
+          "type": "integer"
+        },
+        "code": {
+          "description": "Topic Code",
+          "type": "string"
+        },
+        "grade_id": {
+          "description": "Grade id associated with the topic",
+          "type": "integer"
+        },
+        "name": {
+          "description": "Topic name",
+          "type": "string"
+        },
+        "tag_id": {
+          "description": "Tag id associated with the topic",
+          "type": "integer"
+        }
+      },
+      "title": "Topic",
+      "type": "object"
+    },
+    "LearningObjectives": {
+      "description": "All learning objectives in the application",
+      "items": {
+        "$ref": "#/definitions/LearningObjective"
+      },
+      "title": "LearningObjectives",
+      "type": "array"
+    },
+    "AuthGroups": {
+      "description": "All the auth-groups",
+      "items": {
+        "$ref": "#/definitions/AuthGroup"
+      },
+      "title": "AuthGroups",
+      "type": "array"
     }
   },
   "host": "localhost:4000",
@@ -1455,6 +2562,121 @@
         ]
       }
     },
+    "/api/session-schedule": {
+      "get": {
+        "description": "",
+        "operationId": "DbserviceWeb.SessionScheduleController.index",
+        "parameters": [
+          {
+            "description": "The id of a session",
+            "in": "query",
+            "name": "id",
+            "required": false,
+            "type": "string"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "schema": {
+              "$ref": "#/definitions/SessionSchedules"
+            }
+          }
+        },
+        "summary": "",
+        "tags": [
+          "SessionSchedule"
+        ]
+      },
+      "post": {
+        "description": "",
+        "operationId": "DbserviceWeb.SessionScheduleController.create",
+        "parameters": [
+          {
+            "description": "Session Schedule to create",
+            "in": "body",
+            "name": "body",
+            "required": true,
+            "schema": {
+              "$ref": "#/definitions/SessionSchedule"
+            }
+          }
+        ],
+        "responses": {
+          "201": {
+            "description": "Created",
+            "schema": {
+              "$ref": "#/definitions/SessionSchedules"
+            }
+          }
+        },
+        "summary": "",
+        "tags": [
+          "SessionSchedule"
+        ]
+      }
+    },
+    "/api/user-profile/{id}": {
+      "get": {
+        "description": "",
+        "operationId": "DbserviceWeb.UserProfileController.show",
+        "parameters": [
+          {
+            "description": "The id of the user profile record",
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "type": "integer"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "schema": {
+              "$ref": "#/definitions/UserProfile"
+            }
+          }
+        },
+        "summary": "",
+        "tags": [
+          "UserProfile"
+        ]
+      },
+      "patch": {
+        "description": "",
+        "operationId": "DbserviceWeb.UserProfileController.update",
+        "parameters": [
+          {
+            "description": "The id of the user profile record",
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "type": "integer"
+          },
+          {
+            "description": "User Profile to update to",
+            "in": "body",
+            "name": "body",
+            "required": true,
+            "schema": {
+              "$ref": "#/definitions/UserProfile"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Updated",
+            "schema": {
+              "$ref": "#/definitions/UserProfile"
+            }
+          }
+        },
+        "summary": "",
+        "tags": [
+          "UserProfile"
+        ]
+      }
+    },
     "/api/user": {
       "get": {
         "description": "",
@@ -1530,6 +2752,255 @@
         ]
       }
     },
+    "/api/purpose/{purposeId}": {
+      "delete": {
+        "description": "",
+        "operationId": "DbserviceWeb.PurposeController.delete",
+        "parameters": [
+          {
+            "description": "The id of the purpose record",
+            "in": "path",
+            "name": "purposeId",
+            "required": true,
+            "type": "integer"
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "No Content"
+          }
+        },
+        "summary": "",
+        "tags": [
+          "Purpose"
+        ]
+      },
+      "get": {
+        "description": "",
+        "operationId": "DbserviceWeb.PurposeController.show",
+        "parameters": [
+          {
+            "description": "The id of the purpose record",
+            "in": "path",
+            "name": "purposeId",
+            "required": true,
+            "type": "integer"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "schema": {
+              "$ref": "#/definitions/Purpose"
+            }
+          }
+        },
+        "summary": "",
+        "tags": [
+          "Purpose"
+        ]
+      },
+      "patch": {
+        "description": "",
+        "operationId": "DbserviceWeb.PurposeController.update",
+        "parameters": [
+          {
+            "description": "The id of the purpose record",
+            "in": "path",
+            "name": "purposeId",
+            "required": true,
+            "type": "integer"
+          },
+          {
+            "description": "Purpose to create",
+            "in": "body",
+            "name": "body",
+            "required": true,
+            "schema": {
+              "$ref": "#/definitions/Purpose"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Updated",
+            "schema": {
+              "$ref": "#/definitions/Purpose"
+            }
+          }
+        },
+        "summary": "",
+        "tags": [
+          "Purpose"
+        ]
+      }
+    },
+    "/api/auth-group/{authGroupId}": {
+      "delete": {
+        "description": "",
+        "operationId": "DbserviceWeb.AuthGroupController.delete",
+        "parameters": [
+          {
+            "description": "The id of the auth-group record",
+            "in": "path",
+            "name": "authGroupId",
+            "required": true,
+            "type": "integer"
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "No Content"
+          }
+        },
+        "summary": "",
+        "tags": [
+          "AuthGroup"
+        ]
+      },
+      "get": {
+        "description": "",
+        "operationId": "DbserviceWeb.AuthGroupController.show",
+        "parameters": [
+          {
+            "description": "The id of the auth-group record",
+            "in": "path",
+            "name": "authGroupId",
+            "required": true,
+            "type": "integer"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "schema": {
+              "$ref": "#/definitions/AuthGroup"
+            }
+          }
+        },
+        "summary": "",
+        "tags": [
+          "AuthGroup"
+        ]
+      },
+      "patch": {
+        "description": "",
+        "operationId": "DbserviceWeb.AuthGroupController.update",
+        "parameters": [
+          {
+            "description": "The id of the auth-group record",
+            "in": "path",
+            "name": "authGroupId",
+            "required": true,
+            "type": "integer"
+          },
+          {
+            "description": "Auth-Group to create",
+            "in": "body",
+            "name": "body",
+            "required": true,
+            "schema": {
+              "$ref": "#/definitions/AuthGroup"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Updated",
+            "schema": {
+              "$ref": "#/definitions/AuthGroup"
+            }
+          }
+        },
+        "summary": "",
+        "tags": [
+          "AuthGroup"
+        ]
+      }
+    },
+    "/api/subject/{subjectId}": {
+      "delete": {
+        "description": "",
+        "operationId": "DbserviceWeb.SubjectController.delete",
+        "parameters": [
+          {
+            "description": "The id of the subject record",
+            "in": "path",
+            "name": "subjectId",
+            "required": true,
+            "type": "integer"
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "No Content"
+          }
+        },
+        "summary": "",
+        "tags": [
+          "Subject"
+        ]
+      },
+      "get": {
+        "description": "",
+        "operationId": "DbserviceWeb.SubjectController.show",
+        "parameters": [
+          {
+            "description": "The id of the subject record",
+            "in": "path",
+            "name": "subjectId",
+            "required": true,
+            "type": "integer"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "schema": {
+              "$ref": "#/definitions/Subject"
+            }
+          }
+        },
+        "summary": "",
+        "tags": [
+          "Subject"
+        ]
+      },
+      "patch": {
+        "description": "",
+        "operationId": "DbserviceWeb.SubjectController.update",
+        "parameters": [
+          {
+            "description": "The id of the subject record",
+            "in": "path",
+            "name": "subjectId",
+            "required": true,
+            "type": "integer"
+          },
+          {
+            "description": "Subject to create",
+            "in": "body",
+            "name": "body",
+            "required": true,
+            "schema": {
+              "$ref": "#/definitions/Subject"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Updated",
+            "schema": {
+              "$ref": "#/definitions/Subject"
+            }
+          }
+        },
+        "summary": "",
+        "tags": [
+          "Subject"
+        ]
+      }
+    },
     "/api/student/{id}": {
       "delete": {
         "description": "",
@@ -1590,7 +3061,7 @@
             "type": "integer"
           },
           {
-            "description": "Student to create",
+            "description": "Student to update along with user",
             "in": "body",
             "name": "body",
             "required": true,
@@ -1658,12 +3129,12 @@
         "operationId": "DbserviceWeb.StudentController.create",
         "parameters": [
           {
-            "description": "Student to create",
+            "description": "Student to create along with user",
             "in": "body",
             "name": "body",
             "required": true,
             "schema": {
-              "$ref": "#/definitions/Student"
+              "$ref": "#/definitions/StudentWithUser"
             }
           }
         ],
@@ -1671,96 +3142,13 @@
           "201": {
             "description": "Created",
             "schema": {
-              "$ref": "#/definitions/Student"
+              "$ref": "#/definitions/StudentWithUser"
             }
           }
         },
         "summary": "",
         "tags": [
           "Student"
-        ]
-      }
-    },
-    "/api/batch-program/{batchProgramId}": {
-      "delete": {
-        "description": "",
-        "operationId": "DbserviceWeb.BatchProgramController.delete",
-        "parameters": [
-          {
-            "description": "The id of the batch_program record",
-            "in": "path",
-            "name": "batchProgramId",
-            "required": true,
-            "type": "integer"
-          }
-        ],
-        "responses": {
-          "204": {
-            "description": "No Content"
-          }
-        },
-        "summary": "",
-        "tags": [
-          "BatchProgram"
-        ]
-      },
-      "get": {
-        "description": "",
-        "operationId": "DbserviceWeb.BatchProgramController.show",
-        "parameters": [
-          {
-            "description": "The id of the batch-program record",
-            "in": "path",
-            "name": "batchProgramId",
-            "required": true,
-            "type": "integer"
-          }
-        ],
-        "responses": {
-          "200": {
-            "description": "OK",
-            "schema": {
-              "$ref": "#/definitions/BatchProgram"
-            }
-          }
-        },
-        "summary": "",
-        "tags": [
-          "BatchProgram"
-        ]
-      },
-      "patch": {
-        "description": "",
-        "operationId": "DbserviceWeb.BatchProgramController.update",
-        "parameters": [
-          {
-            "description": "The id of the batch_program record",
-            "in": "path",
-            "name": "batchProgramId",
-            "required": true,
-            "type": "integer"
-          },
-          {
-            "description": "batch_program to create",
-            "in": "body",
-            "name": "body",
-            "required": true,
-            "schema": {
-              "$ref": "#/definitions/BatchProgram"
-            }
-          }
-        ],
-        "responses": {
-          "200": {
-            "description": "Updated",
-            "schema": {
-              "$ref": "#/definitions/BatchProgram"
-            }
-          }
-        },
-        "summary": "",
-        "tags": [
-          "BatchProgram"
         ]
       }
     },
@@ -1822,6 +3210,89 @@
         "summary": "",
         "tags": [
           "Program"
+        ]
+      }
+    },
+    "/api/curriculum/{curriculumId}": {
+      "delete": {
+        "description": "",
+        "operationId": "DbserviceWeb.CurriculumController.delete",
+        "parameters": [
+          {
+            "description": "The id of the curriculum record",
+            "in": "path",
+            "name": "curriculumId",
+            "required": true,
+            "type": "integer"
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "No Content"
+          }
+        },
+        "summary": "",
+        "tags": [
+          "Curriculum"
+        ]
+      },
+      "get": {
+        "description": "",
+        "operationId": "DbserviceWeb.CurriculumController.show",
+        "parameters": [
+          {
+            "description": "The id of the curriculum record",
+            "in": "path",
+            "name": "curriculumId",
+            "required": true,
+            "type": "integer"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "schema": {
+              "$ref": "#/definitions/Curriculum"
+            }
+          }
+        },
+        "summary": "",
+        "tags": [
+          "Curriculum"
+        ]
+      },
+      "patch": {
+        "description": "",
+        "operationId": "DbserviceWeb.CurriculumController.update",
+        "parameters": [
+          {
+            "description": "The id of the curriculum record",
+            "in": "path",
+            "name": "curriculumId",
+            "required": true,
+            "type": "integer"
+          },
+          {
+            "description": "Curriculum to create",
+            "in": "body",
+            "name": "body",
+            "required": true,
+            "schema": {
+              "$ref": "#/definitions/Curriculum"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Updated",
+            "schema": {
+              "$ref": "#/definitions/Curriculum"
+            }
+          }
+        },
+        "summary": "",
+        "tags": [
+          "Curriculum"
         ]
       }
     },
@@ -1890,6 +3361,179 @@
         "summary": "",
         "tags": [
           "School"
+        ]
+      }
+    },
+    "/api/teacher-profile": {
+      "get": {
+        "description": "",
+        "operationId": "DbserviceWeb.TeacherProfileController.index",
+        "parameters": [
+          {
+            "description": "The id of the teacher",
+            "in": "query",
+            "name": "teacher_id",
+            "required": false,
+            "type": "string"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "schema": {
+              "$ref": "#/definitions/TeacherProfiles"
+            }
+          }
+        },
+        "summary": "",
+        "tags": [
+          "TeacherProfile"
+        ]
+      },
+      "post": {
+        "description": "",
+        "operationId": "DbserviceWeb.TeacherProfileController.create",
+        "parameters": [
+          {
+            "description": "TeacherProfile to setup along with user profile",
+            "in": "body",
+            "name": "body",
+            "required": true,
+            "schema": {
+              "$ref": "#/definitions/TeacherProfileSetup"
+            }
+          }
+        ],
+        "responses": {
+          "201": {
+            "description": "Created",
+            "schema": {
+              "$ref": "#/definitions/TeacherProfileWithUserProfile"
+            }
+          }
+        },
+        "summary": "",
+        "tags": [
+          "TeacherProfile"
+        ]
+      }
+    },
+    "/api/group/{groupId}/update-sessions": {
+      "post": {
+        "description": "",
+        "operationId": "DbserviceWeb.GroupController.update_sessions",
+        "parameters": [
+          {
+            "description": "The id of the group record",
+            "in": "path",
+            "name": "groupId",
+            "required": true,
+            "type": "integer"
+          },
+          {
+            "description": "List of session ids to update for the group",
+            "in": "body",
+            "name": "body",
+            "required": true,
+            "schema": {
+              "$ref": "#/definitions/SessionIds"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "schema": {
+              "$ref": "#/definitions/GroupSessions"
+            }
+          }
+        },
+        "summary": "",
+        "tags": [
+          "Group"
+        ]
+      }
+    },
+    "/api/tag/{tagId}": {
+      "delete": {
+        "description": "",
+        "operationId": "DbserviceWeb.TagController.delete",
+        "parameters": [
+          {
+            "description": "The id of the tag record",
+            "in": "path",
+            "name": "tagId",
+            "required": true,
+            "type": "integer"
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "No Content"
+          }
+        },
+        "summary": "",
+        "tags": [
+          "Tag"
+        ]
+      },
+      "get": {
+        "description": "",
+        "operationId": "DbserviceWeb.TagController.show",
+        "parameters": [
+          {
+            "description": "The id of the tag record",
+            "in": "path",
+            "name": "tagId",
+            "required": true,
+            "type": "integer"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "schema": {
+              "$ref": "#/definitions/Tag"
+            }
+          }
+        },
+        "summary": "",
+        "tags": [
+          "Tag"
+        ]
+      },
+      "patch": {
+        "description": "",
+        "operationId": "DbserviceWeb.TagController.update",
+        "parameters": [
+          {
+            "description": "The id of the tag record",
+            "in": "path",
+            "name": "tagId",
+            "required": true,
+            "type": "integer"
+          },
+          {
+            "description": "Tag to create",
+            "in": "body",
+            "name": "body",
+            "required": true,
+            "schema": {
+              "$ref": "#/definitions/Tag"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Updated",
+            "schema": {
+              "$ref": "#/definitions/Tag"
+            }
+          }
+        },
+        "summary": "",
+        "tags": [
+          "Tag"
         ]
       }
     },
@@ -2127,6 +3771,67 @@
         ]
       }
     },
+    "/api/chapter": {
+      "get": {
+        "description": "",
+        "operationId": "DbserviceWeb.ChapterController.index",
+        "parameters": [
+          {
+            "description": "The chapter of a subject",
+            "in": "query",
+            "name": "name",
+            "required": false,
+            "type": "string"
+          },
+          {
+            "description": "The code of the chapter",
+            "in": "query",
+            "name": "code",
+            "required": false,
+            "type": "string"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "schema": {
+              "$ref": "#/definitions/Chapters"
+            }
+          }
+        },
+        "summary": "",
+        "tags": [
+          "Chapter"
+        ]
+      },
+      "post": {
+        "description": "",
+        "operationId": "DbserviceWeb.ChapterController.create",
+        "parameters": [
+          {
+            "description": "Chapter to create",
+            "in": "body",
+            "name": "body",
+            "required": true,
+            "schema": {
+              "$ref": "#/definitions/Chapter"
+            }
+          }
+        ],
+        "responses": {
+          "201": {
+            "description": "Created",
+            "schema": {
+              "$ref": "#/definitions/Chapter"
+            }
+          }
+        },
+        "summary": "",
+        "tags": [
+          "Chapter"
+        ]
+      }
+    },
     "/api/batch/{batchId}": {
       "delete": {
         "description": "",
@@ -2210,15 +3915,98 @@
         ]
       }
     },
-    "/api/group-type/{groupTypeId}/update-users": {
+    "/api/source/{sourceId}": {
+      "delete": {
+        "description": "",
+        "operationId": "DbserviceWeb.SourceController.delete",
+        "parameters": [
+          {
+            "description": "The id of the source record",
+            "in": "path",
+            "name": "sourceId",
+            "required": true,
+            "type": "integer"
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "No Content"
+          }
+        },
+        "summary": "",
+        "tags": [
+          "Source"
+        ]
+      },
+      "get": {
+        "description": "",
+        "operationId": "DbserviceWeb.SourceController.show",
+        "parameters": [
+          {
+            "description": "The id of the source record",
+            "in": "path",
+            "name": "sourceId",
+            "required": true,
+            "type": "integer"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "schema": {
+              "$ref": "#/definitions/Source"
+            }
+          }
+        },
+        "summary": "",
+        "tags": [
+          "Source"
+        ]
+      },
+      "patch": {
+        "description": "",
+        "operationId": "DbserviceWeb.SourceController.update",
+        "parameters": [
+          {
+            "description": "The id of the source record",
+            "in": "path",
+            "name": "sourceId",
+            "required": true,
+            "type": "integer"
+          },
+          {
+            "description": "Source to create",
+            "in": "body",
+            "name": "body",
+            "required": true,
+            "schema": {
+              "$ref": "#/definitions/Source"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Updated",
+            "schema": {
+              "$ref": "#/definitions/Source"
+            }
+          }
+        },
+        "summary": "",
+        "tags": [
+          "Source"
+        ]
+      }
+    },
+    "/api/group/{groupId}/update-users": {
       "post": {
         "description": "",
-        "operationId": "DbserviceWeb.GroupTypeController.update_users",
+        "operationId": "DbserviceWeb.GroupController.update_users",
         "parameters": [
           {
             "description": "The id of the group record",
             "in": "path",
-            "name": "groupTypeId",
+            "name": "groupId",
             "required": true,
             "type": "integer"
           },
@@ -2242,7 +4030,396 @@
         },
         "summary": "",
         "tags": [
-          "GroupType"
+          "Group"
+        ]
+      }
+    },
+    "/api/exam": {
+      "get": {
+        "description": "",
+        "operationId": "DbserviceWeb.ExamController.index",
+        "parameters": [
+          {
+            "description": "The name of the exam",
+            "in": "query",
+            "name": "name",
+            "required": false,
+            "type": "string"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "schema": {
+              "$ref": "#/definitions/Exams"
+            }
+          }
+        },
+        "summary": "",
+        "tags": [
+          "Exam"
+        ]
+      },
+      "post": {
+        "description": "",
+        "operationId": "DbserviceWeb.ExamController.create",
+        "parameters": [
+          {
+            "description": "Exam to create",
+            "in": "body",
+            "name": "body",
+            "required": true,
+            "schema": {
+              "$ref": "#/definitions/Exam"
+            }
+          }
+        ],
+        "responses": {
+          "201": {
+            "description": "Created",
+            "schema": {
+              "$ref": "#/definitions/Exam"
+            }
+          }
+        },
+        "summary": "",
+        "tags": [
+          "Exam"
+        ]
+      }
+    },
+    "/api/concept": {
+      "get": {
+        "description": "",
+        "operationId": "DbserviceWeb.ConceptController.index",
+        "parameters": [
+          {
+            "description": "The concept of a topic",
+            "in": "query",
+            "name": "name",
+            "required": false,
+            "type": "string"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "schema": {
+              "$ref": "#/definitions/Concepts"
+            }
+          }
+        },
+        "summary": "",
+        "tags": [
+          "Concept"
+        ]
+      },
+      "post": {
+        "description": "",
+        "operationId": "DbserviceWeb.ConceptController.create",
+        "parameters": [
+          {
+            "description": "Concept to create",
+            "in": "body",
+            "name": "body",
+            "required": true,
+            "schema": {
+              "$ref": "#/definitions/Concept"
+            }
+          }
+        ],
+        "responses": {
+          "201": {
+            "description": "Created",
+            "schema": {
+              "$ref": "#/definitions/Concept"
+            }
+          }
+        },
+        "summary": "",
+        "tags": [
+          "Concept"
+        ]
+      }
+    },
+    "/api/grade/{gradeId}": {
+      "delete": {
+        "description": "",
+        "operationId": "DbserviceWeb.GradeController.delete",
+        "parameters": [
+          {
+            "description": "The id of the grade record",
+            "in": "path",
+            "name": "gradeId",
+            "required": true,
+            "type": "integer"
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "No Content"
+          }
+        },
+        "summary": "",
+        "tags": [
+          "Grade"
+        ]
+      },
+      "get": {
+        "description": "",
+        "operationId": "DbserviceWeb.GradeController.show",
+        "parameters": [
+          {
+            "description": "The id of the grade record",
+            "in": "path",
+            "name": "gradeId",
+            "required": true,
+            "type": "integer"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "schema": {
+              "$ref": "#/definitions/Grade"
+            }
+          }
+        },
+        "summary": "",
+        "tags": [
+          "Grade"
+        ]
+      },
+      "patch": {
+        "description": "",
+        "operationId": "DbserviceWeb.GradeController.update",
+        "parameters": [
+          {
+            "description": "The id of the grade record",
+            "in": "path",
+            "name": "gradeId",
+            "required": true,
+            "type": "integer"
+          },
+          {
+            "description": "Grade to create",
+            "in": "body",
+            "name": "body",
+            "required": true,
+            "schema": {
+              "$ref": "#/definitions/Grade"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Updated",
+            "schema": {
+              "$ref": "#/definitions/Grade"
+            }
+          }
+        },
+        "summary": "",
+        "tags": [
+          "Grade"
+        ]
+      }
+    },
+    "/api/subject": {
+      "get": {
+        "description": "",
+        "operationId": "DbserviceWeb.SubjectController.index",
+        "parameters": [
+          {
+            "description": "The subject of a grade",
+            "in": "query",
+            "name": "name",
+            "required": false,
+            "type": "string"
+          },
+          {
+            "description": "The code of the subject",
+            "in": "query",
+            "name": "code",
+            "required": false,
+            "type": "string"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "schema": {
+              "$ref": "#/definitions/Subjects"
+            }
+          }
+        },
+        "summary": "",
+        "tags": [
+          "Subject"
+        ]
+      },
+      "post": {
+        "description": "",
+        "operationId": "DbserviceWeb.SubjectController.create",
+        "parameters": [
+          {
+            "description": "Subject to create",
+            "in": "body",
+            "name": "body",
+            "required": true,
+            "schema": {
+              "$ref": "#/definitions/Subject"
+            }
+          }
+        ],
+        "responses": {
+          "201": {
+            "description": "Created",
+            "schema": {
+              "$ref": "#/definitions/Subject"
+            }
+          }
+        },
+        "summary": "",
+        "tags": [
+          "Subject"
+        ]
+      }
+    },
+    "/api/resource/{resourceId}": {
+      "delete": {
+        "description": "",
+        "operationId": "DbserviceWeb.ResourceController.delete",
+        "parameters": [
+          {
+            "description": "The id of the resource record",
+            "in": "path",
+            "name": "resourceId",
+            "required": true,
+            "type": "integer"
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "No Content"
+          }
+        },
+        "summary": "",
+        "tags": [
+          "Resource"
+        ]
+      },
+      "get": {
+        "description": "",
+        "operationId": "DbserviceWeb.ResourceController.show",
+        "parameters": [
+          {
+            "description": "The id of the resource record",
+            "in": "path",
+            "name": "resourceId",
+            "required": true,
+            "type": "integer"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "schema": {
+              "$ref": "#/definitions/Resource"
+            }
+          }
+        },
+        "summary": "",
+        "tags": [
+          "Resource"
+        ]
+      },
+      "patch": {
+        "description": "",
+        "operationId": "DbserviceWeb.ResourceController.update",
+        "parameters": [
+          {
+            "description": "The id of the resource record",
+            "in": "path",
+            "name": "resourceId",
+            "required": true,
+            "type": "integer"
+          },
+          {
+            "description": "Resource to create",
+            "in": "body",
+            "name": "body",
+            "required": true,
+            "schema": {
+              "$ref": "#/definitions/Resource"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Updated",
+            "schema": {
+              "$ref": "#/definitions/Resource"
+            }
+          }
+        },
+        "summary": "",
+        "tags": [
+          "Resource"
+        ]
+      }
+    },
+    "/api/purpose": {
+      "get": {
+        "description": "",
+        "operationId": "DbserviceWeb.PurposeController.index",
+        "parameters": [
+          {
+            "description": "The purpose of the content",
+            "in": "query",
+            "name": "name",
+            "required": false,
+            "type": "string"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "schema": {
+              "$ref": "#/definitions/Purposes"
+            }
+          }
+        },
+        "summary": "",
+        "tags": [
+          "Purpose"
+        ]
+      },
+      "post": {
+        "description": "",
+        "operationId": "DbserviceWeb.PurposeController.create",
+        "parameters": [
+          {
+            "description": "Purpose to create",
+            "in": "body",
+            "name": "body",
+            "required": true,
+            "schema": {
+              "$ref": "#/definitions/Purpose"
+            }
+          }
+        ],
+        "responses": {
+          "201": {
+            "description": "Created",
+            "schema": {
+              "$ref": "#/definitions/Purpose"
+            }
+          }
+        },
+        "summary": "",
+        "tags": [
+          "Purpose"
         ]
       }
     },
@@ -2329,6 +4506,60 @@
         ]
       }
     },
+    "/api/resource": {
+      "get": {
+        "description": "",
+        "operationId": "DbserviceWeb.ResourceController.index",
+        "parameters": [
+          {
+            "description": "The resource of the content",
+            "in": "query",
+            "name": "name",
+            "required": false,
+            "type": "string"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "schema": {
+              "$ref": "#/definitions/Resources"
+            }
+          }
+        },
+        "summary": "",
+        "tags": [
+          "Resource"
+        ]
+      },
+      "post": {
+        "description": "",
+        "operationId": "DbserviceWeb.ResourceController.create",
+        "parameters": [
+          {
+            "description": "Resource to create",
+            "in": "body",
+            "name": "body",
+            "required": true,
+            "schema": {
+              "$ref": "#/definitions/Resource"
+            }
+          }
+        ],
+        "responses": {
+          "201": {
+            "description": "Created",
+            "schema": {
+              "$ref": "#/definitions/Resource"
+            }
+          }
+        },
+        "summary": "",
+        "tags": [
+          "Resource"
+        ]
+      }
+    },
     "/api/session": {
       "get": {
         "description": "",
@@ -2394,6 +4625,89 @@
         "summary": "",
         "tags": [
           "Session"
+        ]
+      }
+    },
+    "/api/student-profile/{id}": {
+      "delete": {
+        "description": "",
+        "operationId": "DbserviceWeb.StudentProfileController.delete",
+        "parameters": [
+          {
+            "description": "The id of the student profile record",
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "type": "integer"
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "No Content"
+          }
+        },
+        "summary": "",
+        "tags": [
+          "StudentProfile"
+        ]
+      },
+      "get": {
+        "description": "",
+        "operationId": "DbserviceWeb.StudentProfileController.show",
+        "parameters": [
+          {
+            "description": "The id of the student profile record",
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "type": "integer"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "schema": {
+              "$ref": "#/definitions/StudentProfileWithUserProfile"
+            }
+          }
+        },
+        "summary": "",
+        "tags": [
+          "StudentProfile"
+        ]
+      },
+      "patch": {
+        "description": "",
+        "operationId": "DbserviceWeb.StudentProfileController.update",
+        "parameters": [
+          {
+            "description": "The id of the student profile record",
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "type": "integer"
+          },
+          {
+            "description": "Student Profile to update",
+            "in": "body",
+            "name": "body",
+            "required": true,
+            "schema": {
+              "$ref": "#/definitions/StudentProfileSetup"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Updated",
+            "schema": {
+              "$ref": "#/definitions/StudentProfileWithUserProfile"
+            }
+          }
+        },
+        "summary": "",
+        "tags": [
+          "StudentProfile"
         ]
       }
     },
@@ -2480,6 +4794,89 @@
         ]
       }
     },
+    "/api/chapter/{chapterId}": {
+      "delete": {
+        "description": "",
+        "operationId": "DbserviceWeb.ChapterController.delete",
+        "parameters": [
+          {
+            "description": "The id of the chapter record",
+            "in": "path",
+            "name": "chapterId",
+            "required": true,
+            "type": "integer"
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "No Content"
+          }
+        },
+        "summary": "",
+        "tags": [
+          "Chapter"
+        ]
+      },
+      "get": {
+        "description": "",
+        "operationId": "DbserviceWeb.ChapterController.show",
+        "parameters": [
+          {
+            "description": "The id of the chapter record",
+            "in": "path",
+            "name": "chapterId",
+            "required": true,
+            "type": "integer"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "schema": {
+              "$ref": "#/definitions/Chapter"
+            }
+          }
+        },
+        "summary": "",
+        "tags": [
+          "Chapter"
+        ]
+      },
+      "patch": {
+        "description": "",
+        "operationId": "DbserviceWeb.ChapterController.update",
+        "parameters": [
+          {
+            "description": "The id of the chapter record",
+            "in": "path",
+            "name": "chapterId",
+            "required": true,
+            "type": "integer"
+          },
+          {
+            "description": "Chapter to create",
+            "in": "body",
+            "name": "body",
+            "required": true,
+            "schema": {
+              "$ref": "#/definitions/Chapter"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Updated",
+            "schema": {
+              "$ref": "#/definitions/Chapter"
+            }
+          }
+        },
+        "summary": "",
+        "tags": [
+          "Chapter"
+        ]
+      }
+    },
     "/api/form-schema": {
       "get": {
         "description": "",
@@ -2534,22 +4931,22 @@
         ]
       }
     },
-    "/api/batch-program": {
+    "/api/student-exam-record": {
       "get": {
         "description": "",
-        "operationId": "DbserviceWeb.BatchProgramController.index",
+        "operationId": "DbserviceWeb.StudentExamRecordController.index",
         "parameters": [
           {
-            "description": "The id the batch",
+            "description": "The id of the student",
             "in": "query",
-            "name": "batch_id",
+            "name": "student_id",
             "required": false,
             "type": "integer"
           },
           {
-            "description": "The id the program",
+            "description": "The id of the exam",
             "in": "query",
-            "name": "program",
+            "name": "exam_id",
             "required": false,
             "type": "integer"
           }
@@ -2558,26 +4955,26 @@
           "200": {
             "description": "OK",
             "schema": {
-              "$ref": "#/definitions/BatchPrograms"
+              "$ref": "#/definitions/StudentExamRecords"
             }
           }
         },
         "summary": "",
         "tags": [
-          "BatchProgram"
+          "StudentExamRecord"
         ]
       },
       "post": {
         "description": "",
-        "operationId": "DbserviceWeb.BatchProgramController.create",
+        "operationId": "DbserviceWeb.StudentExamRecordController.create",
         "parameters": [
           {
-            "description": "BatchProgram to create",
+            "description": "Student Exam Record to create",
             "in": "body",
             "name": "body",
             "required": true,
             "schema": {
-              "$ref": "#/definitions/BatchProgram"
+              "$ref": "#/definitions/StudentExamRecord"
             }
           }
         ],
@@ -2585,13 +4982,13 @@
           "201": {
             "description": "Created",
             "schema": {
-              "$ref": "#/definitions/BatchProgram"
+              "$ref": "#/definitions/StudentExamRecord"
             }
           }
         },
         "summary": "",
         "tags": [
-          "BatchProgram"
+          "StudentExamRecord"
         ]
       }
     },
@@ -2678,86 +5075,57 @@
         ]
       }
     },
-    "/api/group-type/{groupTypeId}": {
-      "delete": {
-        "description": "",
-        "operationId": "DbserviceWeb.GroupTypeController.delete",
-        "parameters": [
-          {
-            "description": "The id of the group-type record",
-            "in": "path",
-            "name": "groupTypeId",
-            "required": true,
-            "type": "integer"
-          }
-        ],
-        "responses": {
-          "204": {
-            "description": "No Content"
-          }
-        },
-        "summary": "",
-        "tags": [
-          "GroupType"
-        ]
-      },
+    "/api/learning-objective": {
       "get": {
         "description": "",
-        "operationId": "DbserviceWeb.GroupTypeController.show",
+        "operationId": "DbserviceWeb.LearningObjectiveController.index",
         "parameters": [
           {
-            "description": "The id of the group-type record",
-            "in": "path",
-            "name": "groupTypeId",
-            "required": true,
-            "type": "integer"
+            "description": "The learning objective of a topic",
+            "in": "query",
+            "name": "title",
+            "required": false,
+            "type": "string"
           }
         ],
         "responses": {
           "200": {
             "description": "OK",
             "schema": {
-              "$ref": "#/definitions/GroupType"
+              "$ref": "#/definitions/LearningObjectives"
             }
           }
         },
         "summary": "",
         "tags": [
-          "GroupType"
+          "LearningObjective"
         ]
       },
-      "patch": {
+      "post": {
         "description": "",
-        "operationId": "DbserviceWeb.GroupTypeController.update",
+        "operationId": "DbserviceWeb.LearningObjectiveController.create",
         "parameters": [
           {
-            "description": "The id of the group-type record",
-            "in": "path",
-            "name": "groupTypeId",
-            "required": true,
-            "type": "integer"
-          },
-          {
-            "description": "Group to create",
+            "description": "Learning objective to create",
             "in": "body",
             "name": "body",
             "required": true,
             "schema": {
-              "$ref": "#/definitions/GroupType"
+              "$ref": "#/definitions/LearningObjective"
             }
           }
         ],
         "responses": {
-          "200": {
-            "description": "Updated",
+          "201": {
+            "description": "Created",
             "schema": {
-              "$ref": "#/definitions/Group"
+              "$ref": "#/definitions/LearningObjective"
             }
           }
         },
         "summary": "",
         "tags": [
-          "GroupType"
+          "LearningObjective"
         ]
       }
     },
@@ -2767,18 +5135,18 @@
         "operationId": "DbserviceWeb.GroupController.index",
         "parameters": [
           {
-            "description": "The name the group",
+            "description": "The type of group",
             "in": "query",
-            "name": "name",
+            "name": "type",
             "required": false,
             "type": "string"
           },
           {
-            "description": "The locale the group",
+            "description": "The child id of the group",
             "in": "query",
-            "name": "locale",
+            "name": "child_id",
             "required": false,
-            "type": "string"
+            "type": "integer"
           }
         ],
         "responses": {
@@ -2822,6 +5190,89 @@
         ]
       }
     },
+    "/api/student-exam-record/{recordId}": {
+      "delete": {
+        "description": "",
+        "operationId": "DbserviceWeb.StudentExamRecordController.delete",
+        "parameters": [
+          {
+            "description": "The id of the record",
+            "in": "path",
+            "name": "recordId",
+            "required": true,
+            "type": "integer"
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "No Content"
+          }
+        },
+        "summary": "",
+        "tags": [
+          "StudentExamRecord"
+        ]
+      },
+      "get": {
+        "description": "",
+        "operationId": "DbserviceWeb.StudentExamRecordController.show",
+        "parameters": [
+          {
+            "description": "The id of the record",
+            "in": "path",
+            "name": "recordId",
+            "required": true,
+            "type": "integer"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "schema": {
+              "$ref": "#/definitions/StudentExamRecord"
+            }
+          }
+        },
+        "summary": "",
+        "tags": [
+          "StudentExamRecord"
+        ]
+      },
+      "patch": {
+        "description": "",
+        "operationId": "DbserviceWeb.StudentExamRecordController.update",
+        "parameters": [
+          {
+            "description": "The id of the record",
+            "in": "path",
+            "name": "recordId",
+            "required": true,
+            "type": "integer"
+          },
+          {
+            "description": "Record to create",
+            "in": "body",
+            "name": "body",
+            "required": true,
+            "schema": {
+              "$ref": "#/definitions/StudentExamRecord"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Updated",
+            "schema": {
+              "$ref": "#/definitions/StudentExamRecord"
+            }
+          }
+        },
+        "summary": "",
+        "tags": [
+          "StudentExamRecord"
+        ]
+      }
+    },
     "/api/group-user": {
       "get": {
         "description": "",
@@ -2830,7 +5281,7 @@
           {
             "description": "The id the group type",
             "in": "query",
-            "name": "group_type_id",
+            "name": "group_id",
             "required": false,
             "type": "integer"
           },
@@ -2880,6 +5331,89 @@
         "summary": "",
         "tags": [
           "GroupUser"
+        ]
+      }
+    },
+    "/api/product/{productId}": {
+      "delete": {
+        "description": "",
+        "operationId": "DbserviceWeb.ProductController.delete",
+        "parameters": [
+          {
+            "description": "The id of the product record",
+            "in": "path",
+            "name": "productId",
+            "required": true,
+            "type": "integer"
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "No Content"
+          }
+        },
+        "summary": "",
+        "tags": [
+          "Product"
+        ]
+      },
+      "get": {
+        "description": "",
+        "operationId": "DbserviceWeb.ProductController.show",
+        "parameters": [
+          {
+            "description": "The id of the product record",
+            "in": "path",
+            "name": "productId",
+            "required": true,
+            "type": "integer"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "schema": {
+              "$ref": "#/definitions/Product"
+            }
+          }
+        },
+        "summary": "",
+        "tags": [
+          "Product"
+        ]
+      },
+      "patch": {
+        "description": "",
+        "operationId": "DbserviceWeb.ProductController.update",
+        "parameters": [
+          {
+            "description": "The id of the product record",
+            "in": "path",
+            "name": "productId",
+            "required": true,
+            "type": "integer"
+          },
+          {
+            "description": "Product to create",
+            "in": "body",
+            "name": "body",
+            "required": true,
+            "schema": {
+              "$ref": "#/definitions/Product"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Updated",
+            "schema": {
+              "$ref": "#/definitions/Product"
+            }
+          }
+        },
+        "summary": "",
+        "tags": [
+          "Product"
         ]
       }
     },
@@ -2937,32 +5471,86 @@
         ]
       }
     },
-    "/api/student/register": {
-      "post": {
+    "/api/session-schedule/{sessionScheduleId}": {
+      "delete": {
         "description": "",
-        "operationId": "DbserviceWeb.StudentController.register",
+        "operationId": "DbserviceWeb.SessionScheduleController.delete",
         "parameters": [
           {
-            "description": "Student to create along with user",
-            "in": "body",
-            "name": "body",
+            "description": "The id of the session schedule record",
+            "in": "path",
+            "name": "sessionScheduleId",
             "required": true,
-            "schema": {
-              "$ref": "#/definitions/StudentRegistration"
-            }
+            "type": "integer"
           }
         ],
         "responses": {
-          "201": {
-            "description": "Created",
+          "204": {
+            "description": "No Content"
+          }
+        },
+        "summary": "",
+        "tags": [
+          "SessionSchedule"
+        ]
+      },
+      "get": {
+        "description": "",
+        "operationId": "DbserviceWeb.SessionScheduleController.show",
+        "parameters": [
+          {
+            "description": "The id of the session schedule record",
+            "in": "path",
+            "name": "sessionScheduleId",
+            "required": true,
+            "type": "integer"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
             "schema": {
-              "$ref": "#/definitions/StudentWithUser"
+              "$ref": "#/definitions/SessionSchedule"
             }
           }
         },
         "summary": "",
         "tags": [
-          "Student"
+          "SessionSchedule"
+        ]
+      },
+      "patch": {
+        "description": "",
+        "operationId": "DbserviceWeb.SessionScheduleController.update",
+        "parameters": [
+          {
+            "description": "The id of the session schedule record",
+            "in": "path",
+            "name": "sessionScheduleId",
+            "required": true,
+            "type": "integer"
+          },
+          {
+            "description": "Session schedule to create",
+            "in": "body",
+            "name": "body",
+            "required": true,
+            "schema": {
+              "$ref": "#/definitions/SessionSchedule"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Updated",
+            "schema": {
+              "$ref": "#/definitions/SessionSchedule"
+            }
+          }
+        },
+        "summary": "",
+        "tags": [
+          "SessionSchedule"
         ]
       }
     },
@@ -3049,6 +5637,60 @@
         ]
       }
     },
+    "/api/student-profile": {
+      "get": {
+        "description": "",
+        "operationId": "DbserviceWeb.StudentProfileController.index",
+        "parameters": [
+          {
+            "description": "The id of the student",
+            "in": "query",
+            "name": "student_id",
+            "required": false,
+            "type": "string"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "schema": {
+              "$ref": "#/definitions/StudentProfiles"
+            }
+          }
+        },
+        "summary": "",
+        "tags": [
+          "StudentProfile"
+        ]
+      },
+      "post": {
+        "description": "",
+        "operationId": "DbserviceWeb.StudentProfileController.create",
+        "parameters": [
+          {
+            "description": "StudentProfile to setup along with user profile",
+            "in": "body",
+            "name": "body",
+            "required": true,
+            "schema": {
+              "$ref": "#/definitions/StudentProfileSetup"
+            }
+          }
+        ],
+        "responses": {
+          "201": {
+            "description": "Created",
+            "schema": {
+              "$ref": "#/definitions/StudentProfileWithUserProfile"
+            }
+          }
+        },
+        "summary": "",
+        "tags": [
+          "StudentProfile"
+        ]
+      }
+    },
     "/api/session-occurrence/{sessionOccurrenceId}": {
       "delete": {
         "description": "",
@@ -3132,6 +5774,445 @@
         ]
       }
     },
+    "/api/user-profile": {
+      "get": {
+        "description": "",
+        "operationId": "DbserviceWeb.UserProfileController.index",
+        "parameters": [
+          {
+            "description": "The id of the user profile",
+            "in": "query",
+            "name": "id",
+            "required": false,
+            "type": "string"
+          },
+          {
+            "description": "The id of the user",
+            "in": "query",
+            "name": "user_id",
+            "required": false,
+            "type": "string"
+          },
+          {
+            "description": "User logged in at least once",
+            "in": "query",
+            "name": "logged_in_atleast_once",
+            "required": false,
+            "type": "boolean"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "schema": {
+              "$ref": "#/definitions/UserProfiles"
+            }
+          }
+        },
+        "summary": "",
+        "tags": [
+          "UserProfile"
+        ]
+      },
+      "post": {
+        "description": "",
+        "operationId": "DbserviceWeb.UserProfileController.create",
+        "parameters": [
+          {
+            "description": "UserProfile to create",
+            "in": "body",
+            "name": "body",
+            "required": true,
+            "schema": {
+              "$ref": "#/definitions/UserProfile"
+            }
+          }
+        ],
+        "responses": {
+          "201": {
+            "description": "Created",
+            "schema": {
+              "$ref": "#/definitions/UserProfile"
+            }
+          }
+        },
+        "summary": "",
+        "tags": [
+          "UserProfile"
+        ]
+      }
+    },
+    "/api/tag": {
+      "get": {
+        "description": "",
+        "operationId": "DbserviceWeb.TagController.index",
+        "parameters": [
+          {
+            "description": "The name of the tag",
+            "in": "query",
+            "name": "name",
+            "required": false,
+            "type": "string"
+          },
+          {
+            "description": "The description of the tag",
+            "in": "query",
+            "name": "description",
+            "required": false,
+            "type": "string"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "schema": {
+              "$ref": "#/definitions/Tags"
+            }
+          }
+        },
+        "summary": "",
+        "tags": [
+          "Tag"
+        ]
+      },
+      "post": {
+        "description": "",
+        "operationId": "DbserviceWeb.TagController.create",
+        "parameters": [
+          {
+            "description": "Tag to create",
+            "in": "body",
+            "name": "body",
+            "required": true,
+            "schema": {
+              "$ref": "#/definitions/Tag"
+            }
+          }
+        ],
+        "responses": {
+          "201": {
+            "description": "Created",
+            "schema": {
+              "$ref": "#/definitions/Tag"
+            }
+          }
+        },
+        "summary": "",
+        "tags": [
+          "Tag"
+        ]
+      }
+    },
+    "/api/topic/{topicId}": {
+      "delete": {
+        "description": "",
+        "operationId": "DbserviceWeb.TopicController.delete",
+        "parameters": [
+          {
+            "description": "The id of the topic record",
+            "in": "path",
+            "name": "topicId",
+            "required": true,
+            "type": "integer"
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "No Content"
+          }
+        },
+        "summary": "",
+        "tags": [
+          "Topic"
+        ]
+      },
+      "get": {
+        "description": "",
+        "operationId": "DbserviceWeb.TopicController.show",
+        "parameters": [
+          {
+            "description": "The id of the topic record",
+            "in": "path",
+            "name": "topicId",
+            "required": true,
+            "type": "integer"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "schema": {
+              "$ref": "#/definitions/Topic"
+            }
+          }
+        },
+        "summary": "",
+        "tags": [
+          "Topic"
+        ]
+      },
+      "patch": {
+        "description": "",
+        "operationId": "DbserviceWeb.TopicController.update",
+        "parameters": [
+          {
+            "description": "The id of the topic record",
+            "in": "path",
+            "name": "topicId",
+            "required": true,
+            "type": "integer"
+          },
+          {
+            "description": "Topic to create",
+            "in": "body",
+            "name": "body",
+            "required": true,
+            "schema": {
+              "$ref": "#/definitions/Topic"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Updated",
+            "schema": {
+              "$ref": "#/definitions/Topic"
+            }
+          }
+        },
+        "summary": "",
+        "tags": [
+          "Topic"
+        ]
+      }
+    },
+    "/api/teacher-profile/{id}": {
+      "delete": {
+        "description": "",
+        "operationId": "DbserviceWeb.TeacherProfileController.delete",
+        "parameters": [
+          {
+            "description": "The id of the teacher profile record",
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "type": "integer"
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "No Content"
+          }
+        },
+        "summary": "",
+        "tags": [
+          "TeacherProfile"
+        ]
+      },
+      "get": {
+        "description": "",
+        "operationId": "DbserviceWeb.TeacherProfileController.show",
+        "parameters": [
+          {
+            "description": "The id of the teacher profile record",
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "type": "integer"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "schema": {
+              "$ref": "#/definitions/TeacherProfileWithUserProfile"
+            }
+          }
+        },
+        "summary": "",
+        "tags": [
+          "TeacherProfile"
+        ]
+      },
+      "patch": {
+        "description": "",
+        "operationId": "DbserviceWeb.TeacherProfileController.update",
+        "parameters": [
+          {
+            "description": "The id of the teacher profile record",
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "type": "integer"
+          },
+          {
+            "description": "Teacher Profile to update",
+            "in": "body",
+            "name": "body",
+            "required": true,
+            "schema": {
+              "$ref": "#/definitions/TeacherProfileSetup"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Updated",
+            "schema": {
+              "$ref": "#/definitions/TeacherProfileWithUserProfile"
+            }
+          }
+        },
+        "summary": "",
+        "tags": [
+          "TeacherProfile"
+        ]
+      }
+    },
+    "/api/auth-group": {
+      "get": {
+        "description": "",
+        "operationId": "DbserviceWeb.AuthGroupController.index",
+        "parameters": [
+          {
+            "description": "The name of the auth-group",
+            "in": "query",
+            "name": "name",
+            "required": false,
+            "type": "string"
+          },
+          {
+            "description": "The locale of the auth-group",
+            "in": "query",
+            "name": "locale",
+            "required": false,
+            "type": "string"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "schema": {
+              "$ref": "#/definitions/AuthGroups"
+            }
+          }
+        },
+        "summary": "",
+        "tags": [
+          "AuthGroup"
+        ]
+      },
+      "post": {
+        "description": "",
+        "operationId": "DbserviceWeb.AuthGroupController.create",
+        "parameters": [
+          {
+            "description": "AuthGroup to create",
+            "in": "body",
+            "name": "body",
+            "required": true,
+            "schema": {
+              "$ref": "#/definitions/AuthGroup"
+            }
+          }
+        ],
+        "responses": {
+          "201": {
+            "description": "Created",
+            "schema": {
+              "$ref": "#/definitions/AuthGroup"
+            }
+          }
+        },
+        "summary": "",
+        "tags": [
+          "AuthGroup"
+        ]
+      }
+    },
+    "/api/exam/{examId}": {
+      "delete": {
+        "description": "",
+        "operationId": "DbserviceWeb.ExamController.delete",
+        "parameters": [
+          {
+            "description": "The id of the exam",
+            "in": "path",
+            "name": "examId",
+            "required": true,
+            "type": "integer"
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "No Content"
+          }
+        },
+        "summary": "",
+        "tags": [
+          "Exam"
+        ]
+      },
+      "get": {
+        "description": "",
+        "operationId": "DbserviceWeb.ExamController.show",
+        "parameters": [
+          {
+            "description": "The id of the exam",
+            "in": "path",
+            "name": "examId",
+            "required": true,
+            "type": "integer"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "schema": {
+              "$ref": "#/definitions/Exam"
+            }
+          }
+        },
+        "summary": "",
+        "tags": [
+          "Exam"
+        ]
+      },
+      "patch": {
+        "description": "",
+        "operationId": "DbserviceWeb.ExamController.update",
+        "parameters": [
+          {
+            "description": "The id of the exam",
+            "in": "path",
+            "name": "examId",
+            "required": true,
+            "type": "integer"
+          },
+          {
+            "description": "Exam to create",
+            "in": "body",
+            "name": "body",
+            "required": true,
+            "schema": {
+              "$ref": "#/definitions/Exam"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Updated",
+            "schema": {
+              "$ref": "#/definitions/Exam"
+            }
+          }
+        },
+        "summary": "",
+        "tags": [
+          "Exam"
+        ]
+      }
+    },
     "/api/batch": {
       "get": {
         "description": "",
@@ -3190,6 +6271,172 @@
         "summary": "",
         "tags": [
           "Batch"
+        ]
+      }
+    },
+    "/api/concept/{conceptId}": {
+      "delete": {
+        "description": "",
+        "operationId": "DbserviceWeb.ConceptController.delete",
+        "parameters": [
+          {
+            "description": "The id of the concept record",
+            "in": "path",
+            "name": "conceptId",
+            "required": true,
+            "type": "integer"
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "No Content"
+          }
+        },
+        "summary": "",
+        "tags": [
+          "Concept"
+        ]
+      },
+      "get": {
+        "description": "",
+        "operationId": "DbserviceWeb.ConceptController.show",
+        "parameters": [
+          {
+            "description": "The id of the concept record",
+            "in": "path",
+            "name": "conceptId",
+            "required": true,
+            "type": "integer"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "schema": {
+              "$ref": "#/definitions/Concept"
+            }
+          }
+        },
+        "summary": "",
+        "tags": [
+          "Concept"
+        ]
+      },
+      "patch": {
+        "description": "",
+        "operationId": "DbserviceWeb.ConceptController.update",
+        "parameters": [
+          {
+            "description": "The id of the concept record",
+            "in": "path",
+            "name": "conceptId",
+            "required": true,
+            "type": "integer"
+          },
+          {
+            "description": "Concept to create",
+            "in": "body",
+            "name": "body",
+            "required": true,
+            "schema": {
+              "$ref": "#/definitions/Concept"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Updated",
+            "schema": {
+              "$ref": "#/definitions/Concept"
+            }
+          }
+        },
+        "summary": "",
+        "tags": [
+          "Concept"
+        ]
+      }
+    },
+    "/api/learning-objective/{learningObjectiveId}": {
+      "delete": {
+        "description": "",
+        "operationId": "DbserviceWeb.LearningObjectiveController.delete",
+        "parameters": [
+          {
+            "description": "The id of the learning objective",
+            "in": "path",
+            "name": "learningObjectiveId",
+            "required": true,
+            "type": "integer"
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "No Content"
+          }
+        },
+        "summary": "",
+        "tags": [
+          "LearningObjective"
+        ]
+      },
+      "get": {
+        "description": "",
+        "operationId": "DbserviceWeb.LearningObjectiveController.show",
+        "parameters": [
+          {
+            "description": "The id of the learning_objective record",
+            "in": "path",
+            "name": "learningObjectiveId",
+            "required": true,
+            "type": "integer"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "schema": {
+              "$ref": "#/definitions/LearningObjective"
+            }
+          }
+        },
+        "summary": "",
+        "tags": [
+          "LearningObjective"
+        ]
+      },
+      "patch": {
+        "description": "",
+        "operationId": "DbserviceWeb.LearningObjectiveController.update",
+        "parameters": [
+          {
+            "description": "The id of the learning objective record",
+            "in": "path",
+            "name": "learningObjectiveId",
+            "required": true,
+            "type": "integer"
+          },
+          {
+            "description": "LearningObjective to create",
+            "in": "body",
+            "name": "body",
+            "required": true,
+            "schema": {
+              "$ref": "#/definitions/LearningObjective"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Updated",
+            "schema": {
+              "$ref": "#/definitions/LearningObjective"
+            }
+          }
+        },
+        "summary": "",
+        "tags": [
+          "LearningObjective"
         ]
       }
     },
@@ -3253,7 +6500,7 @@
             "type": "integer"
           },
           {
-            "description": "Teacher to create",
+            "description": "Teacher to update along with user",
             "in": "body",
             "name": "body",
             "required": true,
@@ -3273,6 +6520,67 @@
         "summary": "",
         "tags": [
           "Teacher"
+        ]
+      }
+    },
+    "/api/curriculum": {
+      "get": {
+        "description": "",
+        "operationId": "DbserviceWeb.CurriculumController.index",
+        "parameters": [
+          {
+            "description": "The name of the curriculum",
+            "in": "query",
+            "name": "name",
+            "required": false,
+            "type": "string"
+          },
+          {
+            "description": "The code of the curriculum",
+            "in": "query",
+            "name": "code",
+            "required": false,
+            "type": "string"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "schema": {
+              "$ref": "#/definitions/Curriculums"
+            }
+          }
+        },
+        "summary": "",
+        "tags": [
+          "Curriculum"
+        ]
+      },
+      "post": {
+        "description": "",
+        "operationId": "DbserviceWeb.CurriculumController.create",
+        "parameters": [
+          {
+            "description": "Curriculum to create",
+            "in": "body",
+            "name": "body",
+            "required": true,
+            "schema": {
+              "$ref": "#/definitions/Curriculum"
+            }
+          }
+        ],
+        "responses": {
+          "201": {
+            "description": "Created",
+            "schema": {
+              "$ref": "#/definitions/Curriculum"
+            }
+          }
+        },
+        "summary": "",
+        "tags": [
+          "Curriculum"
         ]
       }
     },
@@ -3427,15 +6735,69 @@
         ]
       }
     },
+    "/api/grade": {
+      "get": {
+        "description": "",
+        "operationId": "DbserviceWeb.GradeController.index",
+        "parameters": [
+          {
+            "description": "The grade in school",
+            "in": "query",
+            "name": "number",
+            "required": false,
+            "type": "string"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "schema": {
+              "$ref": "#/definitions/Grades"
+            }
+          }
+        },
+        "summary": "",
+        "tags": [
+          "Grade"
+        ]
+      },
+      "post": {
+        "description": "",
+        "operationId": "DbserviceWeb.GradeController.create",
+        "parameters": [
+          {
+            "description": "Grade to create",
+            "in": "body",
+            "name": "body",
+            "required": true,
+            "schema": {
+              "$ref": "#/definitions/Grade"
+            }
+          }
+        ],
+        "responses": {
+          "201": {
+            "description": "Created",
+            "schema": {
+              "$ref": "#/definitions/Grade"
+            }
+          }
+        },
+        "summary": "",
+        "tags": [
+          "Grade"
+        ]
+      }
+    },
     "/api/teacher": {
       "get": {
         "description": "",
         "operationId": "DbserviceWeb.TeacherController.index",
         "parameters": [
           {
-            "description": "The uuid the teacher",
+            "description": "The ID the teacher",
             "in": "query",
-            "name": "uuid",
+            "name": "teacher_id",
             "required": false,
             "type": "string"
           },
@@ -3465,138 +6827,12 @@
         "operationId": "DbserviceWeb.TeacherController.create",
         "parameters": [
           {
-            "description": "Teacher to create",
-            "in": "body",
-            "name": "body",
-            "required": true,
-            "schema": {
-              "$ref": "#/definitions/Teacher"
-            }
-          }
-        ],
-        "responses": {
-          "201": {
-            "description": "Created",
-            "schema": {
-              "$ref": "#/definitions/Teacher"
-            }
-          }
-        },
-        "summary": "",
-        "tags": [
-          "Teacher"
-        ]
-      }
-    },
-    "/api/group-type": {
-      "get": {
-        "description": "",
-        "operationId": "DbserviceWeb.GroupTypeController.index",
-        "parameters": [
-          {
-            "description": "The type the group",
-            "in": "query",
-            "name": "type",
-            "required": false,
-            "type": "string"
-          },
-          {
-            "description": "The child id the group type",
-            "in": "query",
-            "name": "child_id",
-            "required": false,
-            "type": "integer"
-          }
-        ],
-        "responses": {
-          "200": {
-            "description": "OK",
-            "schema": {
-              "$ref": "#/definitions/GroupTypes"
-            }
-          }
-        },
-        "summary": "",
-        "tags": [
-          "GroupType"
-        ]
-      },
-      "post": {
-        "description": "",
-        "operationId": "DbserviceWeb.GroupTypeController.create",
-        "parameters": [
-          {
-            "description": "Group to create",
-            "in": "body",
-            "name": "body",
-            "required": true,
-            "schema": {
-              "$ref": "#/definitions/GroupType"
-            }
-          }
-        ],
-        "responses": {
-          "201": {
-            "description": "Created",
-            "schema": {
-              "$ref": "#/definitions/GroupType"
-            }
-          }
-        },
-        "summary": "",
-        "tags": [
-          "GroupType"
-        ]
-      }
-    },
-    "/api/group-type/{groupTypeId}/update-sessions": {
-      "post": {
-        "description": "",
-        "operationId": "DbserviceWeb.GroupTypeController.update_sessions",
-        "parameters": [
-          {
-            "description": "The id of the group record",
-            "in": "path",
-            "name": "groupTypeId",
-            "required": true,
-            "type": "integer"
-          },
-          {
-            "description": "List of session ids to update for the group",
-            "in": "body",
-            "name": "body",
-            "required": true,
-            "schema": {
-              "$ref": "#/definitions/SessionIds"
-            }
-          }
-        ],
-        "responses": {
-          "200": {
-            "description": "OK",
-            "schema": {
-              "$ref": "#/definitions/GroupSessions"
-            }
-          }
-        },
-        "summary": "",
-        "tags": [
-          "GroupType"
-        ]
-      }
-    },
-    "/api/teacher/register": {
-      "post": {
-        "description": "",
-        "operationId": "DbserviceWeb.TeacherController.register",
-        "parameters": [
-          {
             "description": "Teacher to create along with user",
             "in": "body",
             "name": "body",
             "required": true,
             "schema": {
-              "$ref": "#/definitions/TeacherRegistration"
+              "$ref": "#/definitions/TeacherWithUser"
             }
           }
         ],
@@ -3614,15 +6850,191 @@
         ]
       }
     },
+    "/api/source": {
+      "get": {
+        "description": "",
+        "operationId": "DbserviceWeb.SourceController.index",
+        "parameters": [
+          {
+            "description": "The source of the content",
+            "in": "query",
+            "name": "name",
+            "required": false,
+            "type": "string"
+          },
+          {
+            "description": "The link of the source",
+            "in": "query",
+            "name": "link",
+            "required": false,
+            "type": "string"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "schema": {
+              "$ref": "#/definitions/Sources"
+            }
+          }
+        },
+        "summary": "",
+        "tags": [
+          "Source"
+        ]
+      },
+      "post": {
+        "description": "",
+        "operationId": "DbserviceWeb.SourceController.create",
+        "parameters": [
+          {
+            "description": "Source to create",
+            "in": "body",
+            "name": "body",
+            "required": true,
+            "schema": {
+              "$ref": "#/definitions/Source"
+            }
+          }
+        ],
+        "responses": {
+          "201": {
+            "description": "Created",
+            "schema": {
+              "$ref": "#/definitions/Source"
+            }
+          }
+        },
+        "summary": "",
+        "tags": [
+          "Source"
+        ]
+      }
+    },
+    "/api/product": {
+      "get": {
+        "description": "",
+        "operationId": "DbserviceWeb.ProductController.index",
+        "parameters": [
+          {
+            "description": "The name the product",
+            "in": "query",
+            "name": "name",
+            "required": false,
+            "type": "string"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "schema": {
+              "$ref": "#/definitions/Products"
+            }
+          }
+        },
+        "summary": "",
+        "tags": [
+          "Product"
+        ]
+      },
+      "post": {
+        "description": "",
+        "operationId": "DbserviceWeb.ProductController.create",
+        "parameters": [
+          {
+            "description": "Product to create",
+            "in": "body",
+            "name": "body",
+            "required": true,
+            "schema": {
+              "$ref": "#/definitions/Product"
+            }
+          }
+        ],
+        "responses": {
+          "201": {
+            "description": "Created",
+            "schema": {
+              "$ref": "#/definitions/Product"
+            }
+          }
+        },
+        "summary": "",
+        "tags": [
+          "Product"
+        ]
+      }
+    },
+    "/api/topic": {
+      "get": {
+        "description": "",
+        "operationId": "DbserviceWeb.TopicController.index",
+        "parameters": [
+          {
+            "description": "The topic of a chapter",
+            "in": "query",
+            "name": "name",
+            "required": false,
+            "type": "string"
+          },
+          {
+            "description": "The code of the topic",
+            "in": "query",
+            "name": "code",
+            "required": false,
+            "type": "string"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "schema": {
+              "$ref": "#/definitions/Topics"
+            }
+          }
+        },
+        "summary": "",
+        "tags": [
+          "Topic"
+        ]
+      },
+      "post": {
+        "description": "",
+        "operationId": "DbserviceWeb.TopicController.create",
+        "parameters": [
+          {
+            "description": "Topic to create",
+            "in": "body",
+            "name": "body",
+            "required": true,
+            "schema": {
+              "$ref": "#/definitions/Topic"
+            }
+          }
+        ],
+        "responses": {
+          "201": {
+            "description": "Created",
+            "schema": {
+              "$ref": "#/definitions/Topic"
+            }
+          }
+        },
+        "summary": "",
+        "tags": [
+          "Topic"
+        ]
+      }
+    },
     "/api/group-session": {
       "get": {
         "description": "",
         "operationId": "DbserviceWeb.GroupSessionController.index",
         "parameters": [
           {
-            "description": "The id the group type",
+            "description": "The id the group",
             "in": "query",
-            "name": "group_type_id",
+            "name": "group_id",
             "required": false,
             "type": "integer"
           },
