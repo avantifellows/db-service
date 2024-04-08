@@ -25,9 +25,9 @@ defmodule DbserviceWeb.UserProfileController do
 
     parameters do
       params(:query, :string, "The id of the user profile", required: false, name: "id")
-      params(:query, :string, "The full name of user", required: false, name: "full_name")
+      params(:query, :string, "The id of the user", required: false, name: "user_id")
 
-      params(:query, :string, "User logged in at least once",
+      params(:query, :boolean, "User logged in at least once",
         required: false,
         name: "logged_in_atleast_once"
       )

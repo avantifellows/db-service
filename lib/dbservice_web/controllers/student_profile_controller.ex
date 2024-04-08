@@ -33,8 +33,6 @@ defmodule DbserviceWeb.StudentProfileController do
         required: false,
         name: "student_id"
       )
-
-      params(:query, :string, "The stream of student", required: false, name: "stream")
     end
 
     response(200, "OK", Schema.ref(:StudentProfiles))
@@ -60,25 +58,6 @@ defmodule DbserviceWeb.StudentProfileController do
     render(conn, "index.json", student_profile: student_profile)
   end
 
-  swagger_path :create do
-    post("/api/student-profile")
-
-    parameters do
-      body(:body, Schema.ref(:StudentProfile), "Student Profile to create", required: true)
-    end
-
-    response(201, "Created", Schema.ref(:StudentProfile))
-  end
-
-  def create(conn, params) do
-    with {:ok, %StudentProfile{} = student_profile} <- Profiles.create_student_profile(params) do
-      conn
-      |> put_status(:created)
-      |> put_resp_header("location", Routes.student_profile_path(conn, :show, student_profile))
-      |> render("show.json", student_profile: student_profile)
-    end
-  end
-
   swagger_path :show do
     get("/api/student-profile/{id}")
 
@@ -86,7 +65,7 @@ defmodule DbserviceWeb.StudentProfileController do
       id(:path, :integer, "The id of the student profile record", required: true)
     end
 
-    response(200, "OK", Schema.ref(:StudentProfile))
+    response(200, "OK", Schema.ref(:StudentProfileWithUserProfile))
   end
 
   def show(conn, %{"id" => id}) do
@@ -94,24 +73,29 @@ defmodule DbserviceWeb.StudentProfileController do
     render(conn, "show.json", student_profile: student_profile)
   end
 
-  def update(conn, params) do
-    student_profile = Profiles.get_student_profile!(params["id"])
-
-    with {:ok, %StudentProfile{} = student_profile} <-
-           Profiles.update_student_profile(student_profile, params) do
-      render(conn, "show.json", student_profile: student_profile)
-    end
-  end
-
   swagger_path :update do
     patch("/api/student-profile/{id}")
 
     parameters do
       id(:path, :integer, "The id of the student profile record", required: true)
-      body(:body, Schema.ref(:StudentProfile), "Student Profile to update", required: true)
+      body(:body, Schema.ref(:StudentProfileSetup), "Student Profile to update", required: true)
     end
 
-    response(200, "Updated", Schema.ref(:StudentProfile))
+    response(200, "Updated", Schema.ref(:StudentProfileWithUserProfile))
+  end
+
+  def update(conn, params) do
+    student_profile = Profiles.get_student_profile!(params["id"])
+    user_profile = Profiles.get_user_profile!(student_profile.user_profile_id)
+
+    with {:ok, %StudentProfile{} = student_profile} <-
+           Profiles.update_student_profile_with_user_profile(
+             student_profile,
+             user_profile,
+             params
+           ) do
+      render(conn, "show.json", student_profile: student_profile)
+    end
   end
 
   swagger_path :delete do
@@ -132,8 +116,8 @@ defmodule DbserviceWeb.StudentProfileController do
     end
   end
 
-  swagger_path :setup do
-    post("/api/student-profile/setup")
+  swagger_path :create do
+    post("/api/student-profile")
 
     parameters do
       body(
@@ -147,27 +131,11 @@ defmodule DbserviceWeb.StudentProfileController do
     response(201, "Created", Schema.ref(:StudentProfileWithUserProfile))
   end
 
-  def setup(conn, params) do
+  def create(conn, params) do
     with {:ok, %StudentProfile{} = student_profile} <-
            Profiles.create_student_profile_with_user_profile(params) do
       conn
       |> put_status(:created)
-      |> render("show.json", student_profile: student_profile)
-    end
-  end
-
-  def update_student_profile_with_user_profile(conn, params) do
-    student_profile = Profiles.get_student_profile!(params["id"])
-    user_profile = Profiles.get_user_profile!(student_profile.user_profile_id)
-
-    with {:ok, %StudentProfile{} = student_profile} <-
-           Profiles.update_student_profile_with_user_profile(
-             student_profile,
-             user_profile,
-             params
-           ) do
-      conn
-      |> put_status(:ok)
       |> render("show.json", student_profile: student_profile)
     end
   end

@@ -21,11 +21,8 @@ defmodule DbserviceWeb.TeacherProfileView do
 
     %{
       id: teacher_profile.id,
-      user_profile_id: teacher_profile.user_profile_id,
       teacher_id: teacher_profile.teacher_id,
-      uuid: teacher_profile.uuid,
-      designation: teacher_profile.designation,
-      subject: teacher_profile.subject,
+      teacher_fk: teacher_profile.teacher_fk,
       school: teacher_profile.school,
       program_manager: teacher_profile.program_manager,
       avg_rating: teacher_profile.avg_rating,
@@ -36,11 +33,8 @@ defmodule DbserviceWeb.TeacherProfileView do
   def render("teacher_profile_with_user_profile.json", %{teacher_profile: teacher_profile}) do
     %{
       id: teacher_profile.id,
-      user_profile_id: teacher_profile.user_profile_id,
       teacher_id: teacher_profile.teacher_id,
-      uuid: teacher_profile.uuid,
-      designation: teacher_profile.designation,
-      subject: teacher_profile.subject,
+      teacher_fk: teacher_profile.teacher_fk,
       school: teacher_profile.school,
       program_manager: teacher_profile.program_manager,
       avg_rating: teacher_profile.avg_rating,

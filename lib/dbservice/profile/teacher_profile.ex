@@ -8,9 +8,7 @@ defmodule Dbservice.Profiles.TeacherProfile do
   alias Dbservice.Users.Teacher
 
   schema "teacher_profile" do
-    field(:uuid, :string)
-    field(:designation, :string)
-    field(:subject, :string)
+    field(:teacher_id, :string)
     field(:school, :string)
     # should i go with program_manager_id instead
     field(:program_manager, :string)
@@ -20,21 +18,19 @@ defmodule Dbservice.Profiles.TeacherProfile do
     timestamps()
 
     belongs_to(:user_profile, UserProfile)
-    belongs_to(:teacher, Teacher, foreign_key: :teacher_id)
+    belongs_to(:teacher, Teacher, foreign_key: :teacher_fk)
   end
 
   def changeset(teacher_profile, attrs) do
     teacher_profile
     |> cast(attrs, [
-      :teacher_id,
+      :teacher_fk,
       :user_profile_id,
-      :uuid,
-      :designation,
-      :subject,
+      :teacher_id,
       :school,
       :program_manager,
       :avg_rating
     ])
-    |> validate_required([:user_profile_id, :teacher_id])
+    |> validate_required([:user_profile_id, :teacher_fk])
   end
 end

@@ -10,9 +10,7 @@ defmodule Dbservice.ProfilesTest do
 
     @invalid_attrs %{
       user_id: nil,
-      full_name: nil,
-      email: nil,
-      role: nil
+      current_grade: nil
     }
 
     test "list_user_profile/0 returns all user profiles" do
@@ -28,29 +26,14 @@ defmodule Dbservice.ProfilesTest do
     test "create_user_profile/1 with valid data creates a user profile" do
       valid_attrs = %{
         user_id: get_user_id(),
-        full_name: "John Doe",
-        email: "johndoe@example.com",
-        gender: "Male",
-        date_of_birth: "2003-08-22",
-        role: "student",
-        state: "Maharashtra",
-        country: "India",
         current_grade: "11",
         current_program: "HaryanaStudents",
         current_batch: "Photon",
         logged_in_atleast_once: true,
-        first_session_accessed: "DemoTest_32",
         latest_session_accessed: "LiveClass_10"
       }
 
       assert {:ok, %UserProfile{} = user_profile} = Profiles.create_user_profile(valid_attrs)
-      assert user_profile.full_name == "John Doe"
-      assert user_profile.email == "johndoe@example.com"
-      assert user_profile.gender == "Male"
-      assert user_profile.date_of_birth == "2003-08-22"
-      assert user_profile.role == "student"
-      assert user_profile.state == "Maharashtra"
-      assert user_profile.country == "India"
       assert user_profile.current_grade == "11"
     end
 
@@ -63,31 +46,16 @@ defmodule Dbservice.ProfilesTest do
 
       update_attrs = %{
         user_id: get_user_id(),
-        full_name: "John Dodoe",
-        email: "johndoe@example.com",
-        gender: "Male",
-        date_of_birth: "2003-08-22",
-        role: "student",
-        state: "Maharashtra",
-        country: "India",
         current_grade: "11",
         current_program: "HaryanaStudents",
         current_batch: "Photon",
         logged_in_atleast_once: true,
-        first_session_accessed: "DemoTest_32",
         latest_session_accessed: "LiveClass_10"
       }
 
       assert {:ok, %UserProfile{} = user_profile} =
                Profiles.update_user_profile(user_profile, update_attrs)
 
-      assert user_profile.full_name == "John Dodoe"
-      assert user_profile.email == "johndoe@example.com"
-      assert user_profile.gender == "Male"
-      assert user_profile.date_of_birth == "2003-08-22"
-      assert user_profile.role == "student"
-      assert user_profile.state == "Maharashtra"
-      assert user_profile.country == "India"
       assert user_profile.current_grade == "11"
     end
 
@@ -118,18 +86,9 @@ defmodule Dbservice.ProfilesTest do
     import Dbservice.UserProfilesFixtures
 
     @invalid_attrs %{
-      student_fkey_id: nil,
+      student_fk: nil,
       student_id: nil,
-      father_education_level: nil,
-      mother_education_level: nil,
-      category: nil,
-      stream: nil,
-      annual_family_income: nil,
-      has_internet_access: nil,
-      user_id: nil,
-      full_name: nil,
-      email: nil,
-      role: nil
+      user_profile_id: nil
     }
 
     test "list_student_profile/0 returns all student profiles" do
@@ -143,31 +102,18 @@ defmodule Dbservice.ProfilesTest do
     end
 
     test "create_student_profile/1 with valid data creates a student profile" do
+      {user_id, student_fk} = get_user_id_and_student_fk()
+
       valid_attrs = %{
-        student_fkey_id: 1,
-        student_id: "some-student-id",
-        father_education_level: "Graduate",
-        father_profession: "Engineer",
-        mother_education_level: "Postgraduate",
-        mother_profession: "Doctor",
-        category: "General",
-        stream: "Science",
-        physically_handicapped: false,
-        annual_family_income: "5LPA-10LPA",
-        has_internet_access: "Yes",
+        student_fk: student_fk,
+        student_id: "100110",
         took_test_atleast_once: true,
         took_class_atleast_once: true,
         total_number_of_tests: 20,
         total_number_of_live_classes: 50,
-        attendance_in_classes_current_q1: 85.5,
-        attendance_in_classes_current_q2: 90.0,
-        attendance_in_classes_current_q3: 92.5,
-        attendance_in_classes_current_year: 89.0,
+        attendance_in_classes_current_year: [89.0, 12.0],
         classes_activity_cohort: "Cohort A",
-        attendance_in_tests_current_q1: 80.0,
-        attendance_in_tests_current_q2: 88.0,
-        attendance_in_tests_current_q3: 90.5,
-        attendance_in_tests_current_year: 86.2,
+        attendance_in_tests_current_year: [86.2, 11.1],
         tests_activity_cohort: "Cohort B",
         performance_trend_in_fst: "Improving",
         max_batch_score_in_latest_test: 95,
@@ -175,26 +121,18 @@ defmodule Dbservice.ProfilesTest do
         tests_number_of_correct_questions: 75,
         tests_number_of_wrong_questions: 10,
         tests_number_of_skipped_questions: 15,
-        user_id: get_user_id(),
-        full_name: "John Doe",
-        email: "john.doe@example.com",
-        gender: "Male",
-        date_of_birth: "2000-01-15",
-        role: "student",
-        state: "California",
-        country: "USA",
+        user_id: user_id,
         current_grade: "11",
         current_program: "Science",
         current_batch: "Batch A",
         logged_in_atleast_once: true,
-        first_session_accessed: "DemoTest_1",
         latest_session_accessed: "LiveClass_10"
       }
 
       assert {:ok, %StudentProfile{} = student_profile} =
                Profiles.create_student_profile_with_user_profile(valid_attrs)
 
-      assert student_profile.full_name == "John Doe"
+      assert student_profile.current_grade == "11"
       assert student_profile.logged_in_atleast_once == true
     end
 
@@ -204,20 +142,16 @@ defmodule Dbservice.ProfilesTest do
   end
 
   describe "teacher_profile" do
-    alias Dbservice.Profiles.rProfiles()
+    alias Dbservice.Profiles.TeacherProfiles
 
     import Dbservice.UserProfilesFixtures
 
     @invalid_attrs %{
       teacher_id: nil,
-      designation: nil,
-      subject: nil,
       school: nil,
       program_manager: nil,
-      user_id: nil,
-      full_name: nil,
-      email: nil,
-      role: nil
+      user_profile_id: nil,
+      teacher_fk: nil
     }
 
     test "list_teacher_profile/0 returns all teacher profiles" do
@@ -231,34 +165,26 @@ defmodule Dbservice.ProfilesTest do
     end
 
     test "create_teacher_profile/1 with valid data creates a teacher profile" do
+      {user_id, teacher_fk} = get_user_id_and_teacher_fk_for_teacher_profile()
+
       valid_attrs = %{
-        teacher_id: 1,
-        uuid: "some-uuid",
-        designation: "Math Teacher",
-        subject: "Mathematics",
+        teacher_id: "1010",
+        teacher_fk: teacher_fk,
         school: "XYZ High School",
         program_manager: "John Doe",
         avg_rating: 4.5,
-        full_name: "John Doe",
-        user_id: get_user_id_for_teacher(),
-        email: "john.doe@example.com",
-        gender: "Male",
-        date_of_birth: "1980-05-15",
-        role: "teacher",
-        state: "California",
-        country: "USA",
+        user_id: user_id,
         current_grade: "11",
         current_program: "HaryanaStudents",
         current_batch: "Photon",
         logged_in_atleast_once: false,
-        first_session_accessed: "LiveClass_1",
         latest_session_accessed: "LiveClass_10"
       }
 
       assert {:ok, %TeacherProfile{} = teacher_profile} =
                TeacherProfiles.create_teacher_profile_with_user_profile(valid_attrs)
 
-      assert teacher_profile.full_name == "John Doe"
+      assert teacher_profile.program_name == "John Doe"
       assert teacher_profile.logged_in_atleast_once == false
     end
 

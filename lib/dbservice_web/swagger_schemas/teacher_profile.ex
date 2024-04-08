@@ -11,25 +11,25 @@ defmodule DbserviceWeb.SwaggerSchema.TeacherProfile do
           description("A teacher's profile in the application")
 
           properties do
-            uuid(:string, "UUID of the teacher")
-            designation(:string, "Designation of the teacher")
-            subject(:string, "Subject taught by the teacher")
+            teacher_id(:string, "Teacher ID associated with the teacher's profile")
             school(:string, "School where the teacher works")
             program_manager(:string, "Program manager for the teacher")
             avg_rating(:decimal, "Average rating of the teacher")
             user_profile_id(:integer, "User profile ID associated with the teacher's profile")
-            teacher_id(:integer, "Teacher ID associated with the teacher's profile")
+
+            teacher_fk(
+              :integer,
+              "Teacher foreign key ID associated with the teacher's profile"
+            )
           end
 
           example(%{
-            uuid: "abc123",
-            designation: "Math Teacher",
-            subject: "Mathematics",
+            teacher_id: "20202",
             school: "XYZ High School",
             program_manager: "John Doe",
             avg_rating: 4.5,
             user_profile_id: 1,
-            teacher_id: 1
+            teacher_fk: 3
           })
         end
     }
@@ -55,50 +55,35 @@ defmodule DbserviceWeb.SwaggerSchema.TeacherProfile do
           description("A teacher's profile with associated user profile being set up")
 
           properties do
-            uuid(:string, "UUID of the teacher")
-            designation(:string, "Designation of the teacher")
-            subject(:string, "Subject taught by the teacher")
             school(:string, "School where the teacher works")
             program_manager(:string, "Program manager for the teacher")
             avg_rating(:decimal, "Average rating of the teacher")
-            teacher_id(:integer, "Teacher ID associated with the teacher's profile")
-            full_name(:string, "Full name")
-            user_id(:integer, "Corresponding user ID of the user")
-            email(:string, "Email")
-            gender(:string, "Gender")
-            date_of_birth(:date, "Date of Birth")
-            role(:string, "User role")
-            state(:string, "State")
-            country(:string, "Country")
+            teacher_id(:string, "Teacher ID associated with the teacher's profile")
+
+            teacher_fk(
+              :integer,
+              "Teacher foreign key ID associated with the student's profile"
+            )
+
+            user_id(:integer, "User key id associated with user table for user profile")
             current_grade(:string, "Current Grade")
             current_program(:string, "Current Program")
             current_batch(:string, "Current Batch")
             logged_in_atleast_once(:boolean, "Has user logged in atleast once?")
-            first_session_accessed(:string, "Name of the first session accessed")
             latest_session_accessed(:string, "Name of the latest session accessed")
           end
 
           example(%{
-            uuid: "abc123",
-            designation: "Math Teacher",
-            subject: "Mathematics",
             school: "XYZ High School",
             program_manager: "John Doe",
             avg_rating: 4.5,
-            teacher_id: 1,
-            full_name: "John Doe",
-            user_id: 1,
-            email: "john.doe@example.com",
-            gender: "Male",
-            date_of_birth: "1980-05-15",
-            role: "teacher",
-            state: "California",
-            country: "USA",
+            teacher_id: "20202",
+            teacher_fk: 1,
+            user_id: 2,
             current_grade: "11",
             current_program: "HaryanaStudents",
             current_batch: "Photon",
             logged_in_atleast_once: false,
-            first_session_accessed: "LiveClass_1",
             latest_session_accessed: "LiveClass_10"
           })
         end
@@ -113,38 +98,30 @@ defmodule DbserviceWeb.SwaggerSchema.TeacherProfile do
           description("A teacher's profile with associated user profile")
 
           properties do
-            uuid(:string, "UUID of the teacher")
-            designation(:string, "Designation of the teacher")
-            subject(:string, "Subject taught by the teacher")
             school(:string, "School where the teacher works")
             program_manager(:string, "Program manager for the teacher")
             avg_rating(:decimal, "Average rating of the teacher")
-            teacher_id(:integer, "Teacher ID associated with the teacher's profile")
+            teacher_id(:string, "Teacher ID associated with the teacher's profile")
             user_profile(:map, "User Profile details associated with the teacher")
+
+            teacher_fk(
+              :integer,
+              "Teacher foreign key ID associated with the student's profile"
+            )
           end
 
           example(%{
-            uuid: "abc123",
-            designation: "Math Teacher",
-            subject: "Mathematics",
             school: "XYZ High School",
             program_manager: "John Doe",
             avg_rating: 4.5,
-            teacher_id: 1,
+            teacher_id: "30",
+            teacher_fk: 2,
             user_profile: %{
-              full_name: "John Doe",
-              user_id: 1,
-              email: "john.doe@example.com",
-              gender: "Male",
-              date_of_birth: "1980-05-15",
-              role: "teacher",
-              state: "California",
-              country: "USA",
+              user_id: 2,
               current_grade: "11",
               current_program: "HaryanaStudents",
               current_batch: "Photon",
               logged_in_atleast_once: false,
-              first_session_accessed: "LiveClass_1",
               latest_session_accessed: "LiveClass_10"
             }
           })
