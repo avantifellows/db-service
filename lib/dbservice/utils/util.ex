@@ -15,23 +15,33 @@ defmodule Dbservice.Utils.Util do
     end
   end
 
-  def validate_start_end_datetime(changeset, start_time_field_atom, end_time_field_atom) do
-    start_time = get_field(changeset, start_time_field_atom)
-    end_time = get_field(changeset, end_time_field_atom)
+  def validate_date_range(changeset, start_field_atom, end_field_atom) do
+    if start_field_atom == :start_date and end_field_atom == :end_date do
+      validate_start_end_date(
+        changeset,
+        get_field(changeset, :start_date),
+        get_field(changeset, :end_date)
+      )
+    else
+      validate_start_end_datetime(
+        changeset,
+        get_field(changeset, :start_time),
+        get_field(changeset, :end_time)
+      )
+    end
+  end
 
+  def validate_start_end_datetime(changeset, start_time, end_time) do
     if start_time && end_time && DateTime.compare(start_time, end_time) == :gt do
-      add_error(changeset, start_time_field_atom, "cannot be later than end time")
+      add_error(changeset, start_time, "cannot be later than end time")
     else
       changeset
     end
   end
 
-  def validate_start_end_date(changeset, start_date_atom, end_date_atom) do
-    start_date = get_field(changeset, start_date_atom)
-    end_date = get_field(changeset, end_date_atom)
-
+  def validate_start_end_date(changeset, start_date, end_date) do
     if start_date && end_date && Date.compare(start_date, end_date) == :gt do
-      add_error(changeset, start_date_atom, "cannot be later than end date")
+      add_error(changeset, start_date, "cannot be later than end date")
     else
       changeset
     end

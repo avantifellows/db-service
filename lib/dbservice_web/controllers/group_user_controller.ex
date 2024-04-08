@@ -61,7 +61,7 @@ defmodule DbserviceWeb.GroupUserController do
   end
 
   def create(conn, params) do
-    case GroupUsers.get_group_user_by_user_id(params["user_id"], params["group_id"]) do
+    case GroupUsers.get_group_user_by_user_id_and_group_id(params["user_id"], params["group_id"]) do
       nil ->
         create_new_group_user(conn, params)
 
