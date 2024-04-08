@@ -10,7 +10,6 @@ defmodule Dbservice.Profiles.TeacherProfile do
   schema "teacher_profile" do
     field(:teacher_id, :string)
     field(:school, :string)
-    # should i go with program_manager_id instead
     field(:program_manager, :string)
     field(:avg_rating, :decimal)
     # add plio, attendance, tests, teacher obs data later
