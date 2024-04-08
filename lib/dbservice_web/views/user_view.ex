@@ -1,6 +1,7 @@
 defmodule DbserviceWeb.UserView do
   use DbserviceWeb, :view
   alias DbserviceWeb.UserView
+  alias DbserviceWeb.SessionView
 
   def render("index.json", %{user: user}) do
     render_many(user, UserView, "user.json")
@@ -49,5 +50,9 @@ defmodule DbserviceWeb.UserView do
       date_of_birth: user.date_of_birth,
       country: user.country
     }
+  end
+
+  def render("user_sessions.json", %{session: session}) do
+    render_many(session, SessionView, "session.json")
   end
 end

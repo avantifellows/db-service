@@ -1,10 +1,15 @@
 defmodule DbserviceWeb.UserController do
+  alias Dbservice.Groups
   use DbserviceWeb, :controller
 
   import Ecto.Query
   alias Dbservice.Repo
   alias Dbservice.Users
   alias Dbservice.Users.User
+  alias Dbservice.GroupUsers
+  alias Dbservice.GroupSessions
+  alias Dbservice.Sessions
+  alias Dbservice.Groups
 
   action_fallback DbserviceWeb.FallbackController
 
@@ -169,5 +174,41 @@ defmodule DbserviceWeb.UserController do
       |> put_status(:ok)
       |> render("show.json", user: user)
     end
+  end
+
+  def get_user_sessions(conn, %{"user_id" => user_id}) do
+    group_users = GroupUsers.get_group_user_by_user_id(user_id)
+
+    sessions =
+      Enum.flat_map(group_users, fn group_user ->
+        group_id = group_user.group_id
+
+        case Groups.get_group_by_group_id(group_id) do
+          nil ->
+            IO.inspect("Group not found")
+            []
+
+          _group ->
+            case GroupSessions.get_group_session_by_group_id(group_id) do
+              nil ->
+                IO.inspect("Group sessions not found")
+                []
+
+              group_sessions ->
+                Enum.map(group_sessions, fn group_session ->
+                  case Sessions.get_session!(group_session.session_id) do
+                    nil ->
+                      IO.inspect("Session not found")
+                      nil
+
+                    session ->
+                      session
+                  end
+                end)
+            end
+        end
+      end)
+
+    render(conn, "user_sessions.json", session: sessions)
   end
 end

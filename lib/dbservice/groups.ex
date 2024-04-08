@@ -32,6 +32,19 @@ defmodule Dbservice.Groups do
   def get_group!(id), do: Repo.get!(Group, id)
 
   @doc """
+  Gets a single group.
+  Raises `Ecto.NoResultsError` if the Group does not exist.
+  ## Examples
+      iex> get_group_by_group_id(123)
+      %Group{}
+      iex> get_group_by_group_id(456)
+      ** (Ecto.NoResultsError)
+  """
+  def get_group_by_group_id(group_id) do
+    Repo.get_by(Group, id: group_id, type: "batch")
+  end
+
+  @doc """
   Creates a group.
   ## Examples
       iex> create_group(%{field: value})
