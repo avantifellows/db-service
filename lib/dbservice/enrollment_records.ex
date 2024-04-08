@@ -38,32 +38,6 @@ defmodule Dbservice.EnrollmentRecords do
   def get_enrollment_record!(id), do: Repo.get!(EnrollmentRecord, id)
 
   @doc """
-  Gets enrollment_record based on group and user.
-
-  Raises `Ecto.NoResultsError` if the Enrollment record does not exist.
-
-  ## Examples
-
-      iex> get_enrollment_record_by_group_user!(123, 1, "batch")
-      %EnrollmentRecord{}
-
-      iex> get_enrollment_record_by_params!(456, 1, "program")
-      ** (Ecto.NoResultsError)
-
-  """
-  def get_enrollment_record_by_group_user(
-        user_id,
-        group_id,
-        group_type
-      ) do
-    Repo.get_by(EnrollmentRecord,
-      user_id: user_id,
-      group_id: group_id,
-      group_type: group_type
-    )
-  end
-
-  @doc """
   Gets enrollment_record based on certain parameters.
 
   Raises `Ecto.NoResultsError` if the Enrollment record does not exist.
