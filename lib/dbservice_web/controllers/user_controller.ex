@@ -185,20 +185,17 @@ defmodule DbserviceWeb.UserController do
 
         case Groups.get_group_by_group_id(group_id) do
           nil ->
-            IO.inspect("Group not found")
             []
 
           _group ->
             case GroupSessions.get_group_session_by_group_id(group_id) do
               nil ->
-                IO.inspect("Group sessions not found")
                 []
 
               group_sessions ->
                 Enum.map(group_sessions, fn group_session ->
                   case Sessions.get_session!(group_session.session_id) do
                     nil ->
-                      IO.inspect("Session not found")
                       nil
 
                     session ->

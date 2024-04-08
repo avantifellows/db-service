@@ -28,7 +28,7 @@ defmodule Dbservice.Sessions.SessionOccurence do
 
   defp validate_start_end_date_time(changeset) do
     if get_field(changeset, :start_time, :end_time) != nil do
-      validate_start_end_datetime(changeset, :start_time, :end_time)
+      validate_date_range(changeset, :start_time, :end_time)
     else
       changeset
     end
