@@ -1,10 +1,14 @@
 defmodule DbserviceWeb.GroupUserController do
+  alias Dbservice.Groups
+  alias Dbservice.EnrollmentRecords
   use DbserviceWeb, :controller
 
   import Ecto.Query
   alias Dbservice.Repo
   alias Dbservice.GroupUsers
   alias Dbservice.Groups.GroupUser
+  alias Dbservice.EnrollmentRecords
+  alias Dbservice.EnrollmentRecords.EnrollmentRecord
 
   action_fallback(DbserviceWeb.FallbackController)
 
@@ -57,15 +61,12 @@ defmodule DbserviceWeb.GroupUserController do
   end
 
   def create(conn, params) do
-    with {:ok, %GroupUser{} = group_user} <-
-           GroupUsers.create_group_user(params) do
-      conn
-      |> put_status(:created)
-      |> put_resp_header(
-        "location",
-        Routes.group_user_path(conn, :show, group_user)
-      )
-      |> render("show.json", group_user: group_user)
+    case GroupUsers.get_group_user_by_user_id_and_group_id(params["user_id"], params["group_id"]) do
+      nil ->
+        create_new_group_user(conn, params)
+
+      existing_group_user ->
+        update_existing_group_user(conn, existing_group_user, params)
     end
   end
 
@@ -119,6 +120,38 @@ defmodule DbserviceWeb.GroupUserController do
 
     with {:ok, %GroupUser{}} <- GroupUsers.delete_group_user(group_user) do
       send_resp(conn, :no_content, "")
+    end
+  end
+
+  defp create_new_group_user(conn, params) do
+    group = Groups.get_group!(params["group_id"])
+
+    enrollment_record = %{
+      "group_id" => group.child_id,
+      "group_type" => group.type,
+      "user_id" => params["user_id"],
+      "grade_id" => params["grade_id"],
+      "academic_year" => params["academic_year"],
+      "start_date" => params["start_date"]
+    }
+
+    with {:ok, %EnrollmentRecord{} = _} <-
+           EnrollmentRecords.create_enrollment_record(enrollment_record) do
+      with {:ok, %GroupUser{} = group_user} <- GroupUsers.create_group_user(params) do
+        conn
+        |> put_status(:created)
+        |> put_resp_header("location", Routes.group_user_path(conn, :show, group_user))
+        |> render("show.json", group_user: group_user)
+      end
+    end
+  end
+
+  defp update_existing_group_user(conn, existing_group_user, params) do
+    with {:ok, %GroupUser{} = group_user} <-
+           GroupUsers.update_group_user(existing_group_user, params) do
+      conn
+      |> put_status(:ok)
+      |> render("show.json", group_user: group_user)
     end
   end
 end
