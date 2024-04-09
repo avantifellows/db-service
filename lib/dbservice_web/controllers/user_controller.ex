@@ -205,8 +205,8 @@ defmodule DbserviceWeb.UserController do
     quiz_group = Groups.get_group_by_child_id(quiz_id)
     quiz_group_id = quiz_group.id
 
-    group_session_group_id = if quiz_flag, do: quiz_group_id, else: group.id
-    group_sessions = GroupSessions.get_group_session_by_group_id(group_session_group_id)
+    group_id = if quiz_flag, do: quiz_group_id, else: group.id
+    group_sessions = GroupSessions.get_group_session_by_group_id(group_id)
 
     Enum.map(group_sessions, &get_group_session(&1))
   end
