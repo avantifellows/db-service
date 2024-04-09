@@ -180,7 +180,7 @@ defmodule DbserviceWeb.UserController do
   def get_user_sessions(conn, %{"user_id" => user_id, "quiz" => quiz_flag}) do
     group_users = GroupUsers.get_group_user_by_user_id(user_id)
 
-    sessions = Enum.flat_map(group_users, &process_group_user(&1, quiz_flag))
+    sessions = Enum.flat_map(group_users, &get_group_user(&1, quiz_flag))
 
     render(conn, "user_sessions.json", session: sessions)
   end
@@ -189,16 +189,16 @@ defmodule DbserviceWeb.UserController do
     get_user_sessions(conn, %{"user_id" => user_id, "quiz" => false})
   end
 
-  defp process_group_user(group_user, quiz_flag) do
+  defp get_group_user(group_user, quiz_flag) do
     group_id = group_user.group_id
 
     case Groups.get_group_by_group_id(group_id) do
       nil -> []
-      group -> process_group(group, quiz_flag)
+      group -> get_group(group, quiz_flag)
     end
   end
 
-  defp process_group(group, quiz_flag) do
+  defp get_group(group, quiz_flag) do
     child_id = group.child_id
     batch = Batches.get_batch!(child_id)
     quiz_id = batch.parent_id
@@ -208,10 +208,10 @@ defmodule DbserviceWeb.UserController do
     group_session_group_id = if quiz_flag, do: quiz_group_id, else: group.id
     group_sessions = GroupSessions.get_group_session_by_group_id(group_session_group_id)
 
-    Enum.map(group_sessions, &process_group_session(&1))
+    Enum.map(group_sessions, &get_group_session(&1))
   end
 
-  defp process_group_session(group_session) do
+  defp get_group_session(group_session) do
     case Sessions.get_session!(group_session.session_id) do
       nil -> nil
       session -> session
