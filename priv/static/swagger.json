@@ -1868,9 +1868,7 @@
         "logged_in_atleast_once": false,
         "program_manager": "John Doe",
         "school": "XYZ High School",
-        "teacher_fk": 1,
-        "teacher_id": "20202",
-        "user_id": 2
+        "teacher_id": "20202"
       },
       "properties": {
         "avg_rating": {
@@ -1905,17 +1903,9 @@
           "description": "School where the teacher works",
           "type": "string"
         },
-        "teacher_fk": {
-          "description": "Teacher foreign key ID associated with the student's profile",
-          "type": "integer"
-        },
         "teacher_id": {
           "description": "Teacher ID associated with the teacher's profile",
           "type": "string"
-        },
-        "user_id": {
-          "description": "User key id associated with user table for user profile",
-          "type": "integer"
         }
       },
       "title": "TeacherProfile Setup",
@@ -2072,7 +2062,6 @@
         "logged_in_atleast_once": true,
         "max_batch_score_in_latest_test": 95,
         "performance_trend_in_fst": "Improving",
-        "student_fk": 1,
         "student_id": "120180101057",
         "tests_activity_cohort": "Cohort B",
         "tests_number_of_correct_questions": 75,
@@ -2081,8 +2070,7 @@
         "took_class_atleast_once": true,
         "took_test_atleast_once": true,
         "total_number_of_live_classes": 50,
-        "total_number_of_tests": 20,
-        "user_id": 2
+        "total_number_of_tests": 20
       },
       "properties": {
         "attendance_in_classes_current_year": {
@@ -2129,10 +2117,6 @@
           "description": "Performance trend in FST",
           "type": "string"
         },
-        "student_fk": {
-          "description": "Student foreign key ID associated with the student's profile",
-          "type": "integer"
-        },
         "student_id": {
           "description": "Student ID",
           "type": "string"
@@ -2167,10 +2151,6 @@
         },
         "total_number_of_tests": {
           "description": "Total number of tests",
-          "type": "integer"
-        },
-        "user_id": {
-          "description": "User foreign key",
           "type": "integer"
         }
       },

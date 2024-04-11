@@ -3,6 +3,7 @@ defmodule DbserviceWeb.StudentProfileController do
 
   import Ecto.Query
   alias Dbservice.Repo
+  alias Dbservice.Users
   alias Dbservice.Profiles
   alias Dbservice.Profiles.StudentProfile
 
@@ -132,8 +133,17 @@ defmodule DbserviceWeb.StudentProfileController do
   end
 
   def create(conn, params) do
+    student = Users.get_student_by_student_id(params["student_id"])
+    student_fk = student.id
+    user_id = student.user_id
+
+    updated_params =
+      params
+      |> Map.put_new("user_id", user_id)
+      |> Map.put_new("student_fk", student_fk)
+
     with {:ok, %StudentProfile{} = student_profile} <-
-           Profiles.create_student_profile_with_user_profile(params) do
+           Profiles.create_student_profile_with_user_profile(updated_params) do
       conn
       |> put_status(:created)
       |> render("show.json", student_profile: student_profile)

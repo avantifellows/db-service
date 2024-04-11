@@ -60,12 +60,6 @@ defmodule DbserviceWeb.SwaggerSchema.TeacherProfile do
             avg_rating(:decimal, "Average rating of the teacher")
             teacher_id(:string, "Teacher ID associated with the teacher's profile")
 
-            teacher_fk(
-              :integer,
-              "Teacher foreign key ID associated with the student's profile"
-            )
-
-            user_id(:integer, "User key id associated with user table for user profile")
             current_grade(:string, "Current Grade")
             current_program(:string, "Current Program")
             current_batch(:string, "Current Batch")
@@ -78,8 +72,6 @@ defmodule DbserviceWeb.SwaggerSchema.TeacherProfile do
             program_manager: "John Doe",
             avg_rating: 4.5,
             teacher_id: "20202",
-            teacher_fk: 1,
-            user_id: 2,
             current_grade: "11",
             current_program: "HaryanaStudents",
             current_batch: "Photon",

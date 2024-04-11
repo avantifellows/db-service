@@ -168,12 +168,6 @@ defmodule DbserviceWeb.SwaggerSchema.StudentProfile do
               "Total Number of skipped questions in tests"
             )
 
-            student_fk(
-              :integer,
-              "Student foreign key ID associated with the student's profile"
-            )
-
-            user_id(:integer, "User foreign key")
             current_grade(:string, "Current Grade")
             current_program(:string, "Current Program")
             current_batch(:string, "Current Batch")
@@ -223,8 +217,6 @@ defmodule DbserviceWeb.SwaggerSchema.StudentProfile do
             tests_number_of_correct_questions: 75,
             tests_number_of_wrong_questions: 10,
             tests_number_of_skipped_questions: 15,
-            student_fk: 1,
-            user_id: 2,
             current_grade: "11",
             current_program: "Science",
             current_batch: "Batch A",
