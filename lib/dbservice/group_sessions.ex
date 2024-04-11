@@ -51,6 +51,21 @@ defmodule Dbservice.GroupSessions do
   end
 
   @doc """
+  Gets a group-session by group ID.
+  Raises `Ecto.NoResultsError` if the GroupSession does not exist.
+  ## Examples
+      iex> get_group_session_by_group_id(1234)
+      %GroupSession{}
+      iex> get_group_session_by_group_id(abc)
+      ** (Ecto.NoResultsError)
+  """
+
+  def get_group_session_by_group_id(group_id) do
+    from(g in GroupSession, where: g.group_id == ^group_id)
+    |> Repo.all()
+  end
+
+  @doc """
   Creates a group_session.
 
   ## Examples
