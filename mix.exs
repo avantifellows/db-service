@@ -53,7 +53,8 @@ defmodule Dbservice.MixProject do
       {:dotenvy, "~> 0.8.0"},
       {:cors_plug, "~> 3.0"},
       {:logger_file_backend, "~> 0.0.13"},
-      {:calendar, "~> 1.0.0"}
+      {:calendar, "~> 1.0.0"},
+      {:observer_cli, "~> 1.7"}
     ]
   end
 
