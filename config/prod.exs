@@ -12,7 +12,9 @@ import Config
 # config :dbservice, DbserviceWeb.Endpoint, cache_static_manifest: "priv/static/cache_manifest.json"
 
 # Do not print debug messages in production
-config :logger, :console, format: "[$level] $message\n"
+config :logger, :console,
+  format: "[$level] $message\n",
+  level: :warn
 
 # ## SSL Support
 #
