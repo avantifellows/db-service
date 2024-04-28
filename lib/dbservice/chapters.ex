@@ -30,6 +30,24 @@ defmodule Dbservice.Chapters do
   def get_chapter!(id), do: Repo.get!(Chapter, id)
 
   @doc """
+  Gets a chapter by code.
+
+  Raises `Ecto.NoResultsError` if the School does not exist.
+
+  ## Examples
+
+      iex> get_chapter_by_code(12)
+      %School{}
+
+      iex> get_chapter_by_code(12)
+      ** (Ecto.NoResultsError)
+  
+  """
+  def get_chapter_by_code(code) do
+    Repo.get_by(Chapter, code: code)
+  end
+
+  @doc """
   Creates a chapter.
   ## Examples
       iex> create_chapter(%{field: value})
