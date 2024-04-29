@@ -128,7 +128,7 @@ defmodule DbserviceWeb.ChapterController do
     with {:ok, %Chapter{}} <- Chapters.delete_chapter(chapter) do
       send_resp(conn, :no_content, "")
     end
-  end 
+  end
 
   defp create_new_chapter(conn, params) do
     with {:ok, %Chapter{} = chapter} <- Chapters.change_chapter(params) do

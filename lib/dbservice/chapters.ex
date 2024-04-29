@@ -41,7 +41,7 @@ defmodule Dbservice.Chapters do
 
       iex> get_chapter_by_code(12)
       ** (Ecto.NoResultsError)
-  
+
   """
   def get_chapter_by_code(code) do
     Repo.get_by(Chapter, code: code)
