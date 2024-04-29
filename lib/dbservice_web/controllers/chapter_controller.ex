@@ -131,7 +131,7 @@ defmodule DbserviceWeb.ChapterController do
   end
 
   defp create_new_chapter(conn, params) do
-    with {:ok, %Chapter{} = chapter} <- Chapters.change_chapter(params) do
+    with {:ok, %Chapter{} = chapter} <- Chapters.create_chapter(params) do
       conn
       |> put_status(:created)
       |> put_resp_header("location", Routes.chapter_path(conn, :show, chapter))
