@@ -4,6 +4,11 @@ terraform {
       source  = "hashicorp/aws"
       version = "~> 5.0"
     }
+
+    dotenv = {
+      source  = "jrhouston/dotenv"
+      version = "~> 1.0"
+    }
   }
 }
 
@@ -14,6 +19,8 @@ provider "aws" {
   shared_credentials_files = ["C:/Users/amanb/.aws/credentials"]
   profile                  = "amanb"
 }
+
+provider "dotenv" {}
 
 provider "cloudflare" {
   email   = data.dotenv.env_file.env["CLOUDFLARE_EMAIL"]
