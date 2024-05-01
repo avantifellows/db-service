@@ -59,7 +59,7 @@ defmodule DbserviceWeb.StudentController do
         end
       end)
 
-    student = Repo.all(query) |> Repo.preload([:user])
+    student = Repo.all(query)
     render(conn, "index.json", student: student)
   end
 
