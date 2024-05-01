@@ -14,6 +14,7 @@ if config_env() == :prod do
 
   config :dbservice, DbserviceWeb.Endpoint,
     load_from_system_env: false,
+    adapter: Bandit.PhoenixAdapter,
     url: [host: host, port: 443],
     http: [
       # Enable IPv6 and bind on all interfaces.
