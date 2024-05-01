@@ -54,8 +54,7 @@ defmodule Dbservice.MixProject do
       {:cors_plug, "~> 3.0"},
       {:logger_file_backend, "~> 0.0.13"},
       {:calendar, "~> 1.0.0"},
-      {:observer_cli, "~> 1.7"},
-      {:bandit, "~> 1.0"}
+      {:observer_cli, "~> 1.7"}
     ]
   end
 
