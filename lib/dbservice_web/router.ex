@@ -49,6 +49,7 @@ defmodule DbserviceWeb.Router do
     resources("/exam", ExamController)
     resources("/student-exam-record", StudentExamRecordController)
     resources("/session-schedule", SessionScheduleController)
+    get("/user/:user_id/sessions", UserController, :get_user_sessions)
 
     def swagger_info do
       source(["config/.env", "config/.env"])

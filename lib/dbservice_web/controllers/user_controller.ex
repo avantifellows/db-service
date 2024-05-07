@@ -1,10 +1,16 @@
 defmodule DbserviceWeb.UserController do
+  alias Dbservice.Groups
   use DbserviceWeb, :controller
 
   import Ecto.Query
   alias Dbservice.Repo
   alias Dbservice.Users
   alias Dbservice.Users.User
+  alias Dbservice.GroupUsers
+  alias Dbservice.GroupSessions
+  alias Dbservice.Sessions
+  alias Dbservice.Groups
+  alias Dbservice.Batches
 
   action_fallback DbserviceWeb.FallbackController
 
@@ -168,6 +174,47 @@ defmodule DbserviceWeb.UserController do
       conn
       |> put_status(:ok)
       |> render("show.json", user: user)
+    end
+  end
+
+  def get_user_sessions(conn, %{"user_id" => user_id, "quiz" => quiz_flag}) do
+    group_users = GroupUsers.get_group_user_by_user_id(user_id)
+
+    sessions = Enum.flat_map(group_users, &get_group_user(&1, quiz_flag))
+
+    render(conn, "user_sessions.json", session: sessions)
+  end
+
+  def get_user_sessions(conn, %{"user_id" => user_id}) do
+    get_user_sessions(conn, %{"user_id" => user_id, "quiz" => false})
+  end
+
+  defp get_group_user(group_user, quiz_flag) do
+    group_id = group_user.group_id
+
+    case Groups.get_group_by_group_id(group_id) do
+      nil -> []
+      group -> get_group(group, quiz_flag)
+    end
+  end
+
+  defp get_group(group, quiz_flag) do
+    child_id = group.child_id
+    batch = Batches.get_batch!(child_id)
+    quiz_id = batch.parent_id
+    quiz_group = Groups.get_group_by_child_id(quiz_id)
+    quiz_group_id = quiz_group.id
+
+    group_id = if quiz_flag, do: quiz_group_id, else: group.id
+    group_sessions = GroupSessions.get_group_session_by_group_id(group_id)
+
+    Enum.map(group_sessions, &get_group_session(&1))
+  end
+
+  defp get_group_session(group_session) do
+    case Sessions.get_session!(group_session.session_id) do
+      nil -> nil
+      session -> session
     end
   end
 end
