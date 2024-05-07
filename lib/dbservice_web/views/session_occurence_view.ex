@@ -18,7 +18,9 @@ defmodule DbserviceWeb.SessionOccurenceView do
       start_time: session_occurence.start_time,
       end_time: session_occurence.end_time,
       session_fk: session_occurence.session_fk,
-      session_id: session_occurence.session_id
+      session_id: session_occurence.session_id,
+      inserted_at: session_occurence.inserted_at,
+      updated_at: session_occurence.updated_at
     }
   end
 
