@@ -66,10 +66,6 @@ echo "POOL_SIZE=${POOL_SIZE}" >> .env
 # copy .env to config/env
 sudo cp .env config/.env
 
-# Sleep for 30 seconds
-# echo "Sleeping for 30 seconds before executing commands..."
-# sleep 30
-
 # Install hex
 echo "Installing hex..."
 sudo MIX_ENV=prod mix local.hex --force
