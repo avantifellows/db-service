@@ -14,7 +14,7 @@ resource "aws_cloudfront_distribution" "backend_cdn" {
   enabled         = true
   is_ipv6_enabled = true
 
-  aliases = [data.dotenv.env_file.env["CLOUDFLARE_CNAME"]]
+#   aliases = [data.dotenv.env_file.env["CLOUDFLARE_CNAME"]]
 
   default_cache_behavior {
     allowed_methods        = ["DELETE", "GET", "HEAD", "OPTIONS", "PATCH", "POST", "PUT"]

@@ -21,9 +21,9 @@ fi
 
 echo "[EC2 Action] Found ARN for target group: $targetGroupArn"
 
-keyPath="/home/ec2-user/AvantiFellows.pem"
-envFile="/home/ec2-user/.env"
-pathToCloudwatchConfig="/home/ec2-user/db-service/deployment/cloudwatch-agent-config.json"
+keyPath="/home/ubuntu/AvantiFellows.pem"
+envFile="/home/ubuntu/.env"
+pathToCloudwatchConfig="/home/ubuntu/db-service/deployment/cloudwatch-agent-config.json"
 
 # Fetch the instance IDs of the target group using the ARN
 echo "[EC2 Action] Fetching instance IDs of the target group..."
@@ -49,41 +49,42 @@ for i in "${!instanceIdsArray[@]}"; do
     instanceIp=$(aws ec2 describe-instances --instance-ids $id --query "Reservations[*].Instances[*].PrivateIpAddress" --output text)
 
     echo "[EC2 Action] Changing access permissions for the directory..."
-    ssh -o StrictHostKeyChecking=no -i $keyPath ec2-user@$instanceIp "sudo chown -R ec2-user:ec2-user /home/ec2-user/db-service"
+    ssh -o StrictHostKeyChecking=no -i $keyPath ubuntu@$instanceIp "sudo chown -R ubuntu:ubuntu /home/ubuntu/db-service"
 
     # Transfer .env file
     echo "[EC2 Action] Transferring .env file to instance $id at IP $instanceIp..."
-    scp -o StrictHostKeyChecking=no -i $keyPath $envFile ec2-user@$instanceIp:/home/ec2-user/db-service
+    scp -o StrictHostKeyChecking=no -i $keyPath $envFile ubuntu@$instanceIp:/home/ubuntu/db-service
 
     # Execute commands on the instance
     echo "[EC2 Action] Executing commands on instance $id..."
     # RANDOM_MINUTE=$((9 + RANDOM % (15 - 9 + 1)))
     RANDOM_MINUTE=$((2 + RANDOM % (4 - 2 + 1)))
     echo "Random minute: $RANDOM_MINUTE"
-    ssh -o StrictHostKeyChecking=no -i $keyPath ec2-user@$instanceIp << EOF
+    ssh -o StrictHostKeyChecking=no -i $keyPath ubuntu@$instanceIp << EOF
         echo "[EC2 Action] Stopping any process running on port 80..."
         sudo fuser -k 80/tcp
         sudo su
         echo "[EC2 Action] Updating codebase and restarting the application..."
-        cd /home/ec2-user/db-service
+        cd /home/ubuntu/db-service
         git stash
-        echo "Changed directory to /home/ec2-user/db-service"
+        echo "Changed directory to /home/ubuntu/db-service"
         git checkout $BRANCH_NAME_TO_DEPLOY
         echo "Checked out branch $BRANCH_NAME_TO_DEPLOY"
         git pull origin $BRANCH_NAME_TO_DEPLOY
         echo "Pulled latest changes from $BRANCH_NAME_TO_DEPLOY"
         echo $id
         echo "HOST_IP=$instanceIp" >> .env
+        echo "PHX_HOST=$instanceIp" >> .env
         echo "Added host ip to .env file"
-        MIX_ENV=prod mix deps.get
+        sudo MIX_ENV=prod mix deps.get
         echo "Fetched all the dependencies"
-        MIX_ENV=prod mix deps.compile
+        sudo MIX_ENV=prod mix deps.compile
         echo "Compiled all the dependencies"
-        MIX_ENV=prod mix ecto.migrate
+        sudo MIX_ENV=prod mix ecto.migrate
         echo "Successfully ran latest migrations"
-        MIX_ENV=prod mix phx.swagger.generate
+        sudo MIX_ENV=prod mix phx.swagger.generate
         echo "Generated swagger file"
-        sudo MIX_ENV=prod elixir --erl "-detached" -S mix phx.server
+        sudo sudo MIX_ENV=prod elixir --erl "-detached" -S mix phx.server
 EOF
     echo "[EC2 Action] Completed actions on instance $id."
 done

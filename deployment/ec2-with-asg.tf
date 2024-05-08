@@ -39,14 +39,20 @@ resource "aws_iam_instance_profile" "ec2_profile" {
 # ASG with launch template
 resource "aws_launch_template" "ec2_launch_templ" {
   name_prefix   = "${local.environment_prefix}ec2_launch_templ"
-  image_id      = "ami-0a0f1259dd1c90938"
-  instance_type = "t2.micro"
-  #   instance_type = "c5a.large"
+  image_id      = "ami-05e00961530ae1b55"
+  # instance_type = "t2.micro"
+    instance_type = "c5a.large"
   user_data = base64encode(templatefile("user_data.sh.tpl", {
     LOG_FILE              = "/var/log/user_data.log"
     BRANCH_NAME_TO_DEPLOY = data.dotenv.env_file.env["BRANCH_NAME_TO_DEPLOY"]
     TARGET_GROUP_NAME     = aws_lb_target_group.alb_tg.name
     environment_prefix    = local.environment_prefix
+    DATABASE_URL          = data.dotenv.env_file.env["DATABASE_URL"]
+    SECRET_KEY_BASE       = data.dotenv.env_file.env["SECRET_KEY_BASE"]
+    WHITELISTED_DOMAINS   = data.dotenv.env_file.env["WHITELISTED_DOMAINS"]
+    POOL_SIZE             = data.dotenv.env_file.env["POOL_SIZE"]
+    BEARER_TOKEN          = data.dotenv.env_file.env["BEARER_TOKEN"]
+    PORT                  = data.dotenv.env_file.env["PORT"]
   }))
 
   network_interfaces {
@@ -94,7 +100,7 @@ resource "aws_autoscaling_group" "asg" {
 
 # Bastion Host Instance
 resource "aws_instance" "bastion_host" {
-  ami             = "ami-0a0f1259dd1c90938"
+  ami             = "ami-05e00961530ae1b55"
   instance_type   = "t2.micro"
   key_name        = "AvantiFellows"
   subnet_id       = aws_subnet.subnet_1.id # Place in a public subnet
@@ -107,25 +113,25 @@ resource "aws_instance" "bastion_host" {
   iam_instance_profile = aws_iam_instance_profile.ec2_profile.name
 
   provisioner "file" {
-    source      = "~/.ssh/AvantiFellows.pem"
-    destination = "/home/ec2-user/AvantiFellows.pem"
+    source      = "C:/Users/amanb/.ssh/AvantiFellows.pem"
+    destination = "/home/ubuntu/AvantiFellows.pem"
   }
 
   provisioner "remote-exec" {
     inline = [
-      "chmod 400 /home/ec2-user/AvantiFellows.pem"
+      "chmod 400 /home/ubuntu/AvantiFellows.pem"
     ]
   }
 
   connection {
     type        = "ssh"
-    user        = "ec2-user"
-    private_key = file("~/.ssh/AvantiFellows.pem")
+    user        = "ubuntu"
+    private_key = file("C:/Users/amanb/.ssh/AvantiFellows.pem")
     host        = self.public_ip
   }
 
-  provisioner "local-exec" {
-    command = "aws ec2 stop-instances --instance-ids ${self.id} --region ap-south-1"
-    when    = create
-  }
+  # provisioner "local-exec" {
+  #   command = "aws ec2 stop-instances --instance-ids ${self.id} --region ap-south-1"
+  #   when    = create
+  # }
 }

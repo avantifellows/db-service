@@ -49,11 +49,11 @@ echo "ENVIRONMENT_PREFIX=$ENVIRONMENT_PREFIX" >> $envFile
 
 # Transfer the update script and .env file to the Bastion Host
 echo "Transferring scripts to the Bastion Host at $bastionHostIP..."
-scp -o StrictHostKeyChecking=no -i $bastionHostPrivateKeyPath deployment/$updateScript $envFile ec2-user@$bastionHostIP:/home/ec2-user/
+scp -o StrictHostKeyChecking=no -i $bastionHostPrivateKeyPath deployment/$updateScript $envFile ubuntu@$bastionHostIP:/home/ubuntu/
 
 # SSH into the Bastion Host and execute the update script
 echo "Executing the update script on the Bastion Host..."
-ssh -o StrictHostKeyChecking=no -i $bastionHostPrivateKeyPath ec2-user@$bastionHostIP "bash /home/ec2-user/$updateScript"
+ssh -o StrictHostKeyChecking=no -i $bastionHostPrivateKeyPath ubuntu@$bastionHostIP "bash /home/ubuntu/$updateScript"
 
 # Stop the instance
 # echo "Stopping instance $instanceId..."
