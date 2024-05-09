@@ -30,6 +30,24 @@ defmodule Dbservice.Purposes do
   def get_purpose!(id), do: Repo.get!(Purpose, id)
 
   @doc """
+  Gets a purpose by name.
+
+  Raises `Ecto.NoResultsError` if the School does not exist.
+
+  ## Examples
+
+      iex> get_purpose_by_name(12)
+      %School{}
+
+      iex> get_purpose_by_name(12)
+      ** (Ecto.NoResultsError)
+
+  """
+  def get_purpose_by_name(name) do
+    Repo.get_by(Purpose, name: name)
+  end
+
+  @doc """
   Creates a purpose.
   ## Examples
       iex> create_purpose(%{field: value})
