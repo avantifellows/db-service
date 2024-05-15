@@ -9,9 +9,6 @@ defmodule Dbservice.Profiles.UserProfile do
   alias Dbservice.Profiles.TeacherProfile
 
   schema "user_profile" do
-    field(:current_grade, :string)
-    field(:current_program, :string)
-    field(:current_batch, :string)
     field(:logged_in_atleast_once, :boolean)
     field(:latest_session_accessed, :string)
 
@@ -26,9 +23,6 @@ defmodule Dbservice.Profiles.UserProfile do
     user_profile
     |> cast(attrs, [
       :user_id,
-      :current_grade,
-      :current_program,
-      :current_batch,
       :logged_in_atleast_once,
       :latest_session_accessed
     ])
