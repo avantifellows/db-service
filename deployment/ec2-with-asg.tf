@@ -49,7 +49,6 @@ resource "aws_launch_template" "ec2_launch_templ" {
     environment_prefix    = local.environment_prefix
     DATABASE_URL          = data.dotenv.env_file.env["DATABASE_URL"]
     SECRET_KEY_BASE       = data.dotenv.env_file.env["SECRET_KEY_BASE"]
-    WHITELISTED_DOMAINS   = data.dotenv.env_file.env["WHITELISTED_DOMAINS"]
     POOL_SIZE             = data.dotenv.env_file.env["POOL_SIZE"]
     BEARER_TOKEN          = data.dotenv.env_file.env["BEARER_TOKEN"]
     PORT                  = data.dotenv.env_file.env["PORT"]

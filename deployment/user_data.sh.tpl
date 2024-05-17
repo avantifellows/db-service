@@ -58,7 +58,6 @@ echo "HOST_IP=$HOST_IP" >> .env
 echo "DATABASE_URL=${DATABASE_URL}" >> .env
 echo "PHX_HOST=$HOST_IP" >> .env
 echo "SECRET_KEY_BASE=${SECRET_KEY_BASE}" >> .env
-echo "WHITELISTED_DOMAINS=$HOST_IP" >> .env
 echo "BEARER_TOKEN=${BEARER_TOKEN}" >> .env
 echo "PORT=${PORT}" >> .env
 echo "POOL_SIZE=${POOL_SIZE}" >> .env

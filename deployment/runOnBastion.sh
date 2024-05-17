@@ -77,14 +77,15 @@ for i in "${!instanceIdsArray[@]}"; do
         echo "PHX_HOST=$instanceIp" >> .env
         echo "Added host ip to .env file"
         sudo MIX_ENV=prod mix deps.get
-        echo "Fetched all the dependencies"
+        echo "Installed dependencies..."
         sudo MIX_ENV=prod mix deps.compile
-        echo "Compiled all the dependencies"
+        echo "Compiled dependencies..."
         sudo MIX_ENV=prod mix ecto.migrate
         echo "Successfully ran latest migrations"
         sudo MIX_ENV=prod mix phx.swagger.generate
         echo "Generated swagger file"
         sudo sudo MIX_ENV=prod elixir --erl "-detached" -S mix phx.server
+        echo "Starting Db service server..."
 EOF
     echo "[EC2 Action] Completed actions on instance $id."
 done

@@ -34,6 +34,9 @@ resource "aws_security_group" "sg_for_ec2" {
   name        = "${local.environment_prefix}sg-for-ec2"
   description = "security group for EC2"
   vpc_id      = aws_vpc.main.id
+  depends_on = [
+    aws_security_group.sg_for_elb
+  ]
 
   ingress {
     description     = "Allow http from load balancer"
@@ -81,4 +84,5 @@ resource "aws_security_group_rule" "allow_ssh_from_bastion_to_ec2" {
   protocol          = "tcp"
   cidr_blocks       = ["${aws_instance.bastion_host.private_ip}/32"] # Use the private IP of the bastion host
   security_group_id = aws_security_group.sg_for_ec2.id
+  depends_on        = [aws_security_group.sg_for_ec2]
 }
