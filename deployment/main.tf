@@ -9,6 +9,11 @@ terraform {
       source  = "jrhouston/dotenv"
       version = "~> 1.0"
     }
+
+    cloudflare = {
+      source  = "cloudflare/cloudflare"
+      version = "~> 4.0"
+    }
   }
 }
 
@@ -21,7 +26,7 @@ provider "aws" {
 
 provider "dotenv" {}
 
-# provider "cloudflare" {
-#   email   = data.dotenv.env_file.env["CLOUDFLARE_EMAIL"]
-#   api_key = data.dotenv.env_file.env["CLOUDFLARE_API_KEY"]
-# }
+provider "cloudflare" {
+  email   = data.dotenv.env_file.env["CLOUDFLARE_EMAIL"]
+  api_key = data.dotenv.env_file.env["CLOUDFLARE_API_KEY"]
+}
