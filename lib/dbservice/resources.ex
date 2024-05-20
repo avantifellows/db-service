@@ -35,7 +35,7 @@ defmodule Dbservice.Resources do
   Raises `Ecto.NoResultsError` if the School does not exist.
 
   ## Examples
-  
+
       iex> get_resource_by_name_and_source_id(12)
       %School{}
 
