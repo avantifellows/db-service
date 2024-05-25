@@ -17,7 +17,7 @@ defmodule DbserviceWeb.UserSessionView do
       session_id: user_session.session_id,
       data: user_session.data,
       user_id: user_session.user_id,
-      user_activity_id: user_session.user_activity_id
+      user_activity_type: user_session.user_activity_type
     }
   end
 end
