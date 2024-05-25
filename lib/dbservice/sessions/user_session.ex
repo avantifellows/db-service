@@ -5,17 +5,18 @@ defmodule Dbservice.Sessions.UserSession do
   import Ecto.Changeset
   import Dbservice.Utils.Util
 
-  alias Dbservice.Sessions.SessionOccurence
+  alias Dbservice.Sessions.Session
   alias Dbservice.Users.User
 
   schema "user_session" do
     field :timestamp, :utc_datetime
     field :data, :map
-    field :type, :string
+    field :user_activity_type, :string
+    field :user_activity_sub_type, :string
 
     timestamps()
 
-    belongs_to :session_occurrence, SessionOccurence
+    belongs_to :session, Session
     belongs_to :user, User
   end
 
@@ -24,12 +25,13 @@ defmodule Dbservice.Sessions.UserSession do
     user_session
     |> cast(attrs, [
       :timestamp,
-      :type,
+      :user_activity_type,
+      :user_activity_sub_type,
       :data,
-      :session_occurrence_id,
+      :session_id,
       :user_id
     ])
-    |> validate_required([:user_id, :session_occurrence_id, :timestamp, :type])
+    |> validate_required([:user_id, :session_id, :timestamp, :type])
     |> validate_start_end_date_time
   end
 
