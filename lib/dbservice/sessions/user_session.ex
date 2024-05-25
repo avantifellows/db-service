@@ -26,12 +26,11 @@ defmodule Dbservice.Sessions.UserSession do
     |> cast(attrs, [
       :timestamp,
       :user_activity_type,
-      :user_activity_sub_type,
       :data,
       :session_id,
       :user_id
     ])
-    |> validate_required([:user_id, :session_id, :timestamp, :type])
+    |> validate_required([:user_id, :session_id, :timestamp, :user_activity_type])
     |> validate_start_end_date_time
   end
 
