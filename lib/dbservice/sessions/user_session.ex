@@ -6,6 +6,7 @@ defmodule Dbservice.Sessions.UserSession do
   import Dbservice.Utils.Util
 
   alias Dbservice.Sessions.Session
+  alias Dbservice.Sessions.SessionOccurence
   alias Dbservice.Users.User
 
   schema "user_session" do
@@ -17,6 +18,7 @@ defmodule Dbservice.Sessions.UserSession do
     timestamps()
 
     belongs_to :session, Session
+    belongs_to :session_occurence, SessionOccurence
     belongs_to :user, User
   end
 
@@ -28,9 +30,16 @@ defmodule Dbservice.Sessions.UserSession do
       :user_activity_type,
       :data,
       :session_id,
+      :session_occurrence_id,
       :user_id
     ])
-    |> validate_required([:user_id, :session_id, :timestamp, :user_activity_type])
+    |> validate_required([
+      :user_id,
+      :session_id,
+      :timestamp,
+      :session_occurrence_id,
+      :user_activity_type
+    ])
     |> validate_start_end_date_time
   end
 
