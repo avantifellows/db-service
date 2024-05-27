@@ -13,7 +13,6 @@ defmodule Dbservice.Sessions.UserSession do
     field :timestamp, :utc_datetime
     field :data, :map
     field :user_activity_type, :string
-    field :user_activity_sub_type, :string
 
     timestamps()
 
