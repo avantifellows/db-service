@@ -6,7 +6,7 @@ defmodule Dbservice.Sessions.UserSession do
   import Dbservice.Utils.Util
 
   alias Dbservice.Sessions.Session
-  alias Dbservice.Sessions.SessionOccurence
+  alias Dbservice.Sessions.SessionOccurrence
   alias Dbservice.Users.User
 
   schema "user_session" do
@@ -17,12 +17,14 @@ defmodule Dbservice.Sessions.UserSession do
     timestamps()
 
     belongs_to :session, Session
-    belongs_to :session_occurence, SessionOccurence
+    belongs_to :session_occurrence, SessionOccurrence
     belongs_to :user, User
   end
 
   @doc false
   def changeset(user_session, attrs) do
+    IO.inspect(attrs)
+
     user_session
     |> cast(attrs, [
       :timestamp,
