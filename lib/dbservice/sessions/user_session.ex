@@ -23,8 +23,6 @@ defmodule Dbservice.Sessions.UserSession do
 
   @doc false
   def changeset(user_session, attrs) do
-    IO.inspect(attrs)
-
     user_session
     |> cast(attrs, [
       :timestamp,
