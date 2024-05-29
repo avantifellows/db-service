@@ -30,6 +30,24 @@ defmodule Dbservice.Resources do
   def get_resource!(id), do: Repo.get!(Resource, id)
 
   @doc """
+  Gets a resource by name and sourceId.
+
+  Raises `Ecto.NoResultsError` if the School does not exist.
+
+  ## Examples
+
+      iex> get_resource_by_name_and_source_id(12)
+      %School{}
+
+      iex> get_resource_by_name_and_source_id(12)
+      ** (Ecto.NoResultsError)
+
+  """
+  def get_resource_by_name_and_source_id(name, source_id) do
+    Repo.get_by(Resource, name: name, source_id: source_id)
+  end
+
+  @doc """
   Creates a resource.
   ## Examples
       iex> create_resource(%{field: value})

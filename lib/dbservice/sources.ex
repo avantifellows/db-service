@@ -30,6 +30,24 @@ defmodule Dbservice.Sources do
   def get_source!(id), do: Repo.get!(Source, id)
 
   @doc """
+  Gets a source by link.
+
+  Raises `Ecto.NoResultsError` if the School does not exist.
+
+  ## Examples
+
+      iex> get_source_by_link(12)
+      %School{}
+
+      iex> get_source_by_link(12)
+      ** (Ecto.NoResultsError)
+
+  """
+  def get_source_by_link(link) do
+    Repo.get_by(Source, link: link)
+  end
+
+  @doc """
   Creates a source.
   ## Examples
       iex> create_source(%{field: value})

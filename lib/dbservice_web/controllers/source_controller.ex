@@ -69,11 +69,12 @@ defmodule DbserviceWeb.SourceController do
   end
 
   def create(conn, params) do
-    with {:ok, %Source{} = source} <- Sources.create_source(params) do
-      conn
-      |> put_status(:created)
-      |> put_resp_header("location", Routes.source_path(conn, :show, source))
-      |> render("show.json", source: source)
+    case Sources.get_source_by_link(params["link"]) do
+      nil ->
+        create_new_source(conn, params)
+
+      existing_source ->
+        update_existing_source(conn, existing_source, params)
     end
   end
 
@@ -126,6 +127,24 @@ defmodule DbserviceWeb.SourceController do
 
     with {:ok, %Source{}} <- Sources.delete_source(source) do
       send_resp(conn, :no_content, "")
+    end
+  end
+
+  defp create_new_source(conn, params) do
+    with {:ok, %Source{} = source} <- Sources.create_source(params) do
+      conn
+      |> put_status(:created)
+      |> put_resp_header("location", Routes.source_path(conn, :show, source))
+      |> render("show.json", source: source)
+    end
+  end
+
+  defp update_existing_source(conn, existing_source, params) do
+    with {:ok, %Source{} = source} <-
+           Sources.update_source(existing_source, params) do
+      conn
+      |> put_status(:ok)
+      |> render("show.json", source: source)
     end
   end
 end

@@ -30,6 +30,24 @@ defmodule Dbservice.Topics do
   def get_topic!(id), do: Repo.get!(Topic, id)
 
   @doc """
+  Gets a topic by code.
+
+  Raises `Ecto.NoResultsError` if the School does not exist.
+
+  ## Examples
+
+      iex> get_topic_by_code(12)
+      %School{}
+
+      iex> get_topic_by_code(12)
+      ** (Ecto.NoResultsError)
+
+  """
+  def get_topic_by_code(code) do
+    Repo.get_by(Topic, code: code)
+  end
+
+  @doc """
   Creates a topic.
   ## Examples
       iex> create_topic(%{field: value})
