@@ -67,9 +67,7 @@ defmodule Dbservice.Sessions.Session do
       :signup_form_id
     ])
     |> validate_required([
-      :name,
-      :start_time,
-      :platform
+      :name
     ])
   end
 

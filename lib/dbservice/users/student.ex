@@ -5,6 +5,7 @@ defmodule Dbservice.Users.Student do
   import Ecto.Changeset
 
   alias Dbservice.Users.User
+  alias Dbservice.Profiles.StudentProfile
   alias Dbservice.Exams.StudentExamRecord
 
   schema "student" do
@@ -49,8 +50,8 @@ defmodule Dbservice.Users.Student do
     field(:planned_competitive_exams, {:array, :integer})
 
     belongs_to(:user, User)
+    has_one(:student_profile, StudentProfile)
     belongs_to(:grade, Grade)
-
     has_many(:student_exam_record, StudentExamRecord)
 
     timestamps()

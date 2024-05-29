@@ -30,6 +30,8 @@ defmodule DbserviceWeb.SwaggerSchema.Session do
             redirection(:boolean, "Is the session redirecting to some other platform")
             pop_up_form(:boolean, "Is the session showing a pop up form")
             number_of_fields_in_pop_form(:integer, "Number of fields in the pop form")
+            inserted_at(:timestamp, "Timestamp when the record was created")
+            updated_at(:timestamp, "Timestamp when the record was last updated")
           end
 
           example(%{

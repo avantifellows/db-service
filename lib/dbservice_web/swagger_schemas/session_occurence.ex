@@ -15,6 +15,8 @@ defmodule DbserviceWeb.SwaggerSchema.SessionOccurence do
             start_time(:timestamp, "Session occurrence start time")
             end_time(:timestamp, "Session occurrence finish time")
             session_fk(:integer, "The primary key for session's table")
+            inserted_at(:timestamp, "Timestamp when the record was created")
+            updated_at(:timestamp, "Timestamp when the record was last updated")
           end
 
           example(%{
