@@ -25,26 +25,6 @@ resource "aws_cloudfront_distribution" "backend_cdn" {
     cache_policy_id        = "4135ea2d-6df8-44a3-9df3-4b5a84be39ad"
   }
 
-  ordered_cache_behavior {
-    path_pattern           = "quiz/*"
-    allowed_methods        = ["GET", "HEAD", "OPTIONS"]
-    cached_methods         = ["GET", "HEAD", "OPTIONS"]
-    target_origin_id       = aws_lb.lb.dns_name
-    compress               = true
-    viewer_protocol_policy = "allow-all"
-    cache_policy_id        = "658327ea-f89d-4fab-a63d-7e88639e58f6"
-  }
-
-  ordered_cache_behavior {
-    path_pattern           = "questions/*"
-    allowed_methods        = ["GET", "HEAD", "OPTIONS"]
-    cached_methods         = ["GET", "HEAD", "OPTIONS"]
-    target_origin_id       = aws_lb.lb.dns_name
-    compress               = true
-    viewer_protocol_policy = "allow-all"
-    cache_policy_id        = "083fc51c-4735-4176-8d51-90566f1bb3e7"
-  }
-
   restrictions {
     geo_restriction {
       locations        = []
