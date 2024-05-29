@@ -8,6 +8,16 @@ defmodule DbserviceWeb.Router do
     plug(:accepts, ["json"])
   end
 
+  pipeline :browser do
+    plug(:accepts, ["html"])
+  end
+
+  scope "/", DbserviceWeb do
+    pipe_through :browser
+
+    get "/", WelcomeController, :index
+  end
+
   scope "/api", DbserviceWeb do
     pipe_through(:api)
 
