@@ -38,10 +38,10 @@ resource "aws_iam_instance_profile" "ec2_profile" {
 
 # ASG with launch template
 resource "aws_launch_template" "ec2_launch_templ" {
-  name_prefix   = "${local.environment_prefix}ec2_launch_templ"
-  image_id      = "ami-05e00961530ae1b55"
+  name_prefix = "${local.environment_prefix}ec2_launch_templ"
+  image_id    = "ami-05e00961530ae1b55"
   # instance_type = "t2.micro"
-    instance_type = "c5a.large"
+  instance_type = "t2.large"
   user_data = base64encode(templatefile("user_data.sh.tpl", {
     LOG_FILE              = "/var/log/user_data.log"
     BRANCH_NAME_TO_DEPLOY = data.dotenv.env_file.env["BRANCH_NAME_TO_DEPLOY"]
@@ -95,6 +95,32 @@ resource "aws_autoscaling_group" "asg" {
     id      = aws_launch_template.ec2_launch_templ.id
     version = "$Latest"
   }
+}
+
+resource "aws_cloudwatch_metric_alarm" "high_cpu_alarm" {
+  alarm_name          = "${local.environment_prefix}-high-cpu-alarm"
+  comparison_operator = "GreaterThanOrEqualToThreshold"
+  evaluation_periods  = "2"
+  metric_name         = "CPUUtilization"
+  namespace           = "AWS/EC2"
+  period              = "60" # Seconds (2 minutes)
+  statistic           = "Average"
+  threshold           = "30" # Percentage
+
+  dimensions = {
+    AutoScalingGroupName = aws_autoscaling_group.asg.name
+  }
+
+  alarm_description = "This metric monitors high CPU utilization on EC2 instances"
+  alarm_actions     = [aws_autoscaling_policy.high_cpu_policy.arn]
+}
+
+resource "aws_autoscaling_policy" "high_cpu_policy" {
+  name                   = "${local.environment_prefix}-high-cpu-policy"
+  scaling_adjustment     = 1 # Increase the desired capacity by 1
+  adjustment_type        = "ChangeInCapacity"
+  cooldown               = 300 # Seconds (5 minutes)
+  autoscaling_group_name = aws_autoscaling_group.asg.name
 }
 
 # Bastion Host Instance
