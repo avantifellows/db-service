@@ -35,6 +35,10 @@ sudo apt install erlang-dev -y
 # Install xmerl
 sudo apt-get install erlang-xmerl -y
 
+# Increase ulimit values for root
+echo "root soft nofile 1048576" >> /etc/security/limits.conf
+echo "root hard nofile 1048576" >> /etc/security/limits.conf
+
 # Clone the repository
 echo "Cloning the repository..."
 git clone https://github.com/avantifellows/db-service.git /home/ubuntu/db-service
