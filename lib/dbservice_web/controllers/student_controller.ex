@@ -192,16 +192,16 @@ defmodule DbserviceWeb.StudentController do
       {group_id, group_type} = group
 
       # Update all current enrollment records for the user
-      current_enrollments =
+      current_enrollment =
         from(e in EnrollmentRecord, where: e.user_id == ^user_id and e.is_current == true)
         |> Repo.one()
 
       current_time = DateTime.utc_now()
 
-      academic_year = current_enrollments.academic_year
-      grade_id = current_enrollments.grade_id
+      academic_year = current_enrollment.academic_year
+      grade_id = current_enrollment.grade_id
 
-      EnrollmentRecords.update_enrollment_record(current_enrollments, %{
+      EnrollmentRecords.update_enrollment_record(current_enrollment, %{
         is_current: false,
         end_date: current_time
       })
