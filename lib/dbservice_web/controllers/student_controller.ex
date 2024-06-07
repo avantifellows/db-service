@@ -191,7 +191,7 @@ defmodule DbserviceWeb.StudentController do
 
       {group_id, group_type} = group
 
-      # Update all current enrollment records for the user
+      # Update current enrollment records for the user
       current_enrollment =
         from(e in EnrollmentRecord, where: e.user_id == ^user_id and e.is_current == true)
         |> Repo.one()
