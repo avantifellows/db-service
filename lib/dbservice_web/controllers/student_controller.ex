@@ -223,11 +223,10 @@ defmodule DbserviceWeb.StudentController do
       from(gu in GroupUser, where: gu.user_id == ^user_id)
       |> Repo.delete_all()
 
-      # Update the student's status to 'dropout'
-      student_changeset = Student.changeset(student, %{"status" => "dropout"})
-
-      with {:ok, %Student{} = student} <- Repo.update(student_changeset) do
-        render(conn, "show.json", student: student)
+      # Update the student's status to 'dropout' using update_student/2
+      with {:ok, %Student{} = updated_student} <-
+             Users.update_student(student, %{"status" => "dropout"}) do
+        render(conn, "show.json", student: updated_student)
       end
     end
   end
