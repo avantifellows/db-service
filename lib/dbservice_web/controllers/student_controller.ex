@@ -5,6 +5,11 @@ defmodule DbserviceWeb.StudentController do
   alias Dbservice.Repo
   alias Dbservice.Users
   alias Dbservice.Users.Student
+  alias Dbservice.EnrollmentRecords.EnrollmentRecord
+  alias Dbservice.Groups.GroupUser
+  alias Dbservice.Statuses.Status
+  alias Dbservice.Groups.Group
+  alias Dbservice.EnrollmentRecords
 
   action_fallback(DbserviceWeb.FallbackController)
 
@@ -156,6 +161,74 @@ defmodule DbserviceWeb.StudentController do
       conn
       |> put_status(:created)
       |> render("show.json", student: student)
+    end
+  end
+
+  def dropout(conn, %{"student_id" => student_id}) do
+    student = Users.get_student_by_student_id(student_id)
+
+    # Check if the student's status is already 'dropout'
+    if student.status == "dropout" do
+      conn
+      |> put_status(:bad_request)
+      |> json(%{error: "Student is already marked as dropout"})
+    else
+      # Fetch user_id from student
+      user_id = student.user_id
+
+      # Fetch the status ID for "dropout"
+      status_id =
+        from(s in Status, where: s.title == "dropout", select: s.id)
+        |> Repo.one()
+
+      # Fetch the group ID for the status
+      group =
+        from(g in Group,
+          where: g.type == "status" and g.child_id == ^status_id,
+          select: {g.id, g.type}
+        )
+        |> Repo.one()
+
+      {group_id, group_type} = group
+
+      # Update all current enrollment records for the user
+      current_enrollments =
+        from(e in EnrollmentRecord, where: e.user_id == ^user_id and e.is_current == true)
+        |> Repo.one()
+
+      current_time = DateTime.utc_now()
+
+      academic_year = current_enrollments.academic_year
+      grade_id = current_enrollments.grade_id
+
+      EnrollmentRecords.update_enrollment_record(current_enrollments, %{
+        is_current: false,
+        end_date: current_time
+      })
+
+      # Create a new enrollment record with the fetched group_id
+      new_enrollment = %{
+        user_id: user_id,
+        is_current: true,
+        start_date: current_time,
+        group_id: group_id,
+        group_type: group_type,
+        academic_year: academic_year,
+        grade_id: grade_id
+      }
+
+      EnrollmentRecords.create_enrollment_record(new_enrollment)
+
+      # Delete all group-user entries for the user
+      from(gu in GroupUser, where: gu.user_id == ^user_id)
+      |> Repo.delete_all()
+
+      # Update the student's status to 'dropout'
+      student_changeset = Student.changeset(student, %{"status" => "dropout"})
+
+      with {:ok, %Student{} = student} <- Repo.update(student_changeset) do
+        render(conn, "show.json", student: student)
+      end
     end
   end
 end
