@@ -182,7 +182,7 @@ defmodule DbserviceWeb.StudentController do
           join: g in Group,
           on: g.child_id == s.id and g.type == "status",
           where: s.title == "dropout",
-          select: {s.id, g.id, g.type}
+          select: {g.id, g.type}
         )
         |> Repo.one()
 
