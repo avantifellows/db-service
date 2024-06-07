@@ -7,7 +7,8 @@ defmodule Dbservice.Statuses.Status do
   alias Dbservice.Groups.Group
 
   schema "status" do
-    field :title, :string
+    field :title, Ecto.Enum,
+      values: [:registered, :enrolled, :active, :inactive, :at_risk, :graduated, :dropout]
 
     has_many :group, Group, foreign_key: :child_id, where: [type: "status"]
 
