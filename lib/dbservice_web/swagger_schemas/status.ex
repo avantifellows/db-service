@@ -15,7 +15,7 @@ defmodule DbserviceWeb.SwaggerSchema.Status do
           end
 
           example(%{
-            title: "Title of an enrollment record"
+            title: "registered"
           })
         end
     }
