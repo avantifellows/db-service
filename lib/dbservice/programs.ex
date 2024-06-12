@@ -4,7 +4,6 @@ defmodule Dbservice.Programs do
   """
 
   import Ecto.Query, warn: false
-  alias DbserviceWeb.SwaggerSchema.Program
   alias Dbservice.Repo
 
   alias Dbservice.Programs.Program

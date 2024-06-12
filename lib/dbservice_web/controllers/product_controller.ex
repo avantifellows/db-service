@@ -135,5 +135,4 @@ defmodule DbserviceWeb.ProductController do
       |> render("show.json", product: product)
     end
   end
-
 end

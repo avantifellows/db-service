@@ -4,7 +4,6 @@ defmodule Dbservice.Products do
   """
 
   import Ecto.Query, warn: false
-  alias DbserviceWeb.SwaggerSchema.Product
   alias Dbservice.Repo
 
   alias Dbservice.Products.Product
