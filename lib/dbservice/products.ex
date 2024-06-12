@@ -4,6 +4,7 @@ defmodule Dbservice.Products do
   """
 
   import Ecto.Query, warn: false
+  alias DbserviceWeb.SwaggerSchema.Product
   alias Dbservice.Repo
 
   alias Dbservice.Products.Product
@@ -29,6 +30,19 @@ defmodule Dbservice.Products do
       ** (Ecto.NoResultsError)
   """
   def get_product!(id), do: Repo.get!(Product, id)
+
+  @doc """
+  Gets a Product by product name and code.
+  Raises `Ecto.NoResultsError` if the Product does not exist.
+  ## Examples
+      iex> get_product_by_name_and_code("a","b")
+      %Product{}
+      iex> get_product_by_name_and_code(1,1)
+      ** (Ecto.NoResultsError)
+  """
+  def get_product_by_name_and_code(name, code) do
+    Repo.get_by(Product, name: name, code: code)
+  end
 
   @doc """
   Creates a product.

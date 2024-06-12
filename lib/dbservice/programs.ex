@@ -4,6 +4,7 @@ defmodule Dbservice.Programs do
   """
 
   import Ecto.Query, warn: false
+  alias DbserviceWeb.SwaggerSchema.Program
   alias Dbservice.Repo
 
   alias Dbservice.Programs.Program
@@ -29,6 +30,14 @@ defmodule Dbservice.Programs do
       ** (Ecto.NoResultsError)
   """
   def get_program!(id), do: Repo.get!(Program, id)
+
+  @doc """
+  Gets a Program by program name
+  """
+
+  def get_program_by_name(name) do
+    Repo.get_by(Program, name: name)
+  end
 
   @doc """
   Creates a program.
