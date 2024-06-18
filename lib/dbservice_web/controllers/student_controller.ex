@@ -10,6 +10,8 @@ defmodule DbserviceWeb.StudentController do
   alias Dbservice.Statuses.Status
   alias Dbservice.Groups.Group
   alias Dbservice.EnrollmentRecords
+  alias Dbservice.Batches.Batch
+  alias Dbservice.GroupUsers
 
   action_fallback(DbserviceWeb.FallbackController)
 
@@ -224,6 +226,54 @@ defmodule DbserviceWeb.StudentController do
       # Update the student's status to 'dropout' using update_student/2
       with {:ok, %Student{} = updated_student} <-
              Users.update_student(student, %{"status" => "dropout"}) do
+        render(conn, "show.json", student: updated_student)
+      end
+    end
+  end
+
+  def enrolled(conn, params) do
+    student = Users.get_student_by_student_id(params["student_id"])
+
+    if student.status == "enrolled" do
+      conn
+      |> put_status(:bad_request)
+      |> json(%{error: "Student is already marked as enrolled"})
+    else
+      user_id = student.user_id
+      current_time = DateTime.utc_now()
+
+      {group_id, group_type} =
+        from(b in Batch,
+          join: g in Group,
+          on: g.child_id == b.id and g.type == "batch",
+          where: b.batch_id == ^params["batch_id"],
+          select: {g.id, g.type}
+        )
+        |> Repo.one()
+
+      academic_year = params["academic_year"]
+      grade_id = params["grade_id"]
+
+      new_enrollment_attrs = %{
+        user_id: user_id,
+        is_current: true,
+        start_date: current_time,
+        group_id: group_id,
+        group_type: group_type,
+        academic_year: academic_year,
+        grade_id: grade_id
+      }
+
+      new_group_user_attrs = %{
+        user_id: user_id,
+        group_id: group_id
+      }
+
+      EnrollmentRecords.create_enrollment_record(new_enrollment_attrs)
+      GroupUsers.create_group_user(new_group_user_attrs)
+
+      with {:ok, %Student{} = updated_student} <-
+             Users.update_student(student, %{"status" => "enrolled"}) do
         render(conn, "show.json", student: updated_student)
       end
     end

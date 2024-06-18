@@ -52,6 +52,7 @@ defmodule DbserviceWeb.Router do
     get("/user/:user_id/sessions", UserController, :get_user_sessions)
     patch("/dropout/:student_id", StudentController, :dropout)
     resources("/status", StatusController, except: [:new, :edit])
+    patch("/enrolled", StudentController, :enrolled)
 
     def swagger_info do
       source(["config/.env", "config/.env"])
