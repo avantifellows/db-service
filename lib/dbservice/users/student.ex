@@ -48,6 +48,7 @@ defmodule Dbservice.Users.Student do
     field(:grade_10_marksheet, :string)
     field(:photo, :string)
     field(:planned_competitive_exams, {:array, :integer})
+    field(:status, :string, default: "registered")
 
     belongs_to(:user, User)
     has_one(:student_profile, StudentProfile)
@@ -99,7 +100,8 @@ defmodule Dbservice.Users.Student do
       :percentage_in_grade_10_english,
       :grade_10_marksheet,
       :photo,
-      :planned_competitive_exams
+      :planned_competitive_exams,
+      :status
     ])
     |> validate_required([:user_id])
   end
