@@ -193,44 +193,38 @@ defmodule DbserviceWeb.StudentController do
         )
         |> Repo.all()
 
-      if current_enrollments != [] do
-        # Use the academic_year and grade_id from one of the current enrollments
-        %{academic_year: academic_year, grade_id: grade_id} = List.first(current_enrollments)
+      # Use the academic_year and grade_id from one of the current enrollments
+      %{academic_year: academic_year, grade_id: grade_id} = List.first(current_enrollments)
 
-        # Update all current enrollment records to set is_current: false and end_date
-        Enum.each(current_enrollments, fn enrollment ->
-          EnrollmentRecords.update_enrollment_record(enrollment, %{
-            is_current: false,
-            end_date: current_time
-          })
-        end)
+      # Update all current enrollment records to set is_current: false and end_date
+      Enum.each(current_enrollments, fn enrollment ->
+        EnrollmentRecords.update_enrollment_record(enrollment, %{
+          is_current: false,
+          end_date: current_time
+        })
+      end)
 
-        # Create a new enrollment record with the fetched group_id
-        new_enrollment_attrs = %{
-          user_id: user_id,
-          is_current: true,
-          start_date: current_time,
-          group_id: group_id,
-          group_type: group_type,
-          academic_year: academic_year,
-          grade_id: grade_id
-        }
+      # Create a new enrollment record with the fetched group_id
+      new_enrollment_attrs = %{
+        user_id: user_id,
+        is_current: true,
+        start_date: current_time,
+        group_id: group_id,
+        group_type: group_type,
+        academic_year: academic_year,
+        grade_id: grade_id
+      }
 
-        EnrollmentRecords.create_enrollment_record(new_enrollment_attrs)
+      EnrollmentRecords.create_enrollment_record(new_enrollment_attrs)
 
-        # Delete all group-user entries for the user
-        from(gu in GroupUser, where: gu.user_id == ^user_id)
-        |> Repo.delete_all()
+      # Delete all group-user entries for the user
+      from(gu in GroupUser, where: gu.user_id == ^user_id)
+      |> Repo.delete_all()
 
-        # Update the student's status to 'dropout' using update_student/2
-        with {:ok, %Student{} = updated_student} <-
-               Users.update_student(student, %{"status" => "dropout"}) do
-          render(conn, "show.json", student: updated_student)
-        end
-      else
-        conn
-        |> put_status(:not_found)
-        |> json(%{error: "No current enrollment record found for the user"})
+      # Update the student's status to 'dropout' using update_student/2
+      with {:ok, %Student{} = updated_student} <-
+             Users.update_student(student, %{"status" => "dropout"}) do
+        render(conn, "show.json", student: updated_student)
       end
     end
   end
