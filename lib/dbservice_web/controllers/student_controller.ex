@@ -181,26 +181,29 @@ defmodule DbserviceWeb.StudentController do
         from(s in Status,
           join: g in Group,
           on: g.child_id == s.id and g.type == "status",
-          where: s.title == "dropout",
+          where: s.title == :dropout,
           select: {g.id, g.type}
         )
         |> Repo.one()
 
-      # Update current enrollment records for the user
-      current_enrollment =
+      # Fetch all current enrollment records for the user
+      current_enrollments =
         from(e in EnrollmentRecord,
           where: e.user_id == ^user_id and e.is_current == true
         )
-        |> Repo.one()
+        |> Repo.all()
 
-      if current_enrollment do
-        academic_year = current_enrollment.academic_year
-        grade_id = current_enrollment.grade_id
+      if current_enrollments != [] do
+        # Use the academic_year and grade_id from one of the current enrollments
+        %{academic_year: academic_year, grade_id: grade_id} = List.first(current_enrollments)
 
-        EnrollmentRecords.update_enrollment_record(current_enrollment, %{
-          is_current: false,
-          end_date: current_time
-        })
+        # Update all current enrollment records to set is_current: false and end_date
+        Enum.each(current_enrollments, fn enrollment ->
+          EnrollmentRecords.update_enrollment_record(enrollment, %{
+            is_current: false,
+            end_date: current_time
+          })
+        end)
 
         # Create a new enrollment record with the fetched group_id
         new_enrollment_attrs = %{
