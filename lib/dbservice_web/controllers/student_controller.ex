@@ -184,7 +184,7 @@ defmodule DbserviceWeb.StudentController do
           join: g in Group,
           on: g.child_id == s.id and g.type == "status",
           where: s.title == :dropout,
-          select: {g.id, g.type}
+          select: {g.child_id, g.type}
         )
         |> Repo.one()
 
@@ -242,12 +242,21 @@ defmodule DbserviceWeb.StudentController do
       user_id = student.user_id
       current_time = DateTime.utc_now()
 
-      {group_id, group_type} =
+      {status_group_id, status_group_type} =
         from(b in Batch,
           join: g in Group,
           on: g.child_id == b.id and g.type == "batch",
           where: b.batch_id == ^params["batch_id"],
-          select: {g.id, g.type}
+          select: {g.child_id, g.type}
+        )
+        |> Repo.one()
+
+      {group_id, group_type} =
+        from(s in Status,
+          join: g in Group,
+          on: g.child_id == s.id and g.type == "status",
+          where: s.title == :enrolled,
+          select: {g.child_id, g.type}
         )
         |> Repo.one()
 
@@ -264,12 +273,23 @@ defmodule DbserviceWeb.StudentController do
         grade_id: grade_id
       }
 
+      new_status_enrollment_attrs = %{
+        user_id: user_id,
+        is_current: true,
+        start_date: current_time,
+        group_id: status_group_id,
+        group_type: status_group_type,
+        academic_year: academic_year,
+        grade_id: grade_id
+      }
+
       new_group_user_attrs = %{
         user_id: user_id,
         group_id: group_id
       }
 
       EnrollmentRecords.create_enrollment_record(new_enrollment_attrs)
+      EnrollmentRecords.create_enrollment_record(new_status_enrollment_attrs)
       GroupUsers.create_group_user(new_group_user_attrs)
 
       with {:ok, %Student{} = updated_student} <-
