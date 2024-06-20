@@ -173,7 +173,7 @@ defmodule DbserviceWeb.StudentController do
     if student.status == "dropout" do
       conn
       |> put_status(:bad_request)
-      |> json(%{error: "Student is already marked as dropout"})
+      |> json(%{errors: "Student is already marked as dropout"})
     else
       user_id = student.user_id
       current_time = DateTime.utc_now()
@@ -237,7 +237,7 @@ defmodule DbserviceWeb.StudentController do
     if student.status == "enrolled" do
       conn
       |> put_status(:bad_request)
-      |> json(%{error: "Student is already marked as enrolled"})
+      |> json(%{errors: "Student is already marked as enrolled"})
     else
       user_id = student.user_id
       current_time = DateTime.utc_now()
