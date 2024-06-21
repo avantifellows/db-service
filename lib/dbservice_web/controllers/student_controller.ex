@@ -179,7 +179,7 @@ defmodule DbserviceWeb.StudentController do
       current_time = DateTime.utc_now()
 
       # Fetch status and group details in a single query
-      {group_id, group_type} =
+      {status_group_id, group_type} =
         from(s in Status,
           join: g in Group,
           on: g.child_id == s.id and g.type == "status",
@@ -206,12 +206,12 @@ defmodule DbserviceWeb.StudentController do
         })
       end)
 
-      # Create a new enrollment record with the fetched group_id
+      # Create a new enrollment record with the fetched status_group_id
       new_enrollment_attrs = %{
         user_id: user_id,
         is_current: true,
         start_date: current_time,
-        group_id: group_id,
+        status_group_id: status_group_id,
         group_type: group_type,
         academic_year: academic_year,
         grade_id: grade_id
@@ -234,68 +234,96 @@ defmodule DbserviceWeb.StudentController do
   def enrolled(conn, params) do
     student = Users.get_student_by_student_id(params["student_id"])
 
-    if student.status == "enrolled" do
-      conn
-      |> put_status(:bad_request)
-      |> json(%{errors: "Student is already marked as enrolled"})
+    user_id = student.user_id
+    group_users = GroupUsers.get_group_user_by_user_id(user_id)
+    current_time = DateTime.utc_now()
+
+    {group_id, batch_group_id, group_type} =
+      from(b in Batch,
+        join: g in Group,
+        on: g.child_id == b.id and g.type == "batch",
+        where: b.batch_id == ^params["batch_id"],
+        select: {g.id, g.child_id, g.type}
+      )
+      |> Repo.one()
+
+    {status_group_id, status_group_type} =
+      from(s in Status,
+        join: g in Group,
+        on: g.child_id == s.id and g.type == "status",
+        where: s.title == :enrolled,
+        select: {g.child_id, g.type}
+      )
+      |> Repo.one()
+
+    academic_year = params["academic_year"]
+    grade_id = params["grade_id"]
+
+    new_enrollment_attrs = %{
+      user_id: user_id,
+      is_current: true,
+      start_date: current_time,
+      group_id: batch_group_id,
+      group_type: group_type,
+      academic_year: academic_year,
+      grade_id: grade_id
+    }
+
+    new_status_enrollment_attrs = %{
+      user_id: user_id,
+      is_current: true,
+      start_date: current_time,
+      group_id: status_group_id,
+      group_type: status_group_type,
+      academic_year: academic_year,
+      grade_id: grade_id
+    }
+
+    # Update existing enrollment records for batch
+    from(e in EnrollmentRecord,
+      where: e.user_id == ^user_id and e.group_type == "batch" and e.is_current == true,
+      update: [set: [is_current: false, end_date: ^current_time]]
+    )
+    |> Repo.update_all([])
+
+    # Update existing enrollment records for status
+    from(e in EnrollmentRecord,
+      where: e.user_id == ^user_id and e.group_type == "status" and e.is_current == true,
+      update: [set: [is_current: false, end_date: ^current_time]]
+    )
+    |> Repo.update_all([])
+
+    EnrollmentRecords.create_enrollment_record(new_enrollment_attrs)
+    EnrollmentRecords.create_enrollment_record(new_status_enrollment_attrs)
+
+    batch_group_user =
+      Enum.find(group_users, fn group_user ->
+        g_id =
+          from(g in Group,
+            where: g.id == ^group_user.group_id and g.type == "batch",
+            select: g.id
+          )
+          |> Repo.one()
+
+        g_id != nil
+      end)
+
+    if batch_group_user do
+      updated_group_user_attrs = %{group_id: group_id}
+      GroupUsers.update_group_user(batch_group_user, updated_group_user_attrs)
     else
-      user_id = student.user_id
-      current_time = DateTime.utc_now()
-
-      {status_group_id, status_group_type} =
-        from(b in Batch,
-          join: g in Group,
-          on: g.child_id == b.id and g.type == "batch",
-          where: b.batch_id == ^params["batch_id"],
-          select: {g.child_id, g.type}
-        )
-        |> Repo.one()
-
-      {group_id, group_type} =
-        from(s in Status,
-          join: g in Group,
-          on: g.child_id == s.id and g.type == "status",
-          where: s.title == :enrolled,
-          select: {g.child_id, g.type}
-        )
-        |> Repo.one()
-
-      academic_year = params["academic_year"]
-      grade_id = params["grade_id"]
-
-      new_enrollment_attrs = %{
-        user_id: user_id,
-        is_current: true,
-        start_date: current_time,
-        group_id: group_id,
-        group_type: group_type,
-        academic_year: academic_year,
-        grade_id: grade_id
-      }
-
-      new_status_enrollment_attrs = %{
-        user_id: user_id,
-        is_current: true,
-        start_date: current_time,
-        group_id: status_group_id,
-        group_type: status_group_type,
-        academic_year: academic_year,
-        grade_id: grade_id
-      }
-
+      # Create new group_user
       new_group_user_attrs = %{
         user_id: user_id,
         group_id: group_id
       }
 
-      EnrollmentRecords.create_enrollment_record(new_enrollment_attrs)
-      EnrollmentRecords.create_enrollment_record(new_status_enrollment_attrs)
       GroupUsers.create_group_user(new_group_user_attrs)
+    end
 
-      with {:ok, %Student{} = updated_student} <-
-             Users.update_student(student, %{"status" => "enrolled"}) do
-        render(conn, "show.json", student: updated_student)
-      end
+    with {:ok, %Student{} = updated_student} <-
+           Users.update_student(student, %{"status" => "enrolled"}) do
+      render(conn, "show.json", student: updated_student)
     end
   end
 end
