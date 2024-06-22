@@ -179,7 +179,7 @@ defmodule DbserviceWeb.StudentController do
       current_time = DateTime.utc_now()
 
       # Fetch status and group details in a single query
-      {status_group_id, group_type} =
+      {status_id, group_type} =
         from(s in Status,
           join: g in Group,
           on: g.child_id == s.id and g.type == "status",
@@ -206,12 +206,12 @@ defmodule DbserviceWeb.StudentController do
         })
       end)
 
-      # Create a new enrollment record with the fetched status_group_id
+      # Create a new enrollment record with the fetched status_id
       new_enrollment_attrs = %{
         user_id: user_id,
         is_current: true,
         start_date: current_time,
-        group_id: status_group_id,
+        group_id: status_id,
         group_type: group_type,
         academic_year: academic_year,
         grade_id: grade_id
@@ -232,13 +232,17 @@ defmodule DbserviceWeb.StudentController do
   end
 
   def enrolled(conn, params) do
+    # Retrieve student information by student ID from the parameters
     student = Users.get_student_by_student_id(params["student_id"])
 
+    # Extract user ID from the retrieved student
     user_id = student.user_id
+    # Get group user information by user ID
     group_users = GroupUsers.get_group_user_by_user_id(user_id)
     current_time = DateTime.utc_now()
 
-    {group_id, batch_group_id, group_type} =
+    # Retrieve batch group ID, batch ID, and group type based on batch ID from the parameters
+    {group_id, batch_id, group_type} =
       from(b in Batch,
         join: g in Group,
         on: g.child_id == b.id and g.type == "batch",
@@ -247,7 +251,8 @@ defmodule DbserviceWeb.StudentController do
       )
       |> Repo.one()
 
-    {status_group_id, status_group_type} =
+    # Retrieve statusID and group type for 'enrolled' status
+    {status_id, status_group_type} =
       from(s in Status,
         join: g in Group,
         on: g.child_id == s.id and g.type == "status",
@@ -256,46 +261,51 @@ defmodule DbserviceWeb.StudentController do
       )
       |> Repo.one()
 
+    # Extract academic year and grade ID from the parameters
     academic_year = params["academic_year"]
     grade_id = params["grade_id"]
 
+    # Prepare new enrollment attributes for batch
     new_enrollment_attrs = %{
       user_id: user_id,
       is_current: true,
       start_date: current_time,
-      group_id: batch_group_id,
+      group_id: batch_id,
       group_type: group_type,
       academic_year: academic_year,
       grade_id: grade_id
     }
 
+    # Prepare new enrollment attributes for status
     new_status_enrollment_attrs = %{
       user_id: user_id,
       is_current: true,
       start_date: current_time,
-      group_id: status_group_id,
+      group_id: status_id,
       group_type: status_group_type,
       academic_year: academic_year,
       grade_id: grade_id
     }
 
-    # Update existing enrollment records for batch
+    # Update existing enrollment records for batch to set them as not current
     from(e in EnrollmentRecord,
       where: e.user_id == ^user_id and e.group_type == "batch" and e.is_current == true,
       update: [set: [is_current: false, end_date: ^current_time]]
     )
     |> Repo.update_all([])
 
-    # Update existing enrollment records for status
+    # Update existing enrollment records for status to set them as not current
     from(e in EnrollmentRecord,
       where: e.user_id == ^user_id and e.group_type == "status" and e.is_current == true,
       update: [set: [is_current: false, end_date: ^current_time]]
     )
     |> Repo.update_all([])
 
+    # Create new enrollment records for batch and status
     EnrollmentRecords.create_enrollment_record(new_enrollment_attrs)
     EnrollmentRecords.create_enrollment_record(new_status_enrollment_attrs)
 
+    # Find the group user where group type is "batch" among the user's group_users records
     batch_group_user =
       Enum.find(group_users, fn group_user ->
         g_id =
@@ -309,10 +319,11 @@ defmodule DbserviceWeb.StudentController do
       end)
 
     if batch_group_user do
+      # If the user is already in a batch group, update the group user attributes
       updated_group_user_attrs = %{group_id: group_id}
       GroupUsers.update_group_user(batch_group_user, updated_group_user_attrs)
     else
-      # Create new group_user
+      # If the user is not in a batch group, create a new group user
       new_group_user_attrs = %{
         user_id: user_id,
         group_id: group_id
@@ -321,6 +332,7 @@ defmodule DbserviceWeb.StudentController do
       GroupUsers.create_group_user(new_group_user_attrs)
     end
 
+    # Update the student's status to 'enrolled' and render the updated student information
     with {:ok, %Student{} = updated_student} <-
            Users.update_student(student, %{"status" => "enrolled"}) do
       render(conn, "show.json", student: updated_student)
