@@ -211,7 +211,7 @@ defmodule DbserviceWeb.StudentController do
         user_id: user_id,
         is_current: true,
         start_date: current_time,
-        status_group_id: status_group_id,
+        group_id: status_group_id,
         group_type: group_type,
         academic_year: academic_year,
         grade_id: grade_id
