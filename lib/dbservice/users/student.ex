@@ -48,7 +48,7 @@ defmodule Dbservice.Users.Student do
     field(:grade_10_marksheet, :string)
     field(:photo, :string)
     field(:planned_competitive_exams, {:array, :integer})
-    field(:status, :string, default: "registered")
+    field(:status, :string)
 
     belongs_to(:user, User)
     has_one(:student_profile, StudentProfile)
