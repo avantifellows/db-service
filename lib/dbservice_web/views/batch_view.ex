@@ -23,4 +23,8 @@ defmodule DbserviceWeb.BatchView do
       auth_group_id: batch.auth_group_id
     }
   end
+
+  def render("columns.json", %{result: result}) do
+    result
+  end
 end

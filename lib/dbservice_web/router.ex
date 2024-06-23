@@ -11,6 +11,7 @@ defmodule DbserviceWeb.Router do
   scope "/api", DbserviceWeb do
     pipe_through(:api)
 
+    get("/auth-group/select-columns", AuthGroupController, :select_columns)
     resources("/auth-group", AuthGroupController, except: [:new, :edit])
     post("/group/:id/update-users", GroupController, :update_users)
     post("/group/:id/update-sessions", GroupController, :update_sessions)
@@ -31,8 +32,10 @@ defmodule DbserviceWeb.Router do
     resources("/group-session", GroupSessionController, except: [:new, :edit])
     resources("/product", ProductController)
     resources("/program", ProgramController, except: [:new, :edit])
+    get("/batch/select-columns", BatchController, :select_columns)
     resources("/batch", BatchController, except: [:new, :edit])
     resources("/group", GroupController, except: [:new, :edit])
+    get("/form-schema/select-columns", FormSchemaController, :select_columns)
     resources("/form-schema", FormSchemaController)
     resources("/group-user", GroupUserController)
     resources("/tag", TagController, except: [:new, :edit])

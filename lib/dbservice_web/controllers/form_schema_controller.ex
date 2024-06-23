@@ -120,4 +120,34 @@ defmodule DbserviceWeb.FormSchemaController do
       send_resp(conn, :no_content, "")
     end
   end
+
+  swagger_path :select_columns do
+    get("/api/form-schema/select-columns")
+
+    parameters do
+      params(:query, :string, "The column names to select, separated by commas",
+        required: true,
+        name: "columns"
+      )
+    end
+
+    response(200, "OK", Schema.array(:object))
+  end
+
+  def select_columns(conn, params) do
+    columns = params["columns"]
+
+    columns_list =
+      columns
+      |> String.split(",")
+      |> Enum.map(&String.trim/1)
+      |> Enum.map(&String.to_existing_atom/1)
+
+    query =
+      from m in FormSchema,
+        select: map(m, ^columns_list)
+
+    result = Repo.all(query)
+    render(conn, "columns.json", result: result)
+  end
 end

@@ -18,4 +18,8 @@ defmodule DbserviceWeb.FormSchemaView do
       meta_data: form_schema.meta_data
     }
   end
+
+  def render("columns.json", %{result: result}) do
+    result
+  end
 end

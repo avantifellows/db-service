@@ -19,4 +19,8 @@ defmodule DbserviceWeb.AuthGroupView do
       locale_data: auth_group.locale_data
     }
   end
+
+  def render("columns.json", %{result: result}) do
+    result
+  end
 end
