@@ -222,7 +222,7 @@ defmodule DbserviceWeb.UserController do
 
       session ->
         if quiz_flag do
-          session.meta_data["batch"] == class_batch_id and session.platform == "quiz"
+          session.meta_data["batch_id"] == class_batch_id and session.platform == "quiz"
         else
           session.platform == "meet"
         end
