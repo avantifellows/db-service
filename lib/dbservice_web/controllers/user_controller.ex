@@ -215,8 +215,8 @@ defmodule DbserviceWeb.UserController do
         case session do
           nil -> false
           _ ->
-            if quiz_flag do
-              session.batch_id == child_id
+            if quiz_flag && !is_nil(session.class_batch_id) do
+              session.class_batch_id == child_id and session.platform == "quiz"
             else
               true
             end
