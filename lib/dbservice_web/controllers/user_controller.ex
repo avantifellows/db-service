@@ -212,8 +212,11 @@ defmodule DbserviceWeb.UserController do
       group_sessions
       |> Enum.filter(fn group_session ->
         session = get_group_session(group_session)
+
         case session do
-          nil -> false
+          nil ->
+            false
+
           _ ->
             if quiz_flag && !is_nil(session.class_batch_id) do
               session.class_batch_id == child_id and session.platform == "quiz"
