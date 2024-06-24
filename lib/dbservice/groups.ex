@@ -35,9 +35,9 @@ defmodule Dbservice.Groups do
   Gets group by group_id and type.
   Raises `Ecto.NoResultsError` if the Group does not exist.
   ## Examples
-      iex> get_group_by_group_id_and_type(123)
+      iex> get_group_by_group_id_and_type(123, "name")
       %Group{}
-      iex> get_group_by_group_id_and_type(456)
+      iex> get_group_by_group_id_and_type(456, "name")
       ** (Ecto.NoResultsError)
   """
   def get_group_by_group_id_and_type(group_id, type) do
