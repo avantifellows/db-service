@@ -201,6 +201,7 @@ defmodule DbserviceWeb.UserController do
   defp get_group(group, quiz_flag) do
     child_id = group.child_id
     batch = Batches.get_batch!(child_id)
+    class_batch_id = batch.batch_id
     quiz_id = batch.parent_id
     quiz_group = Groups.get_group_by_child_id(quiz_id)
     quiz_group_id = quiz_group.id
@@ -208,26 +209,30 @@ defmodule DbserviceWeb.UserController do
     group_id = if quiz_flag, do: quiz_group_id, else: group.id
     group_sessions = GroupSessions.get_group_session_by_group_id(group_id)
 
-    filtered_sessions =
-      group_sessions
-      |> Enum.filter(fn group_session ->
-        session = get_group_session(group_session)
+    filtered_sessions = filter_sessions(group_sessions, quiz_flag, class_batch_id)
 
-        case session do
-          nil ->
-            false
+    Enum.map(filtered_sessions, &get_group_session/1)
+  end
 
-          _ ->
-            if quiz_flag && !is_nil(session.class_batch_id) do
-              session.class_batch_id == child_id and session.platform == "quiz"
-            else
-              true
-            end
+  defp filter_sessions(group_sessions, quiz_flag, class_batch_id) do
+    group_sessions
+    |> Enum.filter(&session_filter(&1, quiz_flag, class_batch_id))
+  end
+
+  defp session_filter(group_session, quiz_flag, class_batch_id) do
+    session = get_group_session(group_session)
+
+    case session do
+      nil ->
+        false
+
+      _ ->
+        if quiz_flag && !is_nil(session.meta_data["batch_id"]) do
+          session.meta_data["batch_id"] == class_batch_id and session.platform == "quiz"
+        else
+          true
         end
-      end)
-      |> Enum.map(&get_group_session/1)
-
-    filtered_sessions
+    end
   end
 
   defp get_group_session(group_session) do
