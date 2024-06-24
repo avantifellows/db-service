@@ -36,7 +36,8 @@ defmodule DbserviceWeb.SessionView do
       signup_form_id: session.signup_form_id,
       popup_form_id: session.popup_form_id,
       inserted_at: session.inserted_at,
-      updated_at: session.updated_at
+      updated_at: session.updated_at,
+      class_batch_id: session.class_batch_id
     }
   end
 end

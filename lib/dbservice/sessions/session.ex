@@ -7,6 +7,7 @@ defmodule Dbservice.Sessions.Session do
   alias Dbservice.Users.User
   alias Dbservice.Groups.Group
   alias Dbservice.Sessions.SessionSchedule
+  alias Dbservice.Batches.Batch
 
   schema "session" do
     field(:end_time, :utc_datetime)
@@ -37,6 +38,7 @@ defmodule Dbservice.Sessions.Session do
     many_to_many(:users, User, join_through: "user_session", on_replace: :delete)
     many_to_many(:group, Group, join_through: "group_session", on_replace: :delete)
     has_many(:session_schedule, SessionSchedule)
+    belongs_to :batch, Batch, foreign_key: :class_batch_id
   end
 
   @doc false
@@ -64,7 +66,8 @@ defmodule Dbservice.Sessions.Session do
       :redirection,
       :popup_form,
       :popup_form_id,
-      :signup_form_id
+      :signup_form_id,
+      :class_batch_id
     ])
     |> validate_required([
       :name

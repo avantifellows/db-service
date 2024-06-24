@@ -9,6 +9,7 @@ defmodule Dbservice.Batches.Batch do
   alias Dbservice.EnrollmentRecords.EnrollmentRecord
   alias Dbservice.Sessions.SessionSchedule
   alias Dbservice.Groups.AuthGroup
+  alias Dbservice.Sessions.Session
 
   schema "batch" do
     field :name, :string
@@ -27,6 +28,7 @@ defmodule Dbservice.Batches.Batch do
       where: [group_type: "batch"]
 
     has_one :session_schedule, SessionSchedule
+    has_many :sessions, Session, foreign_key: :class_batch_id
 
     timestamps()
   end

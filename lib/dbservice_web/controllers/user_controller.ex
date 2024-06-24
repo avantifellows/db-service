@@ -192,7 +192,7 @@ defmodule DbserviceWeb.UserController do
   defp get_group_user(group_user, quiz_flag) do
     group_id = group_user.group_id
 
-    case Groups.get_group_by_group_id(group_id) do
+    case Groups.get_group_by_group_id_and_type(group_id, "batch") do
       nil -> []
       group -> get_group(group, quiz_flag)
     end
@@ -208,7 +208,23 @@ defmodule DbserviceWeb.UserController do
     group_id = if quiz_flag, do: quiz_group_id, else: group.id
     group_sessions = GroupSessions.get_group_session_by_group_id(group_id)
 
-    Enum.map(group_sessions, &get_group_session(&1))
+    filtered_sessions =
+      group_sessions
+      |> Enum.filter(fn group_session ->
+        session = get_group_session(group_session)
+        case session do
+          nil -> false
+          _ ->
+            if quiz_flag do
+              session.batch_id == child_id
+            else
+              true
+            end
+        end
+      end)
+      |> Enum.map(&get_group_session/1)
+
+    filtered_sessions
   end
 
   defp get_group_session(group_session) do

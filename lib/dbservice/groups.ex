@@ -32,16 +32,16 @@ defmodule Dbservice.Groups do
   def get_group!(id), do: Repo.get!(Group, id)
 
   @doc """
-  Gets group by group_id.
+  Gets group by group_id and type.
   Raises `Ecto.NoResultsError` if the Group does not exist.
   ## Examples
-      iex> get_group_by_group_id(123)
+      iex> get_group_by_group_id_and_type(123)
       %Group{}
-      iex> get_group_by_group_id(456)
+      iex> get_group_by_group_id_and_type(456)
       ** (Ecto.NoResultsError)
   """
-  def get_group_by_group_id(group_id) do
-    Repo.get_by(Group, id: group_id, type: "batch")
+  def get_group_by_group_id_and_type(group_id, type) do
+    Repo.get_by(Group, id: group_id, type: type)
   end
 
   @doc """
