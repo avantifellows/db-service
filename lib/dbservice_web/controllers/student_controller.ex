@@ -265,45 +265,58 @@ defmodule DbserviceWeb.StudentController do
     academic_year = params["academic_year"]
     grade_id = params["grade_id"]
 
-    # Prepare new enrollment attributes for batch
-    new_enrollment_attrs = %{
-      user_id: user_id,
-      is_current: true,
-      start_date: current_time,
-      group_id: batch_id,
-      group_type: group_type,
-      academic_year: academic_year,
-      grade_id: grade_id
-    }
+    # Check if enrollment record for the same batch_id already exists
+    existing_batch_enrollment =
+      from(e in EnrollmentRecord,
+        where:
+          e.user_id == ^user_id and e.group_id == ^batch_id and e.group_type == "batch" and
+            e.is_current == true
+      )
+      |> Repo.one()
 
-    # Prepare new enrollment attributes for status
-    new_status_enrollment_attrs = %{
-      user_id: user_id,
-      is_current: true,
-      start_date: current_time,
-      group_id: status_id,
-      group_type: status_group_type,
-      academic_year: academic_year,
-      grade_id: grade_id
-    }
+    unless existing_batch_enrollment do
+      # Prepare new enrollment attributes for batch
+      new_enrollment_attrs = %{
+        user_id: user_id,
+        is_current: true,
+        start_date: current_time,
+        group_id: batch_id,
+        group_type: group_type,
+        academic_year: academic_year,
+        grade_id: grade_id
+      }
 
-    # Update existing enrollment records for batch to set them as not current
-    from(e in EnrollmentRecord,
-      where: e.user_id == ^user_id and e.group_type == "batch" and e.is_current == true,
-      update: [set: [is_current: false, end_date: ^current_time]]
-    )
-    |> Repo.update_all([])
+      # Update existing enrollment records for batch to set them as not current
+      from(e in EnrollmentRecord,
+        where: e.user_id == ^user_id and e.group_type == "batch" and e.is_current == true,
+        update: [set: [is_current: false, end_date: ^current_time]]
+      )
+      |> Repo.update_all([])
 
-    # Update existing enrollment records for status to set them as not current
-    from(e in EnrollmentRecord,
-      where: e.user_id == ^user_id and e.group_type == "status" and e.is_current == true,
-      update: [set: [is_current: false, end_date: ^current_time]]
-    )
-    |> Repo.update_all([])
+      # Create new enrollment record for batch
+      EnrollmentRecords.create_enrollment_record(new_enrollment_attrs)
 
-    # Create new enrollment records for batch and status
-    EnrollmentRecords.create_enrollment_record(new_enrollment_attrs)
-    EnrollmentRecords.create_enrollment_record(new_status_enrollment_attrs)
+      # Prepare new enrollment attributes for status
+      new_status_enrollment_attrs = %{
+        user_id: user_id,
+        is_current: true,
+        start_date: current_time,
+        group_id: status_id,
+        group_type: status_group_type,
+        academic_year: academic_year,
+        grade_id: grade_id
+      }
+
+      # Update existing enrollment records for status to set them as not current
+      from(e in EnrollmentRecord,
+        where: e.user_id == ^user_id and e.group_type == "status" and e.is_current == true,
+        update: [set: [is_current: false, end_date: ^current_time]]
+      )
+      |> Repo.update_all([])
+
+      # Create new enrollment record for status
+      EnrollmentRecords.create_enrollment_record(new_status_enrollment_attrs)
+    end
 
     # Find the group user where group type is "batch" among the user's group_users records
     batch_group_user =
