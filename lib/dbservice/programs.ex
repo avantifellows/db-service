@@ -31,6 +31,14 @@ defmodule Dbservice.Programs do
   def get_program!(id), do: Repo.get!(Program, id)
 
   @doc """
+  Gets a Program by program name
+  """
+
+  def get_program_by_name(name) do
+    Repo.get_by(Program, name: name)
+  end
+
+  @doc """
   Creates a program.
   ## Examples
       iex> create_program(%{field: value})

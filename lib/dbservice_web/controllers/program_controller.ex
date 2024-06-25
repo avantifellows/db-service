@@ -63,11 +63,12 @@ defmodule DbserviceWeb.ProgramController do
   end
 
   def create(conn, params) do
-    with {:ok, %Program{} = program} <- Programs.create_program(params) do
-      conn
-      |> put_status(:created)
-      |> put_resp_header("location", Routes.program_path(conn, :show, program))
-      |> render("show.json", program: program)
+    case Programs.get_program_by_name(params["name"]) do
+      nil ->
+        create_new_program(conn, params)
+
+      existing_program ->
+        update_existing_program(conn, existing_program, params)
     end
   end
 
@@ -120,6 +121,23 @@ defmodule DbserviceWeb.ProgramController do
 
     with {:ok, %Program{}} <- Programs.delete_program(program) do
       send_resp(conn, :no_content, "")
+    end
+  end
+
+  defp create_new_program(conn, params) do
+    with {:ok, %Program{} = program} <- Programs.create_program(params) do
+      conn
+      |> put_status(:created)
+      |> put_resp_header("location", Routes.program_path(conn, :show, program))
+      |> render("show.json", program: program)
+    end
+  end
+
+  defp update_existing_program(conn, existing_program, params) do
+    with {:ok, %Program{} = program} <- Programs.update_program(existing_program, params) do
+      conn
+      |> put_status(:ok)
+      |> render("show.json", program: program)
     end
   end
 end
