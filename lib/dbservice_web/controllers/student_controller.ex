@@ -232,40 +232,95 @@ defmodule DbserviceWeb.StudentController do
   end
 
   def enrolled(conn, params) do
-    # Retrieve student information by student ID from the parameters
+    # Retrieve the student information based on the provided student ID
     student = Users.get_student_by_student_id(params["student_id"])
-
-    # Extract user ID from the retrieved student
     user_id = student.user_id
-    # Get group user information by user ID
+
+    # Retrieve the group user information based on the user ID
     group_users = GroupUsers.get_group_user_by_user_id(user_id)
     current_time = DateTime.utc_now()
 
-    # Retrieve batch group ID, batch ID, and group type based on batch ID from the parameters
-    {group_id, batch_id, group_type} =
-      from(b in Batch,
-        join: g in Group,
-        on: g.child_id == b.id and g.type == "batch",
-        where: b.batch_id == ^params["batch_id"],
-        select: {g.id, g.child_id, g.type}
-      )
-      |> Repo.one()
+    # Get batch information and enrolled status information
 
-    # Retrieve statusID and group type for 'enrolled' status
-    {status_id, status_group_type} =
-      from(s in Status,
-        join: g in Group,
-        on: g.child_id == s.id and g.type == "status",
-        where: s.title == :enrolled,
-        select: {g.child_id, g.type}
-      )
-      |> Repo.one()
+    {group_id, batch_id, group_type} = get_batch_info(params["batch_id"])
+    {status_id, status_group_type} = get_enrolled_status_info()
 
-    # Extract academic year and grade ID from the parameters
     academic_year = params["academic_year"]
     grade_id = params["grade_id"]
 
-    # Prepare new enrollment attributes for batch
+    # Check if the student is already enrolled in the specified batch
+    unless existing_batch_enrollment?(user_id, batch_id) do
+      handle_batch_enrollment(
+        user_id,
+        batch_id,
+        group_type,
+        academic_year,
+        grade_id,
+        current_time
+      )
+
+      # Handle the enrollment process for the status
+      handle_status_enrollment(
+        user_id,
+        status_id,
+        status_group_type,
+        academic_year,
+        grade_id,
+        current_time
+      )
+    end
+
+    # Update the group user with the new group ID
+    update_group_user(user_id, group_id, group_users)
+
+    # Update the student's status to "enrolled" and render the response
+    with {:ok, %Student{} = updated_student} <-
+           Users.update_student(student, %{"status" => "enrolled"}) do
+      render(conn, "show.json", student: updated_student)
+    end
+  end
+
+  # Fetches batch information based on the batch ID
+  defp get_batch_info(batch_id) do
+    from(b in Batch,
+      join: g in Group,
+      on: g.child_id == b.id and g.type == "batch",
+      where: b.batch_id == ^batch_id,
+      select: {g.id, g.child_id, g.type}
+    )
+    |> Repo.one()
+  end
+
+  # Fetches enrolled status information
+  defp get_enrolled_status_info do
+    from(s in Status,
+      join: g in Group,
+      on: g.child_id == s.id and g.type == "status",
+      where: s.title == :enrolled,
+      select: {g.child_id, g.type}
+    )
+    |> Repo.one()
+  end
+
+  # Checks if the student is already enrolled in the batch
+  defp existing_batch_enrollment?(user_id, batch_id) do
+    from(e in EnrollmentRecord,
+      where:
+        e.user_id == ^user_id and e.group_id == ^batch_id and e.group_type == "batch" and
+          e.is_current == true
+    )
+    |> Repo.exists?()
+  end
+
+  # Handles batch enrollment process
+  defp handle_batch_enrollment(
+         user_id,
+         batch_id,
+         group_type,
+         academic_year,
+         grade_id,
+         current_time
+       ) do
     new_enrollment_attrs = %{
       user_id: user_id,
       is_current: true,
@@ -276,7 +331,20 @@ defmodule DbserviceWeb.StudentController do
       grade_id: grade_id
     }
 
-    # Prepare new enrollment attributes for status
+    # Update existing enrollments to mark them as not current
+    update_existing_enrollments(user_id, "batch", current_time)
+    EnrollmentRecords.create_enrollment_record(new_enrollment_attrs)
+  end
+
+  # Handles status enrollment process
+  defp handle_status_enrollment(
+         user_id,
+         status_id,
+         status_group_type,
+         academic_year,
+         grade_id,
+         current_time
+       ) do
     new_status_enrollment_attrs = %{
       user_id: user_id,
       is_current: true,
@@ -287,55 +355,39 @@ defmodule DbserviceWeb.StudentController do
       grade_id: grade_id
     }
 
-    # Update existing enrollment records for batch to set them as not current
-    from(e in EnrollmentRecord,
-      where: e.user_id == ^user_id and e.group_type == "batch" and e.is_current == true,
-      update: [set: [is_current: false, end_date: ^current_time]]
-    )
-    |> Repo.update_all([])
-
-    # Update existing enrollment records for status to set them as not current
-    from(e in EnrollmentRecord,
-      where: e.user_id == ^user_id and e.group_type == "status" and e.is_current == true,
-      update: [set: [is_current: false, end_date: ^current_time]]
-    )
-    |> Repo.update_all([])
-
-    # Create new enrollment records for batch and status
-    EnrollmentRecords.create_enrollment_record(new_enrollment_attrs)
+    # Update existing enrollments to mark them as not current
+    update_existing_enrollments(user_id, "status", current_time)
     EnrollmentRecords.create_enrollment_record(new_status_enrollment_attrs)
+  end
 
-    # Find the group user where group type is "batch" among the user's group_users records
-    batch_group_user =
-      Enum.find(group_users, fn group_user ->
-        g_id =
-          from(g in Group,
-            where: g.id == ^group_user.group_id and g.type == "batch",
-            select: g.id
-          )
-          |> Repo.one()
+  # Updates existing enrollments to mark them as not current
+  defp update_existing_enrollments(user_id, group_type, current_time) do
+    from(e in EnrollmentRecord,
+      where: e.user_id == ^user_id and e.group_type == ^group_type and e.is_current == true,
+      update: [set: [is_current: false, end_date: ^current_time]]
+    )
+    |> Repo.update_all([])
+  end
 
-        g_id != nil
-      end)
+  # Updates or creates a group user record for the batch
+  defp update_group_user(user_id, group_id, group_users) do
+    batch_group_user = Enum.find(group_users, &batch_group_user?(&1))
 
     if batch_group_user do
-      # If the user is already in a batch group, update the group user attributes
-      updated_group_user_attrs = %{group_id: group_id}
-      GroupUsers.update_group_user(batch_group_user, updated_group_user_attrs)
+      # Update existing group user with the new group ID
+      GroupUsers.update_group_user(batch_group_user, %{group_id: group_id})
     else
-      # If the user is not in a batch group, create a new group user
-      new_group_user_attrs = %{
-        user_id: user_id,
-        group_id: group_id
-      }
-
-      GroupUsers.create_group_user(new_group_user_attrs)
+      # Create a new group user record
+      GroupUsers.create_group_user(%{user_id: user_id, group_id: group_id})
     end
+  end
 
-    # Update the student's status to 'enrolled' and render the updated student information
-    with {:ok, %Student{} = updated_student} <-
-           Users.update_student(student, %{"status" => "enrolled"}) do
-      render(conn, "show.json", student: updated_student)
-    end
+  # Checks if a group user is associated with a batch
+  defp batch_group_user?(group_user) do
+    from(g in Group,
+      where: g.id == ^group_user.group_id and g.type == "batch",
+      select: g.id
+    )
+    |> Repo.exists?()
   end
 end
