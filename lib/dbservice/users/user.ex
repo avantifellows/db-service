@@ -5,7 +5,7 @@ defmodule Dbservice.Users.User do
   import Ecto.Changeset
   import Dbservice.Utils.Util
 
-  alias Dbservice.Sessions.SessionOccurence
+  alias Dbservice.Sessions.SessionOccurrence
   alias Dbservice.Users.Teacher
   alias Dbservice.Users.Student
   alias Dbservice.Profiles.UserProfile
@@ -30,7 +30,7 @@ defmodule Dbservice.Users.User do
 
     timestamps()
 
-    many_to_many(:sessions, SessionOccurence, join_through: "user_session", on_replace: :delete)
+    many_to_many(:sessions, SessionOccurrence, join_through: "user_session", on_replace: :delete)
     has_one(:teacher, Teacher)
     has_one(:student, Student)
     has_one(:user_profile, UserProfile)
