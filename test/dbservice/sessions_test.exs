@@ -117,74 +117,74 @@ defmodule Dbservice.SessionsTest do
     end
   end
 
-  describe "session_occurence" do
-    alias Dbservice.Sessions.SessionOccurence
+  describe "session_occurrence" do
+    alias Dbservice.Sessions.SessionOccurrence
 
     import Dbservice.SessionsFixtures
 
     @invalid_attrs %{end_time: nil, start_time: nil, session_id: nil}
 
-    test "list_session_occurence/0 returns all session_occurence" do
-      session_occurence = session_occurence_fixture()
-      [head | _tail] = Sessions.list_session_occurence()
-      assert Map.keys(head) == Map.keys(session_occurence)
+    test "list_session_occurrence/0 returns all session_occurrence" do
+      session_occurrence = session_occurrence_fixture()
+      [head | _tail] = Sessions.list_session_occurrence()
+      assert Map.keys(head) == Map.keys(session_occurrence)
     end
 
-    test "get_session_occurence!/1 returns the session_occurence with given id" do
-      session_occurence = session_occurence_fixture()
-      assert Sessions.get_session_occurence!(session_occurence.id) == session_occurence
+    test "get_session_occurrence!/1 returns the session_occurrence with given id" do
+      session_occurrence = session_occurrence_fixture()
+      assert Sessions.get_session_occurrence!(session_occurrence.id) == session_occurrence
     end
 
-    test "create_session_occurence/1 with valid data creates a session_occurence" do
+    test "create_session_occurrence/1 with valid data creates a session_occurrence" do
       valid_attrs = %{
         end_time: ~U[2022-04-28 14:05:00Z],
         start_time: ~U[2022-04-28 14:05:00Z],
         session_id: get_session_id()
       }
 
-      assert {:ok, %SessionOccurence{} = session_occurence} =
-               Sessions.create_session_occurence(valid_attrs)
+      assert {:ok, %SessionOccurrence{} = session_occurrence} =
+               Sessions.create_session_occurrence(valid_attrs)
 
-      assert session_occurence.end_time == ~U[2022-04-28 14:05:00Z]
-      assert session_occurence.start_time == ~U[2022-04-28 14:05:00Z]
+      assert session_occurrence.end_time == ~U[2022-04-28 14:05:00Z]
+      assert session_occurrence.start_time == ~U[2022-04-28 14:05:00Z]
     end
 
-    test "create_session_occurence/1 with invalid data returns error changeset" do
-      assert {:error, %Ecto.Changeset{}} = Sessions.create_session_occurence(@invalid_attrs)
+    test "create_session_occurrence/1 with invalid data returns error changeset" do
+      assert {:error, %Ecto.Changeset{}} = Sessions.create_session_occurrence(@invalid_attrs)
     end
 
-    test "update_session_occurence/2 with valid data updates the session_occurence" do
-      session_occurence = session_occurence_fixture()
+    test "update_session_occurrence/2 with valid data updates the session_occurrence" do
+      session_occurrence = session_occurrence_fixture()
       update_attrs = %{end_time: ~U[2022-04-29 14:05:00Z], start_time: ~U[2022-04-29 14:05:00Z]}
 
-      assert {:ok, %SessionOccurence{} = session_occurence} =
-               Sessions.update_session_occurence(session_occurence, update_attrs)
+      assert {:ok, %SessionOccurrence{} = session_occurrence} =
+               Sessions.update_session_occurrence(session_occurrence, update_attrs)
 
-      assert session_occurence.end_time == ~U[2022-04-29 14:05:00Z]
-      assert session_occurence.start_time == ~U[2022-04-29 14:05:00Z]
+      assert session_occurrence.end_time == ~U[2022-04-29 14:05:00Z]
+      assert session_occurrence.start_time == ~U[2022-04-29 14:05:00Z]
     end
 
-    test "update_session_occurence/2 with invalid data returns error changeset" do
-      session_occurence = session_occurence_fixture()
+    test "update_session_occurrence/2 with invalid data returns error changeset" do
+      session_occurrence = session_occurrence_fixture()
 
       assert {:error, %Ecto.Changeset{}} =
-               Sessions.update_session_occurence(session_occurence, @invalid_attrs)
+               Sessions.update_session_occurrence(session_occurrence, @invalid_attrs)
 
-      assert session_occurence == Sessions.get_session_occurence!(session_occurence.id)
+      assert session_occurrence == Sessions.get_session_occurrence!(session_occurrence.id)
     end
 
-    test "delete_session_occurence/1 deletes the session_occurence" do
-      session_occurence = session_occurence_fixture()
-      assert {:ok, %SessionOccurence{}} = Sessions.delete_session_occurence(session_occurence)
+    test "delete_session_occurrence/1 deletes the session_occurrence" do
+      session_occurrence = session_occurrence_fixture()
+      assert {:ok, %SessionOccurrence{}} = Sessions.delete_session_occurrence(session_occurrence)
 
       assert_raise Ecto.NoResultsError, fn ->
-        Sessions.get_session_occurence!(session_occurence.id)
+        Sessions.get_session_occurrence!(session_occurrence.id)
       end
     end
 
-    test "change_session_occurence/1 returns a session_occurence changeset" do
-      session_occurence = session_occurence_fixture()
-      assert %Ecto.Changeset{} = Sessions.change_session_occurence(session_occurence)
+    test "change_session_occurrence/1 returns a session_occurrence changeset" do
+      session_occurrence = session_occurrence_fixture()
+      assert %Ecto.Changeset{} = Sessions.change_session_occurrence(session_occurrence)
     end
   end
 end

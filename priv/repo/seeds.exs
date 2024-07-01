@@ -171,23 +171,23 @@ defmodule Seed do
     batch_program
   end
 
-  def create_session_occurence() do
+  def create_session_occurrence() do
     session = Sessions.Session |> offset(^Enum.random(1..49)) |> limit(1) |> Repo.one()
 
-    {:ok, session_occurence} =
-      Sessions.create_session_occurence(%{
+    {:ok, session_occurrence} =
+      Sessions.create_session_occurrence(%{
         session_fk: session.id,
         start_time: session.start_time,
         end_time: session.end_time,
         session_id: Seed.random_alphanumeric()
       })
 
-    session_occurence
+    session_occurrence
   end
 
   def create_user_session() do
     session_occurrence =
-      Sessions.SessionOccurence |> offset(^Enum.random(1..99)) |> limit(1) |> Repo.one()
+      Sessions.SessionOccurrence |> offset(^Enum.random(1..99)) |> limit(1) |> Repo.one()
 
     {:ok, user_session} =
       Sessions.create_user_session(%{
@@ -642,7 +642,7 @@ Repo.delete_all(Schools.EnrollmentRecord)
 Repo.delete_all(Users.Student)
 Repo.delete_all(Schools.School)
 Repo.delete_all(Sessions.UserSession)
-Repo.delete_all(Sessions.SessionOccurence)
+Repo.delete_all(Sessions.SessionOccurrence)
 Repo.delete_all(Groups.GroupSession)
 Repo.delete_all(Groups.GroupUser)
 Repo.delete_all(Sessions.Session)
@@ -682,7 +682,7 @@ if Mix.env() == :dev do
 
   # create some sessions occurences and user-session mappings
   for count <- 1..100 do
-    Seed.create_session_occurence()
+    Seed.create_session_occurrence()
   end
 
   # create some user session-occurence mappings

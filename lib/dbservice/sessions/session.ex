@@ -7,6 +7,7 @@ defmodule Dbservice.Sessions.Session do
   alias Dbservice.Users.User
   alias Dbservice.Groups.Group
   alias Dbservice.Sessions.SessionSchedule
+  alias Dbservice.Sessions.SessionOccurrence
 
   schema "session" do
     field(:end_time, :utc_datetime)
@@ -37,6 +38,7 @@ defmodule Dbservice.Sessions.Session do
     many_to_many(:users, User, join_through: "user_session", on_replace: :delete)
     many_to_many(:group, Group, join_through: "group_session", on_replace: :delete)
     has_many(:session_schedule, SessionSchedule)
+    has_many(:session_occurrence, SessionOccurrence)
   end
 
   @doc false

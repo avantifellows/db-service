@@ -33,19 +33,19 @@ defmodule Dbservice.SessionsFixtures do
   end
 
   @doc """
-  Generate a session_occurence.
+  Generate a session_occurrence.
   """
-  def session_occurence_fixture(attrs \\ %{}) do
-    {:ok, session_occurence} =
+  def session_occurrence_fixture(attrs \\ %{}) do
+    {:ok, session_occurrence} =
       attrs
       |> Enum.into(%{
         end_time: ~U[2022-04-28 14:05:00Z],
         start_time: ~U[2022-04-28 14:05:00Z],
         session_id: get_session_id()
       })
-      |> Dbservice.Sessions.create_session_occurence()
+      |> Dbservice.Sessions.create_session_occurrence()
 
-    session_occurence
+    session_occurrence
   end
 
   def get_owner_id do
@@ -61,7 +61,7 @@ defmodule Dbservice.SessionsFixtures do
   end
 
   def get_session_id do
-    [head | _tail] = Sessions.list_session_occurence()
+    [head | _tail] = Sessions.list_session_occurrence()
     session_id = head.session_id
     session_id
   end
