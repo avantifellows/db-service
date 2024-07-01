@@ -131,4 +131,24 @@ defmodule Dbservice.EnrollmentRecords do
   def change_enrollment_record(%EnrollmentRecord{} = enrollment_record, attrs \\ %{}) do
     EnrollmentRecord.changeset(enrollment_record, attrs)
   end
+
+  @doc """
+  Gets an Enrollment Record based on the given parameters.
+  Returns `nil` if no school with the given parameters is found.
+  """
+
+  def get_enrollment_record_by_params(params) when is_map(params) do
+    query = from er in EnrollmentRecord, where: ^build_conditions(params), select: er
+
+    Repo.one(query)
+  end
+
+  @doc """
+  Builds a dynamic query condition from a map of parameters.
+  """
+  defp build_conditions(params) do
+    Enum.reduce(params, dynamic(true), fn {key, value}, dynamic ->
+      dynamic([er], field(er, ^key) == ^value and ^dynamic)
+    end)
+  end
 end

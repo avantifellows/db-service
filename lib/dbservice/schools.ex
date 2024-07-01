@@ -123,4 +123,24 @@ defmodule Dbservice.Schools do
   def change_school(%School{} = school, attrs \\ %{}) do
     School.changeset(school, attrs)
   end
+
+  @doc """
+  Gets a school based on the given parameters.
+  Returns `nil` if no school with the given parameters is found.
+  """
+  def get_school_by_params(params) when is_map(params) do
+    query = from s in School, where: ^build_conditions(params), select: s
+
+    Repo.one(query)
+  end
+
+  @doc """
+  Builds a dynamic query condition from a map of parameters.
+  """
+  defp build_conditions(params) do
+    Enum.reduce(params, dynamic(true), fn {key, value}, dynamic ->
+      dynamic([s], field(s, ^key) == ^value and ^dynamic)
+    end)
+  end
+
 end

@@ -18,6 +18,7 @@ defmodule DbserviceWeb.Router do
     resources("/user", UserController, only: [:index, :create, :update, :show])
     post("/user/:id/update-groups", UserController, :update_group)
     resources("/student", StudentController, except: [:new, :edit])
+    post("/student/generate_id", StudentController, :create_student_id)
     resources("/teacher", TeacherController, except: [:new, :edit])
     resources("/user-profile", UserProfileController, except: [:new, :edit])
     resources("/student-profile", StudentProfileController, except: [:new, :edit])

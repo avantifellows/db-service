@@ -78,4 +78,15 @@ defmodule Dbservice.Grades do
   def change_grade(%Grade{} = grade, attrs \\ %{}) do
     Grade.changeset(grade, attrs)
   end
+
+  @doc """
+  Gets a grade ID by its number.
+  Returns `nil` if no grade with the given number is found.
+  """
+  def get_grade_id_by_number(grade_number) do
+    case Repo.get_by(Grade, number: grade_number) do
+      nil -> nil
+      grade -> grade.id
+    end
+  end
 end
