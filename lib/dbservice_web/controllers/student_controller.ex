@@ -1,4 +1,7 @@
 defmodule DbserviceWeb.StudentController do
+  alias Dbservice.EnrollmentRecords
+  alias Dbservice.Schools
+  alias Dbservice.Grades
   use DbserviceWeb, :controller
 
   import Ecto.Query
@@ -389,5 +392,159 @@ defmodule DbserviceWeb.StudentController do
       select: g.id
     )
     |> Repo.exists?()
+  end
+
+  swagger_path :create_student_id do
+    post("/api/student/generate-id")
+
+    parameters do
+      body(:body, Schema.ref(:StudentIdGeneration), "Details for generating student ID",
+        required: true
+      )
+    end
+
+    response(201, "Created", Schema.ref(:StudentIdGenerationResponse))
+  end
+
+  def create_student_id(conn, params) do
+    try do
+      case generate_student_id(params) do
+        "" ->
+          conn
+          |> put_status(:bad_request)
+          |> json(%{error: "Could not create student id"})
+
+        student_id ->
+          conn
+          |> put_status(:created)
+          |> json(%{student_id: student_id})
+      end
+    rescue
+      e in RuntimeError ->
+        conn
+        |> put_status(:internal_server_error)
+        |> json(%{error: e.message})
+
+      e in _ ->
+        conn
+        |> put_status(:internal_server_error)
+        |> json(%{error: "An unexpected error occurred: #{inspect(e)}"})
+    end
+  end
+
+  defp generate_student_id(params) do
+    grade = Grades.get_grade_by_params(%{number: params["grade"]})
+
+    existing_students =
+      Users.get_students_by_params(%{grade_id: grade.id, category: params["category"]})
+
+    student_id =
+      if Enum.empty?(existing_students) do
+        ""
+      else
+        Enum.find_value(existing_students, "", fn existing_student ->
+          existing_user =
+            Users.get_user_by_params(%{
+              id: existing_student.user_id,
+              date_of_birth: params["date_of_birth"],
+              gender: params["gender"],
+              first_name: params["first_name"]
+            })
+
+          if Enum.empty?(existing_user) do
+            nil
+          else
+            school = Schools.get_school_by_params(%{name: params["school_name"]})
+
+            existing_enrollment_record =
+              Enum.any?(existing_user, fn user ->
+                EnrollmentRecords.get_enrollment_record_by_params(%{
+                  group_id: school.id,
+                  group_type: "school",
+                  user_id: user.id
+                })
+              end)
+
+            if existing_enrollment_record do
+              existing_student.student_id
+            else
+              nil
+            end
+          end
+        end)
+      end
+
+    if student_id == "" do
+      counter = 1000
+
+      generated_id =
+        Enum.reduce_while(1..counter, nil, fn _, acc ->
+          if acc do
+            {:halt, acc}
+          else
+            id = generate_new_id(params)
+
+            if check_if_generated_id_already_exists(id) do
+              {:cont, nil}
+            else
+              {:halt, id}
+            end
+          end
+        end)
+
+      if generated_id do
+        generated_id
+      else
+        raise RuntimeError, message: "JNV Student ID could not be generated. Max loops hit!"
+      end
+    else
+      student_id
+    end
+  end
+
+  defp generate_new_id(params) do
+    class_code = get_class_code(params["grade"])
+    jnv_code = get_jnv_code(params)
+    three_digit_code = generate_three_digit_code()
+
+    class_code <> jnv_code <> three_digit_code
+  end
+
+  defp get_class_code(grade) do
+    current_year =
+      :calendar.local_time()
+      |> elem(0)
+      |> elem(0)
+
+    graduating_year = current_year + (12 - grade)
+
+    graduating_year
+    |> Integer.to_string()
+    |> String.slice(-2..-1)
+  end
+
+  defp get_jnv_code(params) do
+    case Schools.get_school_by_params(%{region: params["region"], name: params["school_name"]}) do
+      nil ->
+        raise RuntimeError,
+          message:
+            "School not found for region: #{params["region"]}, name: #{params["school_name"]}"
+
+      school ->
+        school.code
+    end
+  end
+
+  defp generate_three_digit_code do
+    Enum.reduce(1..3, "", fn _, acc ->
+      acc <> Integer.to_string(:rand.uniform(10) - 1)
+    end)
+  end
+
+  defp check_if_generated_id_already_exists(id) do
+    case Users.get_student_by_student_id(id) do
+      nil -> false
+      _ -> true
+    end
   end
 end
