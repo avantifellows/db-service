@@ -134,11 +134,4 @@ defmodule Dbservice.Schools do
 
     Repo.one(query)
   end
-
-  # defp build_conditions(params) do
-  #   Enum.reduce(params, dynamic(true), fn {key, value}, dynamic ->
-  #     dynamic([s], field(s, ^key) == ^value and ^dynamic)
-  #   end)
-  # end
-
 end

@@ -463,10 +463,4 @@ defmodule Dbservice.Users do
     |> where(^Util.build_conditions(params))
     |> Repo.all()
   end
-
-  # defp build_conditions(params) when is_map(params) do
-  #   Enum.reduce(params, dynamic(true), fn {key, value}, dynamic ->
-  #     dynamic([q], field(q, ^key) == ^value and ^dynamic)
-  #   end)
-  # end
 end

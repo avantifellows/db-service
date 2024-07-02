@@ -53,17 +53,4 @@ defmodule Dbservice.Utils.Util do
       dynamic([q], field(q, ^key) == ^value and ^dynamic)
     end)
   end
-
-  # def build_conditions(params) when is_map(params) do
-  #   Enum.reduce(params, dynamic(true), fn {key, value}, acc ->
-  #     build_condition(acc, key, value)
-  #   end)
-  # end
-
-  # defp build_condition(acc, key, value) do
-  #   quote do
-  #     unquote(acc) and field(p, unquote(key)) == ^unquote(value)
-  #   end
-  # end
-
 end

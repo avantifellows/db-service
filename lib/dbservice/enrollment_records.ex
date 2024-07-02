@@ -143,10 +143,4 @@ defmodule Dbservice.EnrollmentRecords do
 
     Repo.one(query)
   end
-
-  # defp build_conditions(params) do
-  #   Enum.reduce(params, dynamic(true), fn {key, value}, dynamic ->
-  #     dynamic([er], field(er, ^key) == ^value and ^dynamic)
-  #   end)
-  # end
 end
