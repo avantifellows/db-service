@@ -1,5 +1,4 @@
 defmodule DbserviceWeb.StudentController do
-  alias Hex.HTTP
   alias Dbservice.EnrollmentRecords
   alias Dbservice.Schools
   alias Dbservice.Grades
@@ -164,7 +163,7 @@ defmodule DbserviceWeb.StudentController do
   end
 
   swagger_path :create_student_id do
-    post("/api/student/generate_id")
+    post("/api/student/generate-id")
 
     parameters do
       body(:body, Schema.ref(:StudentIdGeneration), "Details for generating student ID",
@@ -202,10 +201,10 @@ defmodule DbserviceWeb.StudentController do
   end
 
   defp generate_student_id(params) do
-    grade_id = Grades.get_grade_id_by_number(params["grade"])
-    # existing_students = Users.get_students_by_grade_and_category(grade_id, params["category"])
+    grade = Grades.get_grade_by_params(%{number: params["grade"]})
+
     existing_students =
-      Users.get_students_by_params(%{grade_id: grade_id, category: params["category"]})
+      Users.get_students_by_params(%{grade_id: grade.id, category: params["category"]})
 
     student_id =
       if Enum.empty?(existing_students) do
@@ -276,25 +275,16 @@ defmodule DbserviceWeb.StudentController do
     jnv_code = get_jnv_code(params)
     three_digit_code = generate_three_digit_code()
 
-    IO.puts(
-      "Debug: class_code: #{class_code}, jnv_code: #{jnv_code}, three_digit_code: #{three_digit_code}"
-    )
-
     class_code <> jnv_code <> three_digit_code
   end
 
   defp get_class_code(grade) do
-    IO.puts("Debug: grade type is #{inspect(grade)}")
-
     current_year =
       :calendar.local_time()
       |> elem(0)
       |> elem(0)
 
-    IO.puts("Debug: current_year is #{current_year}")
-
     graduating_year = current_year + (12 - grade)
-    IO.puts("Debug: graduating_year is #{graduating_year}")
 
     graduating_year
     |> Integer.to_string()
@@ -309,7 +299,6 @@ defmodule DbserviceWeb.StudentController do
             "School not found for region: #{params["region"]}, name: #{params["school_name"]}"
 
       school ->
-        IO.puts("Debug: School found: #{inspect(school)}")
         school.code
     end
   end

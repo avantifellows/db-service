@@ -4,6 +4,7 @@ defmodule Dbservice.Users do
   """
 
   import Ecto.Query, warn: false
+  alias Dbservice.Utils.Util
   alias Dbservice.Repo
 
   alias Dbservice.Users.User
@@ -449,7 +450,7 @@ defmodule Dbservice.Users do
   """
   def get_students_by_params(params) when is_map(params) do
     Student
-    |> where(^build_conditions(params))
+    |> where(^Util.build_conditions(params))
     |> Repo.all()
   end
 
@@ -459,16 +460,13 @@ defmodule Dbservice.Users do
   """
   def get_user_by_params(params) when is_map(params) do
     User
-    |> where(^build_conditions(params))
+    |> where(^Util.build_conditions(params))
     |> Repo.all()
   end
 
-  @doc """
-  Builds a dynamic query condition from a map of parameters.
-  """
-  defp build_conditions(params) when is_map(params) do
-    Enum.reduce(params, dynamic(true), fn {key, value}, dynamic ->
-      dynamic([q], field(q, ^key) == ^value and ^dynamic)
-    end)
-  end
+  # defp build_conditions(params) when is_map(params) do
+  #   Enum.reduce(params, dynamic(true), fn {key, value}, dynamic ->
+  #     dynamic([q], field(q, ^key) == ^value and ^dynamic)
+  #   end)
+  # end
 end

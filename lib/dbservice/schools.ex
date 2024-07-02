@@ -4,6 +4,7 @@ defmodule Dbservice.Schools do
   """
 
   import Ecto.Query, warn: false
+  alias Dbservice.Utils.Util
   alias Dbservice.Repo
 
   alias Dbservice.Groups.Group
@@ -129,18 +130,15 @@ defmodule Dbservice.Schools do
   Returns `nil` if no school with the given parameters is found.
   """
   def get_school_by_params(params) when is_map(params) do
-    query = from s in School, where: ^build_conditions(params), select: s
+    query = from s in School, where: ^Util.build_conditions(params), select: s
 
     Repo.one(query)
   end
 
-  @doc """
-  Builds a dynamic query condition from a map of parameters.
-  """
-  defp build_conditions(params) do
-    Enum.reduce(params, dynamic(true), fn {key, value}, dynamic ->
-      dynamic([s], field(s, ^key) == ^value and ^dynamic)
-    end)
-  end
+  # defp build_conditions(params) do
+  #   Enum.reduce(params, dynamic(true), fn {key, value}, dynamic ->
+  #     dynamic([s], field(s, ^key) == ^value and ^dynamic)
+  #   end)
+  # end
 
 end

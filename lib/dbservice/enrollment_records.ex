@@ -4,6 +4,7 @@ defmodule Dbservice.EnrollmentRecords do
   """
 
   import Ecto.Query, warn: false
+  alias Dbservice.Utils.Util
   alias Dbservice.Repo
 
   alias Dbservice.EnrollmentRecords.EnrollmentRecord
@@ -138,17 +139,14 @@ defmodule Dbservice.EnrollmentRecords do
   """
 
   def get_enrollment_record_by_params(params) when is_map(params) do
-    query = from er in EnrollmentRecord, where: ^build_conditions(params), select: er
+    query = from er in EnrollmentRecord, where: ^Util.build_conditions(params), select: er
 
     Repo.one(query)
   end
 
-  @doc """
-  Builds a dynamic query condition from a map of parameters.
-  """
-  defp build_conditions(params) do
-    Enum.reduce(params, dynamic(true), fn {key, value}, dynamic ->
-      dynamic([er], field(er, ^key) == ^value and ^dynamic)
-    end)
-  end
+  # defp build_conditions(params) do
+  #   Enum.reduce(params, dynamic(true), fn {key, value}, dynamic ->
+  #     dynamic([er], field(er, ^key) == ^value and ^dynamic)
+  #   end)
+  # end
 end

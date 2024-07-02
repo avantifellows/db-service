@@ -4,6 +4,7 @@ defmodule Dbservice.Grades do
   """
 
   import Ecto.Query, warn: false
+  alias Dbservice.Utils.Util
   alias Dbservice.Repo
 
   alias Dbservice.Grades.Grade
@@ -89,4 +90,16 @@ defmodule Dbservice.Grades do
       grade -> grade.id
     end
   end
+
+  def get_grade_by_params(params) when is_map(params) do
+    query = from g in Grade, where: ^Util.build_conditions(params), select: g
+
+    Repo.one(query)
+  end
+
+  # defp build_conditions(params) do
+  #   Enum.reduce(params, dynamic(true), fn {key, value}, dynamic ->
+  #     dynamic([g], field(g, ^key) == ^value and ^dynamic)
+  #   end)
+  # end
 end
