@@ -65,6 +65,9 @@ defmodule DbserviceWeb.SessionController do
           :session_id_is_null ->
             apply_session_id_null_filter(value, acc)
 
+          :is_quiz ->
+            apply_is_quiz_filter(value, acc)
+
           atom ->
             from(u in acc, where: field(u, ^atom) == ^value)
         end
@@ -85,6 +88,14 @@ defmodule DbserviceWeb.SessionController do
     case value do
       "true" -> from u in acc, where: is_nil(u.session_id)
       "false" -> from u in acc, where: not is_nil(u.session_id)
+      _ -> acc
+    end
+  end
+
+  defp apply_is_quiz_filter(value, acc) do
+    case value do
+      "true" -> from u in acc, where: u.platform == "quiz"
+      "false" -> from u in acc, where: u.platform != "quiz"
       _ -> acc
     end
   end
