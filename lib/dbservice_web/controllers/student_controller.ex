@@ -432,83 +432,17 @@ defmodule DbserviceWeb.StudentController do
     end
   end
 
-  # defp generate_student_id(params) do
-  #   grade = Grades.get_grade_by_params(%{number: params["grade"]})
-
-  #   existing_students =
-  #     Users.get_students_by_params(%{grade_id: grade.id, category: params["category"]})
-
-  #   student_id =
-  #     if Enum.empty?(existing_students) do
-  #       ""
-  #     else
-  #       Enum.find_value(existing_students, "", fn existing_student ->
-  #         existing_user =
-  #           Users.get_user_by_params(%{
-  #             id: existing_student.user_id,
-  #             date_of_birth: params["date_of_birth"],
-  #             gender: params["gender"],
-  #             first_name: params["first_name"]
-  #           })
-
-  #         if Enum.empty?(existing_user) do
-  #           nil
-  #         else
-  #           school = Schools.get_school_by_params(%{name: params["school_name"]})
-
-  #           existing_enrollment_record =
-  #             Enum.any?(existing_user, fn user ->
-  #               EnrollmentRecords.get_enrollment_record_by_params(%{
-  #                 group_id: school.id,
-  #                 group_type: "school",
-  #                 user_id: user.id
-  #               })
-  #             end)
-
-  #           if existing_enrollment_record do
-  #             existing_student.student_id
-  #           else
-  #             nil
-  #           end
-  #         end
-  #       end)
-  #     end
-
-  #   if student_id == "" do
-  #     counter = 1000
-
-  #     generated_id =
-  #       Enum.reduce_while(1..counter, nil, fn _, acc ->
-  #         if acc do
-  #           {:halt, acc}
-  #         else
-  #           id = generate_new_id(params)
-
-  #           if check_if_generated_id_already_exists(id) do
-  #             {:cont, nil}
-  #           else
-  #             {:halt, id}
-  #           end
-  #         end
-  #       end)
-
-  #     if generated_id do
-  #       generated_id
-  #     else
-  #       raise RuntimeError, message: "JNV Student ID could not be generated. Max loops hit!"
-  #     end
-  #   else
-  #     student_id
-  #   end
-  # end
-
   defp generate_student_id(params) do
     grade = Grades.get_grade_by_params(%{number: params["grade"]})
+
     existing_students = get_existing_students(grade.id, params["category"])
 
     case find_existing_student_id(existing_students, params) do
-      "" -> generate_new_student_id(params)
-      student_id -> student_id
+      "" ->
+        generate_new_student_id(params)
+
+      student_id ->
+        student_id
     end
   end
 
@@ -519,6 +453,7 @@ defmodule DbserviceWeb.StudentController do
   defp find_existing_student_id(existing_students, params) do
     Enum.find_value(existing_students, "", fn existing_student ->
       existing_user = get_existing_user(existing_student.user_id, params)
+
       check_enrollment_and_get_id(existing_user, existing_student.student_id, params)
     end)
   end
@@ -537,17 +472,25 @@ defmodule DbserviceWeb.StudentController do
       nil
     else
       school = Schools.get_school_by_params(%{name: params["school_name"]})
-      if check_existing_enrollment(existing_user, school.id), do: student_id, else: nil
+
+      if check_existing_enrollment(existing_user, school.id) do
+        student_id
+      else
+        nil
+      end
     end
   end
 
   defp check_existing_enrollment(existing_user, school_id) do
     Enum.any?(existing_user, fn user ->
-      EnrollmentRecords.get_enrollment_record_by_params(%{
-        group_id: school_id,
-        group_type: "school",
-        user_id: user.id
-      })
+      enrollment =
+        EnrollmentRecords.get_enrollment_record_by_params(%{
+          group_id: school_id,
+          group_type: "school",
+          user_id: user.id
+        })
+
+      enrollment != nil
     end)
   end
 
@@ -591,7 +534,10 @@ defmodule DbserviceWeb.StudentController do
   end
 
   defp get_jnv_code(params) do
-    case Schools.get_school_by_params(%{region: params["region"], name: params["school_name"]}) do
+    school =
+      Schools.get_school_by_params(%{region: params["region"], name: params["school_name"]})
+
+    case school do
       nil ->
         raise RuntimeError,
           message:
