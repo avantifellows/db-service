@@ -64,11 +64,12 @@ defmodule DbserviceWeb.GradeController do
   end
 
   def create(conn, params) do
-    with {:ok, %Grade{} = grade} <- Grades.create_grade(params) do
-      conn
-      |> put_status(:created)
-      |> put_resp_header("location", Routes.grade_path(conn, :show, grade))
-      |> render("show.json", grade: grade)
+    case Grades.get_grade_by_number(params["number"]) do
+      nil ->
+        create_new_grade(conn, params)
+
+      existing_grade ->
+        update_existing_grade(conn, existing_grade, params)
     end
   end
 
@@ -121,6 +122,24 @@ defmodule DbserviceWeb.GradeController do
 
     with {:ok, %Grade{}} <- Grades.delete_grade(grade) do
       send_resp(conn, :no_content, "")
+    end
+  end
+
+  defp create_new_grade(conn, params) do
+    with {:ok, %Grade{} = grade} <- Grades.create_grade(params) do
+      conn
+      |> put_status(:created)
+      |> put_resp_header("location", Routes.grade_path(conn, :show, grade))
+      |> render("show.json", grade: grade)
+    end
+  end
+
+  defp update_existing_grade(conn, existing_grade, params) do
+    with {:ok, %Grade{} = grade} <-
+           Grades.update_grade(existing_grade, params) do
+      conn
+      |> put_status(:ok)
+      |> render("show.json", grade: grade)
     end
   end
 end
