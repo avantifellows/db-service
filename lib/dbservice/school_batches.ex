@@ -51,20 +51,6 @@ defmodule Dbservice.SchoolBatches do
   end
 
   @doc """
-  Gets a school-batch by batch ID.
-  Raises `Ecto.NoResultsError` if the SchoolBatch does not exist.
-  ## Examples
-      iex> get_school_batch_by_batch_id(1234)
-      %SchoolBatch{}
-      iex> get_school_batch_by_batch_id(abc)
-      ** (Ecto.NoResultsError)
-  """
-  def get_school_batch_by_batch_id(batch_id) do
-    from(g in SchoolBatch, where: g.batch_id == ^batch_id)
-    |> Repo.all()
-  end
-
-  @doc """
   Creates a school_batch.
 
   ## Examples
