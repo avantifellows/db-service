@@ -134,13 +134,13 @@ defmodule Dbservice.EnrollmentRecords do
   end
 
   @doc """
-  Gets an Enrollment Record based on the given parameters.
-  Returns `nil` if no school with the given parameters is found.
+  Gets a list of Enrollment Record based on the given parameters.
+  Returns empty list - [] if no Enrollment record with the given parameters is found.
   """
 
   def get_enrollment_record_by_params(params) when is_map(params) do
     query = from er in EnrollmentRecord, where: ^Util.build_conditions(params), select: er
 
-    Repo.one(query)
+    Repo.all(query)
   end
 end

@@ -81,16 +81,9 @@ defmodule Dbservice.Grades do
   end
 
   @doc """
-  Gets a grade ID by its number.
-  Returns `nil` if no grade with the given number is found.
+  Gets a grade based on the given parameters.
+  Returns `nil` if no grade with the given parameters is found.
   """
-  def get_grade_id_by_number(grade_number) do
-    case Repo.get_by(Grade, number: grade_number) do
-      nil -> nil
-      grade -> grade.id
-    end
-  end
-
   def get_grade_by_params(params) when is_map(params) do
     query = from g in Grade, where: ^Util.build_conditions(params), select: g
 

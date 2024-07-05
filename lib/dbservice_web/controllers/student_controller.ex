@@ -407,47 +407,32 @@ defmodule DbserviceWeb.StudentController do
   end
 
   def create_student_id(conn, params) do
-    try do
-      case generate_student_id(params) do
-        "" ->
-          conn
-          |> put_status(:bad_request)
-          |> json(%{error: "Could not create student id"})
-
-        student_id ->
-          conn
-          |> put_status(:created)
-          |> json(%{student_id: student_id})
-      end
-    rescue
-      e in RuntimeError ->
+    case generate_student_id(params) do
+      {:ok, student_id} ->
         conn
-        |> put_status(:internal_server_error)
-        |> json(%{error: e.message})
+        |> put_status(:created)
+        |> json(%{student_id: student_id})
 
-      e in _ ->
+      {:error, message} ->
         conn
-        |> put_status(:internal_server_error)
-        |> json(%{error: "An unexpected error occurred: #{inspect(e)}"})
+        |> put_status(:bad_request)
+        |> json(%{error: message})
     end
   end
 
   defp generate_student_id(params) do
     grade = Grades.get_grade_by_params(%{number: params["grade"]})
 
-    existing_students = get_existing_students(grade.id, params["category"])
+    existing_students =
+      Users.get_students_by_params(%{grade_id: grade.id, category: params["category"]})
 
     case find_existing_student_id(existing_students, params) do
       "" ->
         generate_new_student_id(params)
 
       student_id ->
-        student_id
+        {:ok, student_id}
     end
-  end
-
-  defp get_existing_students(grade_id, category) do
-    Users.get_students_by_params(%{grade_id: grade_id, category: category})
   end
 
   defp find_existing_student_id(existing_students, params) do
@@ -471,7 +456,7 @@ defmodule DbserviceWeb.StudentController do
     if Enum.empty?(existing_user) do
       nil
     else
-      school = Schools.get_school_by_params(%{name: params["school_name"]})
+      [school] = Schools.get_school_by_params(%{name: params["school_name"]})
 
       if check_existing_enrollment(existing_user, school.id) do
         student_id
@@ -490,16 +475,21 @@ defmodule DbserviceWeb.StudentController do
           user_id: user.id
         })
 
-      enrollment != nil
+      enrollment != []
     end)
   end
 
   defp generate_new_student_id(params) do
-    try_generate_id(1000, params)
+    counter = 1000
+
+    case try_generate_id(counter, params) do
+      {:ok, student_id} -> {:ok, student_id}
+      {:error, message} -> {:error, message}
+    end
   end
 
   defp try_generate_id(0, _params) do
-    raise RuntimeError, message: "JNV Student ID could not be generated. Max loops hit!"
+    {:error, "Student ID could not be generated. Max attempts hit!"}
   end
 
   defp try_generate_id(attempts_left, params) do
@@ -508,16 +498,16 @@ defmodule DbserviceWeb.StudentController do
     if check_if_generated_id_already_exists(id) do
       try_generate_id(attempts_left - 1, params)
     else
-      id
+      {:ok, id}
     end
   end
 
   defp generate_new_id(params) do
     class_code = get_class_code(params["grade"])
-    jnv_code = get_jnv_code(params)
+    school_code = get_school_code(params)
     three_digit_code = generate_three_digit_code()
 
-    class_code <> jnv_code <> three_digit_code
+    class_code <> school_code <> three_digit_code
   end
 
   defp get_class_code(grade) do
@@ -533,19 +523,11 @@ defmodule DbserviceWeb.StudentController do
     |> String.slice(-2..-1)
   end
 
-  defp get_jnv_code(params) do
-    school =
+  defp get_school_code(params) do
+    [school] =
       Schools.get_school_by_params(%{region: params["region"], name: params["school_name"]})
 
-    case school do
-      nil ->
-        raise RuntimeError,
-          message:
-            "School not found for region: #{params["region"]}, name: #{params["school_name"]}"
-
-      school ->
-        school.code
-    end
+    school.code
   end
 
   defp generate_three_digit_code do

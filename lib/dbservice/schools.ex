@@ -126,12 +126,12 @@ defmodule Dbservice.Schools do
   end
 
   @doc """
-  Gets a school based on the given parameters.
-  Returns `nil` if no school with the given parameters is found.
+  Gets a list of schools based on the given parameters.
+  Returns empty list - [] if no school with the given parameters is found.
   """
   def get_school_by_params(params) when is_map(params) do
     query = from s in School, where: ^Util.build_conditions(params), select: s
 
-    Repo.one(query)
+    Repo.all(query)
   end
 end
