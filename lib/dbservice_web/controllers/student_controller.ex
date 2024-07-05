@@ -34,6 +34,8 @@ defmodule DbserviceWeb.StudentController do
         SwaggerSchemaStudent.student_with_user()
       )
     )
+    |> Map.merge(SwaggerSchemaStudent.student_id_generation())
+    |> Map.merge(SwaggerSchemaStudent.student_id_generation_response())
   end
 
   swagger_path :index do
