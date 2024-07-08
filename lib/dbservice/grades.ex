@@ -4,6 +4,7 @@ defmodule Dbservice.Grades do
   """
 
   import Ecto.Query, warn: false
+  alias Dbservice.Utils.Util
   alias Dbservice.Repo
 
   alias Dbservice.Grades.Grade
@@ -95,5 +96,15 @@ defmodule Dbservice.Grades do
   """
   def change_grade(%Grade{} = grade, attrs \\ %{}) do
     Grade.changeset(grade, attrs)
+  end
+
+  @doc """
+  Gets a grade based on the given parameters.
+  Returns `nil` if no grade with the given parameters is found.
+  """
+  def get_grade_by_params(params) when is_map(params) do
+    query = from g in Grade, where: ^Util.build_conditions(params), select: g
+
+    Repo.one(query)
   end
 end

@@ -3,6 +3,7 @@ defmodule Dbservice.Utils.Util do
 
   use Ecto.Schema
   import Ecto.Changeset
+  import Ecto.Query
 
   def invalidate_future_date(changeset, date_field_atom) do
     today = Date.utc_today()
@@ -45,5 +46,11 @@ defmodule Dbservice.Utils.Util do
     else
       changeset
     end
+  end
+
+  def build_conditions(params) when is_map(params) do
+    Enum.reduce(params, dynamic(true), fn {key, value}, dynamic ->
+      dynamic([q], field(q, ^key) == ^value and ^dynamic)
+    end)
   end
 end

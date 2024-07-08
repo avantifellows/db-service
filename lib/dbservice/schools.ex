@@ -4,6 +4,7 @@ defmodule Dbservice.Schools do
   """
 
   import Ecto.Query, warn: false
+  alias Dbservice.Utils.Util
   alias Dbservice.Repo
 
   alias Dbservice.Groups.Group
@@ -122,5 +123,15 @@ defmodule Dbservice.Schools do
   """
   def change_school(%School{} = school, attrs \\ %{}) do
     School.changeset(school, attrs)
+  end
+
+  @doc """
+  Gets a list of schools based on the given parameters.
+  Returns empty list - [] if no school with the given parameters is found.
+  """
+  def get_school_by_params(params) when is_map(params) do
+    query = from s in School, where: ^Util.build_conditions(params), select: s
+
+    Repo.all(query)
   end
 end
