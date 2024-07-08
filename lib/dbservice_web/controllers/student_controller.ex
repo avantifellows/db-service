@@ -426,7 +426,13 @@ defmodule DbserviceWeb.StudentController do
     grade = Grades.get_grade_by_params(%{number: params["grade"]})
 
     existing_students =
-      Users.get_students_by_params(%{grade_id: grade.id, category: params["category"]})
+      Users.get_students_with_users(
+        grade.id,
+        params["category"],
+        params["date_of_birth"],
+        params["gender"],
+        params["first_name"]
+      )
 
     case find_existing_student_id(existing_students, params) do
       "" ->
@@ -438,47 +444,30 @@ defmodule DbserviceWeb.StudentController do
   end
 
   defp find_existing_student_id(existing_students, params) do
-    Enum.find_value(existing_students, "", fn existing_student ->
-      existing_user = get_existing_user(existing_student.user_id, params)
-
-      check_enrollment_and_get_id(existing_user, existing_student.student_id, params)
+    Enum.find_value(existing_students, "", fn {student, user} ->
+      check_enrollment_and_get_id(user, student.student_id, params)
     end)
   end
 
-  defp get_existing_user(user_id, params) do
-    Users.get_user_by_params(%{
-      id: user_id,
-      date_of_birth: params["date_of_birth"],
-      gender: params["gender"],
-      first_name: params["first_name"]
-    })
-  end
+  defp check_enrollment_and_get_id(user, student_id, params) do
+    [school] = Schools.get_school_by_params(%{name: params["school_name"]})
 
-  defp check_enrollment_and_get_id(existing_user, student_id, params) do
-    if Enum.empty?(existing_user) do
-      nil
+    if school && check_existing_enrollment(user.id, school.id) do
+      student_id
     else
-      [school] = Schools.get_school_by_params(%{name: params["school_name"]})
-
-      if check_existing_enrollment(existing_user, school.id) do
-        student_id
-      else
-        nil
-      end
+      nil
     end
   end
 
-  defp check_existing_enrollment(existing_user, school_id) do
-    Enum.any?(existing_user, fn user ->
-      enrollment =
-        EnrollmentRecords.get_enrollment_record_by_params(%{
-          group_id: school_id,
-          group_type: "school",
-          user_id: user.id
-        })
+  defp check_existing_enrollment(user_id, school_id) do
+    enrollment =
+      EnrollmentRecords.get_enrollment_record_by_params(%{
+        group_id: school_id,
+        group_type: "school",
+        user_id: user_id
+      })
 
-      enrollment != []
-    end)
+    enrollment != []
   end
 
   defp generate_new_student_id(params) do
