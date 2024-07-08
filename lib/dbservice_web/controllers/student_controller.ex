@@ -435,27 +435,38 @@ defmodule DbserviceWeb.StudentController do
       )
 
     case find_existing_student_id(existing_students, params) do
-      "" ->
+      {:ok, ""} ->
         generate_new_student_id(params)
 
-      student_id ->
+      {:ok, student_id} ->
         {:ok, student_id}
+
+      {:error, message} ->
+        {:error, message}
     end
   end
 
   defp find_existing_student_id(existing_students, params) do
-    Enum.find_value(existing_students, "", fn {student, user} ->
-      check_enrollment_and_get_id(user, student.student_id, params)
+    Enum.reduce_while(existing_students, {:ok, ""}, fn {student, user}, acc ->
+      case check_enrollment_and_get_id(user, student.student_id, params) do
+        {:ok, nil} -> {:cont, acc}
+        {:ok, student_id} -> {:halt, {:ok, student_id}}
+        {:error, message} -> {:halt, {:error, message}}
+      end
     end)
   end
 
   defp check_enrollment_and_get_id(user, student_id, params) do
-    [school] = Schools.get_school_by_params(%{name: params["school_name"]})
+    case Schools.get_school_by_params(%{name: params["school_name"]}) do
+      [] ->
+        {:error, "No school found with the given name"}
 
-    if school && check_existing_enrollment(user.id, school.id) do
-      student_id
-    else
-      nil
+      [school] ->
+        if check_existing_enrollment(user.id, school.id) do
+          {:ok, student_id}
+        else
+          {:ok, nil}
+        end
     end
   end
 
@@ -473,29 +484,31 @@ defmodule DbserviceWeb.StudentController do
   defp generate_new_student_id(params) do
     counter = 1000
 
-    case try_generate_id(counter, params) do
-      {:ok, student_id} -> {:ok, student_id}
-      {:error, message} -> {:error, message}
+    case get_school_code(params) do
+      {:ok, school_code} ->
+        try_generate_id(counter, params, school_code)
+
+      {:error, message} ->
+        {:error, message}
     end
   end
 
-  defp try_generate_id(0, _params) do
+  defp try_generate_id(0, _params, _school_code) do
     {:error, "Student ID could not be generated. Max attempts hit!"}
   end
 
-  defp try_generate_id(attempts_left, params) do
-    id = generate_new_id(params)
+  defp try_generate_id(attempts_left, params, school_code) do
+    id = generate_new_id(params, school_code)
 
     if check_if_generated_id_already_exists(id) do
-      try_generate_id(attempts_left - 1, params)
+      try_generate_id(attempts_left - 1, params, school_code)
     else
       {:ok, id}
     end
   end
 
-  defp generate_new_id(params) do
+  defp generate_new_id(params, school_code) do
     class_code = get_class_code(params["grade"])
-    school_code = get_school_code(params)
     three_digit_code = generate_three_digit_code()
 
     class_code <> school_code <> three_digit_code
@@ -515,10 +528,13 @@ defmodule DbserviceWeb.StudentController do
   end
 
   defp get_school_code(params) do
-    [school] =
-      Schools.get_school_by_params(%{region: params["region"], name: params["school_name"]})
+    case Schools.get_school_by_params(%{region: params["region"], name: params["school_name"]}) do
+      [] ->
+        {:error, "No school found with the given name and region"}
 
-    school.code
+      [school] ->
+        {:ok, school.code}
+    end
   end
 
   defp generate_three_digit_code do
