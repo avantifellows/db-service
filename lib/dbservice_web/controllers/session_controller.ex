@@ -69,13 +69,13 @@ defmodule DbserviceWeb.SessionController do
             apply_is_quiz_filter(value, acc)
 
           :group ->
-            apply_nested_filter(value, key, acc)
+            apply_meta_data_filter(value, key, acc)
 
           :parent_id ->
-            apply_nested_filter(value, key, acc)
+            apply_meta_data_filter(value, key, acc)
 
           :batch_id ->
-            apply_nested_filter(value, key, acc)
+            apply_meta_data_filter(value, key, acc)
 
           atom ->
             from(u in acc, where: field(u, ^atom) == ^value)
@@ -109,7 +109,7 @@ defmodule DbserviceWeb.SessionController do
     end
   end
 
-  defp apply_nested_filter(value, field, acc) do
+  defp apply_meta_data_filter(value, field, acc) do
     from u in acc,
       where: fragment("?->>? = ?", u.meta_data, ^field, ^value)
   end
