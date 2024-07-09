@@ -458,6 +458,7 @@ defmodule DbserviceWeb.StudentController do
 
   defp check_enrollment_and_get_id(user, student_id, params) do
     region = if params["region"] == "", do: nil, else: params["region"]
+
     case Schools.get_school_by_params(%{name: params["school_name"], region: region}) do
       [] ->
         {:error, "No school found with the given name and region"}
@@ -533,6 +534,7 @@ defmodule DbserviceWeb.StudentController do
 
   defp get_school_code(params) do
     region = if params["region"] == "", do: nil, else: params["region"]
+
     case Schools.get_school_by_params(%{region: region, name: params["school_name"]}) do
       [] ->
         {:error, "No school found with the given name and region"}
