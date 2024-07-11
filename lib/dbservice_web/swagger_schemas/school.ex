@@ -57,4 +57,24 @@ defmodule DbserviceWeb.SwaggerSchema.School do
         end
     }
   end
+
+  def schoolbatches do
+    %{
+      SchoolBatches:
+        swagger_schema do
+          title("School Batch")
+          description("Relation between school and batch")
+
+          properties do
+            school_id(:integer, "Id of a particular school")
+            batch_id(:integer, "Id of a particular batch")
+          end
+
+          example(%{
+            school_id: 1,
+            batch_id: 1
+          })
+        end
+    }
+  end
 end
