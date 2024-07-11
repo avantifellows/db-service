@@ -68,22 +68,22 @@ defmodule DbserviceWeb.SessionController do
           :is_quiz ->
             apply_is_quiz_filter(value, acc)
 
-          :group ->
-            apply_meta_data_filter(value, key, acc)
-
-          :parent_id ->
-            apply_meta_data_filter(value, key, acc)
-
-          :batch_id ->
-            apply_meta_data_filter(value, key, acc)
-
           atom ->
-            from(u in acc, where: field(u, ^atom) == ^value)
+            apply_filter_based_on_schema(atom, key, value, acc)
         end
       end)
 
     session = Repo.all(query)
     render(conn, "index.json", session: session)
+  end
+
+  defp apply_filter_based_on_schema(atom, key, value, acc) do
+    if atom in Session.__schema__(:fields) do
+      from(u in acc, where: field(u, ^atom) == ^value)
+    else
+      from u in acc,
+        where: fragment("?->>? = ?", u.meta_data, ^key, ^value)
+    end
   end
 
   defp extract_sort_order(params) do
@@ -107,11 +107,6 @@ defmodule DbserviceWeb.SessionController do
       "false" -> from u in acc, where: u.platform != "quiz"
       _ -> acc
     end
-  end
-
-  defp apply_meta_data_filter(value, field, acc) do
-    from u in acc,
-      where: fragment("?->>? = ?", u.meta_data, ^field, ^value)
   end
 
   swagger_path :create do
