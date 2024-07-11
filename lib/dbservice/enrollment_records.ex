@@ -4,6 +4,7 @@ defmodule Dbservice.EnrollmentRecords do
   """
 
   import Ecto.Query, warn: false
+  alias Dbservice.Utils.Util
   alias Dbservice.Repo
 
   alias Dbservice.EnrollmentRecords.EnrollmentRecord
@@ -130,5 +131,16 @@ defmodule Dbservice.EnrollmentRecords do
   """
   def change_enrollment_record(%EnrollmentRecord{} = enrollment_record, attrs \\ %{}) do
     EnrollmentRecord.changeset(enrollment_record, attrs)
+  end
+
+  @doc """
+  Gets a list of Enrollment Record based on the given parameters.
+  Returns empty list - [] if no Enrollment record with the given parameters is found.
+  """
+
+  def get_enrollment_record_by_params(params) when is_map(params) do
+    query = from er in EnrollmentRecord, where: ^Util.build_conditions(params), select: er
+
+    Repo.all(query)
   end
 end

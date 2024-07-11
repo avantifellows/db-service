@@ -69,11 +69,12 @@ defmodule DbserviceWeb.SubjectController do
   end
 
   def create(conn, params) do
-    with {:ok, %Subject{} = subject} <- Subjects.create_subject(params) do
-      conn
-      |> put_status(:created)
-      |> put_resp_header("location", Routes.subject_path(conn, :show, subject))
-      |> render("show.json", subject: subject)
+    case Subjects.get_subject_by_name(params["name"]) do
+      nil ->
+        create_new_subject(conn, params)
+
+      existing_subject ->
+        update_existing_subject(conn, existing_subject, params)
     end
   end
 
@@ -126,6 +127,24 @@ defmodule DbserviceWeb.SubjectController do
 
     with {:ok, %Subject{}} <- Subjects.delete_subject(subject) do
       send_resp(conn, :no_content, "")
+    end
+  end
+
+  defp create_new_subject(conn, params) do
+    with {:ok, %Subject{} = subject} <- Subjects.create_subject(params) do
+      conn
+      |> put_status(:created)
+      |> put_resp_header("location", Routes.subject_path(conn, :show, subject))
+      |> render("show.json", subject: subject)
+    end
+  end
+
+  defp update_existing_subject(conn, existing_subject, params) do
+    with {:ok, %Subject{} = subject} <-
+           Subjects.update_subject(existing_subject, params) do
+      conn
+      |> put_status(:ok)
+      |> render("show.json", subject: subject)
     end
   end
 end
