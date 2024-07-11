@@ -6,6 +6,7 @@ defmodule Dbservice.Schools.School do
 
   alias Dbservice.Groups.Group
   alias Dbservice.EnrollmentRecords.EnrollmentRecord
+  alias Dbservice.Users.User
 
   schema "school" do
     field :code, :string
@@ -29,6 +30,8 @@ defmodule Dbservice.Schools.School do
       foreign_key: :group_id,
       where: [group_type: "school"]
 
+    belongs_to(:user, User)
+
     timestamps()
   end
 
@@ -49,7 +52,8 @@ defmodule Dbservice.Schools.School do
       :block_code,
       :block_name,
       :board,
-      :board_medium
+      :board_medium,
+      :user_id
     ])
     |> validate_required([:code, :name])
   end

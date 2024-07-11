@@ -11,6 +11,7 @@ defmodule Dbservice.Users.User do
   alias Dbservice.Profiles.UserProfile
   alias Dbservice.Groups.Group
   alias Dbservice.EnrollmentRecords.EnrollmentRecord
+  alias Dbservice.Schools.School
 
   schema "user" do
     field(:first_name, :string)
@@ -36,6 +37,7 @@ defmodule Dbservice.Users.User do
     has_one(:user_profile, UserProfile)
     has_many(:enrollment_record, EnrollmentRecord)
     many_to_many(:group, Group, join_through: "group_user", on_replace: :delete)
+    has_one(:school, School)
   end
 
   @doc false
