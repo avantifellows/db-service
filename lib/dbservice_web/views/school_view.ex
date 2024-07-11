@@ -26,7 +26,8 @@ defmodule DbserviceWeb.SchoolView do
       block_code: school.block_code,
       block_name: school.block_name,
       board: school.board,
-      board_medium: school.board_medium
+      board_medium: school.board_medium,
+      user_id: school.user_id
     }
   end
 end
