@@ -25,6 +25,7 @@ defmodule DbserviceWeb.SwaggerSchema.School do
             block_name(:string, "Block Name")
             board(:string, "Board")
             board_medium(:string, "Medium")
+            user_id(:integer, "User ID of a school")
           end
 
           example(%{
@@ -40,7 +41,8 @@ defmodule DbserviceWeb.SwaggerSchema.School do
             district: "NORTH WEST DELHI",
             block_code: "DOEAIDED",
             board: "CBSE",
-            board_medium: "en"
+            board_medium: "en",
+            user_id: 1
           })
         end
     }
