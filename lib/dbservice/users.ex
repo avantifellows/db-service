@@ -463,4 +463,23 @@ defmodule Dbservice.Users do
     |> where(^Util.build_conditions(params))
     |> Repo.all()
   end
+
+  @doc """
+  Gets a list of students along with their associated users based on the given parameters.
+  Returns an empty list if no matching students or users are found.
+  """
+  def get_students_with_users(grade_id, category, date_of_birth, gender, first_name) do
+    from(s in Student,
+      join: u in User,
+      on: u.id == s.user_id,
+      where:
+        s.grade_id == ^grade_id and
+          s.category == ^category and
+          u.date_of_birth == ^date_of_birth and
+          u.gender == ^gender and
+          u.first_name == ^first_name,
+      select: {s, u}
+    )
+    |> Repo.all()
+  end
 end

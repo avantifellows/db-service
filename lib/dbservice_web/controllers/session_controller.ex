@@ -69,12 +69,21 @@ defmodule DbserviceWeb.SessionController do
             apply_is_quiz_filter(value, acc)
 
           atom ->
-            from(u in acc, where: field(u, ^atom) == ^value)
+            apply_filter_based_on_schema(atom, key, value, acc)
         end
       end)
 
     session = Repo.all(query)
     render(conn, "index.json", session: session)
+  end
+
+  defp apply_filter_based_on_schema(atom, key, value, acc) do
+    if atom in Session.__schema__(:fields) do
+      from(u in acc, where: field(u, ^atom) == ^value)
+    else
+      from u in acc,
+        where: fragment("?->>? = ?", u.meta_data, ^key, ^value)
+    end
   end
 
   defp extract_sort_order(params) do
