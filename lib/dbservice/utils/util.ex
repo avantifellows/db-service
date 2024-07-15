@@ -50,7 +50,11 @@ defmodule Dbservice.Utils.Util do
 
   def build_conditions(params) when is_map(params) do
     Enum.reduce(params, dynamic(true), fn {key, value}, dynamic ->
-      dynamic([q], field(q, ^key) == ^value and ^dynamic)
+      if is_nil(value) do
+        dynamic([q], is_nil(field(q, ^key)) and ^dynamic)
+      else
+        dynamic([q], field(q, ^key) == ^value and ^dynamic)
+      end
     end)
   end
 end

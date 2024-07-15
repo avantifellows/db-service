@@ -426,68 +426,64 @@ defmodule DbserviceWeb.StudentController do
     grade = Grades.get_grade_by_params(%{number: params["grade"]})
 
     existing_students =
-      Users.get_students_by_params(%{grade_id: grade.id, category: params["category"]})
+      Users.get_students_with_users(
+        grade.id,
+        params["category"],
+        params["date_of_birth"],
+        params["gender"],
+        params["first_name"]
+      )
 
     case find_existing_student_id(existing_students, params) do
-      "" ->
+      {:ok, ""} ->
         generate_new_student_id(params)
 
-      student_id ->
+      {:ok, student_id} ->
         {:ok, student_id}
+
+      {:error, message} ->
+        {:error, message}
     end
   end
 
   defp find_existing_student_id(existing_students, params) do
-    Enum.find_value(existing_students, "", fn existing_student ->
-      existing_user = get_existing_user(existing_student.user_id, params)
-
-      check_enrollment_and_get_id(existing_user, existing_student.student_id, params)
+    Enum.reduce_while(existing_students, {:ok, ""}, fn {student, user}, acc ->
+      case check_enrollment_and_get_id(user, student.student_id, params) do
+        {:ok, nil} -> {:cont, acc}
+        {:ok, student_id} -> {:halt, {:ok, student_id}}
+        {:error, message} -> {:halt, {:error, message}}
+      end
     end)
   end
 
-  defp get_existing_user(user_id, params) do
-    Users.get_user_by_params(%{
-      id: user_id,
-      date_of_birth: params["date_of_birth"],
-      gender: params["gender"],
-      first_name: params["first_name"]
-    })
-  end
+  defp check_enrollment_and_get_id(user, student_id, params) do
+    case Schools.get_school_by_code(params["school_code"]) do
+      nil ->
+        {:error, "No school found with the given school code"}
 
-  defp check_enrollment_and_get_id(existing_user, student_id, params) do
-    if Enum.empty?(existing_user) do
-      nil
-    else
-      [school] = Schools.get_school_by_params(%{name: params["school_name"]})
-
-      if check_existing_enrollment(existing_user, school.id) do
-        student_id
-      else
-        nil
-      end
+      school ->
+        if check_existing_enrollment(user.id, school.id) do
+          {:ok, student_id}
+        else
+          {:ok, nil}
+        end
     end
   end
 
-  defp check_existing_enrollment(existing_user, school_id) do
-    Enum.any?(existing_user, fn user ->
-      enrollment =
-        EnrollmentRecords.get_enrollment_record_by_params(%{
-          group_id: school_id,
-          group_type: "school",
-          user_id: user.id
-        })
+  defp check_existing_enrollment(user_id, school_id) do
+    enrollment =
+      EnrollmentRecords.get_enrollment_record_by_params(%{
+        group_id: school_id,
+        group_type: "school",
+        user_id: user_id
+      })
 
-      enrollment != []
-    end)
+    enrollment != []
   end
 
   defp generate_new_student_id(params) do
     counter = 1000
-
-    case try_generate_id(counter, params) do
-      {:ok, student_id} -> {:ok, student_id}
-      {:error, message} -> {:error, message}
-    end
+    try_generate_id(counter, params)
   end
 
   defp try_generate_id(0, _params) do
@@ -506,7 +502,7 @@ defmodule DbserviceWeb.StudentController do
 
   defp generate_new_id(params) do
     class_code = get_class_code(params["grade"])
-    school_code = get_school_code(params)
+    school_code = params["school_code"]
     three_digit_code = generate_three_digit_code()
 
     class_code <> school_code <> three_digit_code
@@ -518,18 +514,11 @@ defmodule DbserviceWeb.StudentController do
       |> elem(0)
       |> elem(0)
 
-    graduating_year = current_year + (12 - grade)
+    graduating_year = current_year + (12 - grade) + 1
 
     graduating_year
     |> Integer.to_string()
     |> String.slice(-2..-1)
-  end
-
-  defp get_school_code(params) do
-    [school] =
-      Schools.get_school_by_params(%{region: params["region"], name: params["school_name"]})
-
-    school.code
   end
 
   defp generate_three_digit_code do
