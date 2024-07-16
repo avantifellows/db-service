@@ -12,13 +12,6 @@ defmodule Dbservice.Utils.Util do
 
     date_to_validate = get_field(changeset, date_field_atom)
 
-    date_to_validate =
-      case date_to_validate do
-        %DateTime{} -> date_to_validate
-        %NaiveDateTime{} -> DateTime.from_naive!(date_to_validate, "Etc/UTC")
-        _ -> raise "Unsupported date format"
-      end
-
     if DateTime.compare(date_to_validate, ist_now) == :gt do
       add_error(changeset, date_field_atom, "cannot be later than today")
     else
