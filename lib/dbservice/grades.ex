@@ -4,6 +4,7 @@ defmodule Dbservice.Grades do
   """
 
   import Ecto.Query, warn: false
+  alias Dbservice.Utils.Util
   alias Dbservice.Repo
 
   alias Dbservice.Grades.Grade
@@ -28,6 +29,24 @@ defmodule Dbservice.Grades do
       ** (Ecto.NoResultsError)
   """
   def get_grade!(id), do: Repo.get!(Grade, id)
+
+  @doc """
+  Gets a grade by number.
+
+  Raises `Ecto.NoResultsError` if the School does not exist.
+
+  ## Examples
+
+      iex> get_grade_by_number(12)
+      %School{}
+
+      iex> get_grade_by_number(12)
+      ** (Ecto.NoResultsError)
+
+  """
+  def get_grade_by_number(number) do
+    Repo.get_by(Grade, number: number)
+  end
 
   @doc """
   Creates a grade.
@@ -77,5 +96,15 @@ defmodule Dbservice.Grades do
   """
   def change_grade(%Grade{} = grade, attrs \\ %{}) do
     Grade.changeset(grade, attrs)
+  end
+
+  @doc """
+  Gets a grade based on the given parameters.
+  Returns `nil` if no grade with the given parameters is found.
+  """
+  def get_grade_by_params(params) when is_map(params) do
+    query = from g in Grade, where: ^Util.build_conditions(params), select: g
+
+    Repo.one(query)
   end
 end

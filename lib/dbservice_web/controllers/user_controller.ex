@@ -179,9 +179,7 @@ defmodule DbserviceWeb.UserController do
 
   def get_user_sessions(conn, %{"user_id" => user_id, "quiz" => quiz_flag}) do
     group_users = GroupUsers.get_group_user_by_user_id(user_id)
-
-    sessions = Enum.flat_map(group_users, &get_group_user(&1, quiz_flag))
-
+    sessions = Enum.flat_map(group_users, &fetch_group_user_sessions(&1, quiz_flag))
     render(conn, "user_sessions.json", session: sessions)
   end
 
@@ -189,18 +187,19 @@ defmodule DbserviceWeb.UserController do
     get_user_sessions(conn, %{"user_id" => user_id, "quiz" => false})
   end
 
-  defp get_group_user(group_user, quiz_flag) do
+  defp fetch_group_user_sessions(group_user, quiz_flag) do
     group_id = group_user.group_id
 
-    case Groups.get_group_by_group_id(group_id) do
+    case Groups.get_group_by_group_id_and_type(group_id, "batch") do
       nil -> []
-      group -> get_group(group, quiz_flag)
+      group -> fetch_group_sessions(group, quiz_flag)
     end
   end
 
-  defp get_group(group, quiz_flag) do
+  defp fetch_group_sessions(group, quiz_flag) do
     child_id = group.child_id
     batch = Batches.get_batch!(child_id)
+    class_batch_id = batch.batch_id
     quiz_id = batch.parent_id
     quiz_group = Groups.get_group_by_child_id(quiz_id)
     quiz_group_id = quiz_group.id
@@ -208,13 +207,29 @@ defmodule DbserviceWeb.UserController do
     group_id = if quiz_flag, do: quiz_group_id, else: group.id
     group_sessions = GroupSessions.get_group_session_by_group_id(group_id)
 
-    Enum.map(group_sessions, &get_group_session(&1))
+    filter_sessions(group_sessions, quiz_flag, class_batch_id)
+    |> Enum.map(&get_session_by_id/1)
   end
 
-  defp get_group_session(group_session) do
-    case Sessions.get_session!(group_session.session_id) do
-      nil -> nil
-      session -> session
+  defp filter_sessions(group_sessions, quiz_flag, class_batch_id) do
+    Enum.filter(group_sessions, &should_include_session?(&1, quiz_flag, class_batch_id))
+  end
+
+  defp should_include_session?(group_session, quiz_flag, class_batch_id) do
+    case get_session_by_id(group_session) do
+      nil ->
+        false
+
+      session ->
+        if quiz_flag && session.meta_data["batch_id"] != "" do
+          session.meta_data["batch_id"] == class_batch_id and session.platform == "quiz"
+        else
+          true
+        end
     end
+  end
+
+  defp get_session_by_id(group_session) do
+    Sessions.get_session!(group_session.session_id)
   end
 end

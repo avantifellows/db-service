@@ -1,10 +1,20 @@
 defmodule DbserviceWeb.StudentController do
+  alias Dbservice.EnrollmentRecords
+  alias Dbservice.Schools
+  alias Dbservice.Grades
   use DbserviceWeb, :controller
 
   import Ecto.Query
   alias Dbservice.Repo
   alias Dbservice.Users
   alias Dbservice.Users.Student
+  alias Dbservice.EnrollmentRecords.EnrollmentRecord
+  alias Dbservice.Groups.GroupUser
+  alias Dbservice.Statuses.Status
+  alias Dbservice.Groups.Group
+  alias Dbservice.EnrollmentRecords
+  alias Dbservice.Batches.Batch
+  alias Dbservice.GroupUsers
 
   action_fallback(DbserviceWeb.FallbackController)
 
@@ -24,6 +34,8 @@ defmodule DbserviceWeb.StudentController do
         SwaggerSchemaStudent.student_with_user()
       )
     )
+    |> Map.merge(SwaggerSchemaStudent.student_id_generation())
+    |> Map.merge(SwaggerSchemaStudent.student_id_generation_response())
   end
 
   swagger_path :index do
@@ -156,6 +168,369 @@ defmodule DbserviceWeb.StudentController do
       conn
       |> put_status(:created)
       |> render("show.json", student: student)
+    end
+  end
+
+  def dropout(conn, %{"student_id" => student_id}) do
+    student = Users.get_student_by_student_id(student_id)
+
+    # Check if the student's status is already 'dropout'
+    if student.status == "dropout" do
+      conn
+      |> put_status(:bad_request)
+      |> json(%{errors: "Student is already marked as dropout"})
+    else
+      user_id = student.user_id
+      current_time = DateTime.utc_now()
+
+      # Fetch status and group details in a single query
+      {status_id, group_type} =
+        from(s in Status,
+          join: g in Group,
+          on: g.child_id == s.id and g.type == "status",
+          where: s.title == :dropout,
+          select: {g.child_id, g.type}
+        )
+        |> Repo.one()
+
+      # Fetch all current enrollment records for the user
+      current_enrollments =
+        from(e in EnrollmentRecord,
+          where: e.user_id == ^user_id and e.is_current == true
+        )
+        |> Repo.all()
+
+      # Use the academic_year and grade_id from one of the current enrollments
+      %{academic_year: academic_year, grade_id: grade_id} = List.first(current_enrollments)
+
+      # Update all current enrollment records to set is_current: false and end_date
+      Enum.each(current_enrollments, fn enrollment ->
+        EnrollmentRecords.update_enrollment_record(enrollment, %{
+          is_current: false,
+          end_date: current_time
+        })
+      end)
+
+      # Create a new enrollment record with the fetched status_id
+      new_enrollment_attrs = %{
+        user_id: user_id,
+        is_current: true,
+        start_date: current_time,
+        group_id: status_id,
+        group_type: group_type,
+        academic_year: academic_year,
+        grade_id: grade_id
+      }
+
+      EnrollmentRecords.create_enrollment_record(new_enrollment_attrs)
+
+      # Delete all group-user entries for the user
+      from(gu in GroupUser, where: gu.user_id == ^user_id)
+      |> Repo.delete_all()
+
+      # Update the student's status to 'dropout' using update_student/2
+      with {:ok, %Student{} = updated_student} <-
+             Users.update_student(student, %{"status" => "dropout"}) do
+        render(conn, "show.json", student: updated_student)
+      end
+    end
+  end
+
+  def enrolled(conn, params) do
+    # Retrieve the student information based on the provided student ID
+    student = Users.get_student_by_student_id(params["student_id"])
+    user_id = student.user_id
+
+    # Retrieve the group user information based on the user ID
+    group_users = GroupUsers.get_group_user_by_user_id(user_id)
+    current_time = DateTime.utc_now()
+
+    # Get batch information and enrolled status information
+
+    {group_id, batch_id, group_type} = get_batch_info(params["batch_id"])
+    {status_id, status_group_type} = get_enrolled_status_info()
+
+    academic_year = params["academic_year"]
+    grade_id = params["grade_id"]
+
+    # Check if the student is already enrolled in the specified batch
+    unless existing_batch_enrollment?(user_id, batch_id) do
+      handle_batch_enrollment(
+        user_id,
+        batch_id,
+        group_type,
+        academic_year,
+        grade_id,
+        current_time
+      )
+
+      # Handle the enrollment process for the status
+      handle_status_enrollment(
+        user_id,
+        status_id,
+        status_group_type,
+        academic_year,
+        grade_id,
+        current_time
+      )
+    end
+
+    # Update the group user with the new group ID
+    update_group_user(user_id, group_id, group_users)
+
+    # Update the student's status to "enrolled" and render the response
+    with {:ok, %Student{} = updated_student} <-
+           Users.update_student(student, %{"status" => "enrolled"}) do
+      render(conn, "show.json", student: updated_student)
+    end
+  end
+
+  # Fetches batch information based on the batch ID
+  defp get_batch_info(batch_id) do
+    from(b in Batch,
+      join: g in Group,
+      on: g.child_id == b.id and g.type == "batch",
+      where: b.batch_id == ^batch_id,
+      select: {g.id, g.child_id, g.type}
+    )
+    |> Repo.one()
+  end
+
+  # Fetches enrolled status information
+  defp get_enrolled_status_info do
+    from(s in Status,
+      join: g in Group,
+      on: g.child_id == s.id and g.type == "status",
+      where: s.title == :enrolled,
+      select: {g.child_id, g.type}
+    )
+    |> Repo.one()
+  end
+
+  # Checks if the student is already enrolled in the batch
+  defp existing_batch_enrollment?(user_id, batch_id) do
+    from(e in EnrollmentRecord,
+      where:
+        e.user_id == ^user_id and e.group_id == ^batch_id and e.group_type == "batch" and
+          e.is_current == true
+    )
+    |> Repo.exists?()
+  end
+
+  # Handles batch enrollment process
+  defp handle_batch_enrollment(
+         user_id,
+         batch_id,
+         group_type,
+         academic_year,
+         grade_id,
+         current_time
+       ) do
+    new_enrollment_attrs = %{
+      user_id: user_id,
+      is_current: true,
+      start_date: current_time,
+      group_id: batch_id,
+      group_type: group_type,
+      academic_year: academic_year,
+      grade_id: grade_id
+    }
+
+    # Update existing enrollments to mark them as not current
+    update_existing_enrollments(user_id, "batch", current_time)
+    EnrollmentRecords.create_enrollment_record(new_enrollment_attrs)
+  end
+
+  # Handles status enrollment process
+  defp handle_status_enrollment(
+         user_id,
+         status_id,
+         status_group_type,
+         academic_year,
+         grade_id,
+         current_time
+       ) do
+    new_status_enrollment_attrs = %{
+      user_id: user_id,
+      is_current: true,
+      start_date: current_time,
+      group_id: status_id,
+      group_type: status_group_type,
+      academic_year: academic_year,
+      grade_id: grade_id
+    }
+
+    # Update existing enrollments to mark them as not current
+    update_existing_enrollments(user_id, "status", current_time)
+    EnrollmentRecords.create_enrollment_record(new_status_enrollment_attrs)
+  end
+
+  # Updates existing enrollments to mark them as not current
+  defp update_existing_enrollments(user_id, group_type, current_time) do
+    from(e in EnrollmentRecord,
+      where: e.user_id == ^user_id and e.group_type == ^group_type and e.is_current == true,
+      update: [set: [is_current: false, end_date: ^current_time]]
+    )
+    |> Repo.update_all([])
+  end
+
+  # Updates or creates a group user record for the batch
+  defp update_group_user(user_id, group_id, group_users) do
+    batch_group_user = Enum.find(group_users, &batch_group_user?(&1))
+
+    if batch_group_user do
+      # Update existing group user with the new group ID
+      GroupUsers.update_group_user(batch_group_user, %{group_id: group_id})
+    else
+      # Create a new group user record
+      GroupUsers.create_group_user(%{user_id: user_id, group_id: group_id})
+    end
+  end
+
+  # Checks if a group user is associated with a batch
+  defp batch_group_user?(group_user) do
+    from(g in Group,
+      where: g.id == ^group_user.group_id and g.type == "batch",
+      select: g.id
+    )
+    |> Repo.exists?()
+  end
+
+  swagger_path :create_student_id do
+    post("/api/student/generate-id")
+
+    parameters do
+      body(:body, Schema.ref(:StudentIdGeneration), "Details for generating student ID",
+        required: true
+      )
+    end
+
+    response(201, "Created", Schema.ref(:StudentIdGenerationResponse))
+  end
+
+  def create_student_id(conn, params) do
+    case generate_student_id(params) do
+      {:ok, student_id} ->
+        conn
+        |> put_status(:created)
+        |> json(%{student_id: student_id})
+
+      {:error, message} ->
+        conn
+        |> put_status(:bad_request)
+        |> json(%{error: message})
+    end
+  end
+
+  defp generate_student_id(params) do
+    grade = Grades.get_grade_by_params(%{number: params["grade"]})
+
+    existing_students =
+      Users.get_students_with_users(
+        grade.id,
+        params["category"],
+        params["date_of_birth"],
+        params["gender"],
+        params["first_name"]
+      )
+
+    case find_existing_student_id(existing_students, params) do
+      {:ok, ""} ->
+        generate_new_student_id(params)
+
+      {:ok, student_id} ->
+        {:ok, student_id}
+
+      {:error, message} ->
+        {:error, message}
+    end
+  end
+
+  defp find_existing_student_id(existing_students, params) do
+    Enum.reduce_while(existing_students, {:ok, ""}, fn {student, user}, acc ->
+      case check_enrollment_and_get_id(user, student.student_id, params) do
+        {:ok, nil} -> {:cont, acc}
+        {:ok, student_id} -> {:halt, {:ok, student_id}}
+        {:error, message} -> {:halt, {:error, message}}
+      end
+    end)
+  end
+
+  defp check_enrollment_and_get_id(user, student_id, params) do
+    case Schools.get_school_by_code(params["school_code"]) do
+      nil ->
+        {:error, "No school found with the given school code"}
+
+      school ->
+        if check_existing_enrollment(user.id, school.id) do
+          {:ok, student_id}
+        else
+          {:ok, nil}
+        end
+    end
+  end
+
+  defp check_existing_enrollment(user_id, school_id) do
+    enrollment =
+      EnrollmentRecords.get_enrollment_record_by_params(%{
+        group_id: school_id,
+        group_type: "school",
+        user_id: user_id
+      })
+
+    enrollment != []
+  end
+
+  defp generate_new_student_id(params) do
+    counter = 1000
+    try_generate_id(counter, params)
+  end
+
+  defp try_generate_id(0, _params) do
+    {:error, "Student ID could not be generated. Max attempts hit!"}
+  end
+
+  defp try_generate_id(attempts_left, params) do
+    id = generate_new_id(params)
+
+    if check_if_generated_id_already_exists(id) do
+      try_generate_id(attempts_left - 1, params)
+    else
+      {:ok, id}
+    end
+  end
+
+  defp generate_new_id(params) do
+    class_code = get_class_code(params["grade"])
+    school_code = params["school_code"]
+    three_digit_code = generate_three_digit_code()
+
+    class_code <> school_code <> three_digit_code
+  end
+
+  defp get_class_code(grade) do
+    current_year =
+      :calendar.local_time()
+      |> elem(0)
+      |> elem(0)
+
+    graduating_year = current_year + (12 - grade) + 1
+
+    graduating_year
+    |> Integer.to_string()
+    |> String.slice(-2..-1)
+  end
+
+  defp generate_three_digit_code do
+    Enum.reduce(1..3, "", fn _, acc ->
+      acc <> Integer.to_string(:rand.uniform(10) - 1)
+    end)
+  end
+
+  defp check_if_generated_id_already_exists(id) do
+    case Users.get_student_by_student_id(id) do
+      nil -> false
+      _ -> true
     end
   end
 end

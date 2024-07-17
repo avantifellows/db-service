@@ -4,10 +4,13 @@ defmodule Dbservice.Schools do
   """
 
   import Ecto.Query, warn: false
+  alias Dbservice.Utils.Util
   alias Dbservice.Repo
 
   alias Dbservice.Groups.Group
   alias Dbservice.Schools.School
+  alias Dbservice.Users.User
+  alias Dbservice.Schools
 
   @doc """
   Returns the list of school.
@@ -122,5 +125,59 @@ defmodule Dbservice.Schools do
   """
   def change_school(%School{} = school, attrs \\ %{}) do
     School.changeset(school, attrs)
+  end
+
+  @doc """
+  Gets a list of schools based on the given parameters.
+  Returns empty list - [] if no school with the given parameters is found.
+  """
+  def get_school_by_params(params) when is_map(params) do
+    query = from s in School, where: ^Util.build_conditions(params), select: s
+
+    Repo.all(query)
+  end
+
+  @doc """
+  Creates a user first and then the school.
+
+  ## Examples
+
+      iex> create_school_with_user(%{field: value})
+      {:ok, %School{}}
+
+      iex> create_school_with_user(%{field: bad_value})
+      {:error, %Ecto.Changeset{}}
+
+  """
+  def create_school_with_user(attrs \\ %{}) do
+    alias Dbservice.Users
+
+    with {:ok, %User{} = user} <- Users.create_user(attrs),
+         {:ok, %School{} = school} <-
+           Schools.create_school(Map.merge(attrs, %{"user_id" => user.id})) do
+      {:ok, school}
+    end
+  end
+
+  @doc """
+  Updates a user first and then the school.
+
+  ## Examples
+
+      iex> update_school_with_user(%{field: value})
+      {:ok, %School{}}
+
+      iex> update_school_with_user(%{field: bad_value})
+      {:error, %Ecto.Changeset{}}
+
+  """
+  def update_school_with_user(school, user, attrs \\ %{}) do
+    alias Dbservice.Users
+
+    with {:ok, %User{} = user} <- Users.update_user(user, attrs),
+         {:ok, %School{} = school} <-
+           Schools.update_school(school, Map.merge(attrs, %{"user_id" => user.id})) do
+      {:ok, school}
+    end
   end
 end
