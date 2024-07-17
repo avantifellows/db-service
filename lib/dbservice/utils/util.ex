@@ -6,10 +6,13 @@ defmodule Dbservice.Utils.Util do
   import Ecto.Query
 
   def invalidate_future_date(changeset, date_field_atom) do
-    today = Date.utc_today()
+    utc_now = DateTime.utc_now()
+
+    ist_now = DateTime.add(utc_now, 5 * 60 * 60 + 30 * 60, :second)
+
     date_to_validate = get_field(changeset, date_field_atom)
 
-    if Date.compare(date_to_validate, today) == :gt do
+    if DateTime.compare(date_to_validate, ist_now) == :gt do
       add_error(changeset, date_field_atom, "cannot be later than today")
     else
       changeset
