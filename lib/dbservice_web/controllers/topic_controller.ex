@@ -70,11 +70,12 @@ defmodule DbserviceWeb.TopicController do
   end
 
   def create(conn, params) do
-    with {:ok, %Topic{} = topic} <- Topics.create_topic(params) do
-      conn
-      |> put_status(:created)
-      |> put_resp_header("location", Routes.topic_path(conn, :show, topic))
-      |> render("show.json", topic: topic)
+    case Topics.get_topic_by_code(params["code"]) do
+      nil ->
+        create_new_topic(conn, params)
+
+      existing_topic ->
+        update_existing_topic(conn, existing_topic, params)
     end
   end
 
@@ -127,6 +128,24 @@ defmodule DbserviceWeb.TopicController do
 
     with {:ok, %Topic{}} <- Topics.delete_topic(topic) do
       send_resp(conn, :no_content, "")
+    end
+  end
+
+  defp create_new_topic(conn, params) do
+    with {:ok, %Topic{} = topic} <- Topics.create_topic(params) do
+      conn
+      |> put_status(:created)
+      |> put_resp_header("location", Routes.topic_path(conn, :show, topic))
+      |> render("show.json", topic: topic)
+    end
+  end
+
+  defp update_existing_topic(conn, existing_topic, params) do
+    with {:ok, %Topic{} = topic} <-
+           Topics.update_topic(existing_topic, params) do
+      conn
+      |> put_status(:ok)
+      |> render("show.json", topic: topic)
     end
   end
 end

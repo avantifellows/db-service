@@ -64,11 +64,12 @@ defmodule DbserviceWeb.ResourceController do
   end
 
   def create(conn, params) do
-    with {:ok, %Resource{} = resource} <- Resources.create_resource(params) do
-      conn
-      |> put_status(:created)
-      |> put_resp_header("location", Routes.resource_path(conn, :show, resource))
-      |> render("show.json", resource: resource)
+    case Resources.get_resource_by_name_and_source_id(params["name"], params["source_id"]) do
+      nil ->
+        create_new_resource(conn, params)
+
+      existing_resource ->
+        update_existing_resource(conn, existing_resource, params)
     end
   end
 
@@ -121,6 +122,24 @@ defmodule DbserviceWeb.ResourceController do
 
     with {:ok, %Resource{}} <- Resources.delete_resource(resource) do
       send_resp(conn, :no_content, "")
+    end
+  end
+
+  defp create_new_resource(conn, params) do
+    with {:ok, %Resource{} = resource} <- Resources.create_resource(params) do
+      conn
+      |> put_status(:created)
+      |> put_resp_header("location", Routes.resource_path(conn, :show, resource))
+      |> render("show.json", resource: resource)
+    end
+  end
+
+  defp update_existing_resource(conn, existing_resource, params) do
+    with {:ok, %Resource{} = resource} <-
+           Resources.update_resource(existing_resource, params) do
+      conn
+      |> put_status(:ok)
+      |> render("show.json", resource: resource)
     end
   end
 end

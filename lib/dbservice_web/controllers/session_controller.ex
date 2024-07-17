@@ -65,13 +65,25 @@ defmodule DbserviceWeb.SessionController do
           :session_id_is_null ->
             apply_session_id_null_filter(value, acc)
 
+          :is_quiz ->
+            apply_is_quiz_filter(value, acc)
+
           atom ->
-            from(u in acc, where: field(u, ^atom) == ^value)
+            apply_filter_based_on_schema(atom, key, value, acc)
         end
       end)
 
     session = Repo.all(query)
     render(conn, "index.json", session: session)
+  end
+
+  defp apply_filter_based_on_schema(atom, key, value, acc) do
+    if atom in Session.__schema__(:fields) do
+      from(u in acc, where: field(u, ^atom) == ^value)
+    else
+      from u in acc,
+        where: fragment("?->>? = ?", u.meta_data, ^key, ^value)
+    end
   end
 
   defp extract_sort_order(params) do
@@ -85,6 +97,14 @@ defmodule DbserviceWeb.SessionController do
     case value do
       "true" -> from u in acc, where: is_nil(u.session_id)
       "false" -> from u in acc, where: not is_nil(u.session_id)
+      _ -> acc
+    end
+  end
+
+  defp apply_is_quiz_filter(value, acc) do
+    case value do
+      "true" -> from u in acc, where: u.platform == "quiz"
+      "false" -> from u in acc, where: u.platform != "quiz"
       _ -> acc
     end
   end

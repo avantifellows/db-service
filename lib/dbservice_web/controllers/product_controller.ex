@@ -58,11 +58,12 @@ defmodule DbserviceWeb.ProductController do
   end
 
   def create(conn, params) do
-    with {:ok, %Product{} = product} <- Products.create_product(params) do
-      conn
-      |> put_status(:created)
-      |> put_resp_header("location", Routes.product_path(conn, :show, product))
-      |> render("show.json", product: product)
+    case Products.get_product_by_name_and_code(params["name"], params["code"]) do
+      nil ->
+        create_new_product(conn, params)
+
+      existing_product ->
+        update_existing_product(conn, existing_product, params)
     end
   end
 
@@ -115,6 +116,23 @@ defmodule DbserviceWeb.ProductController do
 
     with {:ok, %Product{}} <- Products.delete_product(product) do
       send_resp(conn, :no_content, "")
+    end
+  end
+
+  defp create_new_product(conn, params) do
+    with {:ok, %Product{} = product} <- Products.create_product(params) do
+      conn
+      |> put_status(:created)
+      |> put_resp_header("location", Routes.product_path(conn, :show, product))
+      |> render("show.json", product: product)
+    end
+  end
+
+  defp update_existing_product(conn, existing_product, params) do
+    with {:ok, %Product{} = product} <- Products.update_product(existing_product, params) do
+      conn
+      |> put_status(:ok)
+      |> render("show.json", product: product)
     end
   end
 end

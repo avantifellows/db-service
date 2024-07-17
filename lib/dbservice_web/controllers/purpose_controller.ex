@@ -64,11 +64,12 @@ defmodule DbserviceWeb.PurposeController do
   end
 
   def create(conn, params) do
-    with {:ok, %Purpose{} = purpose} <- Purposes.create_purpose(params) do
-      conn
-      |> put_status(:created)
-      |> put_resp_header("location", Routes.purpose_path(conn, :show, purpose))
-      |> render("show.json", purpose: purpose)
+    case Purposes.get_purpose_by_name(params["name"]) do
+      nil ->
+        create_new_purpose(conn, params)
+
+      existing_purpose ->
+        update_existing_purpose(conn, existing_purpose, params)
     end
   end
 
@@ -121,6 +122,24 @@ defmodule DbserviceWeb.PurposeController do
 
     with {:ok, %Purpose{}} <- Purposes.delete_purpose(purpose) do
       send_resp(conn, :no_content, "")
+    end
+  end
+
+  defp create_new_purpose(conn, params) do
+    with {:ok, %Purpose{} = purpose} <- Purposes.create_purpose(params) do
+      conn
+      |> put_status(:created)
+      |> put_resp_header("location", Routes.purpose_path(conn, :show, purpose))
+      |> render("show.json", purpose: purpose)
+    end
+  end
+
+  defp update_existing_purpose(conn, existing_purpose, params) do
+    with {:ok, %Purpose{} = purpose} <-
+           Purposes.update_purpose(existing_purpose, params) do
+      conn
+      |> put_status(:ok)
+      |> render("show.json", purpose: purpose)
     end
   end
 end
