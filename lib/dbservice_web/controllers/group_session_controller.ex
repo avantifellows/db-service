@@ -1,4 +1,7 @@
 defmodule DbserviceWeb.GroupSessionController do
+  alias Dbservice.AuthGroups
+  alias Dbservice.Batches
+  alias Dbservice.Groups
   use DbserviceWeb, :controller
 
   import Ecto.Query
@@ -137,6 +140,67 @@ defmodule DbserviceWeb.GroupSessionController do
       conn
       |> put_status(:ok)
       |> render("show.json", group_session: group_session)
+    end
+  end
+
+  swagger_path :get_auth_group_from_session do
+    get("/api/group-session/session-auth-group")
+    description("Fetches the associated auth group data for a session")
+
+    parameters do
+      session_id(:query, :integer, "The ID of the session", required: true)
+    end
+
+    response(200, "Success", Schema.ref(:AuthGroup))
+  end
+
+  def get_auth_group_from_session(conn, %{"session_id" => session_id}) do
+    with {:ok, group_session} <- get_group_session(session_id),
+         {:ok, group} <- get_group(group_session.group_id),
+         {:ok, batch} <- get_batch(group.child_id),
+         {:ok, auth_group} <- get_auth_group(batch.auth_group_id) do
+      conn
+      |> put_status(:ok)
+      |> put_view(DbserviceWeb.AuthGroupView)
+      |> render("auth_group.json", auth_group: auth_group)
+    else
+      {:error, :not_found, message} ->
+        conn
+        |> put_status(:not_found)
+        |> json(%{error: message})
+
+      {:error, :bad_request, message} ->
+        conn
+        |> put_status(:bad_request)
+        |> json(%{error: message})
+    end
+  end
+
+  defp get_group_session(session_id) do
+    case GroupSessions.get_group_session_by_session_id(session_id) do
+      nil -> {:error, :not_found, "Group session not found"}
+      group_session -> {:ok, group_session}
+    end
+  end
+
+  defp get_group(group_id) do
+    case Groups.get_group!(group_id) do
+      nil -> {:error, :not_found, "Group not found"}
+      group -> {:ok, group}
+    end
+  end
+
+  defp get_batch(batch_id) do
+    case Batches.get_batch!(batch_id) do
+      nil -> {:error, :not_found, "Batch not found"}
+      batch -> {:ok, batch}
+    end
+  end
+
+  defp get_auth_group(auth_group_id) do
+    case AuthGroups.get_auth_group!(auth_group_id) do
+      nil -> {:error, :not_found, "Auth group not found"}
+      auth_group -> {:ok, auth_group}
     end
   end
 end
