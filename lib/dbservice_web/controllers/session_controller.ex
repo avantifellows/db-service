@@ -104,7 +104,7 @@ defmodule DbserviceWeb.SessionController do
   defp apply_is_quiz_filter(value, acc) do
     case value do
       "true" -> from u in acc, where: u.platform == "quiz"
-      "false" -> from u in acc, where: u.platform != "quiz"
+      "false" -> from u in acc, where: u.platform != "quiz" or is_nil(u.platform)
       _ -> acc
     end
   end
