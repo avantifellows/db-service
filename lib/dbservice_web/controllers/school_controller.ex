@@ -5,6 +5,7 @@ defmodule DbserviceWeb.SchoolController do
   alias Dbservice.Repo
   alias Dbservice.Schools
   alias Dbservice.Schools.School
+  alias Dbservice.Users
 
   action_fallback DbserviceWeb.FallbackController
 
@@ -143,6 +144,35 @@ defmodule DbserviceWeb.SchoolController do
 
   defp update_existing_school(conn, existing_school, params) do
     with {:ok, %School{} = school} <- Schools.update_school(existing_school, params) do
+      conn
+      |> put_status(:ok)
+      |> render("show.json", school: school)
+    end
+  end
+
+  def create_school_with_user(conn, params) do
+    case Schools.get_school_by_code(params["code"]) do
+      nil ->
+        create_school_and_user(conn, params)
+
+      existing_school ->
+        update_existing_school_with_user(conn, existing_school, params)
+    end
+  end
+
+  defp create_school_and_user(conn, params) do
+    with {:ok, %School{} = school} <- Schools.create_school_with_user(params) do
+      conn
+      |> put_status(:created)
+      |> render("show.json", school: school)
+    end
+  end
+
+  defp update_existing_school_with_user(conn, existing_school, params) do
+    user = Users.get_user!(existing_school.user_id)
+
+    with {:ok, %School{} = school} <-
+           Schools.update_school_with_user(existing_school, user, params) do
       conn
       |> put_status(:ok)
       |> render("show.json", school: school)

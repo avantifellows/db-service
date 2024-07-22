@@ -1,4 +1,7 @@
 defmodule DbserviceWeb.StudentController do
+  alias Dbservice.EnrollmentRecords
+  alias Dbservice.Schools
+  alias Dbservice.Grades
   use DbserviceWeb, :controller
 
   import Ecto.Query
@@ -31,6 +34,8 @@ defmodule DbserviceWeb.StudentController do
         SwaggerSchemaStudent.student_with_user()
       )
     )
+    |> Map.merge(SwaggerSchemaStudent.student_id_generation())
+    |> Map.merge(SwaggerSchemaStudent.student_id_generation_response())
   end
 
   swagger_path :index do
@@ -389,5 +394,143 @@ defmodule DbserviceWeb.StudentController do
       select: g.id
     )
     |> Repo.exists?()
+  end
+
+  swagger_path :create_student_id do
+    post("/api/student/generate-id")
+
+    parameters do
+      body(:body, Schema.ref(:StudentIdGeneration), "Details for generating student ID",
+        required: true
+      )
+    end
+
+    response(201, "Created", Schema.ref(:StudentIdGenerationResponse))
+  end
+
+  def create_student_id(conn, params) do
+    case generate_student_id(params) do
+      {:ok, student_id} ->
+        conn
+        |> put_status(:created)
+        |> json(%{student_id: student_id})
+
+      {:error, message} ->
+        conn
+        |> put_status(:bad_request)
+        |> json(%{error: message})
+    end
+  end
+
+  defp generate_student_id(params) do
+    grade = Grades.get_grade_by_params(%{number: params["grade"]})
+
+    existing_students =
+      Users.get_students_with_users(
+        grade.id,
+        params["category"],
+        params["date_of_birth"],
+        params["gender"],
+        params["first_name"]
+      )
+
+    case find_existing_student_id(existing_students, params) do
+      {:ok, ""} ->
+        generate_new_student_id(params)
+
+      {:ok, student_id} ->
+        {:ok, student_id}
+
+      {:error, message} ->
+        {:error, message}
+    end
+  end
+
+  defp find_existing_student_id(existing_students, params) do
+    Enum.reduce_while(existing_students, {:ok, ""}, fn {student, user}, acc ->
+      case check_enrollment_and_get_id(user, student.student_id, params) do
+        {:ok, nil} -> {:cont, acc}
+        {:ok, student_id} -> {:halt, {:ok, student_id}}
+        {:error, message} -> {:halt, {:error, message}}
+      end
+    end)
+  end
+
+  defp check_enrollment_and_get_id(user, student_id, params) do
+    case Schools.get_school_by_code(params["school_code"]) do
+      nil ->
+        {:error, "No school found with the given school code"}
+
+      school ->
+        if check_existing_enrollment(user.id, school.id) do
+          {:ok, student_id}
+        else
+          {:ok, nil}
+        end
+    end
+  end
+
+  defp check_existing_enrollment(user_id, school_id) do
+    enrollment =
+      EnrollmentRecords.get_enrollment_record_by_params(%{
+        group_id: school_id,
+        group_type: "school",
+        user_id: user_id
+      })
+
+    enrollment != []
+  end
+
+  defp generate_new_student_id(params) do
+    counter = 1000
+    try_generate_id(counter, params)
+  end
+
+  defp try_generate_id(0, _params) do
+    {:error, "Student ID could not be generated. Max attempts hit!"}
+  end
+
+  defp try_generate_id(attempts_left, params) do
+    id = generate_new_id(params)
+
+    if check_if_generated_id_already_exists(id) do
+      try_generate_id(attempts_left - 1, params)
+    else
+      {:ok, id}
+    end
+  end
+
+  defp generate_new_id(params) do
+    class_code = get_class_code(params["grade"])
+    school_code = params["school_code"]
+    three_digit_code = generate_three_digit_code()
+
+    class_code <> school_code <> three_digit_code
+  end
+
+  defp get_class_code(grade) do
+    current_year =
+      :calendar.local_time()
+      |> elem(0)
+      |> elem(0)
+
+    graduating_year = current_year + (12 - grade) + 1
+
+    graduating_year
+    |> Integer.to_string()
+    |> String.slice(-2..-1)
+  end
+
+  defp generate_three_digit_code do
+    Enum.reduce(1..3, "", fn _, acc ->
+      acc <> Integer.to_string(:rand.uniform(10) - 1)
+    end)
+  end
+
+  defp check_if_generated_id_already_exists(id) do
+    case Users.get_student_by_student_id(id) do
+      nil -> false
+      _ -> true
+    end
   end
 end

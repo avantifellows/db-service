@@ -18,6 +18,7 @@ defmodule DbserviceWeb.Router do
     resources("/user", UserController, only: [:index, :create, :update, :show])
     post("/user/:id/update-groups", UserController, :update_group)
     resources("/student", StudentController, except: [:new, :edit])
+    post("/student/generate-id", StudentController, :create_student_id)
     resources("/teacher", TeacherController, except: [:new, :edit])
     resources("/user-profile", UserProfileController, except: [:new, :edit])
     resources("/student-profile", StudentProfileController, except: [:new, :edit])
@@ -53,6 +54,8 @@ defmodule DbserviceWeb.Router do
     patch("/dropout/:student_id", StudentController, :dropout)
     resources("/status", StatusController, except: [:new, :edit])
     patch("/enrolled", StudentController, :enrolled)
+    resources("/school-batch", SchoolBatchController, except: [:new, :edit])
+    post("/school-with-user", SchoolController, :create_school_with_user)
 
     def swagger_info do
       source(["config/.env", "config/.env"])

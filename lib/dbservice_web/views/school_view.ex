@@ -1,6 +1,8 @@
 defmodule DbserviceWeb.SchoolView do
   use DbserviceWeb, :view
   alias DbserviceWeb.SchoolView
+  alias DbserviceWeb.UserView
+  alias Dbservice.Repo
 
   def render("index.json", %{school: school}) do
     render_many(school, SchoolView, "school.json")
@@ -11,6 +13,8 @@ defmodule DbserviceWeb.SchoolView do
   end
 
   def render("school.json", %{school: school}) do
+    school = Repo.preload(school, :user)
+
     %{
       id: school.id,
       code: school.code,
@@ -26,7 +30,9 @@ defmodule DbserviceWeb.SchoolView do
       block_code: school.block_code,
       block_name: school.block_name,
       board: school.board,
-      board_medium: school.board_medium
+      board_medium: school.board_medium,
+      user_id: school.user_id,
+      user: render_one(school.user, UserView, "user.json")
     }
   end
 end

@@ -161,4 +161,52 @@ defmodule DbserviceWeb.SwaggerSchema.Student do
         end
     }
   end
+
+  def student_id_generation do
+    %{
+      StudentIdGeneration:
+        swagger_schema do
+          title("Student ID Generation")
+          description("Details required to generate a student ID")
+
+          properties do
+            first_name(:string, "First name", required: true)
+            date_of_birth(:string, "Date of birth", format: "date", required: true)
+            gender(:string, "Gender", required: true)
+            category(:string, "Category", required: true)
+            grade(:integer, "Grade", required: true)
+            region(:string, "Region", required: true)
+            school_name(:string, "School name", required: true)
+          end
+
+          example(%{
+            first_name: "Rahul",
+            date_of_birth: "2003-04-17",
+            gender: "Male",
+            category: "OBC",
+            grade: 12,
+            region: "Bhopal",
+            school_name: "JNV Durg"
+          })
+        end
+    }
+  end
+
+  def student_id_generation_response do
+    %{
+      StudentIdGenerationResponse:
+        swagger_schema do
+          title("Student ID Generation Response")
+          description("Response after generating a student ID")
+
+          properties do
+            student_id(:string, "Generated student ID", required: true)
+          end
+
+          example(%{
+            student_id: "2410505647"
+          })
+        end
+    }
+  end
 end
