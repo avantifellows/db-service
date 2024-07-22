@@ -155,8 +155,8 @@ defmodule DbserviceWeb.GroupSessionController do
   end
 
   def get_auth_group_from_session(conn, %{"session_id" => session_id}) do
-    with {:ok, group_session} <- get_group_session(session_id),
-         {:ok, group} <- get_group(group_session.group_id),
+    with {:ok, group_sessions} <- get_group_sessions(session_id),
+         {:ok, group} <- get_group(group_sessions),
          {:ok, batch} <- get_batch(group.child_id),
          {:ok, auth_group} <- get_auth_group(batch.auth_group_id) do
       conn
@@ -176,16 +176,23 @@ defmodule DbserviceWeb.GroupSessionController do
     end
   end
 
-  defp get_group_session(session_id) do
-    case GroupSessions.get_group_session_by_session_id(session_id) do
-      nil -> {:error, :not_found, "Group session not found"}
-      group_session -> {:ok, group_session}
+  defp get_group_sessions(session_id) do
+    case GroupSessions.get_all_group_sessions_by_session_id(session_id) do
+      [] -> {:error, :not_found, "Group sessions not found"}
+      group_sessions -> {:ok, group_sessions}
     end
   end
 
-  defp get_group(group_id) do
-    case Groups.get_group!(group_id) do
-      nil -> {:error, :not_found, "Group not found"}
+  defp get_group(group_sessions) do
+    batch_group = Enum.find_value(group_sessions, fn group_session ->
+      case Groups.get_group!(group_session.group_id) do
+        %{type: "batch"} = group -> group
+        _ -> nil
+      end
+    end)
+
+    case batch_group do
+      nil -> {:error, :not_found, "Batch group not found"}
       group -> {:ok, group}
     end
   end
