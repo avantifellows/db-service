@@ -184,12 +184,13 @@ defmodule DbserviceWeb.GroupSessionController do
   end
 
   defp get_group(group_sessions) do
-    batch_group = Enum.find_value(group_sessions, fn group_session ->
-      case Groups.get_group!(group_session.group_id) do
-        %{type: "batch"} = group -> group
-        _ -> nil
-      end
-    end)
+    batch_group =
+      Enum.find_value(group_sessions, fn group_session ->
+        case Groups.get_group!(group_session.group_id) do
+          %{type: "batch"} = group -> group
+          _ -> nil
+        end
+      end)
 
     case batch_group do
       nil -> {:error, :not_found, "Batch group not found"}

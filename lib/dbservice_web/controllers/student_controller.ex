@@ -488,6 +488,7 @@ defmodule DbserviceWeb.StudentController do
 
   defp generate_new_student_id(params) do
     counter = 1000
+
     case get_school_code(params) do
       {:ok, school_code} ->
         try_generate_id(counter, params, school_code)
