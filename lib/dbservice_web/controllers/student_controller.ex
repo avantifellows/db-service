@@ -225,8 +225,12 @@ defmodule DbserviceWeb.StudentController do
       EnrollmentRecords.create_enrollment_record(new_enrollment_attrs)
 
       # Delete all group-user entries for the user
-      from(gu in GroupUser, where: gu.user_id == ^user_id)
-      |> Repo.delete_all()
+      # NOTE: Commenting these lines because we don't want to stop 
+      # students from logging in once they are marked as dropout(s)
+      # in case they want to re-enroll in the future.
+      #
+      # from(gu in GroupUser, where: gu.user_id == ^user_id)
+      # |> Repo.delete_all()
 
       # Update the student's status to 'dropout' using update_student/2
       with {:ok, %Student{} = updated_student} <-
