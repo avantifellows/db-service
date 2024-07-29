@@ -9,7 +9,6 @@ defmodule DbserviceWeb.StudentController do
   alias Dbservice.Users
   alias Dbservice.Users.Student
   alias Dbservice.EnrollmentRecords.EnrollmentRecord
-  alias Dbservice.Groups.GroupUser
   alias Dbservice.Statuses.Status
   alias Dbservice.Groups.Group
   alias Dbservice.EnrollmentRecords
@@ -225,7 +224,7 @@ defmodule DbserviceWeb.StudentController do
       EnrollmentRecords.create_enrollment_record(new_enrollment_attrs)
 
       # Delete all group-user entries for the user
-      # NOTE: Commenting these lines because we don't want to stop 
+      # NOTE: Commenting these lines because we don't want to stop
       # students from logging in once they are marked as dropout(s)
       # in case they want to re-enroll in the future.
       #
