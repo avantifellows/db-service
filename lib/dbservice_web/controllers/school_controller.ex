@@ -6,6 +6,7 @@ defmodule DbserviceWeb.SchoolController do
   alias Dbservice.Schools
   alias Dbservice.Schools.School
   alias Dbservice.Users
+  alias Dbservice.Users.User
 
   action_fallback DbserviceWeb.FallbackController
 
@@ -169,7 +170,15 @@ defmodule DbserviceWeb.SchoolController do
   end
 
   defp update_existing_school_with_user(conn, existing_school, params) do
-    user = Users.get_user!(existing_school.user_id)
+    user =
+      case existing_school.user_id do
+        nil ->
+          {:ok, %User{} = user} = Users.create_user(params)
+          user
+
+        user_id ->
+          Users.get_user!(user_id)
+      end
 
     with {:ok, %School{} = school} <-
            Schools.update_school_with_user(existing_school, user, params) do
