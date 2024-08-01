@@ -7,10 +7,20 @@ defmodule Dbservice.Utils.Util do
 
   def invalidate_future_date(changeset, date_field_atom) do
     utc_now = DateTime.utc_now()
-
     ist_now = DateTime.add(utc_now, 5 * 60 * 60 + 30 * 60, :second)
-
     date_to_validate = get_field(changeset, date_field_atom)
+
+    date_to_validate =
+      case date_to_validate do
+        %Date{} ->
+          DateTime.from_naive!(NaiveDateTime.new!(date_to_validate, ~T[00:00:00]), "Etc/UTC")
+
+        %DateTime{} ->
+          date_to_validate
+
+        _ ->
+          raise "Unsupported date format"
+      end
 
     if DateTime.compare(date_to_validate, ist_now) == :gt do
       add_error(changeset, date_field_atom, "cannot be later than today")

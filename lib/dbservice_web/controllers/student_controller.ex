@@ -9,7 +9,6 @@ defmodule DbserviceWeb.StudentController do
   alias Dbservice.Users
   alias Dbservice.Users.Student
   alias Dbservice.EnrollmentRecords.EnrollmentRecord
-  alias Dbservice.Groups.GroupUser
   alias Dbservice.Statuses.Status
   alias Dbservice.Groups.Group
   alias Dbservice.EnrollmentRecords
@@ -225,8 +224,12 @@ defmodule DbserviceWeb.StudentController do
       EnrollmentRecords.create_enrollment_record(new_enrollment_attrs)
 
       # Delete all group-user entries for the user
-      from(gu in GroupUser, where: gu.user_id == ^user_id)
-      |> Repo.delete_all()
+      # NOTE: Commenting these lines because we don't want to stop
+      # students from logging in once they are marked as dropout(s)
+      # in case they want to re-enroll in the future.
+      #
+      # from(gu in GroupUser, where: gu.user_id == ^user_id)
+      # |> Repo.delete_all()
 
       # Update the student's status to 'dropout' using update_student/2
       with {:ok, %Student{} = updated_student} <-
@@ -457,16 +460,21 @@ defmodule DbserviceWeb.StudentController do
   end
 
   defp check_enrollment_and_get_id(user, student_id, params) do
-    case Schools.get_school_by_code(params["school_code"]) do
-      nil ->
-        {:error, "No school found with the given school code"}
+    region = if params["region"] == "", do: nil, else: params["region"]
 
-      school ->
+    case Schools.get_school_by_params(%{name: params["school_name"], region: region}) do
+      [] ->
+        {:error, "No school found with the given name and region"}
+
+      [school] ->
         if check_existing_enrollment(user.id, school.id) do
           {:ok, student_id}
         else
           {:ok, nil}
         end
+
+      _ ->
+        {:error, "multiple school found with the given name and region"}
     end
   end
 
@@ -483,26 +491,32 @@ defmodule DbserviceWeb.StudentController do
 
   defp generate_new_student_id(params) do
     counter = 1000
-    try_generate_id(counter, params)
+
+    case get_school_code(params) do
+      {:ok, school_code} ->
+        try_generate_id(counter, params, school_code)
+
+      {:error, message} ->
+        {:error, message}
+    end
   end
 
-  defp try_generate_id(0, _params) do
+  defp try_generate_id(0, _params, _school_code) do
     {:error, "Student ID could not be generated. Max attempts hit!"}
   end
 
-  defp try_generate_id(attempts_left, params) do
-    id = generate_new_id(params)
+  defp try_generate_id(attempts_left, params, school_code) do
+    id = generate_new_id(params, school_code)
 
     if check_if_generated_id_already_exists(id) do
-      try_generate_id(attempts_left - 1, params)
+      try_generate_id(attempts_left - 1, params, school_code)
     else
       {:ok, id}
     end
   end
 
-  defp generate_new_id(params) do
+  defp generate_new_id(params, school_code) do
     class_code = get_class_code(params["grade"])
-    school_code = params["school_code"]
     three_digit_code = generate_three_digit_code()
 
     class_code <> school_code <> three_digit_code
@@ -519,6 +533,21 @@ defmodule DbserviceWeb.StudentController do
     graduating_year
     |> Integer.to_string()
     |> String.slice(-2..-1)
+  end
+
+  defp get_school_code(params) do
+    region = if params["region"] == "", do: nil, else: params["region"]
+
+    case Schools.get_school_by_params(%{region: region, name: params["school_name"]}) do
+      [] ->
+        {:error, "No school found with the given name and region"}
+
+      [school] ->
+        {:ok, school.code}
+
+      _ ->
+        {:error, "multiple school found with the given name and region"}
+    end
   end
 
   defp generate_three_digit_code do
