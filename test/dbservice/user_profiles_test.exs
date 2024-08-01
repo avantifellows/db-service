@@ -9,8 +9,7 @@ defmodule Dbservice.ProfilesTest do
     import Dbservice.ProfilesFixtures
 
     @invalid_attrs %{
-      user_id: nil,
-      current_grade: nil
+      user_id: nil
     }
 
     test "list_user_profile/0 returns all user profiles" do
@@ -26,15 +25,11 @@ defmodule Dbservice.ProfilesTest do
     test "create_user_profile/1 with valid data creates a user profile" do
       valid_attrs = %{
         user_id: get_user_id(),
-        current_grade: "11",
-        current_program: "HaryanaStudents",
-        current_batch: "Photon",
         logged_in_atleast_once: true,
         latest_session_accessed: "LiveClass_10"
       }
 
       assert {:ok, %UserProfile{} = user_profile} = Profiles.create_user_profile(valid_attrs)
-      assert user_profile.current_grade == "11"
     end
 
     test "create_user_profile/1 with invalid data returns error changeset" do
@@ -46,17 +41,12 @@ defmodule Dbservice.ProfilesTest do
 
       update_attrs = %{
         user_id: get_user_id(),
-        current_grade: "11",
-        current_program: "HaryanaStudents",
-        current_batch: "Photon",
         logged_in_atleast_once: true,
         latest_session_accessed: "LiveClass_10"
       }
 
       assert {:ok, %UserProfile{} = user_profile} =
                Profiles.update_user_profile(user_profile, update_attrs)
-
-      assert user_profile.current_grade == "11"
     end
 
     test "update_user_profile/2 with invalid data returns error changeset" do
@@ -122,9 +112,6 @@ defmodule Dbservice.ProfilesTest do
         tests_number_of_wrong_questions: 10,
         tests_number_of_skipped_questions: 15,
         user_id: user_id,
-        current_grade: "11",
-        current_program: "Science",
-        current_batch: "Batch A",
         logged_in_atleast_once: true,
         latest_session_accessed: "LiveClass_10"
       }
@@ -132,7 +119,6 @@ defmodule Dbservice.ProfilesTest do
       assert {:ok, %StudentProfile{} = student_profile} =
                Profiles.create_student_profile_with_user_profile(valid_attrs)
 
-      assert student_profile.current_grade == "11"
       assert student_profile.logged_in_atleast_once == true
     end
 
@@ -174,9 +160,6 @@ defmodule Dbservice.ProfilesTest do
         program_manager: "John Doe",
         avg_rating: 4.5,
         user_id: user_id,
-        current_grade: "11",
-        current_program: "HaryanaStudents",
-        current_batch: "Photon",
         logged_in_atleast_once: false,
         latest_session_accessed: "LiveClass_10"
       }
