@@ -1,16 +1,16 @@
-defmodule DbserviceWeb.SessionOccurenceController do
+defmodule DbserviceWeb.SessionOccurrenceController do
   use DbserviceWeb, :controller
 
   import Ecto.Query
   alias Dbservice.Repo
   alias Dbservice.Sessions
-  alias Dbservice.Sessions.SessionOccurence
+  alias Dbservice.Sessions.SessionOccurrence
 
   action_fallback(DbserviceWeb.FallbackController)
 
   use PhoenixSwagger
 
-  alias DbserviceWeb.SwaggerSchema.SessionOccurence, as: SwaggerSchemaSessionOccurrence
+  alias DbserviceWeb.SwaggerSchema.SessionOccurrence, as: SwaggerSchemaSessionOccurrence
 
   def swagger_definitions do
     # merge the required definitions in a pair at a time using the Map.merge/2 function
@@ -37,8 +37,14 @@ defmodule DbserviceWeb.SessionOccurenceController do
   end
 
   def index(conn, params) do
+    today = Date.utc_today()
+
+    # Construct the beginning and end of today
+    today_start = NaiveDateTime.new!(today, ~T[00:00:00])
+    today_end = NaiveDateTime.new!(today, ~T[23:59:59])
+
     query =
-      from(m in SessionOccurence,
+      from(m in SessionOccurrence,
         order_by: [asc: m.id],
         offset: ^params["offset"],
         limit: ^params["limit"]
@@ -47,14 +53,22 @@ defmodule DbserviceWeb.SessionOccurenceController do
     query =
       Enum.reduce(params, query, fn {key, value}, acc ->
         case String.to_existing_atom(key) do
-          :offset -> acc
-          :limit -> acc
-          atom -> from(u in acc, where: field(u, ^atom) == ^value)
+          :offset ->
+            acc
+
+          :limit ->
+            acc
+
+          :is_start_time when value == "today" ->
+            from(u in acc, where: u.start_time >= ^today_start and u.start_time <= ^today_end)
+
+          atom ->
+            from(u in acc, where: field(u, ^atom) == ^value)
         end
       end)
 
-    session_occurence = Repo.all(query)
-    render(conn, "index.json", session_occurence: session_occurence)
+    session_occurrence = Repo.all(query)
+    render(conn, "index.json", session_occurrence: session_occurrence)
   end
 
   swagger_path :create do
@@ -68,15 +82,15 @@ defmodule DbserviceWeb.SessionOccurenceController do
   end
 
   def create(conn, params) do
-    with {:ok, %SessionOccurence{} = session_occurence} <-
-           Sessions.create_session_occurence(params) do
+    with {:ok, %SessionOccurrence{} = session_occurrence} <-
+           Sessions.create_session_occurrence(params) do
       conn
       |> put_status(:created)
       |> put_resp_header(
         "location",
-        Routes.session_occurence_path(conn, :show, session_occurence)
+        Routes.session_occurrence_path(conn, :show, session_occurrence)
       )
-      |> render("show.json", session_occurence: session_occurence)
+      |> render("show.json", session_occurrence: session_occurrence)
     end
   end
 
@@ -93,8 +107,8 @@ defmodule DbserviceWeb.SessionOccurenceController do
   end
 
   def show(conn, %{"id" => id}) do
-    session_occurence = Sessions.get_session_occurence!(id)
-    render(conn, "show.json", session_occurence: session_occurence)
+    session_occurrence = Sessions.get_session_occurrence!(id)
+    render(conn, "show.json", session_occurrence: session_occurrence)
   end
 
   swagger_path :update do
@@ -109,11 +123,11 @@ defmodule DbserviceWeb.SessionOccurenceController do
   end
 
   def update(conn, params) do
-    session_occurence = Sessions.get_session_occurence!(params["id"])
+    session_occurrence = Sessions.get_session_occurrence!(params["id"])
 
-    with {:ok, %SessionOccurence{} = session_occurence} <-
-           Sessions.update_session_occurence(session_occurence, params) do
-      render(conn, "show.json", session_occurence: session_occurence)
+    with {:ok, %SessionOccurrence{} = session_occurrence} <-
+           Sessions.update_session_occurrence(session_occurrence, params) do
+      render(conn, "show.json", session_occurrence: session_occurrence)
     end
   end
 
@@ -130,9 +144,9 @@ defmodule DbserviceWeb.SessionOccurenceController do
   end
 
   def delete(conn, %{"id" => id}) do
-    session_occurence = Sessions.get_session_occurence!(id)
+    session_occurrence = Sessions.get_session_occurrence!(id)
 
-    with {:ok, %SessionOccurence{}} <- Sessions.delete_session_occurence(session_occurence) do
+    with {:ok, %SessionOccurrence{}} <- Sessions.delete_session_occurrence(session_occurrence) do
       send_resp(conn, :no_content, "")
     end
   end

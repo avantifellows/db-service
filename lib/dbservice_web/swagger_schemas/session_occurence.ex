@@ -1,4 +1,4 @@
-defmodule DbserviceWeb.SwaggerSchema.SessionOccurence do
+defmodule DbserviceWeb.SwaggerSchema.SessionOccurrence do
   @moduledoc false
 
   use PhoenixSwagger
