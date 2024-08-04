@@ -1,4 +1,4 @@
-defmodule Dbservice.Sessions.SessionOccurence do
+defmodule Dbservice.Sessions.SessionOccurrence do
   @moduledoc false
 
   use Ecto.Schema
@@ -10,12 +10,12 @@ defmodule Dbservice.Sessions.SessionOccurence do
   schema "session_occurrence" do
     field :end_time, :utc_datetime
     field :start_time, :utc_datetime
-    field :session_fk, :id
     field :session_id, :string
 
     timestamps()
 
     many_to_many :users, User, join_through: "user_session", on_replace: :delete
+    belongs_to :session, Dbservice.Sessions.Session, foreign_key: :session_fk
   end
 
   @doc false
