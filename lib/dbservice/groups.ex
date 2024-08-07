@@ -58,6 +58,19 @@ defmodule Dbservice.Groups do
   end
 
   @doc """
+  Gets group by child_id and type.
+  Raises `Ecto.NoResultsError` if the Group does not exist.
+  ## Examples
+      iex> get_group_by_child_id_and_type(123,"batch")
+      %Group{}
+      iex> get_group_by_child_id_and_type(456,"batch")
+      ** (Ecto.NoResultsError)
+  """
+  def get_group_by_child_id_and_type(child_id, type) do
+    Repo.get_by(Group, child_id: child_id, type: type)
+  end
+
+  @doc """
   Creates a group.
   ## Examples
       iex> create_group(%{field: value})
