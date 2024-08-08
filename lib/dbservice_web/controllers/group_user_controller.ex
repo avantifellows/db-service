@@ -118,20 +118,28 @@ defmodule DbserviceWeb.GroupUserController do
 
     # Fetch the EnrollmentRecord with the specified user_id and where the group_type matches the provided type
     enrollment_record =
-      from(er in EnrollmentRecord,
-        where: er.user_id == ^user_id and er.group_type == ^type
-      )
+      from(er in EnrollmentRecord, where: er.user_id == ^user_id and er.group_type == ^type)
       |> Repo.one()
 
-    # Update both the GroupUser and the EnrollmentRecord, if the enrollment record exists
-    with {:ok, %GroupUser{} = updated_group_user} <-
-           GroupUsers.update_group_user(group_user, params),
-         enrollment_record when not is_nil(enrollment_record) <- enrollment_record,
-         {:ok, %EnrollmentRecord{} = _updated_enrollment_record} <-
-           EnrollmentRecords.update_enrollment_record(enrollment_record, %{
-             "group_id" => new_group_id
-           }) do
-      render(conn, "show.json", group_user: updated_group_user)
+    case {group_user, enrollment_record} do
+      {nil, _} ->
+        # GroupUser not found
+        {:error, :not_found}
+
+      {_, nil} ->
+        # EnrollmentRecord not found
+        {:error, :not_found}
+
+      {group_user, enrollment_record} ->
+        # Update both the GroupUser and the EnrollmentRecord
+        with {:ok, %GroupUser{} = updated_group_user} <-
+               GroupUsers.update_group_user(group_user, params),
+             {:ok, %EnrollmentRecord{} = _updated_enrollment_record} <-
+               EnrollmentRecords.update_enrollment_record(enrollment_record, %{
+                 "group_id" => new_group_id
+               }) do
+          render(conn, "show.json", group_user: updated_group_user)
+        end
     end
   end
 
