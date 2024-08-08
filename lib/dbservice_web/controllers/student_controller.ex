@@ -579,7 +579,7 @@ defmodule DbserviceWeb.StudentController do
     post("/api/student/verify-student")
 
     parameters do
-      body(:body, Schema.ref(:VerifyStudentRequest), "The verify student request", required: true)
+      body(:body, Schema.ref(:VerifyStudentRequest), "Parameters needed to verify student", required: true)
     end
 
     response(200, "OK", Schema.ref(:VerificationResult))

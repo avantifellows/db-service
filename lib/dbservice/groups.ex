@@ -46,7 +46,7 @@ defmodule Dbservice.Groups do
 
   @doc """
   Gets group by child_id and type.
-  Raises `Ecto.NoResultsError` if the Group does not exist.
+  Raises `Ecto.NoResultsError` if the Group does not exist or if type is wrong/ does not exist.
   ## Examples
       iex> get_group_by_child_id_and_type(123,"batch")
       %Group{}
