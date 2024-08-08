@@ -7,6 +7,7 @@ defmodule Dbservice.GroupUsers do
   alias Dbservice.Repo
 
   alias Dbservice.Groups.GroupUser
+  alias Dbservice.Groups.Group
 
   @doc """
   Returns the list of group_user.
@@ -48,6 +49,16 @@ defmodule Dbservice.GroupUsers do
   """
   def get_group_user_by_user_id_and_group_id(user_id, group_id) do
     Repo.get_by(GroupUser, user_id: user_id, group_id: group_id)
+  end
+
+  def get_group_user_with_type(user_id, type) do
+    from(gu in GroupUser,
+      join: g in Group,
+      on: gu.group_id == g.id,
+      where: gu.user_id == ^user_id and g.type == ^type,
+      select: gu
+    )
+    |> Repo.all()
   end
 
   @doc """
