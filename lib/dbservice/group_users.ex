@@ -51,7 +51,17 @@ defmodule Dbservice.GroupUsers do
     Repo.get_by(GroupUser, user_id: user_id, group_id: group_id)
   end
 
-  def get_group_user_with_type(user_id, type) do
+  @doc """
+  Gets a group-user based on `user_id` and `type`.
+  Returns a list of GroupUser entries that match the given user ID and group type.
+  ## Examples
+      iex> get_group_user_by_user_id_and_type(1, "school")
+      [%GroupUser{}, ...]
+      iex> get_group_user_by_user_id_and_type(abc, "invalid_type")
+      []
+
+  """
+  def get_group_user_by_user_id_and_type(user_id, type) do
     from(gu in GroupUser,
       join: g in Group,
       on: gu.group_id == g.id,

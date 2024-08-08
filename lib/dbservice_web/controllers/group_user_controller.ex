@@ -97,15 +97,26 @@ defmodule DbserviceWeb.GroupUserController do
   end
 
   def update(conn, params) do
+    group_user = GroupUsers.get_group_user!(params["id"])
+
+    with {:ok, %GroupUser{} = group_user} <-
+           GroupUsers.update_group_user(group_user, params) do
+      render(conn, "show.json", group_user: group_user)
+    end
+  end
+
+  def update_by_type(conn, params) do
     user_id = params["user_id"]
     type = params["type"]
     group = Groups.get_group_by_group_id_and_type(params["group_id"], type)
     new_group_id = group.child_id
 
-    # Fetch the GroupUser with the specified user_id and where the group type is type
-    group_user = GroupUsers.get_group_user_with_type(user_id, type) |> List.first()
+    # Fetch the GroupUser with the specified user_id and where the group type is the provided type
+    group_user =
+      GroupUsers.get_group_user_by_user_id_and_type(user_id, type)
+      |> List.first()
 
-    # Fetch the EnrollmentRecord with the specified user_id and where the group_type is type
+    # Fetch the EnrollmentRecord with the specified user_id and where the group_type matches the provided type
     enrollment_record =
       from(er in EnrollmentRecord,
         where: er.user_id == ^user_id and er.group_type == ^type
