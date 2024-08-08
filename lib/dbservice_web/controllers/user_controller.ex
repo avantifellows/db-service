@@ -201,7 +201,7 @@ defmodule DbserviceWeb.UserController do
     batch = Batches.get_batch!(child_id)
     class_batch_id = batch.batch_id
     quiz_id = batch.parent_id
-    quiz_group = Groups.get_group_by_child_id(quiz_id)
+    quiz_group = Groups.get_group_by_child_id_and_type(quiz_id, "batch")
     quiz_group_id = quiz_group.id
 
     group_id = if quiz_flag, do: quiz_group_id, else: group.id
