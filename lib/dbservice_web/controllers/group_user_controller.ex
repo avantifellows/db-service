@@ -123,9 +123,10 @@ defmodule DbserviceWeb.GroupUserController do
       )
       |> Repo.one()
 
-    # Update both the GroupUser and the EnrollmentRecord
+    # Update both the GroupUser and the EnrollmentRecord, if the enrollment record exists
     with {:ok, %GroupUser{} = updated_group_user} <-
            GroupUsers.update_group_user(group_user, params),
+         enrollment_record when not is_nil(enrollment_record) <- enrollment_record,
          {:ok, %EnrollmentRecord{} = _updated_enrollment_record} <-
            EnrollmentRecords.update_enrollment_record(enrollment_record, %{
              "group_id" => new_group_id
