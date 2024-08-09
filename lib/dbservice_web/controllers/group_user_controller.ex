@@ -105,6 +105,17 @@ defmodule DbserviceWeb.GroupUserController do
     end
   end
 
+  @doc """
+  Updates the `GroupUser` and associated `EnrollmentRecord` for a given user and group type.
+
+  ## Assumptions
+    - This method assumes that only one `EnrollmentRecord` will be updated per call.
+    - If the `GroupUser` or `EnrollmentRecord` is not found, it returns an error with a `:not_found` status.
+
+  ## Returns
+    - Renders the updated `GroupUser` as JSON if both updates succeed.
+    - Returns an error tuple if the `GroupUser` or `EnrollmentRecord` is not found.
+  """
   def update_by_type(conn, params) do
     user_id = params["user_id"]
     type = params["type"]
