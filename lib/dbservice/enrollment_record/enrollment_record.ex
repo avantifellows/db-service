@@ -14,7 +14,7 @@ defmodule Dbservice.EnrollmentRecords.EnrollmentRecord do
     field :end_date, :date
     field :is_current, :boolean, default: true
     field :academic_year, :string
-    field :group_id, :integer
+    field :group_type_id, :integer
     field :group_type, :string
 
     belongs_to(:grade, Grade)

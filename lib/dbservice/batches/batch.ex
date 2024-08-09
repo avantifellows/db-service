@@ -23,7 +23,7 @@ defmodule Dbservice.Batches.Batch do
     has_many :group, Group, foreign_key: :child_id, where: [type: "batch"]
 
     has_many :enrollment_record, EnrollmentRecord,
-      foreign_key: :group_id,
+      foreign_key: :group_type_id,
       where: [group_type: "batch"]
 
     has_one :session_schedule, SessionSchedule

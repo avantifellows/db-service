@@ -27,7 +27,7 @@ defmodule Dbservice.Schools.School do
     has_many :group, Group, foreign_key: :child_id, where: [type: "school"]
 
     has_many :enrollment_record, EnrollmentRecord,
-      foreign_key: :group_id,
+      foreign_key: :group_type_id,
       where: [group_type: "school"]
 
     belongs_to(:user, User)
