@@ -209,4 +209,74 @@ defmodule DbserviceWeb.SwaggerSchema.Student do
         end
     }
   end
+
+  def verification_params do
+    %{
+      VerificationParams:
+        swagger_schema do
+          title("Verification Parameters")
+          description("Parameters to verify against")
+          type(:object)
+
+          properties do
+            auth_group_id(:integer, "Auth Group ID")
+            date_of_birth(:string, "Date of Birth", format: "date")
+          end
+
+          required([:auth_group_id])
+
+          example(%{
+            auth_group_id: 2,
+            date_of_birth: "2003-04-17"
+          })
+        end
+    }
+  end
+
+  def verification_result do
+    %{
+      VerificationResult:
+        swagger_schema do
+          title("Verification Result")
+          description("Result of the student verification")
+          type(:object)
+
+          properties do
+            is_verified(:boolean, "Verification status")
+          end
+
+          required([:is_verified])
+
+          example(%{
+            is_verified: true
+          })
+        end
+    }
+  end
+
+  def verify_student_request do
+    %{
+      VerifyStudentRequest:
+        swagger_schema do
+          title("Verify Student Request")
+          description("Request body for verifying a student")
+          type(:object)
+
+          properties do
+            student_id(:string, "Student ID")
+            verification_params(Schema.ref(:VerificationParams))
+          end
+
+          required([:student_id, :verification_params])
+
+          example(%{
+            student_id: "20190240808",
+            verification_params: %{
+              auth_group_id: 2,
+              date_of_birth: "2007-01-09"
+            }
+          })
+        end
+    }
+  end
 end
