@@ -7,6 +7,7 @@ defmodule DbserviceWeb.SchoolController do
   alias Dbservice.Schools.School
   alias Dbservice.Users
   alias Dbservice.Users.User
+  alias Dbservice.Utils.Util
 
   action_fallback DbserviceWeb.FallbackController
 
@@ -144,7 +145,8 @@ defmodule DbserviceWeb.SchoolController do
   end
 
   defp update_existing_school(conn, existing_school, params) do
-    with {:ok, %School{} = school} <- Schools.update_school(existing_school, params) do
+    with {:ok, %School{} = school} <- Schools.update_school(existing_school, params),
+         {:ok, _} <- update_users_for_school(school.id) do
       conn
       |> put_status(:ok)
       |> render("show.json", school: school)
@@ -181,10 +183,15 @@ defmodule DbserviceWeb.SchoolController do
       end
 
     with {:ok, %School{} = school} <-
-           Schools.update_school_with_user(existing_school, user, params) do
+           Schools.update_school_with_user(existing_school, user, params),
+         {:ok, _} <- update_users_for_school(school.id) do
       conn
       |> put_status(:ok)
       |> render("show.json", school: school)
     end
+  end
+
+  def update_users_for_school(school_id) do
+    Util.update_users_for_group(school_id, "school")
   end
 end

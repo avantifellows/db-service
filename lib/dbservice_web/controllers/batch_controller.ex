@@ -5,6 +5,7 @@ defmodule DbserviceWeb.BatchController do
   alias Dbservice.Repo
   alias Dbservice.Batches
   alias Dbservice.Batches.Batch
+  alias Dbservice.Utils.Util
 
   action_fallback(DbserviceWeb.FallbackController)
 
@@ -135,10 +136,15 @@ defmodule DbserviceWeb.BatchController do
   end
 
   defp update_existing_batch(conn, existing_batch, params) do
-    with {:ok, %Batch{} = batch} <- Batches.update_batch(existing_batch, params) do
+    with {:ok, %Batch{} = batch} <- Batches.update_batch(existing_batch, params),
+         {:ok, _} <- update_users_for_batch(batch.id) do
       conn
       |> put_status(:ok)
       |> render("show.json", batch: batch)
     end
+  end
+
+  def update_users_for_batch(batch_id) do
+    Util.update_users_for_group(batch_id, "batch")
   end
 end

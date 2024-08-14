@@ -4,6 +4,10 @@ defmodule Dbservice.Utils.Util do
   use Ecto.Schema
   import Ecto.Changeset
   import Ecto.Query
+  alias Dbservice.Repo
+  alias Dbservice.Groups
+  alias Dbservice.GroupUsers
+  alias Dbservice.Users
 
   def invalidate_future_date(changeset, date_field_atom) do
     utc_now = DateTime.utc_now()
@@ -69,5 +73,31 @@ defmodule Dbservice.Utils.Util do
         dynamic([q], field(q, ^key) == ^value and ^dynamic)
       end
     end)
+  end
+
+  def update_users_for_group(school_id, type) do
+    # Find the group with type "school" and the given school_id as child_id
+    group = Groups.get_group_by_child_id_and_type(school_id, type)
+
+    # Fetch all users associated with this group
+    group_users = GroupUsers.get_group_user_by_group_id(group.id)
+
+    # Update the `updated_at` timestamp for all users
+    Enum.each(group_users, fn group_user ->
+      user = Users.get_user!(group_user.user_id)
+
+      user_changeset =
+        Ecto.Changeset.change(user,
+          updated_at:
+            DateTime.utc_now()
+            |> DateTime.add(5 * 60 * 60 + 30 * 60, :second)
+            |> DateTime.to_naive()
+            |> NaiveDateTime.truncate(:second)
+        )
+
+      Repo.update(user_changeset)
+    end)
+
+    {:ok, :updated}
   end
 end

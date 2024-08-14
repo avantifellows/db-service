@@ -5,6 +5,7 @@ defmodule DbserviceWeb.AuthGroupController do
   alias Dbservice.Repo
   alias Dbservice.AuthGroups
   alias Dbservice.Groups.AuthGroup
+  alias Dbservice.Utils.Util
 
   action_fallback DbserviceWeb.FallbackController
 
@@ -135,10 +136,15 @@ defmodule DbserviceWeb.AuthGroupController do
 
   defp update_existing_auth_group(conn, existing_auth_group, params) do
     with {:ok, %AuthGroup{} = auth_group} <-
-           AuthGroups.update_auth_group(existing_auth_group, params) do
+           AuthGroups.update_auth_group(existing_auth_group, params),
+         {:ok, _} <- update_users_for_auth_group(auth_group.id) do
       conn
       |> put_status(:ok)
       |> render("show.json", auth_group: auth_group)
     end
+  end
+
+  def update_users_for_auth_group(auth_group_id) do
+    Util.update_users_for_group(auth_group_id, "auth_group")
   end
 end
