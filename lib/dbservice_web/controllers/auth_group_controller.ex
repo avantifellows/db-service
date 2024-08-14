@@ -144,7 +144,7 @@ defmodule DbserviceWeb.AuthGroupController do
     end
   end
 
-  def update_users_for_auth_group(auth_group_id) do
+  defp update_users_for_auth_group(auth_group_id) do
     Util.update_users_for_group(auth_group_id, "auth_group")
   end
 end

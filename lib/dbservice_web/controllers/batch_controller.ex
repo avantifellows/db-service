@@ -144,7 +144,7 @@ defmodule DbserviceWeb.BatchController do
     end
   end
 
-  def update_users_for_batch(batch_id) do
+  defp update_users_for_batch(batch_id) do
     Util.update_users_for_group(batch_id, "batch")
   end
 end

@@ -191,7 +191,7 @@ defmodule DbserviceWeb.SchoolController do
     end
   end
 
-  def update_users_for_school(school_id) do
+  defp update_users_for_school(school_id) do
     Util.update_users_for_group(school_id, "school")
   end
 end
