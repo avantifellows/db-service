@@ -75,9 +75,9 @@ defmodule Dbservice.Utils.Util do
     end)
   end
 
-  def update_users_for_group(school_id, type) do
-    # Find the group with type "school" and the given school_id as child_id
-    group = Groups.get_group_by_child_id_and_type(school_id, type)
+  def update_users_for_group(group_id, type) do
+    # Find the group with type and the given group_id as child_id
+    group = Groups.get_group_by_child_id_and_type(group_id, type)
 
     # Fetch all users associated with this group
     group_users = GroupUsers.get_group_user_by_group_id(group.id)
