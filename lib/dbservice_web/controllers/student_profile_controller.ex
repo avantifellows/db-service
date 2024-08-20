@@ -161,7 +161,7 @@ defmodule DbserviceWeb.StudentProfileController do
   end
 
   defp update_existing_profile(conn, existing_profile, params) do
-    user_profile = Profiles.get_user_profile!(student_profile.user_profile_id)
+    user_profile = Profiles.get_user_profile!(existing_profile.user_profile_id)
 
     with {:ok, %StudentProfile{} = student_profile} <-
            Profiles.update_student_profile_with_user_profile(

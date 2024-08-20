@@ -161,10 +161,14 @@ defmodule DbserviceWeb.TeacherProfileController do
   end
 
   defp update_existing_profile(conn, existing_profile, params) do
-    user_profile = Profiles.get_user_profile!(teacher_profile.user_profile_id)
+    user_profile = Profiles.get_user_profile!(existing_profile.user_profile_id)
 
     with {:ok, %TeacherProfile{} = teacher_profile} <-
-           Profiles.update_teacher_profile(existing_profile, user_profile, params) do
+           Profiles.update_teacher_profile_with_user_profile(
+             existing_profile,
+             user_profile,
+             params
+           ) do
       conn
       |> put_status(:ok)
       |> render("show.json", teacher_profile: teacher_profile)
