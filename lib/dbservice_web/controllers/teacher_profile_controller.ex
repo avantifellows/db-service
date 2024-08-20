@@ -142,10 +142,29 @@ defmodule DbserviceWeb.TeacherProfileController do
       |> Map.put_new("user_id", user_id)
       |> Map.put_new("teacher_fk", teacher_fk)
 
-    with {:ok, %TeacherProfile{} = teacher_profile} <-
-           Profiles.create_teacher_profile_with_user_profile(updated_params) do
+    case Profiles.get_profile_by_teacher_id(params["teacher_id"]) do
+      nil ->
+        create_new_profile(conn, params)
+
+      existing_profile ->
+        update_existing_profile(conn, existing_profile, params)
+    end
+  end
+
+  defp create_new_profile(conn, params) do
+    with {:ok, %TeacherProfile{} = teacher_profile} <- Profiles.create_teacher_profile(params) do
       conn
       |> put_status(:created)
+      |> put_resp_header("location", Routes.teacher_profile_path(conn, :show, teacher_profile))
+      |> render("show.json", teacher_profile: teacher_profile)
+    end
+  end
+
+  defp update_existing_profile(conn, existing_profile, params) do
+    with {:ok, %TeacherProfile{} = teacher_profile} <-
+           Profiles.update_teacher_profile(existing_profile, params) do
+      conn
+      |> put_status(:ok)
       |> render("show.json", teacher_profile: teacher_profile)
     end
   end

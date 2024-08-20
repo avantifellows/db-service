@@ -142,10 +142,29 @@ defmodule DbserviceWeb.StudentProfileController do
       |> Map.put_new("user_id", user_id)
       |> Map.put_new("student_fk", student_fk)
 
-    with {:ok, %StudentProfile{} = student_profile} <-
-           Profiles.create_student_profile_with_user_profile(updated_params) do
+    case Profiles.get_profile_by_student_id(params["student_id"]) do
+      nil ->
+        create_new_profile(conn, params)
+
+      existing_profile ->
+        update_existing_profile(conn, existing_profile, params)
+    end
+  end
+
+  defp create_new_profile(conn, params) do
+    with {:ok, %StudentProfile{} = student_profile} <- Profiles.create_student_profile(params) do
       conn
       |> put_status(:created)
+      |> put_resp_header("location", Routes.student_profile_path(conn, :show, student_profile))
+      |> render("show.json", student_profile: student_profile)
+    end
+  end
+
+  defp update_existing_profile(conn, existing_profile, params) do
+    with {:ok, %StudentProfile{} = student_profile} <-
+           Profiles.update_student_profile(existing_profile, params) do
+      conn
+      |> put_status(:ok)
       |> render("show.json", student_profile: student_profile)
     end
   end
