@@ -152,7 +152,8 @@ defmodule DbserviceWeb.TeacherProfileController do
   end
 
   defp create_new_profile(conn, params) do
-    with {:ok, %TeacherProfile{} = teacher_profile} <- Profiles.create_teacher_profile(params) do
+    with {:ok, %TeacherProfile{} = teacher_profile} <-
+           Profiles.create_teacher_profile_with_user_profile(params) do
       conn
       |> put_status(:created)
       |> put_resp_header("location", Routes.teacher_profile_path(conn, :show, teacher_profile))
