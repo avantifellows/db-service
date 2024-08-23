@@ -86,6 +86,20 @@ defmodule Dbservice.GroupUsers do
   end
 
   @doc """
+  Gets a group-user by group ID.
+  Raises `Ecto.NoResultsError` if the GroupUser does not exist.
+  ## Examples
+      iex> get_group_user_by_group_id(1234)
+      %GroupUser{}
+      iex> get_group_user_by_group_id(abc)
+      ** (Ecto.NoResultsError)
+  """
+  def get_group_user_by_group_id(group_id) do
+    from(g in GroupUser, where: g.group_id == ^group_id)
+    |> Repo.all()
+  end
+
+  @doc """
   Creates a group_user.
 
   ## Examples
