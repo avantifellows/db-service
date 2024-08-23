@@ -19,6 +19,7 @@ defmodule DbserviceWeb.Router do
     post("/user/:id/update-groups", UserController, :update_group)
     resources("/student", StudentController, except: [:new, :edit])
     post("/student/generate-id", StudentController, :create_student_id)
+    post("/student/verify-student", StudentController, :verify_student)
     resources("/teacher", TeacherController, except: [:new, :edit])
     resources("/user-profile", UserProfileController, except: [:new, :edit])
     resources("/student-profile", StudentProfileController, except: [:new, :edit])
@@ -27,7 +28,7 @@ defmodule DbserviceWeb.Router do
     resources("/enrollment-record", EnrollmentRecordController, except: [:new, :edit])
     resources("/session", SessionController, only: [:index, :create, :update, :show])
     post("/session/:id/update-groups", SessionController, :update_groups)
-    resources("/session-occurrence", SessionOccurenceController, except: [:new, :edit])
+    resources("/session-occurrence", SessionOccurrenceController, except: [:new, :edit])
     resources("/user-session", UserSessionController, except: [:new, :edit])
     get("/group-session/session-auth-group", GroupSessionController, :get_auth_group_from_session)
     resources("/group-session", GroupSessionController, except: [:new, :edit])
@@ -57,6 +58,7 @@ defmodule DbserviceWeb.Router do
     patch("/enrolled", StudentController, :enrolled)
     resources("/school-batch", SchoolBatchController, except: [:new, :edit])
     post("/school-with-user", SchoolController, :create_school_with_user)
+    patch("/update-group-user-by-type", GroupUserController, :update_by_type)
 
     def swagger_info do
       source(["config/.env", "config/.env"])

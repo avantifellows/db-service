@@ -105,6 +105,55 @@ defmodule DbserviceWeb.GroupUserController do
     end
   end
 
+  @doc """
+  Updates the `GroupUser` and associated `EnrollmentRecord` for a given user and group type.
+
+  ## Assumptions
+    - This method assumes that only one `EnrollmentRecord` will be updated per call.
+    - If the `GroupUser` or `EnrollmentRecord` is not found, it returns an error with a `:not_found` status.
+
+  ## Returns
+    - Renders the updated `GroupUser` as JSON if both updates succeed.
+    - Returns an error tuple if the `GroupUser` or `EnrollmentRecord` is not found.
+  """
+  def update_by_type(conn, params) do
+    user_id = params["user_id"]
+    type = params["type"]
+    group = Groups.get_group_by_group_id_and_type(params["group_id"], type)
+    new_group_id = group.child_id
+
+    # Fetch the GroupUser with the specified user_id and where the group type is the provided type
+    group_user =
+      GroupUsers.get_group_user_by_user_id_and_type(user_id, type)
+      |> List.first()
+
+    # Fetch the EnrollmentRecord with the specified user_id and where the group_type matches the provided type
+    enrollment_record =
+      from(er in EnrollmentRecord, where: er.user_id == ^user_id and er.group_type == ^type)
+      |> Repo.one()
+
+    case {group_user, enrollment_record} do
+      {nil, _} ->
+        # GroupUser not found
+        {:error, :not_found}
+
+      {_, nil} ->
+        # EnrollmentRecord not found
+        {:error, :not_found}
+
+      {group_user, enrollment_record} ->
+        # Update both the GroupUser and the EnrollmentRecord
+        with {:ok, %GroupUser{} = updated_group_user} <-
+               GroupUsers.update_group_user(group_user, params),
+             {:ok, %EnrollmentRecord{} = _updated_enrollment_record} <-
+               EnrollmentRecords.update_enrollment_record(enrollment_record, %{
+                 "group_id" => new_group_id
+               }) do
+          render(conn, "show.json", group_user: updated_group_user)
+        end
+    end
+  end
+
   swagger_path :delete do
     PhoenixSwagger.Path.delete("/api/group-user/{groupUserId}")
 

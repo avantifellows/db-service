@@ -132,102 +132,102 @@ defmodule Dbservice.Sessions do
     |> Repo.update()
   end
 
-  alias Dbservice.Sessions.SessionOccurence
+  alias Dbservice.Sessions.SessionOccurrence
 
   @doc """
-  Returns the list of session_occurence.
+  Returns the list of session_occurrence.
 
   ## Examples
 
-      iex> list_session_occurence()
-      [%SessionOccurence{}, ...]
+      iex> list_session_occurrence()
+      [%SessionOccurrence{}, ...]
 
   """
-  def list_session_occurence do
-    Repo.all(SessionOccurence)
+  def list_session_occurrence do
+    Repo.all(SessionOccurrence)
   end
 
   @doc """
-  Gets a single session_occurence.
+  Gets a single session_occurrence.
 
   Raises `Ecto.NoResultsError` if the Session occurence does not exist.
 
   ## Examples
 
-      iex> get_session_occurence!(123)
-      %SessionOccurence{}
+      iex> get_session_occurrence!(123)
+      %SessionOccurrence{}
 
-      iex> get_session_occurence!(456)
+      iex> get_session_occurrence!(456)
       ** (Ecto.NoResultsError)
 
   """
-  def get_session_occurence!(id) do
-    Repo.get!(SessionOccurence, id)
+  def get_session_occurrence!(id) do
+    Repo.get!(SessionOccurrence, id)
   end
 
   @doc """
-  Creates a session_occurence.
+  Creates a session_occurrence.
 
   ## Examples
 
-      iex> create_session_occurence(%{field: value})
-      {:ok, %SessionOccurence{}}
+      iex> create_session_occurrence(%{field: value})
+      {:ok, %SessionOccurrence{}}
 
-      iex> create_session_occurence(%{field: bad_value})
+      iex> create_session_occurrence(%{field: bad_value})
       {:error, %Ecto.Changeset{}}
 
   """
-  def create_session_occurence(attrs \\ %{}) do
-    %SessionOccurence{}
-    |> SessionOccurence.changeset(attrs)
+  def create_session_occurrence(attrs \\ %{}) do
+    %SessionOccurrence{}
+    |> SessionOccurrence.changeset(attrs)
     |> Repo.insert()
   end
 
   @doc """
-  Updates a session_occurence.
+  Updates a session_occurrence.
 
   ## Examples
 
-      iex> update_session_occurence(session_occurence, %{field: new_value})
-      {:ok, %SessionOccurence{}}
+      iex> update_session_occurrence(session_occurrence, %{field: new_value})
+      {:ok, %SessionOccurrence{}}
 
-      iex> update_session_occurence(session_occurence, %{field: bad_value})
+      iex> update_session_occurrence(session_occurrence, %{field: bad_value})
       {:error, %Ecto.Changeset{}}
 
   """
-  def update_session_occurence(%SessionOccurence{} = session_occurence, attrs) do
-    session_occurence
-    |> SessionOccurence.changeset(attrs)
+  def update_session_occurrence(%SessionOccurrence{} = session_occurrence, attrs) do
+    session_occurrence
+    |> SessionOccurrence.changeset(attrs)
     |> Repo.update()
   end
 
   @doc """
-  Deletes a session_occurence.
+  Deletes a session_occurrence.
 
   ## Examples
 
-      iex> delete_session_occurence(session_occurence)
-      {:ok, %SessionOccurence{}}
+      iex> delete_session_occurrence(session_occurrence)
+      {:ok, %SessionOccurrence{}}
 
-      iex> delete_session_occurence(session_occurence)
+      iex> delete_session_occurrence(session_occurrence)
       {:error, %Ecto.Changeset{}}
 
   """
-  def delete_session_occurence(%SessionOccurence{} = session_occurence) do
-    Repo.delete(session_occurence)
+  def delete_session_occurrence(%SessionOccurrence{} = session_occurrence) do
+    Repo.delete(session_occurrence)
   end
 
   @doc """
-  Returns an `%Ecto.Changeset{}` for tracking session_occurence changes.
+  Returns an `%Ecto.Changeset{}` for tracking session_occurrence changes.
 
   ## Examples
 
-      iex> change_session_occurence(session_occurence)
-      %Ecto.Changeset{data: %SessionOccurence{}}
+      iex> change_session_occurrence(session_occurrence)
+      %Ecto.Changeset{data: %SessionOccurrence{}}
 
   """
-  def change_session_occurence(%SessionOccurence{} = session_occurence, attrs \\ %{}) do
-    SessionOccurence.changeset(session_occurence, attrs)
+  def change_session_occurrence(%SessionOccurrence{} = session_occurrence, attrs \\ %{}) do
+    SessionOccurrence.changeset(session_occurrence, attrs)
   end
 
   alias Dbservice.Sessions.UserSession

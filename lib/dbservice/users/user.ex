@@ -5,7 +5,7 @@ defmodule Dbservice.Users.User do
   import Ecto.Changeset
   import Dbservice.Utils.Util
 
-  alias Dbservice.Sessions.SessionOccurence
+  alias Dbservice.Sessions.SessionOccurrence
   alias Dbservice.Users.Teacher
   alias Dbservice.Users.Student
   alias Dbservice.Profiles.UserProfile
@@ -25,13 +25,14 @@ defmodule Dbservice.Users.User do
     field(:city, :string)
     field(:district, :string)
     field(:state, :string)
+    field(:region, :string)
     field(:pincode, :string)
     field(:role, :string)
     field(:country, :string)
 
     timestamps()
 
-    many_to_many(:sessions, SessionOccurence, join_through: "user_session", on_replace: :delete)
+    many_to_many(:sessions, SessionOccurrence, join_through: "user_session", on_replace: :delete)
     has_one(:teacher, Teacher)
     has_one(:student, Student)
     has_one(:user_profile, UserProfile)
@@ -53,6 +54,7 @@ defmodule Dbservice.Users.User do
       :city,
       :district,
       :state,
+      :region,
       :pincode,
       :role,
       :whatsapp_phone,
