@@ -41,7 +41,7 @@ defmodule Dbservice.MixProject do
       {:swoosh, "~> 1.3"},
       {:telemetry_metrics, "~> 0.6"},
       {:telemetry_poller, "~> 1.0"},
-      {:gettext, "~> 0.18"},
+      {:gettext, "~> 0.26.0"},
       {:jason, "~> 1.2"},
       {:plug_cowboy, "~> 2.5"},
       {:phoenix_swagger, "~> 0.8"},
@@ -54,7 +54,8 @@ defmodule Dbservice.MixProject do
       {:cors_plug, "~> 3.0"},
       {:logger_file_backend, "~> 0.0.13"},
       {:calendar, "~> 1.0.0"},
-      {:observer_cli, "~> 1.7"}
+      {:observer_cli, "~> 1.7"},
+      {:tzdata, "~> 1.1"}
     ]
   end
 
