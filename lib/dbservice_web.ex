@@ -22,7 +22,7 @@ defmodule DbserviceWeb do
       use Phoenix.Controller, namespace: DbserviceWeb
 
       import Plug.Conn
-      import DbserviceWeb.Gettext
+      use Gettext, backend: DbserviceWeb.Gettext
       alias DbserviceWeb.Router.Helpers, as: Routes
     end
   end
@@ -54,7 +54,7 @@ defmodule DbserviceWeb do
   def channel do
     quote do
       use Phoenix.Channel
-      import DbserviceWeb.Gettext
+      use Gettext, backend: DbserviceWeb.Gettext
     end
   end
 
@@ -64,7 +64,7 @@ defmodule DbserviceWeb do
       import Phoenix.View
 
       import DbserviceWeb.ErrorHelpers
-      import DbserviceWeb.Gettext
+      use Gettext, backend: DbserviceWeb.Gettext
       alias DbserviceWeb.Router.Helpers, as: Routes
     end
   end
