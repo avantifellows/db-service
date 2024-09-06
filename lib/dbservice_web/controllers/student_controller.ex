@@ -15,6 +15,8 @@ defmodule DbserviceWeb.StudentController do
   alias Dbservice.EnrollmentRecords
   alias Dbservice.Batches.Batch
   alias Dbservice.GroupUsers
+  alias Dbservice.Grades
+  alias DbserviceWeb.EnrollmentRecordView
 
   action_fallback(DbserviceWeb.FallbackController)
 
@@ -658,6 +660,49 @@ defmodule DbserviceWeb.StudentController do
           _group_user ->
             true
         end
+    end
+  end
+
+  def update_user_enrollment_records(conn, params) do
+    student = Users.get_student_by_student_id(params["student_id"])
+    user_id = student.user_id
+    academic_year = params["academic_year"]
+    grade = Grades.get_grade_by_number(params["grade"])
+    grade_id = grade.id
+
+    # Fetch all enrollment records for the user in the given academic year
+    enrollment_records =
+      EnrollmentRecords.get_enrollment_records_by_user_and_academic_year(user_id, academic_year)
+
+    # Update the grade for each record
+    updated_records =
+      Enum.map(enrollment_records, fn record ->
+        case EnrollmentRecords.update_enrollment_record(record, %{grade_id: grade_id}) do
+          {:ok, updated_record} ->
+            # Use the view to render the updated record
+            EnrollmentRecordView.render("enrollment_record.json", %{
+              enrollment_record: updated_record
+            })
+
+          {:error, _changeset} ->
+            # Handle the error case
+            %{error: "Failed to update record"}
+        end
+      end)
+
+    case updated_records do
+      [] ->
+        conn
+        |> put_status(:not_found)
+        |> json(%{message: "No records found for the given user and academic year."})
+
+      _ ->
+        conn
+        |> put_status(:ok)
+        |> json(%{
+          message: "Enrollment records updated successfully.",
+          updated_records: updated_records
+        })
     end
   end
 end
