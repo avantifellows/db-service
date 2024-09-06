@@ -667,25 +667,21 @@ defmodule DbserviceWeb.StudentController do
     student = Users.get_student_by_student_id(params["student_id"])
     user_id = student.user_id
     academic_year = params["academic_year"]
-    grade = Grades.get_grade_by_number(params["grade"])
-    grade_id = grade.id
+
+    # Remove non-updateable fields from params
+    updateable_params = Map.drop(params, ["student_id", "academic_year"])
 
     # Fetch all enrollment records for the user in the given academic year
     enrollment_records =
       EnrollmentRecords.get_enrollment_records_by_user_and_academic_year(user_id, academic_year)
 
-    # Update the grade for each record
+    # Update each record with the provided params
     updated_records =
       Enum.map(enrollment_records, fn record ->
-        case EnrollmentRecords.update_enrollment_record(record, %{grade_id: grade_id}) do
+        case EnrollmentRecords.update_enrollment_record(record, updateable_params) do
           {:ok, updated_record} ->
-            # Use the view to render the updated record
-            EnrollmentRecordView.render("enrollment_record.json", %{
-              enrollment_record: updated_record
-            })
-
+            EnrollmentRecordView.render("enrollment_record.json", %{enrollment_record: updated_record})
           {:error, _changeset} ->
-            # Handle the error case
             %{error: "Failed to update record"}
         end
       end)
