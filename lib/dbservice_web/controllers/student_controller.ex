@@ -680,7 +680,10 @@ defmodule DbserviceWeb.StudentController do
       Enum.map(enrollment_records, fn record ->
         case EnrollmentRecords.update_enrollment_record(record, updateable_params) do
           {:ok, updated_record} ->
-            EnrollmentRecordView.render("enrollment_record.json", %{enrollment_record: updated_record})
+            EnrollmentRecordView.render("enrollment_record.json", %{
+              enrollment_record: updated_record
+            })
+
           {:error, _changeset} ->
             %{error: "Failed to update record"}
         end
