@@ -1,4 +1,5 @@
 defmodule DbserviceWeb.StudentController do
+  alias Dbservice.Groups
   alias Dbservice.EnrollmentRecords
   alias Dbservice.Schools
   alias Dbservice.Grades
@@ -14,6 +15,8 @@ defmodule DbserviceWeb.StudentController do
   alias Dbservice.EnrollmentRecords
   alias Dbservice.Batches.Batch
   alias Dbservice.GroupUsers
+  alias Dbservice.Grades
+  alias DbserviceWeb.EnrollmentRecordView
 
   action_fallback(DbserviceWeb.FallbackController)
 
@@ -25,16 +28,26 @@ defmodule DbserviceWeb.StudentController do
     # merge the required definitions in a pair at a time using the Map.merge/2 function
     Map.merge(
       Map.merge(
-        SwaggerSchemaStudent.student(),
-        SwaggerSchemaStudent.students()
+        Map.merge(
+          SwaggerSchemaStudent.student(),
+          SwaggerSchemaStudent.students()
+        ),
+        Map.merge(
+          SwaggerSchemaStudent.student_registration(),
+          SwaggerSchemaStudent.student_with_user()
+        )
       ),
       Map.merge(
-        SwaggerSchemaStudent.student_registration(),
-        SwaggerSchemaStudent.student_with_user()
+        Map.merge(
+          SwaggerSchemaStudent.student_id_generation(),
+          SwaggerSchemaStudent.student_id_generation_response()
+        ),
+        Map.merge(
+          SwaggerSchemaStudent.verify_student_request(),
+          SwaggerSchemaStudent.verification_result()
+        )
       )
     )
-    |> Map.merge(SwaggerSchemaStudent.student_id_generation())
-    |> Map.merge(SwaggerSchemaStudent.student_id_generation_response())
   end
 
   swagger_path :index do
@@ -560,6 +573,135 @@ defmodule DbserviceWeb.StudentController do
     case Users.get_student_by_student_id(id) do
       nil -> false
       _ -> true
+    end
+  end
+
+  # function to verify student data with the values recieved in the verification params
+  swagger_path :verify_student do
+    post("/api/student/verify-student")
+
+    parameters do
+      body(:body, Schema.ref(:VerifyStudentRequest), "Parameters needed to verify student",
+        required: true
+      )
+    end
+
+    response(200, "OK", Schema.ref(:VerificationResult))
+  end
+
+  def verify_student(conn, %{
+        "student_id" => student_id,
+        "verification_params" => verification_params
+      }) do
+    case get_student_and_user(student_id) do
+      {:ok, student, user} ->
+        student_exists = verify_student_and_user_data(student, user, verification_params)
+
+        conn
+        |> put_status(:ok)
+        |> json(%{is_verified: student_exists})
+
+      {:error, :not_found} ->
+        conn
+        |> put_status(:not_found)
+        |> json(%{error: "Student not found"})
+    end
+  end
+
+  defp get_student_and_user(student_id) do
+    case Users.get_student_by_student_id(student_id) do
+      nil ->
+        {:error, :not_found}
+
+      student ->
+        case Users.get_user!(student.user_id) do
+          nil ->
+            {:error, :not_found}
+
+          user ->
+            {:ok, student, user}
+        end
+    end
+  end
+
+  defp verify_student_and_user_data(student, user, verification_params) do
+    Enum.all?(verification_params, fn {key, value} ->
+      cond do
+        key == "auth_group_id" ->
+          verify_auth_group(user.id, value)
+
+        key == "date_of_birth" ->
+          user_dob = Map.get(user, String.to_existing_atom(key))
+          parsed_value = Date.from_iso8601!(value)
+          Date.compare(user_dob, parsed_value) == :eq
+
+        Map.has_key?(student, String.to_existing_atom(key)) ->
+          Map.get(student, String.to_existing_atom(key)) == value
+
+        Map.has_key?(user, String.to_existing_atom(key)) ->
+          Map.get(user, String.to_existing_atom(key)) == value
+
+        true ->
+          false
+      end
+    end)
+  end
+
+  def verify_auth_group(user_id, auth_group_id) do
+    case Groups.get_group_by_child_id_and_type(auth_group_id, "auth_group") do
+      nil ->
+        false
+
+      group ->
+        case GroupUsers.get_group_user_by_user_id_and_group_id(user_id, group.id) do
+          nil ->
+            false
+
+          _group_user ->
+            true
+        end
+    end
+  end
+
+  def update_user_enrollment_records(conn, params) do
+    student = Users.get_student_by_student_id(params["student_id"])
+    user_id = student.user_id
+    academic_year = params["academic_year"]
+
+    # Remove non-updateable fields from params
+    updateable_params = Map.drop(params, ["student_id", "academic_year"])
+
+    # Fetch all enrollment records for the user in the given academic year
+    enrollment_records =
+      EnrollmentRecords.get_enrollment_records_by_user_and_academic_year(user_id, academic_year)
+
+    # Update each record with the provided params
+    updated_records =
+      Enum.map(enrollment_records, fn record ->
+        case EnrollmentRecords.update_enrollment_record(record, updateable_params) do
+          {:ok, updated_record} ->
+            EnrollmentRecordView.render("enrollment_record.json", %{
+              enrollment_record: updated_record
+            })
+
+          {:error, _changeset} ->
+            %{error: "Failed to update record"}
+        end
+      end)
+
+    case updated_records do
+      [] ->
+        conn
+        |> put_status(:not_found)
+        |> json(%{message: "No records found for the given user and academic year."})
+
+      _ ->
+        conn
+        |> put_status(:ok)
+        |> json(%{
+          message: "Enrollment records updated successfully.",
+          updated_records: updated_records
+        })
     end
   end
 end

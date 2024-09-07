@@ -25,6 +25,7 @@ defmodule Dbservice.Users.User do
     field(:city, :string)
     field(:district, :string)
     field(:state, :string)
+    field(:region, :string)
     field(:pincode, :string)
     field(:role, :string)
     field(:country, :string)
@@ -53,6 +54,7 @@ defmodule Dbservice.Users.User do
       :city,
       :district,
       :state,
+      :region,
       :pincode,
       :role,
       :whatsapp_phone,
