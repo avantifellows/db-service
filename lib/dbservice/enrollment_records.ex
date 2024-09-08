@@ -143,4 +143,14 @@ defmodule Dbservice.EnrollmentRecords do
 
     Repo.all(query)
   end
+
+  @doc """
+  Fetches all enrollment records for a given user in a specific academic year.
+  """
+  def get_enrollment_records_by_user_and_academic_year(user_id, academic_year) do
+    from(e in EnrollmentRecord,
+      where: e.user_id == ^user_id and e.academic_year == ^academic_year
+    )
+    |> Repo.all()
+  end
 end

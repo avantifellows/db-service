@@ -69,6 +69,7 @@ defmodule DbserviceWeb.Router do
     resources("/school-batch", SchoolBatchController, except: [:new, :edit])
     post("/school-with-user", SchoolController, :create_school_with_user)
     patch("/update-group-user-by-type", GroupUserController, :update_by_type)
+    patch("/update-user-enrollment-records", StudentController, :update_user_enrollment_records)
 
     def swagger_info do
       source(["config/.env", "config/.env"])
