@@ -28,6 +28,7 @@ defmodule DbserviceWeb.SwaggerSchema.Student do
             has_internet_access(:string, "If the family has internet access")
             primary_smartphone_owner(:string, "Primary smartphone owner")
             primary_smartphone_owner_profession(:string, "Profession of primary smartphone owner")
+            board_stream(:string, "Stream or subjects chosen for the board (e.g., PCB, PCM, Commerce, Arts)")
           end
 
           example(%{
@@ -48,7 +49,8 @@ defmodule DbserviceWeb.SwaggerSchema.Student do
             time_of_device_availability: "2022-10-07",
             has_internet_access: "Yes",
             primary_smartphone_owner: "Father",
-            primary_smartphone_owner_profession: "Employed"
+            primary_smartphone_owner_profession: "Employed",
+            board_stream: "PCM"
           })
         end
     }
@@ -92,6 +94,7 @@ defmodule DbserviceWeb.SwaggerSchema.Student do
             state(:string, "State")
             pincode(:string, "Pin code")
             role(:string, "User role")
+            board_stream(:string, "Stream or subjects chosen for the board (e.g., PCB, PCM, Commerce, Arts)")
           end
 
           example(%{
@@ -112,7 +115,8 @@ defmodule DbserviceWeb.SwaggerSchema.Student do
             district: "Mumbai",
             state: "Maharashtra",
             pincode: "400011",
-            role: "student"
+            role: "student",
+            board_stream: "PCM"
           })
         end
     }
