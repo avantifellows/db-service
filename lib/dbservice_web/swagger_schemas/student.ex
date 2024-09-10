@@ -28,7 +28,11 @@ defmodule DbserviceWeb.SwaggerSchema.Student do
             has_internet_access(:string, "If the family has internet access")
             primary_smartphone_owner(:string, "Primary smartphone owner")
             primary_smartphone_owner_profession(:string, "Profession of primary smartphone owner")
-            board_stream(:string, "Stream or subjects chosen for the board (e.g., PCB, PCM, Commerce, Arts)")
+
+            board_stream(
+              :string,
+              "Stream or subjects chosen for the board (e.g., PCB, PCM, Commerce, Arts)"
+            )
           end
 
           example(%{
@@ -94,7 +98,11 @@ defmodule DbserviceWeb.SwaggerSchema.Student do
             state(:string, "State")
             pincode(:string, "Pin code")
             role(:string, "User role")
-            board_stream(:string, "Stream or subjects chosen for the board (e.g., PCB, PCM, Commerce, Arts)")
+
+            board_stream(
+              :string,
+              "Stream or subjects chosen for the board (e.g., PCB, PCM, Commerce, Arts)"
+            )
           end
 
           example(%{
