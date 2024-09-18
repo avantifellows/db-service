@@ -85,6 +85,10 @@ sudo MIX_ENV=prod mix deps.get
 echo "Compiling dependencies..."
 sudo MIX_ENV=prod mix deps.compile
 
+# Running migrations
+echo "Running mingrations..."
+sudo MIX_ENV=prod mix ecto.migrate
+
 echo "Generating swagger..."
 sudo MIX_ENV=prod mix phx.swagger.generate
 
