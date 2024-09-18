@@ -44,3 +44,15 @@ resource "aws_cloudfront_distribution" "backend_cdn" {
 
   price_class = "PriceClass_200"
 }
+
+resource "null_resource" "cloudfront_invalidation" {
+  triggers = {
+    distribution_id = aws_cloudfront_distribution.backend_cdn.id
+  }
+
+  provisioner "local-exec" {
+    command = "aws cloudfront create-invalidation --distribution-id ${aws_cloudfront_distribution.backend_cdn.id} --paths \"/*\""
+  }
+
+  depends_on = [aws_cloudfront_distribution.backend_cdn]
+}
