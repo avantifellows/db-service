@@ -706,32 +706,36 @@ defmodule DbserviceWeb.StudentController do
   end
 
   def batch_process(conn, %{"data" => batch_data}) do
-    results = Enum.map(batch_data, &process_student(conn, &1))
+    results = Enum.map(batch_data, &process_student(&1))
 
     successful = Enum.count(results, fn {status, _} -> status == :ok end)
     failed = Enum.count(results, fn {status, _} -> status == :error end)
 
     conn
     |> put_status(:ok)
-    |> json(%{
+    |> render("batch_result.json", %{
       message: "Batch processing completed",
       successful: successful,
       failed: failed,
-      results:
-        Enum.map(results, fn
-          {:ok, rendered_student} -> %{status: :ok, student: rendered_student}
-          {:error, changeset} -> %{status: :error, errors: changeset}
-        end)
+      results: results
     })
   end
 
-  defp process_student(conn, student_data) do
+  defp process_student(student_data) do
     case Users.get_student_by_student_id(student_data["student_id"]) do
       nil ->
-        create_student_with_user(conn, student_data)
+        case Users.create_student_with_user(student_data) do
+          {:ok, student} -> {:ok, student}
+          {:error, changeset} -> {:error, changeset}
+        end
 
       existing_student ->
-        update_existing_student_with_user(conn, existing_student, student_data)
+        user = Users.get_user!(existing_student.user_id)
+
+        case Users.update_student_with_user(existing_student, user, student_data) do
+          {:ok, student} -> {:ok, student}
+          {:error, changeset} -> {:error, changeset}
+        end
     end
   end
 end
