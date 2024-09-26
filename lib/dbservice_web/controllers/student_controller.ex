@@ -717,10 +717,11 @@ defmodule DbserviceWeb.StudentController do
       message: "Batch processing completed",
       successful: successful,
       failed: failed,
-      results: Enum.map(results, fn
-        {:ok, rendered_student} -> %{status: :ok, student: rendered_student}
-        {:error, changeset} -> %{status: :error, errors: changeset}
-      end)
+      results:
+        Enum.map(results, fn
+          {:ok, rendered_student} -> %{status: :ok, student: rendered_student}
+          {:error, changeset} -> %{status: :error, errors: changeset}
+        end)
     })
   end
 
