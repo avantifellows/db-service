@@ -60,7 +60,8 @@ defmodule DbserviceWeb.Router do
     post("/school-with-user", SchoolController, :create_school_with_user)
     patch("/update-group-user-by-type", GroupUserController, :update_by_type)
     patch("/update-user-enrollment-records", StudentController, :update_user_enrollment_records)
-    post "/student/batch-process", StudentController, :batch_process
+    post("/student/batch-process", StudentController, :batch_process)
+    post("/group-user/batch-process", GroupUserController, :batch_create)
 
     def swagger_info do
       source(["config/.env", "config/.env"])
