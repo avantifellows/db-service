@@ -125,7 +125,29 @@ defmodule DbserviceWeb.GroupUserController do
     # Fetch all GroupUsers for the specified user_id and type
     group_users = GroupUsers.get_group_user_by_user_id_and_type(user_id, type)
 
-    # Determine which GroupUser to update based on the type and provided params
+    # Determine which GroupUser to update and fetch the corresponding EnrollmentRecord
+    {group_user_to_update, enrollment_record} =
+      find_records_to_update(group_users, user_id, type, params)
+
+    case {group_user_to_update, enrollment_record} do
+      {nil, _} ->
+        {:error, :not_found}
+
+      {_, nil} ->
+        {:error, :not_found}
+
+      {group_user, enrollment_record} ->
+        update_group_user_and_enrollment(
+          conn,
+          group_user,
+          enrollment_record,
+          params,
+          new_group_id
+        )
+    end
+  end
+
+  defp find_records_to_update(group_users, user_id, type, params) do
     group_user_to_update =
       case type do
         "batch" ->
@@ -160,25 +182,7 @@ defmodule DbserviceWeb.GroupUserController do
           |> Repo.one()
       end
 
-    case {group_user_to_update, enrollment_record} do
-      {nil, _} ->
-        # GroupUser not found
-        {:error, :not_found}
-
-      {_, nil} ->
-        # EnrollmentRecord not found
-        {:error, :not_found}
-
-      {group_user, enrollment_record} ->
-        # Update both the GroupUser and the EnrollmentRecord
-        update_group_user_and_enrollment(
-          conn,
-          group_user,
-          enrollment_record,
-          params,
-          new_group_id
-        )
-    end
+    {group_user_to_update, enrollment_record}
   end
 
   defp update_group_user_and_enrollment(conn, group_user, enrollment_record, params, new_group_id) do
