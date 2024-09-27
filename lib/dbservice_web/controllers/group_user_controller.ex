@@ -129,8 +129,8 @@ defmodule DbserviceWeb.GroupUserController do
     group_user_to_update =
       case type do
         "batch" ->
-          current_batch_id = params["current_batch_pk"]
-          Enum.find(group_users, fn gu -> gu.group.child_id == current_batch_id end)
+          current_batch_pk = params["current_batch_pk"]
+          Enum.find(group_users, fn gu -> gu.group.child_id == current_batch_pk end)
 
         _ ->
           # For non-batch types, just take the first (and likely only) GroupUser
@@ -141,13 +141,13 @@ defmodule DbserviceWeb.GroupUserController do
     enrollment_record =
       case type do
         "batch" ->
-          current_batch_id = params["current_batch_pk"]
+          current_batch_pk = params["current_batch_pk"]
 
           from(er in EnrollmentRecord,
             where:
               er.user_id == ^user_id and
                 er.group_type == ^type and
-                er.group_id == ^current_batch_id
+                er.group_id == ^current_batch_pk
           )
           |> Repo.one()
 
