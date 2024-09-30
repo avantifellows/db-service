@@ -21,6 +21,7 @@ defmodule DbserviceWeb.SwaggerSchema.Program do
             donor(:string, "Donor of a program")
             model(:string, "Program Model")
             group_id(:integer, "ID of the group")
+            is_current(:boolean, "Program is currently active/inactive")
           end
 
           example(%{
@@ -34,7 +35,8 @@ defmodule DbserviceWeb.SwaggerSchema.Program do
             donor: "Infosys, MSDF, Sofina",
             state: "Delhi",
             model: "Live Classes",
-            group_id: 1
+            group_id: 1,
+            is_current: true
           })
         end
     }
