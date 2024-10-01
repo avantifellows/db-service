@@ -7,6 +7,7 @@ defmodule Dbservice.Grades.Grade do
   alias Dbservice.Tags.Tag
   alias Dbservice.Chapters.Chapter
   alias Dbservice.Topics.Topic
+  alias Dbservice.Users.Student
 
   schema "grade" do
     field(:number, :integer)
@@ -14,6 +15,7 @@ defmodule Dbservice.Grades.Grade do
     timestamps()
 
     has_many(:chapter, Chapter)
+    has_many(:student, Student)
     has_many(:topic, Topic)
     belongs_to(:tag, Tag)
   end
