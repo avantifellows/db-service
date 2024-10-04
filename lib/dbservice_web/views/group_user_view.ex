@@ -19,23 +19,23 @@ defmodule DbserviceWeb.GroupUserView do
   end
 
   def render("batch_result.json", %{
+        message: message,
+        successful: successful,
+        failed: failed,
+        results: results
+      }) do
+    %{
       message: message,
       successful: successful,
       failed: failed,
-      results: results
-    }) do
-  %{
-    message: message,
-    successful: successful,
-    failed: failed,
-    results:
-      Enum.map(results, fn
-        {:ok, group_user} ->
-          %{status: :ok, group_user: render_one(group_user, GroupUserView, "group_user.json")}
+      results:
+        Enum.map(results, fn
+          {:ok, group_user} ->
+            %{status: :ok, group_user: render_one(group_user, GroupUserView, "group_user.json")}
 
-        {:error, changeset} ->
-          %{status: :error, errors: changeset}
-      end)
-  }
+          {:error, changeset} ->
+            %{status: :error, errors: changeset}
+        end)
+    }
   end
 end
