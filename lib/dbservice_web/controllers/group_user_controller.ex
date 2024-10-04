@@ -205,7 +205,7 @@ defmodule DbserviceWeb.GroupUserController do
   end
 
   def batch_create(conn, %{"data" => batch_data}) do
-    results = Enum.map(batch_data, &process_group_user(conn, &1))
+    results = Enum.map(batch_data, &process_group_user(&1))
 
     successful = Enum.count(results, fn {status, _} -> status == :ok end)
     failed = Enum.count(results, fn {status, _} -> status == :error end)
@@ -220,7 +220,7 @@ defmodule DbserviceWeb.GroupUserController do
     })
   end
 
-  defp process_group_user(conn, group_user_data) do
+  defp process_group_user(group_user_data) do
     case GroupUsers.get_group_user_by_user_id_and_group_id(
            group_user_data["user_id"],
            group_user_data["group_id"]
