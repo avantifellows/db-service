@@ -207,9 +207,17 @@ defmodule DbserviceWeb.GroupUserController do
   def batch_create(conn, %{"data" => batch_data}) do
     results = Enum.map(batch_data, &process_group_user(conn, &1))
 
+    successful = Enum.count(results, fn {status, _} -> status == :ok end)
+    failed = Enum.count(results, fn {status, _} -> status == :error end)
+
     conn
     |> put_status(:ok)
-    |> json(%{results: results})
+    |> render("batch_result.json", %{
+      message: "Batch processing completed",
+      successful: successful,
+      failed: failed,
+      results: results
+    })
   end
 
   defp process_group_user(conn, group_user_data) do
@@ -218,10 +226,38 @@ defmodule DbserviceWeb.GroupUserController do
            group_user_data["group_id"]
          ) do
       nil ->
-        create_new_group_user(conn, group_user_data)
+        create_new_group_user_from_batch(group_user_data)
 
       existing_group_user ->
-        update_existing_group_user(conn, existing_group_user, group_user_data)
+        update_existing_group_user_from_batch(existing_group_user, group_user_data)
+    end
+  end
+
+  defp create_new_group_user_from_batch(params) do
+    group = Groups.get_group!(params["group_id"])
+
+    enrollment_record = %{
+      "group_id" => group.child_id,
+      "group_type" => group.type,
+      "user_id" => params["user_id"],
+      "grade_id" => params["grade_id"],
+      "academic_year" => params["academic_year"],
+      "start_date" => params["start_date"]
+    }
+
+    with {:ok, %EnrollmentRecord{} = _} <-
+           EnrollmentRecords.create_enrollment_record(enrollment_record),
+         {:ok, %GroupUser{} = group_user} <- GroupUsers.create_group_user(params) do
+      {:ok, group_user}
+    else
+      {:error, changeset} -> {:error, changeset}
+    end
+  end
+
+  defp update_existing_group_user_from_batch(existing_group_user, params) do
+    case GroupUsers.update_group_user(existing_group_user, params) do
+      {:ok, group_user} -> {:ok, group_user}
+      {:error, changeset} -> {:error, changeset}
     end
   end
 end
