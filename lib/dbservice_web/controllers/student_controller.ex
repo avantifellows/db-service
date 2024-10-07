@@ -17,6 +17,7 @@ defmodule DbserviceWeb.StudentController do
   alias Dbservice.GroupUsers
   alias Dbservice.Grades
   alias DbserviceWeb.EnrollmentRecordView
+  alias Dbservice.Statuses
 
   action_fallback(DbserviceWeb.FallbackController)
 
@@ -703,5 +704,58 @@ defmodule DbserviceWeb.StudentController do
           updated_records: updated_records
         })
     end
+  end
+
+  def update_student_status(conn, %{"student_id" => student_id}) do
+    with {:ok, user_id} <- get_user_id(student_id),
+         enrollment_records <- EnrollmentRecords.get_enrollment_records_by_user_id(user_id),
+         status_record <- find_status_record(enrollment_records),
+         {:ok, _} <- handle_status_record(status_record),
+         {:ok, _} <- update_current_status(enrollment_records) do
+      conn
+      |> put_status(:ok)
+      |> json(%{message: "Student status updated successfully"})
+    else
+      {:error, reason} ->
+        conn
+        |> put_status(:unprocessable_entity)
+        |> json(%{error: reason})
+    end
+  end
+
+  defp get_user_id(student_id) do
+    case Users.get_student_by_student_id(student_id) do
+      nil -> {:error, "Student not found"}
+      student -> {:ok, student.user_id}
+    end
+  end
+
+  defp find_status_record(enrollment_records) do
+    Enum.find(enrollment_records, &(&1.group_type == "status"))
+  end
+
+  defp handle_status_record(status_record) do
+    status = Statuses.get_status!(status_record.group_id)
+
+    if status.title == :dropout do
+      case EnrollmentRecords.delete_enrollment_record(status_record) do
+        {:ok, _deleted_record} ->
+          {:ok, "Record deleted successfully"}
+
+        {:error, changeset} ->
+          {:error, "Failed to delete record: #{inspect(changeset.errors)}"}
+      end
+    else
+      {:ok, status_record}
+    end
+  end
+
+  defp update_current_status(enrollment_records) do
+    Enum.reduce_while(enrollment_records, {:ok, []}, fn record, {:ok, updated_records} ->
+      case EnrollmentRecords.update_enrollment_record(record, %{is_current: true}) do
+        {:ok, updated_record} -> {:cont, {:ok, [updated_record | updated_records]}}
+        {:error, _} -> {:halt, {:error, "Failed to update enrollment record"}}
+      end
+    end)
   end
 end

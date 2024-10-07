@@ -29,7 +29,7 @@ defmodule Dbservice.Statuses do
       iex> get_status!(456)
       ** (Ecto.NoResultsError)
   """
-  def get_status!(id), do: Repo.get!(StatusCode, id)
+  def get_status!(id), do: Repo.get!(Status, id)
 
   @doc """
   Creates a status.
