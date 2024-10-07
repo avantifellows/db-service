@@ -708,7 +708,8 @@ defmodule DbserviceWeb.StudentController do
 
   def update_student_status(conn, %{"student_id" => student_id}) do
     with {:ok, student} <- get_student(student_id),
-         enrollment_records <- EnrollmentRecords.get_enrollment_records_by_user_id(student.user_id),
+         enrollment_records <-
+           EnrollmentRecords.get_enrollment_records_by_user_id(student.user_id),
          status_record <- find_status_record(enrollment_records),
          {:ok, _} <- handle_status_record(status_record),
          {:ok, _} <- update_current_status(enrollment_records),
