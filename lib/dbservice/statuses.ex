@@ -4,7 +4,6 @@ defmodule Dbservice.Statuses do
   """
 
   import Ecto.Query, warn: false
-  alias Faker.Internet.StatusCode
   alias Dbservice.Repo
 
   alias Dbservice.Statuses.Status
