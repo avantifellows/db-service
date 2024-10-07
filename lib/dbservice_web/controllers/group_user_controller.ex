@@ -1,4 +1,6 @@
 defmodule DbserviceWeb.GroupUserController do
+  alias Dbservice.Batches
+  alias Dbservice.Schools
   alias Dbservice.Groups
   alias Dbservice.EnrollmentRecords
   use DbserviceWeb, :controller
@@ -205,7 +207,16 @@ defmodule DbserviceWeb.GroupUserController do
   end
 
   def batch_create(conn, %{"data" => batch_data}) do
-    results = Enum.map(batch_data, &process_group_user(&1))
+    results =
+      Enum.map(batch_data, fn data ->
+        case process_group_user(data) do
+          {:ok, group_user} ->
+            {:ok, group_user}
+
+          {:error, error_msg} ->
+            {:error, %{error: error_msg, data: data}}
+        end
+      end)
 
     successful = Enum.count(results, fn {status, _} -> status == :ok end)
     failed = Enum.count(results, fn {status, _} -> status == :error end)
@@ -221,6 +232,36 @@ defmodule DbserviceWeb.GroupUserController do
   end
 
   defp process_group_user(group_user_data) do
+    case group_user_data["enrollment_type"] do
+      "school" ->
+        case get_school_group_id(group_user_data["school_code"]) do
+          {:error, error_msg} ->
+            {:error, error_msg}
+
+          school_group_id ->
+            group_user_data = Map.put(group_user_data, "group_id", school_group_id)
+            handle_group_user(group_user_data)
+        end
+
+      "batch" ->
+        case get_batch_group_id(group_user_data["batch_id"]) do
+          {:error, error_msg} ->
+            {:error, error_msg}
+
+          batch_group_id ->
+            group_user_data = Map.put(group_user_data, "group_id", batch_group_id)
+            handle_group_user(group_user_data)
+        end
+
+      "auth_group" ->
+        handle_group_user(group_user_data)
+
+      _ ->
+        {:error, "Unknown enrollment type"}
+    end
+  end
+
+  defp handle_group_user(group_user_data) do
     case GroupUsers.get_group_user_by_user_id_and_group_id(
            group_user_data["user_id"],
            group_user_data["group_id"]
@@ -230,6 +271,38 @@ defmodule DbserviceWeb.GroupUserController do
 
       existing_group_user ->
         update_existing_group_user_from_batch(existing_group_user, group_user_data)
+    end
+  end
+
+  defp get_school_group_id(school_code) do
+    case Schools.get_school_by_code(school_code) do
+      nil ->
+        {:error, "School not found"}
+
+      school ->
+        case Groups.get_group_by_child_id_and_type(school.id, "school") do
+          nil ->
+            {:error, "School group not found"}
+
+          group ->
+            group.id
+        end
+    end
+  end
+
+  defp get_batch_group_id(batch_id) do
+    case Batches.get_batch_by_batch_id(batch_id) do
+      nil ->
+        {:error, "Batch not found"}
+
+      batch ->
+        case Groups.get_group_by_child_id_and_type(batch.id, "batch") do
+          nil ->
+            {:error, "Batch group not found"}
+
+          group ->
+            group.id
+        end
     end
   end
 
@@ -250,14 +323,14 @@ defmodule DbserviceWeb.GroupUserController do
          {:ok, %GroupUser{} = group_user} <- GroupUsers.create_group_user(params) do
       {:ok, group_user}
     else
-      {:error, changeset} -> {:error, changeset}
+      {:error, _changeset} -> {:error, "Failed to create group user. Some problem with changeset"}
     end
   end
 
   defp update_existing_group_user_from_batch(existing_group_user, params) do
     case GroupUsers.update_group_user(existing_group_user, params) do
       {:ok, group_user} -> {:ok, group_user}
-      {:error, changeset} -> {:error, changeset}
+      {:error, _changeset} -> {:error, "Failed to update group user. Some problem with changeset"}
     end
   end
 end

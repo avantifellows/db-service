@@ -722,19 +722,40 @@ defmodule DbserviceWeb.StudentController do
   end
 
   defp process_student(student_data) do
+    grade = Grades.get_grade_by_number(student_data["grade"])
+
+    student_data =
+      Map.merge(student_data, %{
+        "grade_id" => grade.id
+      })
+
     case Users.get_student_by_student_id(student_data["student_id"]) do
       nil ->
         case Users.create_student_with_user(student_data) do
-          {:ok, student} -> {:ok, student}
-          {:error, changeset} -> {:error, changeset}
+          {:ok, student} ->
+            {:ok, student}
+
+          {:error, _changeset} ->
+            {:error,
+             %{
+               student_id: student_data["student_id"],
+               message: "Failed to create student with user. Some problem with changeset"
+             }}
         end
 
       existing_student ->
         user = Users.get_user!(existing_student.user_id)
 
         case Users.update_student_with_user(existing_student, user, student_data) do
-          {:ok, student} -> {:ok, student}
-          {:error, changeset} -> {:error, changeset}
+          {:ok, student} ->
+            {:ok, student}
+
+          {:error, _changeset} ->
+            {:error,
+             %{
+               student_id: student_data["student_id"],
+               message: "Failed to update student with user. Some problem with changeset"
+             }}
         end
     end
   end
