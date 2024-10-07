@@ -707,11 +707,12 @@ defmodule DbserviceWeb.StudentController do
   end
 
   def update_student_status(conn, %{"student_id" => student_id}) do
-    with {:ok, user_id} <- get_user_id(student_id),
-         enrollment_records <- EnrollmentRecords.get_enrollment_records_by_user_id(user_id),
+    with {:ok, student} <- get_student(student_id),
+         enrollment_records <- EnrollmentRecords.get_enrollment_records_by_user_id(student.user_id),
          status_record <- find_status_record(enrollment_records),
          {:ok, _} <- handle_status_record(status_record),
-         {:ok, _} <- update_current_status(enrollment_records) do
+         {:ok, _} <- update_current_status(enrollment_records),
+         {:ok, _} <- set_student_status_to_null(student) do
       conn
       |> put_status(:ok)
       |> json(%{message: "Student status updated successfully"})
@@ -723,10 +724,10 @@ defmodule DbserviceWeb.StudentController do
     end
   end
 
-  defp get_user_id(student_id) do
+  defp get_student(student_id) do
     case Users.get_student_by_student_id(student_id) do
       nil -> {:error, "Student not found"}
-      student -> {:ok, student.user_id}
+      student -> {:ok, student}
     end
   end
 
@@ -757,5 +758,9 @@ defmodule DbserviceWeb.StudentController do
         {:error, _} -> {:halt, {:error, "Failed to update enrollment record"}}
       end
     end)
+  end
+
+  defp set_student_status_to_null(student) do
+    Users.update_student(student, %{status: nil})
   end
 end
