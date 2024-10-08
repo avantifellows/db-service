@@ -206,7 +206,7 @@ defmodule DbserviceWeb.GroupUserController do
     end
   end
 
-  def batch_create(conn, %{"data" => batch_data}) do
+  def batch_process(conn, %{"data" => batch_data}) do
     results =
       Enum.map(batch_data, fn data ->
         case process_group_user(data) do
