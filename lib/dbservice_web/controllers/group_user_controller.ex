@@ -119,38 +119,92 @@ defmodule DbserviceWeb.GroupUserController do
   def update_by_type(conn, params) do
     user_id = params["user_id"]
     type = params["type"]
-    group = Groups.get_group_by_group_id_and_type(params["group_id"], type)
-    new_group_id = group.child_id
+    new_group = Groups.get_group_by_group_id_and_type(params["group_id"], type)
+    new_group_id = new_group.child_id
 
-    # Fetch the GroupUser with the specified user_id and where the group type is the provided type
-    group_user =
-      GroupUsers.get_group_user_by_user_id_and_type(user_id, type)
-      |> List.first()
+    # Fetch all GroupUsers for the specified user_id and type
+    group_users = GroupUsers.get_group_user_by_user_id_and_type(user_id, type)
 
-    # Fetch the EnrollmentRecord with the specified user_id and where the group_type matches the provided type
-    enrollment_record =
-      from(er in EnrollmentRecord, where: er.user_id == ^user_id and er.group_type == ^type)
-      |> Repo.one()
+    # Determine which GroupUser to update and fetch the corresponding EnrollmentRecord
+    {group_user_to_update, enrollment_record} =
+      find_records_to_update(group_users, user_id, type, params)
 
-    case {group_user, enrollment_record} do
+    case {group_user_to_update, enrollment_record} do
       {nil, _} ->
-        # GroupUser not found
         {:error, :not_found}
 
       {_, nil} ->
-        # EnrollmentRecord not found
         {:error, :not_found}
 
       {group_user, enrollment_record} ->
-        # Update both the GroupUser and the EnrollmentRecord
-        with {:ok, %GroupUser{} = updated_group_user} <-
-               GroupUsers.update_group_user(group_user, params),
-             {:ok, %EnrollmentRecord{} = _updated_enrollment_record} <-
-               EnrollmentRecords.update_enrollment_record(enrollment_record, %{
-                 "group_id" => new_group_id
-               }) do
-          render(conn, "show.json", group_user: updated_group_user)
-        end
+        update_group_user_and_enrollment(
+          conn,
+          group_user,
+          enrollment_record,
+          params,
+          new_group_id
+        )
+    end
+  end
+
+  defp find_records_to_update(group_users, user_id, type, params) do
+    group_user_to_update =
+      case type do
+        "batch" ->
+          current_batch_pk = params["current_batch_pk"]
+          Enum.find(group_users, fn gu -> gu.group.child_id == current_batch_pk end)
+
+        _ ->
+          # For non-batch types, just take the first (and likely only) GroupUser
+          List.first(group_users)
+      end
+
+    # Fetch the corresponding EnrollmentRecord
+    enrollment_record =
+      case type do
+        "batch" ->
+          current_batch_pk = params["current_batch_pk"]
+
+          from(er in EnrollmentRecord,
+            where:
+              er.user_id == ^user_id and
+                er.group_type == ^type and
+                er.group_id == ^current_batch_pk
+          )
+          |> Repo.one()
+
+        _ ->
+          from(er in EnrollmentRecord,
+            where:
+              er.user_id == ^user_id and
+                er.group_type == ^type
+          )
+          |> Repo.one()
+      end
+
+    {group_user_to_update, enrollment_record}
+  end
+
+  defp update_group_user_and_enrollment(conn, group_user, enrollment_record, params, new_group_id) do
+    Repo.transaction(fn ->
+      with {:ok, %GroupUser{} = updated_group_user} <-
+             GroupUsers.update_group_user(group_user, %{group_id: params["group_id"]}),
+           {:ok, %EnrollmentRecord{} = updated_enrollment_record} <-
+             EnrollmentRecords.update_enrollment_record(enrollment_record, %{
+               "group_id" => new_group_id
+             }) do
+        {updated_group_user, updated_enrollment_record}
+      else
+        {:error, failed_operation} ->
+          Repo.rollback(failed_operation)
+      end
+    end)
+    |> case do
+      {:ok, {updated_group_user, _updated_enrollment_record}} ->
+        render(conn, "show.json", group_user: updated_group_user)
+
+      {:error, reason} ->
+        {:error, reason}
     end
   end
 

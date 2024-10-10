@@ -66,7 +66,8 @@ defmodule Dbservice.GroupUsers do
       join: g in Group,
       on: gu.group_id == g.id,
       where: gu.user_id == ^user_id and g.type == ^type,
-      select: gu
+      select: gu,
+      preload: [:group]
     )
     |> Repo.all()
   end
