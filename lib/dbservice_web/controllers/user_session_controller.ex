@@ -135,7 +135,7 @@ defmodule DbserviceWeb.UserSessionController do
   def cleanup_student(conn, %{"student_id" => student_id}) do
     with {:ok, student} <- get_student(student_id),
          {:ok, user_id} <- extract_user_id(student),
-         :ok <- check_no_active_session(user_id),
+         :ok <- check_if_session_accessed(user_id),
          {:ok, _} <- delete_student_and_related_data(student) do
       send_resp(conn, 200, "Student deleted successfully!")
     else
@@ -144,7 +144,7 @@ defmodule DbserviceWeb.UserSessionController do
         |> put_status(:not_found)
         |> json(%{error: "Student not found"})
 
-      {:error, :active_session_exists} ->
+      {:error, :session_records_exists} ->
         conn
         |> put_status(:bad_request)
         |> json(%{error: "Active session exists for the user"})
@@ -170,9 +170,9 @@ defmodule DbserviceWeb.UserSessionController do
     end
   end
 
-  defp check_no_active_session(user_id) do
+  defp check_if_session_accessed(user_id) do
     if Repo.exists?(from u in UserSession, where: u.user_id == ^user_id) do
-      {:error, :active_session_exists}
+      {:error, :session_records_exists}
     else
       :ok
     end
