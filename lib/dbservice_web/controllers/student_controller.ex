@@ -1,4 +1,5 @@
 defmodule DbserviceWeb.StudentController do
+  alias Dbservice.Users.User
   alias Dbservice.Groups
   alias Dbservice.EnrollmentRecords
   alias Dbservice.Schools
@@ -763,5 +764,78 @@ defmodule DbserviceWeb.StudentController do
 
   defp set_student_status_to_null(student) do
     Users.update_student(student, %{status: nil})
+  end
+
+  def batch_process(conn, %{"data" => batch_data}) do
+    results = Enum.map(batch_data, &process_student(&1))
+
+    successful = Enum.count(results, fn {status, _} -> status == :ok end)
+    failed = Enum.count(results, fn {status, _} -> status == :error end)
+
+    conn
+    |> put_status(:ok)
+    |> render("batch_result.json", %{
+      message: "Batch processing completed",
+      successful: successful,
+      failed: failed,
+      results: results
+    })
+  end
+
+  defp process_student(student_data) do
+    grade = Grades.get_grade_by_number(student_data["grade"])
+
+    student_data =
+      Map.merge(student_data, %{
+        "grade_id" => grade.id
+      })
+
+    case Users.get_student_by_student_id(student_data["student_id"]) do
+      nil ->
+        case Users.create_student_with_user(student_data) do
+          {:ok, student} ->
+            {:ok, student}
+
+          {:error, _changeset} ->
+            {:error,
+             %{
+               student_id: student_data["student_id"],
+               message: "Failed to create student with user. Some problem with changeset"
+             }}
+        end
+
+      existing_student ->
+        user = Users.get_user!(existing_student.user_id)
+
+        case Users.update_student_with_user(existing_student, user, student_data) do
+          {:ok, student} ->
+            {:ok, student}
+
+          {:error, _changeset} ->
+            {:error,
+             %{
+               student_id: student_data["student_id"],
+               message: "Failed to update student with user. Some problem with changeset"
+             }}
+        end
+    end
+  end
+
+  def get_schema(conn, _params) do
+    # Get the list of student fields dynamically from the Student schema
+    student_fields = get_fields(Student)
+
+    # Get the list of user fields dynamically from the User schema
+    user_fields = get_fields(User)
+
+    combined_fields = student_fields ++ user_fields
+
+    # Return the schema as a JSON response
+    json(conn, %{"fields" => combined_fields})
+  end
+
+  defp get_fields(module) do
+    module.__schema__(:fields)
+    |> Enum.map(&Atom.to_string/1)
   end
 end
