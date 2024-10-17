@@ -1,4 +1,5 @@
 defmodule DbserviceWeb.StudentController do
+  alias Dbservice.Users.User
   alias Dbservice.Groups
   alias Dbservice.EnrollmentRecords
   alias Dbservice.Schools
@@ -818,5 +819,23 @@ defmodule DbserviceWeb.StudentController do
              }}
         end
     end
+  end
+
+  def get_schema(conn, _params) do
+    # Get the list of student fields dynamically from the Student schema
+    student_fields = get_fields(Student)
+
+    # Get the list of user fields dynamically from the User schema
+    user_fields = get_fields(User)
+
+    combined_fields = student_fields ++ user_fields
+
+    # Return the schema as a JSON response
+    json(conn, %{"fields" => combined_fields})
+  end
+
+  defp get_fields(module) do
+    module.__schema__(:fields)
+    |> Enum.map(&Atom.to_string/1)
   end
 end
