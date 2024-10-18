@@ -7,6 +7,7 @@ defmodule Dbservice.Users.Student do
   alias Dbservice.Users.User
   alias Dbservice.Profiles.StudentProfile
   alias Dbservice.Exams.StudentExamRecord
+  alias Dbservice.Grades.Grade
 
   schema "student" do
     field(:student_id, :string)
@@ -50,6 +51,7 @@ defmodule Dbservice.Users.Student do
     field(:planned_competitive_exams, {:array, :integer})
     field(:status, :string)
     field(:board_stream, :string)
+    field(:school_medium, :string)
 
     belongs_to(:user, User)
     has_one(:student_profile, StudentProfile)
@@ -103,7 +105,8 @@ defmodule Dbservice.Users.Student do
       :photo,
       :planned_competitive_exams,
       :status,
-      :board_stream
+      :board_stream,
+      :school_medium
     ])
     |> validate_required([:user_id])
   end

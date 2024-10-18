@@ -33,6 +33,8 @@ defmodule DbserviceWeb.SwaggerSchema.Student do
               :string,
               "Stream or subjects chosen for the board (e.g., PCB, PCM, Commerce, Arts)"
             )
+
+            school_medium(:school_medium, "Medium of student's school")
           end
 
           example(%{
@@ -54,7 +56,8 @@ defmodule DbserviceWeb.SwaggerSchema.Student do
             has_internet_access: "Yes",
             primary_smartphone_owner: "Father",
             primary_smartphone_owner_profession: "Employed",
-            board_stream: "PCM"
+            board_stream: "PCM",
+            school_medium: "Hindi"
           })
         end
     }

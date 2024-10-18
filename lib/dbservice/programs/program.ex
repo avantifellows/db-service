@@ -13,6 +13,8 @@ defmodule Dbservice.Programs.Program do
     field :target_outreach, :integer
     field :donor, :string
     field :state, :string
+    field :model, :string
+    field :is_current, :boolean, default: true
 
     belongs_to :product, Product
     has_many :group, Group, foreign_key: :child_id, where: [type: "program"]
@@ -32,7 +34,9 @@ defmodule Dbservice.Programs.Program do
       :target_outreach,
       :donor,
       :state,
-      :product_id
+      :product_id,
+      :model,
+      :is_current
     ])
     |> validate_required([:name])
   end

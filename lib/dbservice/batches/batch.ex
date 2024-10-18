@@ -17,6 +17,7 @@ defmodule Dbservice.Batches.Batch do
     field :parent_id, :integer
     field :start_date, :date
     field :end_date, :date
+    field :af_medium, :string
 
     belongs_to :program, Program
     belongs_to :auth_group, AuthGroup
@@ -42,7 +43,8 @@ defmodule Dbservice.Batches.Batch do
       :start_date,
       :end_date,
       :program_id,
-      :auth_group_id
+      :auth_group_id,
+      :af_medium
     ])
     |> validate_required([:name])
   end
