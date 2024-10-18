@@ -15,9 +15,6 @@ defmodule Dbservice.UserProfilesFixtures do
       attrs
       |> Enum.into(%{
         user_id: user.id,
-        current_grade: "11",
-        current_program: "HaryanaStudents",
-        current_batch: "Photon",
         logged_in_atleast_once: true,
         latest_session_accessed: "LiveClass_10"
       })
@@ -49,9 +46,6 @@ defmodule Dbservice.UserProfilesFixtures do
         tests_number_of_wrong_questions: 10,
         tests_number_of_skipped_questions: 15,
         user_id: student.user_id,
-        current_grade: "11",
-        current_program: "Science",
-        current_batch: "Batch A",
         logged_in_atleast_once: true,
         latest_session_accessed: "LiveClass_10"
       })
@@ -72,9 +66,6 @@ defmodule Dbservice.UserProfilesFixtures do
         program_manager: "John Doe",
         avg_rating: 4.5,
         user_id: teacher.user_id,
-        current_grade: "11",
-        current_program: "HaryanaStudents",
-        current_batch: "Photon",
         logged_in_atleast_once: false,
         latest_session_accessed: "LiveClass_10"
       })
