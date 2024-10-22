@@ -22,7 +22,7 @@ defmodule Dbservice.Grades.Grade do
   def changeset(grade, attrs) do
     grade
     |> cast(attrs, [
-      :number,
+      :number
       # :tag_id
     ])
   end

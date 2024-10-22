@@ -24,7 +24,7 @@ defmodule Dbservice.Curriculums.Curriculum do
     curriculum
     |> cast(attrs, [
       :name,
-      :code,
+      :code
       # :tag_id
     ])
   end
