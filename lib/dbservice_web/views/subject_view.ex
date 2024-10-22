@@ -15,7 +15,8 @@ defmodule DbserviceWeb.SubjectView do
       id: subject.id,
       name: subject.name,
       code: subject.code,
-      tag_id: subject.tag_id
+      parent_id: subject.parent_id
+      # tag_id: subject.tag_id
     }
   end
 end

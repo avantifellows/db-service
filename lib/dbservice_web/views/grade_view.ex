@@ -14,7 +14,7 @@ defmodule DbserviceWeb.GradeView do
     %{
       id: grade.id,
       number: grade.number,
-      tag_id: grade.tag_id
+      # tag_id: grade.tag_id
     }
   end
 end

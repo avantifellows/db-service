@@ -4,7 +4,7 @@ defmodule Dbservice.Curriculums.Curriculum do
   use Ecto.Schema
   import Ecto.Changeset
 
-  alias Dbservice.Tags.Tag
+  # alias Dbservice.Tags.Tag
   alias Dbservice.Resources.Resource
   alias Dbservice.Chapters.Chapter
 
@@ -16,7 +16,7 @@ defmodule Dbservice.Curriculums.Curriculum do
 
     has_many(:resource, Resource)
     has_many(:chapter, Chapter)
-    belongs_to(:tag, Tag)
+    # belongs_to(:tag, Tag)
   end
 
   @doc false
@@ -25,7 +25,7 @@ defmodule Dbservice.Curriculums.Curriculum do
     |> cast(attrs, [
       :name,
       :code,
-      :tag_id
+      # :tag_id
     ])
   end
 end

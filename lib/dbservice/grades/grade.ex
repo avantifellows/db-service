@@ -4,7 +4,7 @@ defmodule Dbservice.Grades.Grade do
   use Ecto.Schema
   import Ecto.Changeset
 
-  alias Dbservice.Tags.Tag
+  # alias Dbservice.Tags.Tag
   alias Dbservice.Chapters.Chapter
   alias Dbservice.Topics.Topic
 
@@ -15,7 +15,7 @@ defmodule Dbservice.Grades.Grade do
 
     has_many(:chapter, Chapter)
     has_many(:topic, Topic)
-    belongs_to(:tag, Tag)
+    # belongs_to(:tag, Tag)
   end
 
   @doc false
@@ -23,7 +23,7 @@ defmodule Dbservice.Grades.Grade do
     grade
     |> cast(attrs, [
       :number,
-      :tag_id
+      # :tag_id
     ])
   end
 end

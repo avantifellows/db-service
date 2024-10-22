@@ -13,13 +13,13 @@ defmodule DbserviceWeb.SwaggerSchema.Curriculum do
           properties do
             name(:string, "Name of the curriculum")
             code(:string, "Code of the curriculum")
-            tag_id(:integer, "Tag id associated with the curriculum")
+            # tag_id(:integer, "Tag id associated with the curriculum")
           end
 
           example(%{
             name: "Sankalp",
-            code: "S-10",
-            tag_id: 1
+            code: "S-10"
+            # tag_id: 1
           })
         end
     }
