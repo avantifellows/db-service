@@ -45,8 +45,11 @@ defmodule DbserviceWeb.StudentController do
           SwaggerSchemaStudent.student_id_generation_response()
         ),
         Map.merge(
-          SwaggerSchemaStudent.verify_student_request(),
-          SwaggerSchemaStudent.verification_result()
+          Map.merge(
+            SwaggerSchemaStudent.verify_student_request(),
+            SwaggerSchemaStudent.verification_result()
+          ),
+          SwaggerSchemaStudent.verification_params()
         )
       )
     )

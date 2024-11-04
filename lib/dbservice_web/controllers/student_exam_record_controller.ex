@@ -10,6 +10,15 @@ defmodule DbserviceWeb.StudentExamRecordController do
 
   use PhoenixSwagger
 
+  alias DbserviceWeb.SwaggerSchema.StudentExamRecord, as: SwaggerStudentExamRecord
+
+  def swagger_definitions do
+    Map.merge(
+      SwaggerStudentExamRecord.student_exam_record(),
+      SwaggerStudentExamRecord.student_exam_records()
+    )
+  end
+
   swagger_path :index do
     get("/api/student-exam-record")
 
