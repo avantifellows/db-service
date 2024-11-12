@@ -783,12 +783,15 @@ defmodule DbserviceWeb.StudentController do
   end
 
   defp process_student(student_data) do
-    grade = Grades.get_grade_by_number(student_data["grade"])
-
     student_data =
-      Map.merge(student_data, %{
-        "grade_id" => grade.id
-      })
+      if Map.has_key?(student_data, "grade") do
+        grade = Grades.get_grade_by_number(student_data["grade"])
+
+        # Merge the fetched grade_id into student_data if grade is found
+        Map.merge(student_data, %{"grade_id" => grade.id})
+      else
+        student_data
+      end
 
     case Users.get_student_by_student_id(student_data["student_id"]) do
       nil ->
