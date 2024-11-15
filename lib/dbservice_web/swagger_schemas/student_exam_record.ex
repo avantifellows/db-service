@@ -33,27 +33,8 @@ defmodule DbserviceWeb.SwaggerSchema.StudentExamRecord do
         swagger_schema do
           title("List of Student Exam Records")
           description("A collection of student exam records")
-
-          properties do
-            records(array(:StudentExamRecord), "List of student exam records")
-          end
-
-          example(%{
-            records: [
-              %{
-                id: 1,
-                student_id: 123,
-                exam_id: 456,
-                marks: 90
-              },
-              %{
-                id: 2,
-                student_id: 124,
-                exam_id: 457,
-                marks: 85
-              }
-            ]
-          })
+          type(:array)
+          items(Schema.ref(:StudentExamRecord))
         end
     }
   end
