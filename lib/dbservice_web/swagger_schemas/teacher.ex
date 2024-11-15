@@ -18,6 +18,7 @@ defmodule DbserviceWeb.SwaggerSchema.Teacher do
             school_id(:integer, "School ID for the teacher")
             program_manager_id(:integer, "Program manager user ID for the teacher")
             teacher_id(:string, "ID for the teacher")
+            is_af_teacher(:boolean, "Indicates whether the teacher is an AF teacher or not")
           end
 
           example(%{
@@ -27,7 +28,8 @@ defmodule DbserviceWeb.SwaggerSchema.Teacher do
             user_id: 1,
             school_id: 2,
             program_manager_id: 3,
-            teacher_id: "3bc6b53e7bbbc883b9ab"
+            teacher_id: "3bc6b53e7bbbc883b9ab",
+            is_af_teacher: true
           })
         end
     }

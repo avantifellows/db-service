@@ -39,6 +39,19 @@ defmodule Dbservice.EnrollmentRecords do
   def get_enrollment_record!(id), do: Repo.get!(EnrollmentRecord, id)
 
   @doc """
+  Gets a Enrollment Records by user ID.
+  Raises `Ecto.NoResultsError` if the Enrollment Records does not exist.
+  ## Examples
+      iex> get_enrollment_records_by_user_id(1234)
+      %Batch{}
+      iex> get_enrollment_records_by_user_id(abc)
+      ** (Ecto.NoResultsError)
+  """
+  def get_enrollment_records_by_user_id(user_id) do
+    Repo.all(from e in EnrollmentRecord, where: e.user_id == ^user_id)
+  end
+
+  @doc """
   Gets enrollment_record based on certain parameters.
 
   Raises `Ecto.NoResultsError` if the Enrollment record does not exist.

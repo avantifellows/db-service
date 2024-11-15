@@ -64,7 +64,9 @@ defmodule DbserviceWeb.StudentView do
       grade_10_marksheet: student.grade_10_marksheet,
       photo: student.photo,
       user: render_one(student.user, UserView, "user.json"),
-      status: student.status
+      status: student.status,
+      board_stream: student.board_stream,
+      planned_competitive_exams: student.planned_competitive_exams
     }
   end
 
@@ -75,6 +77,27 @@ defmodule DbserviceWeb.StudentView do
       category: student.category,
       stream: student.stream,
       user: render_one(student.user, UserView, "user_with_compact_fields.json")
+    }
+  end
+
+  def render("batch_result.json", %{
+        message: message,
+        successful: successful,
+        failed: failed,
+        results: results
+      }) do
+    %{
+      message: message,
+      successful: successful,
+      failed: failed,
+      results:
+        Enum.map(results, fn
+          {:ok, student} ->
+            %{status: :ok, student: render_one(student, StudentView, "student.json")}
+
+          {:error, changeset} ->
+            %{status: :error, errors: changeset}
+        end)
     }
   end
 end

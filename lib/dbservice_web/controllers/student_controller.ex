@@ -1,4 +1,5 @@
 defmodule DbserviceWeb.StudentController do
+  alias Dbservice.Users.User
   alias Dbservice.Groups
   alias Dbservice.EnrollmentRecords
   alias Dbservice.Schools
@@ -17,6 +18,7 @@ defmodule DbserviceWeb.StudentController do
   alias Dbservice.GroupUsers
   alias Dbservice.Grades
   alias DbserviceWeb.EnrollmentRecordView
+  alias Dbservice.Statuses
 
   action_fallback(DbserviceWeb.FallbackController)
 
@@ -703,5 +705,140 @@ defmodule DbserviceWeb.StudentController do
           updated_records: updated_records
         })
     end
+  end
+
+  def update_student_status(conn, %{"student_id" => student_id}) do
+    with {:ok, student} <- get_student(student_id),
+         enrollment_records <-
+           EnrollmentRecords.get_enrollment_records_by_user_id(student.user_id),
+         status_record <- find_status_record(enrollment_records),
+         {:ok, _} <- handle_status_record(status_record),
+         {:ok, _} <- update_current_status(enrollment_records),
+         {:ok, _} <- set_student_status_to_null(student) do
+      conn
+      |> put_status(:ok)
+      |> json(%{message: "Student status updated successfully"})
+    else
+      {:error, reason} ->
+        conn
+        |> put_status(:unprocessable_entity)
+        |> json(%{error: reason})
+    end
+  end
+
+  defp get_student(student_id) do
+    case Users.get_student_by_student_id(student_id) do
+      nil -> {:error, "Student not found"}
+      student -> {:ok, student}
+    end
+  end
+
+  defp find_status_record(enrollment_records) do
+    Enum.find(enrollment_records, &(&1.group_type == "status"))
+  end
+
+  defp handle_status_record(status_record) do
+    status = Statuses.get_status!(status_record.group_id)
+
+    if status.title == :dropout do
+      case EnrollmentRecords.delete_enrollment_record(status_record) do
+        {:ok, _deleted_record} ->
+          {:ok, "Record deleted successfully"}
+
+        {:error, changeset} ->
+          {:error, "Failed to delete record: #{inspect(changeset.errors)}"}
+      end
+    else
+      {:ok, status_record}
+    end
+  end
+
+  defp update_current_status(enrollment_records) do
+    Enum.reduce_while(enrollment_records, {:ok, []}, fn record, {:ok, updated_records} ->
+      case EnrollmentRecords.update_enrollment_record(record, %{is_current: true}) do
+        {:ok, updated_record} -> {:cont, {:ok, [updated_record | updated_records]}}
+        {:error, _} -> {:halt, {:error, "Failed to update enrollment record"}}
+      end
+    end)
+  end
+
+  defp set_student_status_to_null(student) do
+    Users.update_student(student, %{status: nil})
+  end
+
+  def batch_process(conn, %{"data" => batch_data}) do
+    results = Enum.map(batch_data, &process_student(&1))
+
+    successful = Enum.count(results, fn {status, _} -> status == :ok end)
+    failed = Enum.count(results, fn {status, _} -> status == :error end)
+
+    conn
+    |> put_status(:ok)
+    |> render("batch_result.json", %{
+      message: "Batch processing completed",
+      successful: successful,
+      failed: failed,
+      results: results
+    })
+  end
+
+  defp process_student(student_data) do
+    student_data =
+      if Map.has_key?(student_data, "grade") do
+        grade = Grades.get_grade_by_number(student_data["grade"])
+
+        # Merge the fetched grade_id into student_data if grade is found
+        Map.merge(student_data, %{"grade_id" => grade.id})
+      else
+        student_data
+      end
+
+    case Users.get_student_by_student_id(student_data["student_id"]) do
+      nil ->
+        case Users.create_student_with_user(student_data) do
+          {:ok, student} ->
+            {:ok, student}
+
+          {:error, _changeset} ->
+            {:error,
+             %{
+               student_id: student_data["student_id"],
+               message: "Failed to create student with user. Some problem with changeset"
+             }}
+        end
+
+      existing_student ->
+        user = Users.get_user!(existing_student.user_id)
+
+        case Users.update_student_with_user(existing_student, user, student_data) do
+          {:ok, student} ->
+            {:ok, student}
+
+          {:error, _changeset} ->
+            {:error,
+             %{
+               student_id: student_data["student_id"],
+               message: "Failed to update student with user. Some problem with changeset"
+             }}
+        end
+    end
+  end
+
+  def get_schema(conn, _params) do
+    # Get the list of student fields dynamically from the Student schema
+    student_fields = get_fields(Student)
+
+    # Get the list of user fields dynamically from the User schema
+    user_fields = get_fields(User)
+
+    combined_fields = student_fields ++ user_fields
+
+    # Return the schema as a JSON response
+    json(conn, %{"fields" => combined_fields})
+  end
+
+  defp get_fields(module) do
+    module.__schema__(:fields)
+    |> Enum.map(&Atom.to_string/1)
   end
 end
