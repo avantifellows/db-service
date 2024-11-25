@@ -43,6 +43,9 @@ defmodule DbserviceWeb.SessionOccurrenceController do
     today_start = NaiveDateTime.new!(today, ~T[00:00:00])
     today_end = NaiveDateTime.new!(today, ~T[23:59:59])
 
+    session_ids_param = Map.get(params, "session_ids", "")
+    session_ids = if session_ids_param != "", do: String.split(session_ids_param, ","), else: []
+
     query =
       from(m in SessionOccurrence,
         order_by: [asc: m.id],
@@ -61,6 +64,9 @@ defmodule DbserviceWeb.SessionOccurrenceController do
 
           :is_start_time when value == "today" ->
             from(u in acc, where: u.start_time >= ^today_start and u.start_time <= ^today_end)
+
+          :session_ids ->
+            from(u in acc, where: u.session_id in ^session_ids)
 
           atom ->
             from(u in acc, where: field(u, ^atom) == ^value)
