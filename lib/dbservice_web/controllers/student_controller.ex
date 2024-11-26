@@ -45,8 +45,11 @@ defmodule DbserviceWeb.StudentController do
           SwaggerSchemaStudent.student_id_generation_response()
         ),
         Map.merge(
-          SwaggerSchemaStudent.verify_student_request(),
-          SwaggerSchemaStudent.verification_result()
+          Map.merge(
+            SwaggerSchemaStudent.verify_student_request(),
+            SwaggerSchemaStudent.verification_result()
+          ),
+          SwaggerSchemaStudent.verification_params()
         )
       )
     )
@@ -185,7 +188,7 @@ defmodule DbserviceWeb.StudentController do
     end
   end
 
-  def dropout(conn, %{"student_id" => student_id}) do
+  def dropout(conn, %{"student_id" => student_id, "start_date" => dropout_start_date}) do
     student = Users.get_student_by_student_id(student_id)
 
     # Check if the student's status is already 'dropout'
@@ -195,7 +198,6 @@ defmodule DbserviceWeb.StudentController do
       |> json(%{errors: "Student is already marked as dropout"})
     else
       user_id = student.user_id
-      current_time = DateTime.utc_now()
 
       # Fetch status and group details in a single query
       {status_id, group_type} =
@@ -221,7 +223,7 @@ defmodule DbserviceWeb.StudentController do
       Enum.each(current_enrollments, fn enrollment ->
         EnrollmentRecords.update_enrollment_record(enrollment, %{
           is_current: false,
-          end_date: current_time
+          end_date: dropout_start_date
         })
       end)
 
@@ -229,7 +231,7 @@ defmodule DbserviceWeb.StudentController do
       new_enrollment_attrs = %{
         user_id: user_id,
         is_current: true,
-        start_date: current_time,
+        start_date: dropout_start_date,
         group_id: status_id,
         group_type: group_type,
         academic_year: academic_year,
