@@ -28,8 +28,11 @@ defmodule Dbservice.EnrollmentRecords.EnrollmentRecord do
   @doc false
   def changeset(enrollment_record, attrs) do
     required_fields = [:user_id, :group_id, :group_type, :start_date, :grade_id]
+
     required_fields =
-      if Map.get(attrs, "group_type") == "auth_group", do: required_fields, else: [:academic_year | required_fields]
+      if Map.get(attrs, "group_type") == "auth_group",
+        do: required_fields,
+        else: [:academic_year | required_fields]
 
     enrollment_record
     |> cast(attrs, [
