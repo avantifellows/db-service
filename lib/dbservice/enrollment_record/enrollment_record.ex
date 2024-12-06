@@ -44,7 +44,6 @@ defmodule Dbservice.EnrollmentRecords.EnrollmentRecord do
       :group_id,
       :group_type,
       :start_date,
-      :academic_year,
       :grade_id
     ])
     |> validate_dates_of_enrollment

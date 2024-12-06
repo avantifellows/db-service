@@ -370,12 +370,19 @@ defmodule DbserviceWeb.GroupUserController do
   defp create_new_group_user_from_batch(params) do
     group = Groups.get_group!(params["group_id"])
 
+    academic_year =
+      if group.type == "auth_group" do
+        nil
+      else
+        params["academic_year"]
+      end
+
     enrollment_record = %{
       "group_id" => group.child_id,
       "group_type" => group.type,
       "user_id" => params["user_id"],
       "grade_id" => params["grade_id"],
-      "academic_year" => params["academic_year"],
+      "academic_year" => academic_year,
       "start_date" => params["start_date"]
     }
 
