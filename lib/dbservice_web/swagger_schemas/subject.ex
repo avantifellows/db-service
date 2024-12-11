@@ -13,12 +13,14 @@ defmodule DbserviceWeb.SwaggerSchema.Subject do
           properties do
             name(:string, "Subject name")
             code(:string, "Subject Code")
-            tag_id(:integer, "Tag id associated with the subject")
+            parent_id(:integer, "Parent subject ID")
+            # tag_id(:integer, "Tag id associated with the subject")
           end
 
           example(%{
             name: "Physics",
-            code: "P11"
+            code: "P11",
+            parent_id: 1
           })
         end
     }

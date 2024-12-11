@@ -13,13 +13,11 @@ defmodule DbserviceWeb.SwaggerSchema.Concept do
           properties do
             name(:string, "Concept name")
             topic_id(:integer, "Topic id associated with the concept")
-            tag_id(:integer, "Tag id associated with the concept")
           end
 
           example(%{
             name: "Coulomb's Law",
-            topic_id: 5,
-            tag_id: 6
+            topic_id: 5
           })
         end
     }
