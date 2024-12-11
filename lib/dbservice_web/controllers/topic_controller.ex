@@ -44,7 +44,8 @@ defmodule DbserviceWeb.TopicController do
         offset: ^params["offset"],
         limit: ^params["limit"]
       )
-      |> Ecto.Query.preload(:tag)
+
+    # |> Ecto.Query.preload(:tag)
 
     query =
       Enum.reduce(params, query, fn {key, value}, acc ->

@@ -14,8 +14,7 @@ defmodule DbserviceWeb.LearningObjectiveView do
     %{
       id: learning_objective.id,
       title: learning_objective.title,
-      concept_id: learning_objective.concept_id,
-      tag_id: learning_objective.tag_id
+      concept_id: learning_objective.concept_id
     }
   end
 end

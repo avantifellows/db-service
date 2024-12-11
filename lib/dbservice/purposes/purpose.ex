@@ -4,7 +4,6 @@ defmodule Dbservice.Purposes.Purpose do
   use Ecto.Schema
   import Ecto.Changeset
 
-  alias Dbservice.Tags.Tag
   alias Dbservice.Resources.Resource
 
   schema "purpose" do
@@ -14,7 +13,6 @@ defmodule Dbservice.Purposes.Purpose do
     timestamps()
 
     has_many(:resource, Resource)
-    belongs_to(:tag, Tag)
   end
 
   @doc false
@@ -22,8 +20,7 @@ defmodule Dbservice.Purposes.Purpose do
     purpose
     |> cast(attrs, [
       :name,
-      :description,
-      :tag_id
+      :description
     ])
   end
 end

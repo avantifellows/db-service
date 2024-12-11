@@ -14,8 +14,7 @@ defmodule DbserviceWeb.ConceptView do
     %{
       id: concept.id,
       name: concept.name,
-      topic_id: concept.topic_id,
-      tag_id: concept.tag_id
+      topic_id: concept.topic_id
     }
   end
 end

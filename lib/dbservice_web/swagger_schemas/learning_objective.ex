@@ -13,13 +13,11 @@ defmodule DbserviceWeb.SwaggerSchema.LearningObjective do
           properties do
             title(:string, "Title of the learning objective")
             concept_id(:integer, "Concept id associated with the learning objective")
-            tag_id(:integer, "Tag id associated with the learning objective")
           end
 
           example(%{
             title: "Understanding fundamental concept of Electromagnetism",
-            concept_id: 1,
-            tag_id: 6
+            concept_id: 1
           })
         end
     }

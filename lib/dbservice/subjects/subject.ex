@@ -8,7 +8,7 @@ defmodule Dbservice.Subjects.Subject do
   alias Dbservice.Chapters.Chapter
 
   schema "subject" do
-    field(:name, :string)
+    field(:name, {:array, :map})
     field(:code, :string)
     field(:parent_id, :integer)
 
