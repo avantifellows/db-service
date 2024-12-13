@@ -10,7 +10,7 @@ defmodule Dbservice.Exams.StudentExamRecord do
   schema "student_exam_record" do
     field :application_number, :string
     field :application_password, :string
-    field :date, :utc_datetime
+    field :date, :date
     field :score, :float
     field :percentile, :float
     field :all_india_rank, :integer
@@ -36,6 +36,6 @@ defmodule Dbservice.Exams.StudentExamRecord do
       :all_india_rank,
       :category_rank
     ])
-    |> validate_required([:student_id, :exam_id, :date])
+    |> validate_required([:student_id, :exam_id])
   end
 end
