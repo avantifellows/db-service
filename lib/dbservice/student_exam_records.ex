@@ -39,7 +39,7 @@ defmodule Dbservice.StudentExamRecords do
 
   @doc """
   Fetches a single `StudentExamRecord` based on the provided `student_id` and `application_number`.
-  
+
   Returns `nil` if no matching record is found.
 
   ## Examples
