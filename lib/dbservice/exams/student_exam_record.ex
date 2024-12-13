@@ -36,6 +36,6 @@ defmodule Dbservice.Exams.StudentExamRecord do
       :all_india_rank,
       :category_rank
     ])
-    |> validate_required([:student_id, :exam_id])
+    |> validate_required([:student_id, :application_number, :exam_id])
   end
 end
