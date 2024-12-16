@@ -3,7 +3,7 @@
 # Define variables
 echo "Defining variables..."
 instanceName=$BASTION_HOST_INSTANCE_NAME
-bastionHostPrivateKeyPath="C:/Users/amanb/.ssh/bastion_host_key.pem"
+bastionHostPrivateKeyPath="C:/Users/amanb/.ssh/AvantiFellows.pem"
 updateScript="runOnBastion.sh"
 envFile=".env"
 
