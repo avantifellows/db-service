@@ -14,8 +14,6 @@ jobs:
   Deploy:
     needs: build
     runs-on: ubuntu-latest
-    environment:
-      name: Staging
 
     steps:
       - name: Checkout code
