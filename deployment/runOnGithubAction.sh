@@ -18,6 +18,13 @@ if [ ! -s "$bastionHostPrivateKeyPath" ]; then
 fi
 chmod 600 $bastionHostPrivateKeyPath
 
+# Validate key
+echo "Checking SSH key..."
+ssh-keygen -y -f /tmp/bastion_host_key.pem
+
+# Test connection with verbose output
+ssh -vvv -o StrictHostKeyChecking=no -i /tmp/bastion_host_key.pem ubuntu@13.232.168.150
+
 # Check if the EC2 instance exists and is not terminated
 echo "Checking if the EC2 instance with the name $instanceName exists and is not terminated..."
 instanceId=$(aws ec2 describe-instances \
