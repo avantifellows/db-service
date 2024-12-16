@@ -7,6 +7,8 @@ bastionHostPrivateKeyPath="/tmp/bastion_host_key.pem"
 updateScript="runOnBastion.sh"
 envFile=".env"
 
+echo "Private key (base64 encoded): ${BASTION_HOST_PRIVATE_KEY:0:10}..."
+
 # Save the private key to a file
 echo "Decoding and saving the private key..."
 echo "$BASTION_HOST_PRIVATE_KEY" | base64 --decode > $bastionHostPrivateKeyPath
