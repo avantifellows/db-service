@@ -7,23 +7,10 @@ bastionHostPrivateKeyPath="/tmp/bastion_host_key.pem"
 updateScript="runOnBastion.sh"
 envFile=".env"
 
-echo "Private key (base64 encoded): ${BASTION_HOST_PRIVATE_KEY:0:10}..."
-
 # Save the private key to a file
 echo "Decoding and saving the private key..."
 echo "$BASTION_HOST_PRIVATE_KEY" | base64 --decode > $bastionHostPrivateKeyPath
-if [ ! -s "$bastionHostPrivateKeyPath" ]; then
-    echo "Error: Private key file could not be created or is empty."
-    exit 1
-fi
 chmod 600 $bastionHostPrivateKeyPath
-
-# Validate key
-echo "Checking SSH key..."
-ssh-keygen -y -f /tmp/bastion_host_key.pem
-
-# Test connection with verbose output
-ssh -vvv -o StrictHostKeyChecking=no -i /tmp/bastion_host_key.pem ubuntu@13.232.168.150
 
 # Check if the EC2 instance exists and is not terminated
 echo "Checking if the EC2 instance with the name $instanceName exists and is not terminated..."
