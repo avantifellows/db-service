@@ -2,8 +2,8 @@ name: Deploy to EC2 staging
 
 on:
   push:
-    branches: ["feat/terraform-init"]
-
+    branches: 
+      - "*"
 jobs:
   build:
     runs-on: ubuntu-latest
