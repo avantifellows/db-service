@@ -26,6 +26,9 @@ jobs:
       
       - name: Deploy in EC2
         env:
+          AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          AWS_DEFAULT_REGION: ap-south-1
           BASTION_HOST_PRIVATE_KEY: ${{ secrets.STAGING_BASTION_HOST_PRIVATE_KEY }}
           BRANCH_NAME_TO_DEPLOY: ${{ steps.extract_branch.outputs.branch }}
           BASTION_HOST_INSTANCE_NAME: "staging-DB-Bastion-Host"
