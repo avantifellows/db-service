@@ -20,9 +20,9 @@ jobs:
         uses: actions/checkout@v2
 
       - name: Extract branch name
+        id: extract_branch
         shell: bash
         run: echo "branch=${GITHUB_HEAD_REF:-${GITHUB_REF#refs/heads/}}" >> $GITHUB_OUTPUT
-        id: extract_branch
       
       - name: Deploy in EC2
         env:
@@ -31,7 +31,6 @@ jobs:
           BASTION_HOST_INSTANCE_NAME: "staging-DB-Bastion-Host"
           TARGET_GROUP_NAME: "staging-DB-lb-alb-tg"
           ENVIRONMENT_PREFIX: "staging-DB-"
-
-      - name: Run Deployment Script
         run: |
+          echo "Deploying branch: $BRANCH_NAME_TO_DEPLOY"
           bash deployment/runOnGithubAction.sh
