@@ -80,6 +80,9 @@ for i in "${!instanceIdsArray[@]}"; do
         echo "Installed dependencies..."
         sudo MIX_ENV=prod mix deps.compile
         echo "Compiled dependencies..."
+        echo "Running Migrations..."
+        sudo MIX_ENV=prod mix ecto.migrate
+        echo "Migrations ran successfully"
         sudo MIX_ENV=prod mix phx.swagger.generate
         echo "Generated swagger file"
         sudo sudo MIX_ENV=prod elixir --erl "-detached" -S mix phx.server

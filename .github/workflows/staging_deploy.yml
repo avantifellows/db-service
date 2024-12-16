@@ -2,7 +2,7 @@ name: Deploy to EC2 staging
 
 on:
   push:
-    branches: ["main"]
+    branches: ["feat/terraform-init"]
 
 jobs:
   build:
@@ -16,35 +16,22 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
+      - name: Checkout code
       - uses: actions/checkout@v2
+
+      - name: Extract branch name
+          shell: bash
+          run: echo "branch=${GITHUB_HEAD_REF:-${GITHUB_REF#refs/heads/}}" >> $GITHUB_OUTPUT
+          id: extract_branch
+      
       - name: Deploy in EC2
         env:
-          PRIVATE_KEY: ${{ secrets.SSH_PRIVATE_KEY }}
-          HOSTNAME: ${{ secrets.HOSTNAME }}
-          USER_NAME: ${{ secrets.USER_NAME }}
+          BASTION_HOST_PRIVATE_KEY: ${{ secrets.STAGING_BASTION_HOST_PRIVATE_KEY }}
+          BRANCH_NAME_TO_DEPLOY: ${{ steps.extract_branch.outputs.branch }}
+          BASTION_HOST_INSTANCE_NAME: "staging-DB-Bastion-Host"
+          TARGET_GROUP_NAME: "staging-DB-lb-alb-tg"
+          ENVIRONMENT_PREFIX: "staging-DB-"
 
+      - name: Run Deployment Script
         run: |
-          echo "$PRIVATE_KEY" > private_key && chmod 600 private_key
-          ssh -o StrictHostKeyChecking=no -i private_key ${USER_NAME}@${HOSTNAME} "
-            cd /var/www/html/db-service/config
-            sed -i 's|DATABASE_URL=.*|DATABASE_URL=${{ secrets.STAGING_DATABASE_URL }}|' .env
-            sed -i 's|SECRET_KEY_BASE=.*|SECRET_KEY_BASE=${{ secrets.STAGING_SECRET_KEY_BASE }}|' .env
-            sed -i 's|PHX_HOST=.*|PHX_HOST=${{ secrets.STAGING_PHX_HOST }}|' .env
-            sed -i 's|WHITELISTED_DOMAINS=.*|WHITELISTED_DOMAINS=${{ secrets.STAGING_WHITELISTED_DOMAINS }}|' .env
-            sed -i 's|POOL_SIZE=.*|POOL_SIZE=${{ secrets.STAGING_POOL_SIZE }}|' .env
-            sed -i 's|PORT=.*|PORT=${{ secrets.STAGING_PORT }}|' .env
-            sed -i 's|BEARER_TOKEN=.*|BEARER_TOKEN=${{ secrets.STAGING_BEARER_TOKEN }}|' .env
-            cd /var/www/html
-            sudo ./kill_process_on_port_4000.sh
-            cd /var/www/html/db-service &&
-            sudo git checkout . &&
-            if [ -f /var/www/html/db-service/priv/static/swagger.json ]; then
-              sudo rm /var/www/html/db-service/priv/static/swagger.json
-            fi
-            sudo git pull origin main &&
-            sudo MIX_ENV=prod mix deps.get &&
-            sudo MIX_ENV=prod mix deps.compile &&
-            sudo MIX_ENV=prod mix ecto.migrate &&
-            sudo MIX_ENV=prod mix phx.swagger.generate &&
-            sudo MIX_ENV=prod elixir --erl "-detached" -S mix phx.server
-          "
+          bash deployment/runOnGithubAction.sh
