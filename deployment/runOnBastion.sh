@@ -86,8 +86,11 @@ for i in "${!instanceIdsArray[@]}"; do
         echo "HOST_IP=$instanceIp" >> .env
         echo "PHX_HOST=$instanceIp" >> .env
         echo "Added host IP to .env file."
+
+        sudo MIX_ENV=prod mix local.hex --force
+        sudo MIX_ENV=prod mix local.rebar --force
         
-        sudo MIX_ENV=prod mix deps.get || exit 1
+        sudo MIX_ENV=prod mix deps.get || exit 1     
         sudo MIX_ENV=prod mix deps.compile || exit 1
         echo "Compiled dependencies..."
         
