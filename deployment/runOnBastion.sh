@@ -72,7 +72,6 @@ for i in "${!instanceIdsArray[@]}"; do
     RANDOM_MINUTE=$((2 + RANDOM % (4 - 2 + 1)))
     echo "Random minute: $RANDOM_MINUTE"
     ssh -o StrictHostKeyChecking=no -i $keyPath ubuntu@$instanceIp << EOF
-        set -x
         echo "[EC2 Action] Stopping any process running on port 80..."
         sudo fuser -k 80/tcp || echo "No process found on port 80."
         
@@ -92,16 +91,11 @@ for i in "${!instanceIdsArray[@]}"; do
         
         sudo MIX_ENV=prod mix deps.get || exit 1  &&   
         sudo MIX_ENV=prod mix deps.compile || exit 1 &&
-        echo "Compiled dependencies..."
         
-        echo "Running Migrations..."
         sudo MIX_ENV=prod mix ecto.migrate || { echo "Migration failed!" ; exit 1; } &&
-        echo "Migrations ran successfully."
         
         sudo MIX_ENV=prod mix phx.swagger.generate || { echo "Swagger generation failed!" ; exit 1; } &&
-        echo "Generated swagger file."
         
-        echo "Starting Db service server..."
         sudo MIX_ENV=prod elixir --erl "-detached" -S mix phx.server || { echo "Server start failed!" ; exit 1; }
 EOF
     echo "[EC2 Action] Completed actions on instance $id."
