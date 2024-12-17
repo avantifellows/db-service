@@ -100,7 +100,7 @@ for i in "${!instanceIdsArray[@]}"; do
         
         echo "Starting Db service server..."
         sudo MIX_ENV=prod elixir --erl "-detached" -S mix phx.server || { echo "Server start failed!" ; exit 1; }
-    EOF
+EOF
     echo "[EC2 Action] Completed actions on instance $id."
 done
 
