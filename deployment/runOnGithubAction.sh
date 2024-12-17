@@ -16,6 +16,12 @@ chmod 600 $bastionHostPrivateKeyPath
 sudo apt update
 sudo apt install -y awscli
 
+# Explicitly set PATH if needed
+export PATH=$PATH:/usr/local/bin:/usr/bin
+
+# Verify PATH
+echo "PATH: $PATH"
+
 # Check if the EC2 instance exists and is not terminated
 echo "Checking if the EC2 instance with the name $instanceName exists and is not terminated..."
 instanceId=$(aws ec2 describe-instances \
