@@ -73,6 +73,12 @@ for i in "${!instanceIdsArray[@]}"; do
 set -e  # Exit on any error
 set -x  # Print commands for debugging
 
+# Ensure we have a log file for debugging
+LOG_FILE="/tmp/deployment_$(date +%Y%m%d_%H%M%S).log"
+exec > >(tee -a "$LOG_FILE") 2>&1
+
+echo "Starting deployment process..."
+
 # Kill any existing process on port 80
 sudo fuser -k 80/tcp || true
 
@@ -90,20 +96,47 @@ git pull origin $BRANCH_NAME_TO_DEPLOY
 echo "HOST_IP=$(hostname -I | awk '{print $1}')" >> .env
 echo "PHX_HOST=$(hostname -I | awk '{print $1}')" >> .env
 
-# Install and compile dependencies
-sudo MIX_ENV=prod mix deps.get
-sudo MIX_ENV=prod mix deps.compile
+# Ensure mix is available
+sudo MIX_ENV=prod mix local.hex --force
+sudo MIX_ENV=prod mix local.rebar --force
 
-# Run migrations
-sudo MIX_ENV=prod mix ecto.migrate
+# Install and compile dependencies with verbose output
+echo "Installing dependencies..."
+sudo MIX_ENV=prod mix deps.get || { echo "Failed to get dependencies"; exit 1; }
+
+echo "Compiling dependencies..."
+sudo MIX_ENV=prod mix deps.compile || { echo "Failed to compile dependencies"; exit 1; }
+
+# Run migrations with verbose output
+echo "Running database migrations..."
+sudo MIX_ENV=prod mix ecto.migrate || { echo "Migration failed"; exit 1; }
 
 # Generate Swagger documentation
-sudo MIX_ENV=prod mix phx.swagger.generate
+echo "Generating Swagger documentation..."
+sudo MIX_ENV=prod mix phx.swagger.generate || { echo "Swagger generation failed"; exit 1; }
+
+# Stop any existing server
+echo "Stopping any existing server processes..."
+pkill -f "mix phx.server" || true
 
 # Start the server in detached mode
-sudo MIX_ENV=prod elixir --erl "-detached" -S mix phx.server
+echo "Starting Phoenix server..."
+sudo MIX_ENV=prod elixir --erl "-detached" -S mix phx.server || { 
+    echo "Failed to start server"
+    cat "$LOG_FILE"
+    exit 1
+}
+
+# Verify the server is running
+sleep 10
+if ! pgrep -f "mix phx.server" > /dev/null; then
+    echo "Server failed to start. Check logs:"
+    cat "$LOG_FILE"
+    exit 1
+fi
 
 echo "Deployment completed successfully!"
+echo "Log file saved to: $LOG_FILE"
 EOSSH
 
     echo "[EC2 Action] Completed actions on instance $id."
