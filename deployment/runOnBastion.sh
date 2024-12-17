@@ -1,5 +1,9 @@
 #!/bin/bash
 
+# Set AWS Region explicitly
+export AWS_DEFAULT_REGION="ap-south-1"
+export AWS_REGION="ap-south-1"
+
 # Ensure AWS CLI is available
 if ! command -v aws &> /dev/null; then
     echo "[SETUP] AWS CLI not found. Installing AWS CLI..."
