@@ -1,5 +1,12 @@
 #!/bin/bash
 
+# Ensure AWS CLI is available
+if ! command -v aws &> /dev/null; then
+    echo "[SETUP] AWS CLI not found. Installing AWS CLI..."
+    sudo apt-get update
+    sudo apt-get install -y awscli
+fi
+
 # extract TARGET_GROUP_NAME from .env file and store it in an environment variable
 TARGET_GROUP_NAME=$(grep TARGET_GROUP_NAME .env | cut -d '=' -f2)
 
