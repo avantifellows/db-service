@@ -12,6 +12,17 @@ echo "Decoding and saving the private key..."
 echo "$BASTION_HOST_PRIVATE_KEY" > $bastionHostPrivateKeyPath
 chmod 600 $bastionHostPrivateKeyPath
 
+# Install AWS CLI if not installed
+if ! command -v aws &> /dev/null; then
+    echo "AWS CLI not found. Installing..."
+    sudo apt-get update -y
+    sudo apt-get install -y unzip curl
+    curl "https://awscli.amazonaws.com/awscli-exe-linux-x86_64.zip" -o "awscliv2.zip"
+    unzip awscliv2.zip
+    sudo ./aws/install
+    echo "AWS CLI installed successfully."
+fi
+
 # Check if the EC2 instance exists and is not terminated
 echo "Checking if the EC2 instance with the name $instanceName exists and is not terminated..."
 instanceId=$(aws ec2 describe-instances \
