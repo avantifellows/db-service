@@ -66,79 +66,38 @@ for i in "${!instanceIdsArray[@]}"; do
     echo "[EC2 Action] Transferring .env file to instance $id at IP $instanceIp..."
     scp -o StrictHostKeyChecking=no -i $keyPath $envFile ubuntu@$instanceIp:/home/ubuntu/db-service
 
-# Execute commands on the instance using a bash script
-    echo "[EC2 Action] Executing deployment script on instance $id..."
-    ssh -o StrictHostKeyChecking=no -i $keyPath ubuntu@$instanceIp << 'EOSSH'
-#!/bin/bash
-set -e  # Exit on any error
-set -x  # Print commands for debugging
-
-# Ensure we have a log file for debugging
-LOG_FILE="/tmp/deployment_$(date +%Y%m%d_%H%M%S).log"
-exec > >(tee -a "$LOG_FILE") 2>&1
-
-echo "Starting deployment process..."
-
-# Kill any existing process on port 80
-sudo fuser -k 80/tcp || true
-
-# Change to project directory
-cd /home/ubuntu/db-service
-
-# Stash any local changes
-git stash
-
-# Checkout and pull the specified branch
-git checkout $BRANCH_NAME_TO_DEPLOY
-git pull origin $BRANCH_NAME_TO_DEPLOY
-
-# Add instance-specific environment variables
-echo "HOST_IP=$(hostname -I | awk '{print $1}')" >> .env
-echo "PHX_HOST=$(hostname -I | awk '{print $1}')" >> .env
-
-# Ensure mix is available
-sudo MIX_ENV=prod mix local.hex --force
-sudo MIX_ENV=prod mix local.rebar --force
-
-# Install and compile dependencies with verbose output
-echo "Installing dependencies..."
-sudo MIX_ENV=prod mix deps.get || { echo "Failed to get dependencies"; exit 1; }
-
-echo "Compiling dependencies..."
-sudo MIX_ENV=prod mix deps.compile || { echo "Failed to compile dependencies"; exit 1; }
-
-# Run migrations with verbose output
-echo "Running database migrations..."
-sudo MIX_ENV=prod mix ecto.migrate || { echo "Migration failed"; exit 1; }
-
-# Generate Swagger documentation
-echo "Generating Swagger documentation..."
-sudo MIX_ENV=prod mix phx.swagger.generate || { echo "Swagger generation failed"; exit 1; }
-
-# Stop any existing server
-echo "Stopping any existing server processes..."
-pkill -f "mix phx.server" || true
-
-# Start the server in detached mode
-echo "Starting Phoenix server..."
-sudo MIX_ENV=prod elixir --erl "-detached" -S mix phx.server || { 
-    echo "Failed to start server"
-    cat "$LOG_FILE"
-    exit 1
-}
-
-# Verify the server is running
-sleep 10
-if ! pgrep -f "mix phx.server" > /dev/null; then
-    echo "Server failed to start. Check logs:"
-    cat "$LOG_FILE"
-    exit 1
-fi
-
-echo "Deployment completed successfully!"
-echo "Log file saved to: $LOG_FILE"
-EOSSH
-
+    # Execute commands on the instance
+    echo "[EC2 Action] Executing commands on instance $id..."
+    # RANDOM_MINUTE=$((9 + RANDOM % (15 - 9 + 1)))
+    RANDOM_MINUTE=$((2 + RANDOM % (4 - 2 + 1)))
+    echo "Random minute: $RANDOM_MINUTE"
+    ssh -o StrictHostKeyChecking=no -i $keyPath ubuntu@$instanceIp << EOF
+        echo "[EC2 Action] Stopping any process running on port 80..."
+        sudo fuser -k 80/tcp
+        echo "[EC2 Action] Updating codebase and restarting the application..."
+        cd /home/ubuntu/db-service
+        git stash
+        echo "Changed directory to /home/ubuntu/db-service"
+        git checkout $BRANCH_NAME_TO_DEPLOY
+        echo "Checked out branch $BRANCH_NAME_TO_DEPLOY"
+        git pull origin $BRANCH_NAME_TO_DEPLOY
+        echo "Pulled latest changes from $BRANCH_NAME_TO_DEPLOY"
+        echo $id
+        echo "HOST_IP=$instanceIp" >> .env
+        echo "PHX_HOST=$instanceIp" >> .env
+        echo "Added host ip to .env file"
+        sudo MIX_ENV=prod mix deps.get
+        echo "Installed dependencies..."
+        sudo MIX_ENV=prod mix deps.compile
+        echo "Compiled dependencies..."
+        echo "Running Migrations..."
+        sudo MIX_ENV=prod mix ecto.migrate
+        echo "Migrations ran successfully"
+        sudo MIX_ENV=prod mix phx.swagger.generate
+        echo "Generated swagger file"
+        sudo MIX_ENV=prod elixir --erl "-detached" -S mix phx.server
+        echo "Starting Db service server..."
+EOF
     echo "[EC2 Action] Completed actions on instance $id."
 done
 
