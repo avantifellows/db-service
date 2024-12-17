@@ -87,18 +87,18 @@ for i in "${!instanceIdsArray[@]}"; do
         echo "PHX_HOST=$instanceIp" >> .env
         echo "Added host IP to .env file."
 
-        sudo MIX_ENV=prod mix local.hex --force
-        sudo MIX_ENV=prod mix local.rebar --force
+        sudo MIX_ENV=prod mix local.hex --force &&
+        sudo MIX_ENV=prod mix local.rebar --force &&
         
-        sudo MIX_ENV=prod mix deps.get || exit 1     
-        sudo MIX_ENV=prod mix deps.compile || exit 1
+        sudo MIX_ENV=prod mix deps.get || exit 1  &&   
+        sudo MIX_ENV=prod mix deps.compile || exit 1 &&
         echo "Compiled dependencies..."
         
         echo "Running Migrations..."
-        sudo MIX_ENV=prod mix ecto.migrate || { echo "Migration failed!" ; exit 1; }
+        sudo MIX_ENV=prod mix ecto.migrate || { echo "Migration failed!" ; exit 1; } &&
         echo "Migrations ran successfully."
         
-        sudo MIX_ENV=prod mix phx.swagger.generate || { echo "Swagger generation failed!" ; exit 1; }
+        sudo MIX_ENV=prod mix phx.swagger.generate || { echo "Swagger generation failed!" ; exit 1; } &&
         echo "Generated swagger file."
         
         echo "Starting Db service server..."
