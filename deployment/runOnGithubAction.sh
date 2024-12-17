@@ -23,6 +23,9 @@ if ! command -v aws &> /dev/null; then
     echo "AWS CLI installed successfully."
 fi
 
+# Add AWS CLI to PATH to ensure it is accessible
+export PATH=$PATH:/usr/local/bin
+
 # Check if the EC2 instance exists and is not terminated
 echo "Checking if the EC2 instance with the name $instanceName exists and is not terminated..."
 instanceId=$(aws ec2 describe-instances \
