@@ -9,7 +9,7 @@ envFile=".env"
 
 # Save the private key to a file
 echo "Decoding and saving the private key..."
-echo "$BASTION_HOST_PRIVATE_KEY" | base64 --decode > $bastionHostPrivateKeyPath
+echo "$BASTION_HOST_PRIVATE_KEY" > $bastionHostPrivateKeyPath
 chmod 600 $bastionHostPrivateKeyPath
 
 # Check if the EC2 instance exists and is not terminated
