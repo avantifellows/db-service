@@ -12,15 +12,6 @@ echo "Decoding and saving the private key..."
 echo "$BASTION_HOST_PRIVATE_KEY" > $bastionHostPrivateKeyPath
 chmod 600 $bastionHostPrivateKeyPath
 
-# Install AWS CLI
-sudo apt update
-sudo apt install -y awscli
-
-# Explicitly set PATH if needed
-export PATH=$PATH:/usr/local/bin:/usr/bin
-
-# Verify PATH
-echo "PATH: $PATH"
 
 # Check if the EC2 instance exists and is not terminated
 echo "Checking if the EC2 instance with the name $instanceName exists and is not terminated..."
