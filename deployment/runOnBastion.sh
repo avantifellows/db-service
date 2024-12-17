@@ -72,32 +72,35 @@ for i in "${!instanceIdsArray[@]}"; do
     RANDOM_MINUTE=$((2 + RANDOM % (4 - 2 + 1)))
     echo "Random minute: $RANDOM_MINUTE"
     ssh -o StrictHostKeyChecking=no -i $keyPath ubuntu@$instanceIp << EOF
+        set -x
         echo "[EC2 Action] Stopping any process running on port 80..."
-        sudo fuser -k 80/tcp
+        sudo fuser -k 80/tcp || echo "No process found on port 80."
+        
         echo "[EC2 Action] Updating codebase and restarting the application..."
-        cd /home/ubuntu/db-service
-        git stash
-        echo "Changed directory to /home/ubuntu/db-service"
-        git checkout $BRANCH_NAME_TO_DEPLOY
-        echo "Checked out branch $BRANCH_NAME_TO_DEPLOY"
-        git pull origin $BRANCH_NAME_TO_DEPLOY
-        echo "Pulled latest changes from $BRANCH_NAME_TO_DEPLOY"
+        cd /home/ubuntu/db-service || exit 1
+        git stash || echo "Nothing to stash."
+        git checkout $BRANCH_NAME_TO_DEPLOY || exit 1
+        git pull origin $BRANCH_NAME_TO_DEPLOY || exit 1
+        
         echo $id
         echo "HOST_IP=$instanceIp" >> .env
         echo "PHX_HOST=$instanceIp" >> .env
-        echo "Added host ip to .env file"
-        sudo MIX_ENV=prod mix deps.get
-        echo "Installed dependencies..."
-        sudo MIX_ENV=prod mix deps.compile
+        echo "Added host IP to .env file."
+        
+        sudo MIX_ENV=prod mix deps.get || exit 1
+        sudo MIX_ENV=prod mix deps.compile || exit 1
         echo "Compiled dependencies..."
+        
         echo "Running Migrations..."
-        sudo MIX_ENV=prod mix ecto.migrate
-        echo "Migrations ran successfully"
-        sudo MIX_ENV=prod mix phx.swagger.generate
-        echo "Generated swagger file"
-        sudo MIX_ENV=prod elixir --erl "-detached" -S mix phx.server
+        sudo MIX_ENV=prod mix ecto.migrate || { echo "Migration failed!" ; exit 1; }
+        echo "Migrations ran successfully."
+        
+        sudo MIX_ENV=prod mix phx.swagger.generate || { echo "Swagger generation failed!" ; exit 1; }
+        echo "Generated swagger file."
+        
         echo "Starting Db service server..."
-EOF
+        sudo MIX_ENV=prod elixir --erl "-detached" -S mix phx.server || { echo "Server start failed!" ; exit 1; }
+    EOF
     echo "[EC2 Action] Completed actions on instance $id."
 done
 
