@@ -51,7 +51,7 @@ resource "null_resource" "cloudfront_invalidation" {
   }
 
   provisioner "local-exec" {
-    command = "aws cloudfront create-invalidation --distribution-id ${aws_cloudfront_distribution.backend_cdn.id} --paths \"/*\""
+    command = "aws cloudfront create-invalidation --distribution-id ${aws_cloudfront_distribution.backend_cdn.id} --paths /*"
   }
 
   depends_on = [aws_cloudfront_distribution.backend_cdn]
