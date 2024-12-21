@@ -57,10 +57,10 @@ echo "Executing the update script on the Bastion Host..."
 ssh -o StrictHostKeyChecking=no -i $bastionHostPrivateKeyPath ubuntu@$bastionHostIP "bash /home/ubuntu/$updateScript"
 
 # Stop the instance
-# echo "Stopping instance $instanceId..."
-# AWS_PAGER="" aws ec2 stop-instances --instance-ids $instanceId --region ap-south-1
+echo "Stopping instance $instanceId..."
+AWS_PAGER="" aws ec2 stop-instances --instance-ids $instanceId --region ap-south-1
 
 # Check if the instance is stopped
-# echo "Waiting for instance $instanceId to enter stopped state..."
-# AWS_PAGER="" aws ec2 wait instance-stopped --instance-ids $instanceId --region ap-south-1
-# echo "Instance $instanceId has been stopped."
+echo "Waiting for instance $instanceId to enter stopped state..."
+AWS_PAGER="" aws ec2 wait instance-stopped --instance-ids $instanceId --region ap-south-1
+echo "Instance $instanceId has been stopped."

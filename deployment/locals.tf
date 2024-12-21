@@ -1,9 +1,18 @@
 locals {
-  environment_prefix = terraform.workspace == "default" ? "staging-DB-" : "${terraform.workspace}-DB-"
+  environment = terraform.workspace
+  environment_prefix = "${local.environment}-DB-"
+  
+  env_config = var.environments[local.environment]
+  
+  common_tags = {
+    Environment = local.environment
+    ManagedBy   = "Terraform"
+    Project     = "DB-Service"
+  }
+
+  pem_file_path = data.dotenv.env_file.env["PEM_FILE_PATH"]
 }
 
 data "dotenv" "env_file" {
-  filename = (
-    terraform.workspace == "default" || terraform.workspace == "staging"
-  ) ? ".env.staging" : ".env.production"
+  filename = local.environment == "staging" ? ".env.staging" : ".env.production"
 }

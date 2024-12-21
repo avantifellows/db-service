@@ -20,8 +20,8 @@ terraform {
 # Configure the AWS Provider
 provider "aws" {
   region                   = "ap-south-1"
-  shared_config_files      = ["C:/Users/amanb/.aws/config"]
-  shared_credentials_files = ["C:/Users/amanb/.aws/credentials"]
+  shared_config_files      = [data.dotenv.env_file.env["AWS_CONFIG_FILE"]]
+  shared_credentials_files = [data.dotenv.env_file.env["AWS_CREDENTIALS_FILE"]]
 }
 
 provider "dotenv" {}

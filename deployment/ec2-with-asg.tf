@@ -18,12 +18,12 @@ resource "aws_iam_role" "ec2_role" {
 
 resource "aws_iam_role_policy_attachment" "ec2_elb_access" {
   role       = aws_iam_role.ec2_role.name
-  policy_arn = "arn:aws:iam::aws:policy/ElasticLoadBalancingReadOnly"
+  policy_arn = "arn:aws:iam::aws:policy/AmazonSSMReadOnlyAccess"
 }
 
 resource "aws_iam_role_policy_attachment" "ec2_describe_ec2" {
   role       = aws_iam_role.ec2_role.name
-  policy_arn = "arn:aws:iam::aws:policy/AmazonEC2ReadOnlyAccess"
+  policy_arn = "arn:aws:iam::aws:policy/CloudWatchAgentServerPolicy"
 }
 
 resource "aws_iam_role_policy_attachment" "ec2_cloudwatch_logs" {
@@ -38,10 +38,10 @@ resource "aws_iam_instance_profile" "ec2_profile" {
 
 # ASG with launch template
 resource "aws_launch_template" "ec2_launch_templ" {
-  name_prefix = "${local.environment_prefix}ec2_launch_templ"
-  image_id    = "ami-05e00961530ae1b55"
-  # instance_type = "t2.micro"
-  instance_type = "t2.large"
+  name_prefix   = "${local.environment_prefix}ec2_launch_templ"
+  image_id      = "ami-05e00961530ae1b55"
+  instance_type = local.env_config.instance_type
+
   user_data = base64encode(templatefile("user_data.sh.tpl", {
     LOG_FILE              = "/var/log/user_data.log"
     BRANCH_NAME_TO_DEPLOY = data.dotenv.env_file.env["BRANCH_NAME_TO_DEPLOY"]
@@ -62,9 +62,12 @@ resource "aws_launch_template" "ec2_launch_templ" {
 
   tag_specifications {
     resource_type = "instance"
-    tags = {
-      Name = "${local.environment_prefix}ec2"
-    }
+    tags = merge(
+      local.common_tags,
+      {
+        Name = "${local.environment_prefix}ec2"
+      }
+    )
   }
 
   key_name = "AvantiFellows"
@@ -82,30 +85,42 @@ resource "aws_launch_template" "ec2_launch_templ" {
 
 resource "aws_autoscaling_group" "asg" {
   name_prefix      = "${local.environment_prefix}asg"
-  desired_capacity = 1
-  max_size         = 1
-  min_size         = 1
+  desired_capacity = local.env_config.desired_size
+  max_size         = local.env_config.max_size
+  min_size         = local.env_config.min_size
 
-  # connect to the target group
-  target_group_arns = [aws_lb_target_group.alb_tg.arn]
-
+  target_group_arns   = [aws_lb_target_group.alb_tg.arn]
   vpc_zone_identifier = [aws_subnet.subnet_2.id]
 
   launch_template {
     id      = aws_launch_template.ec2_launch_templ.id
     version = "$Latest"
   }
+
+  dynamic "tag" {
+    for_each = merge(
+      local.common_tags,
+      {
+        Name = "${local.environment_prefix}asg-instance"
+      }
+    )
+    content {
+      key                 = tag.key
+      value               = tag.value
+      propagate_at_launch = true
+    }
+  }
 }
 
 resource "aws_cloudwatch_metric_alarm" "high_cpu_alarm" {
-  alarm_name          = "${local.environment_prefix}-high-cpu-alarm"
+  alarm_name          = "${local.environment_prefix}high-cpu-alarm"
   comparison_operator = "GreaterThanOrEqualToThreshold"
   evaluation_periods  = "2"
   metric_name         = "CPUUtilization"
   namespace           = "AWS/EC2"
-  period              = "60" # Seconds (2 minutes)
+  period              = local.environment == "production" ? "60" : "120"
   statistic           = "Average"
-  threshold           = "30" # Percentage
+  threshold           = local.environment == "production" ? "70" : "80"
 
   dimensions = {
     AutoScalingGroupName = aws_autoscaling_group.asg.name
@@ -113,13 +128,15 @@ resource "aws_cloudwatch_metric_alarm" "high_cpu_alarm" {
 
   alarm_description = "This metric monitors high CPU utilization on EC2 instances"
   alarm_actions     = [aws_autoscaling_policy.high_cpu_policy.arn]
+
+  tags = local.common_tags
 }
 
 resource "aws_autoscaling_policy" "high_cpu_policy" {
-  name                   = "${local.environment_prefix}-high-cpu-policy"
-  scaling_adjustment     = 1 # Increase the desired capacity by 1
+  name                   = "${local.environment_prefix}high-cpu-policy"
+  scaling_adjustment     = 1
   adjustment_type        = "ChangeInCapacity"
-  cooldown               = 300 # Seconds (5 minutes)
+  cooldown               = local.environment == "production" ? "300" : "600" # Shorter cooldown in production
   autoscaling_group_name = aws_autoscaling_group.asg.name
 }
 
@@ -138,7 +155,7 @@ resource "aws_instance" "bastion_host" {
   iam_instance_profile = aws_iam_instance_profile.ec2_profile.name
 
   provisioner "file" {
-    source      = "C:/Users/amanb/.ssh/AvantiFellows.pem"
+    source      = local.pem_file_path
     destination = "/home/ubuntu/AvantiFellows.pem"
   }
 
@@ -155,8 +172,8 @@ resource "aws_instance" "bastion_host" {
     host        = self.public_ip
   }
 
-  # provisioner "local-exec" {
-  #   command = "aws ec2 stop-instances --instance-ids ${self.id} --region ap-south-1"
-  #   when    = create
-  # }
+  provisioner "local-exec" {
+    command = "aws ec2 stop-instances --instance-ids ${self.id} --region ap-south-1"
+    when    = create
+  }
 }
