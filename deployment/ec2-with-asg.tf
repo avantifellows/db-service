@@ -1,8 +1,8 @@
 # IAM Role and Policy for EC2 Instances
 resource "aws_iam_role" "ec2_role" {
-  name_prefix = "${local.environment_prefix}ec2_role"
+  name_prefix = "${local.environment_prefix}ec2_role" # Creates environment-specific role name
 
-  assume_role_policy = jsonencode({
+  assume_role_policy = jsonencode({ # Policy allowing EC2 to assume this role
     Version = "2012-10-17",
     Statement = [
       {
@@ -16,21 +16,25 @@ resource "aws_iam_role" "ec2_role" {
   })
 }
 
+# Attaches SSM read-only access policy to the EC2 role
 resource "aws_iam_role_policy_attachment" "ec2_elb_access" {
   role       = aws_iam_role.ec2_role.name
   policy_arn = "arn:aws:iam::aws:policy/AmazonSSMReadOnlyAccess"
 }
 
+# Attaches CloudWatch agent policy to allow EC2 instances to send metrics
 resource "aws_iam_role_policy_attachment" "ec2_describe_ec2" {
   role       = aws_iam_role.ec2_role.name
   policy_arn = "arn:aws:iam::aws:policy/CloudWatchAgentServerPolicy"
 }
 
+# Attaches CloudWatch logs policy for EC2 log management
 resource "aws_iam_role_policy_attachment" "ec2_cloudwatch_logs" {
   role       = aws_iam_role.ec2_role.name
   policy_arn = "arn:aws:iam::aws:policy/CloudWatchAgentServerPolicy"
 }
 
+# Creates an instance profile to attach the IAM role to EC2 instances
 resource "aws_iam_instance_profile" "ec2_profile" {
   name_prefix = "${local.environment_prefix}ec2_profile"
   role        = aws_iam_role.ec2_role.name
@@ -39,10 +43,11 @@ resource "aws_iam_instance_profile" "ec2_profile" {
 # ASG with launch template
 resource "aws_launch_template" "ec2_launch_templ" {
   name_prefix   = "${local.environment_prefix}ec2_launch_templ"
-  image_id      = "ami-05e00961530ae1b55"
+  image_id      = "ami-05e00961530ae1b55" # Ubuntu AMI ID
   instance_type = local.env_config.instance_type
 
-  user_data = base64encode(templatefile("user_data.sh.tpl", {
+  user_data = base64encode(templatefile("user_data.sh.tpl", { # Bootstrap script with environment variables
+    # Template variables
     LOG_FILE              = "/var/log/user_data.log"
     BRANCH_NAME_TO_DEPLOY = data.dotenv.env_file.env["BRANCH_NAME_TO_DEPLOY"]
     TARGET_GROUP_NAME     = aws_lb_target_group.alb_tg.name
@@ -54,7 +59,7 @@ resource "aws_launch_template" "ec2_launch_templ" {
     PORT                  = data.dotenv.env_file.env["PORT"]
   }))
 
-  network_interfaces {
+  network_interfaces { # Network configuration for instances
     associate_public_ip_address = false
     subnet_id                   = aws_subnet.subnet_2.id
     security_groups             = [aws_security_group.sg_for_ec2.id]
@@ -83,6 +88,7 @@ resource "aws_launch_template" "ec2_launch_templ" {
   }
 }
 
+# Creates an Auto Scaling Group using the launch template
 resource "aws_autoscaling_group" "asg" {
   name_prefix      = "${local.environment_prefix}asg"
   desired_capacity = local.env_config.desired_size
@@ -112,6 +118,7 @@ resource "aws_autoscaling_group" "asg" {
   }
 }
 
+# CloudWatch alarm to monitor CPU utilization
 resource "aws_cloudwatch_metric_alarm" "high_cpu_alarm" {
   alarm_name          = "${local.environment_prefix}high-cpu-alarm"
   comparison_operator = "GreaterThanOrEqualToThreshold"
@@ -132,6 +139,7 @@ resource "aws_cloudwatch_metric_alarm" "high_cpu_alarm" {
   tags = local.common_tags
 }
 
+# Auto Scaling policy triggered by the CPU alarm
 resource "aws_autoscaling_policy" "high_cpu_policy" {
   name                   = "${local.environment_prefix}high-cpu-policy"
   scaling_adjustment     = 1
