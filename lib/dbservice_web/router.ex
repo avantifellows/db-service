@@ -65,6 +65,7 @@ defmodule DbserviceWeb.Router do
     post("/group-user/batch-process", GroupUserController, :batch_process)
     patch("/student/update-status/:student_id", StudentController, :update_student_status)
     delete("/cleanup-student/:student_id", UserSessionController, :cleanup_student)
+    delete("/remove-batch/:student_id/:batch_id", UserSessionController, :remove_batch_mapping)
 
     def swagger_info do
       source(["config/.env", "config/.env"])
