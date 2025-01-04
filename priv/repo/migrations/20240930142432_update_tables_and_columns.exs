@@ -36,7 +36,7 @@ defmodule Dbservice.Repo.Migrations.UpdateTablesAndColumns do
     # Temporarily commenting out the removal of board_medium column
     # This column will be kept as a backup until we verify the data migration was successful
     # TODO: Create a separate migration to remove this column after verification
-    
+
     # alter table(:school) do
     #   remove :board_medium
     # end
