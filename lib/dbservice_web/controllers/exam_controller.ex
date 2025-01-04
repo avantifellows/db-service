@@ -14,7 +14,7 @@ defmodule DbserviceWeb.ExamController do
 
   def swagger_definitions do
     Map.merge(
-      SwaggerSchemaExam.exams(),
+      SwaggerSchemaExam.exam(),
       SwaggerSchemaExam.exams()
     )
   end

@@ -38,6 +38,27 @@ defmodule Dbservice.StudentExamRecords do
   def get_student_exam_record!(id), do: Repo.get!(StudentExamRecord, id)
 
   @doc """
+  Fetches a single `StudentExamRecord` based on the provided `student_id` and `application_number`.
+
+  Returns `nil` if no matching record is found.
+
+  ## Examples
+
+      iex> get_student_exam_records_by_student_id_and_application_number(123, "APP001")
+      %StudentExamRecord{}
+
+      iex> get_student_exam_records_by_student_id_and_application_number(123, "APP999")
+      nil
+
+  """
+  def get_student_exam_records_by_student_id_and_application_number(
+        student_id,
+        application_number
+      ) do
+    Repo.get_by(StudentExamRecord, student_id: student_id, application_number: application_number)
+  end
+
+  @doc """
   Creates a student_exam_record.
 
   ## Examples
@@ -49,6 +70,7 @@ defmodule Dbservice.StudentExamRecords do
       {:error, %Ecto.Changeset{}}
 
   """
+
   def create_student_exam_record(attrs \\ %{}) do
     %StudentExamRecord{}
     |> StudentExamRecord.changeset(attrs)
