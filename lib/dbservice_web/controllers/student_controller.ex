@@ -263,7 +263,9 @@ defmodule DbserviceWeb.StudentController do
 
     # Retrieve the group user information based on the user ID
     group_users = GroupUsers.get_group_user_by_user_id(user_id)
-    current_time = DateTime.utc_now()
+
+    # Get start_date from params instead of using current time
+    start_date = params["start_date"]
 
     # Get batch information and enrolled status information
 
@@ -281,7 +283,7 @@ defmodule DbserviceWeb.StudentController do
         group_type,
         academic_year,
         grade_id,
-        current_time
+        start_date
       )
 
       # Handle the enrollment process for the status
@@ -291,7 +293,7 @@ defmodule DbserviceWeb.StudentController do
         status_group_type,
         academic_year,
         grade_id,
-        current_time
+        start_date
       )
     end
 
@@ -344,20 +346,23 @@ defmodule DbserviceWeb.StudentController do
          group_type,
          academic_year,
          grade_id,
-         current_time
+         start_date
        ) do
     new_enrollment_attrs = %{
       user_id: user_id,
       is_current: true,
-      start_date: current_time,
+      start_date: start_date,
       group_id: batch_id,
       group_type: group_type,
       academic_year: academic_year,
       grade_id: grade_id
     }
 
+    IO.inspect(new_enrollment_attrs)
+    IO.inspect("new_enrollment_attrs")
+
     # Update existing enrollments to mark them as not current
-    update_existing_enrollments(user_id, "batch", current_time)
+    update_existing_enrollments(user_id, "batch", start_date)
     EnrollmentRecords.create_enrollment_record(new_enrollment_attrs)
   end
 
@@ -368,12 +373,12 @@ defmodule DbserviceWeb.StudentController do
          status_group_type,
          academic_year,
          grade_id,
-         current_time
+         start_date
        ) do
     new_status_enrollment_attrs = %{
       user_id: user_id,
       is_current: true,
-      start_date: current_time,
+      start_date: start_date,
       group_id: status_id,
       group_type: status_group_type,
       academic_year: academic_year,
@@ -381,15 +386,15 @@ defmodule DbserviceWeb.StudentController do
     }
 
     # Update existing enrollments to mark them as not current
-    update_existing_enrollments(user_id, "status", current_time)
+    update_existing_enrollments(user_id, "status", start_date)
     EnrollmentRecords.create_enrollment_record(new_status_enrollment_attrs)
   end
 
   # Updates existing enrollments to mark them as not current
-  defp update_existing_enrollments(user_id, group_type, current_time) do
+  defp update_existing_enrollments(user_id, group_type, start_date) do
     from(e in EnrollmentRecord,
       where: e.user_id == ^user_id and e.group_type == ^group_type and e.is_current == true,
-      update: [set: [is_current: false, end_date: ^current_time]]
+      update: [set: [is_current: false, end_date: ^start_date]]
     )
     |> Repo.update_all([])
   end
