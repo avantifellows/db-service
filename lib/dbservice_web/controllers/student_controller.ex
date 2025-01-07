@@ -358,9 +358,6 @@ defmodule DbserviceWeb.StudentController do
       grade_id: grade_id
     }
 
-    IO.inspect(new_enrollment_attrs)
-    IO.inspect("new_enrollment_attrs")
-
     # Update existing enrollments to mark them as not current
     update_existing_enrollments(user_id, "batch", start_date)
     EnrollmentRecords.create_enrollment_record(new_enrollment_attrs)
