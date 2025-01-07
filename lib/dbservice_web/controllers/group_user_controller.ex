@@ -231,12 +231,14 @@ defmodule DbserviceWeb.GroupUserController do
   defp create_new_group_user(conn, params) do
     group = Groups.get_group!(params["group_id"])
 
+    academic_year = resolve_academic_year(group.type, params)
+
     enrollment_record = %{
       "group_id" => group.child_id,
       "group_type" => group.type,
       "user_id" => params["user_id"],
       "grade_id" => params["grade_id"],
-      "academic_year" => params["academic_year"],
+      "academic_year" => academic_year,
       "start_date" => params["start_date"]
     }
 
@@ -363,12 +365,14 @@ defmodule DbserviceWeb.GroupUserController do
   defp create_new_group_user_from_batch(params) do
     group = Groups.get_group!(params["group_id"])
 
+    academic_year = resolve_academic_year(group.type, params)
+
     enrollment_record = %{
       "group_id" => group.child_id,
       "group_type" => group.type,
       "user_id" => params["user_id"],
       "grade_id" => params["grade_id"],
-      "academic_year" => params["academic_year"],
+      "academic_year" => academic_year,
       "start_date" => params["start_date"]
     }
 
@@ -385,6 +389,14 @@ defmodule DbserviceWeb.GroupUserController do
     case GroupUsers.update_group_user(existing_group_user, params) do
       {:ok, group_user} -> {:ok, group_user}
       {:error, _changeset} -> {:error, "Failed to update group user. Some problem with changeset"}
+    end
+  end
+
+  defp resolve_academic_year(group_type, params) do
+    if group_type == "auth_group" do
+      nil
+    else
+      params["academic_year"]
     end
   end
 end

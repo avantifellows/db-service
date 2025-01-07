@@ -540,12 +540,11 @@ defmodule DbserviceWeb.StudentController do
   end
 
   defp get_class_code(grade) do
-    current_year =
-      :calendar.local_time()
-      |> elem(0)
-      |> elem(0)
+    {current_year, current_month, _day} = :calendar.local_time() |> elem(0)
 
-    graduating_year = current_year + (12 - grade) + 1
+    academic_year = if current_month < 4, do: current_year - 1, else: current_year
+
+    graduating_year = academic_year + (12 - grade) + 1
 
     graduating_year
     |> Integer.to_string()
