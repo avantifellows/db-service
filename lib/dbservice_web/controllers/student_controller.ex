@@ -188,7 +188,11 @@ defmodule DbserviceWeb.StudentController do
     end
   end
 
-  def dropout(conn, %{"student_id" => student_id, "start_date" => dropout_start_date}) do
+  def dropout(conn, %{
+        "student_id" => student_id,
+        "start_date" => dropout_start_date,
+        "academic_year" => academic_year
+      }) do
     student = Users.get_student_by_student_id(student_id)
 
     # Check if the student's status is already 'dropout'
@@ -216,10 +220,9 @@ defmodule DbserviceWeb.StudentController do
         )
         |> Repo.all()
 
-      # Use the academic_year and grade_id from one of the current enrollments
-      %{academic_year: academic_year, grade_id: grade_id} = List.first(current_enrollments)
+      # Get grade_id from the student table
+      grade_id = student.grade_id
 
-      # Update all current enrollment records to set is_current: false and end_date
       Enum.each(current_enrollments, fn enrollment ->
         EnrollmentRecords.update_enrollment_record(enrollment, %{
           is_current: false,
