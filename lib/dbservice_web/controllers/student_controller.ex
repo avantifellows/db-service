@@ -708,7 +708,10 @@ defmodule DbserviceWeb.StudentController do
     end
   end
 
-  def update_student_status(conn, %{"student_id" => student_id}) do
+  @doc """
+  This function removes the dropout status from both the enrollment records and the student table.
+  """
+  def remove_dropout_status(conn, %{"student_id" => student_id}) do
     with {:ok, student} <- get_student(student_id),
          enrollment_records <-
            EnrollmentRecords.get_enrollment_records_by_user_id(student.user_id),
@@ -841,5 +844,110 @@ defmodule DbserviceWeb.StudentController do
   defp get_fields(module) do
     module.__schema__(:fields)
     |> Enum.map(&Atom.to_string/1)
+  end
+
+  swagger_path :update_student_status do
+    post("/api/student/{student_id}/status")
+
+    parameters do
+      student_id(:path, :string, "The student_id of the student", required: true)
+      status(:query, :string, "The status to be updated", required: true)
+      academic_year(:query, :string, "The academic year", required: true)
+      start_date(:query, :string, "The start date for the status", required: true)
+    end
+
+    response(200, "OK", Schema.ref(:Student))
+    response(400, "Bad Request")
+    response(404, "Not Found")
+  end
+
+  def update_student_status(conn, params) do
+    with {:ok, status} <- get_status_by_title(params["status"]),
+         {:ok, student} <- get_student_by_student_id(params["student_id"]),
+         :ok <- check_existing_status(student, status.title),
+         {:ok, %Student{} = updated_student} <- update_student_status_field(student, status),
+         {:ok, _enrollment_record} <- create_status_enrollment_record(student, status, params) do
+      conn
+      |> put_status(:ok)
+      |> render("show.json", student: updated_student)
+    else
+      {:error, :status_not_found} ->
+        conn
+        |> put_status(:not_found)
+        |> json(%{error: "Status not found"})
+
+      {:error, :student_not_found} ->
+        conn
+        |> put_status(:not_found)
+        |> json(%{error: "Student not found"})
+
+      {:error, :status_already_assigned} ->
+        conn
+        |> put_status(:ok)
+        |> json(%{message: "Student already has the requested status"})
+
+      {:error, changeset} ->
+        conn
+        |> put_status(:bad_request)
+        |> json(%{error: "Failed to update status", details: changeset.errors})
+    end
+  end
+
+  # Helper function to check if student already has the status
+  defp check_existing_status(student, status_title) do
+    case student.status == Atom.to_string(status_title) do
+      true -> {:error, :status_already_assigned}
+      false -> :ok
+    end
+  end
+
+  # Helper function to get status by title
+  defp get_status_by_title(status_title) do
+    case Statuses.get_status_by_title(status_title) do
+      nil -> {:error, :status_not_found}
+      status -> {:ok, status}
+    end
+  end
+
+  # Helper function to get student by student_id
+  defp get_student_by_student_id(student_id) do
+    case Users.get_student_by_student_id(student_id) do
+      nil -> {:error, :student_not_found}
+      student -> {:ok, student}
+    end
+  end
+
+  # Helper function to update student status
+  defp update_student_status_field(student, status) do
+    Users.update_student(student, %{status: Atom.to_string(status.title)})
+  end
+
+  # Helper function to create new enrollment record
+  defp create_status_enrollment_record(student, status, params) do
+    # First, update any existing status enrollment records to is_current: false
+    update_existing_status_enrollments(student.user_id, params["start_date"])
+
+    enrollment_attrs = %{
+      user_id: student.user_id,
+      group_id: status.id,
+      group_type: "status",
+      grade_id: student.grade_id,
+      academic_year: params["academic_year"],
+      start_date: params["start_date"],
+      is_current: true
+    }
+
+    EnrollmentRecords.create_enrollment_record(enrollment_attrs)
+  end
+
+  # Helper function to update existing status enrollment records
+  defp update_existing_status_enrollments(user_id, end_date) do
+    from(e in EnrollmentRecord,
+      where: e.user_id == ^user_id and e.group_type == "status" and e.is_current == true,
+      update: [set: [is_current: false, end_date: ^end_date]]
+    )
+    |> Repo.update_all([])
+
+    {:ok, :updated}
   end
 end
