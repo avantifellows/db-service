@@ -5,7 +5,8 @@ defmodule Dbservice.Repo.Migrations.CreateTopicCurriculumTable do
     create table(:topic_curriculum) do
       add :topic_id, references(:topic)
       add :curriculum_id, references(:curriculum)
-      add :priority, :string
+      add :priority, :integer
+      add :priority_text, :string
 
       timestamps()
     end
