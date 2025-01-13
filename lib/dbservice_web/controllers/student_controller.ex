@@ -940,7 +940,8 @@ defmodule DbserviceWeb.StudentController do
     EnrollmentRecords.create_enrollment_record(enrollment_attrs)
   end
 
-  # Helper function to update existing status enrollment records
+  # Helper function to close the current status enrollment record for a user
+  # This sets `is_current` to false and updates the `end_date` for the record
   defp update_existing_status_enrollments(user_id, end_date) do
     from(e in EnrollmentRecord,
       where: e.user_id == ^user_id and e.group_type == "status" and e.is_current == true,
