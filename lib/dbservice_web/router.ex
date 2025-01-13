@@ -67,6 +67,7 @@ defmodule DbserviceWeb.Router do
     # Some students were incorrectly marked as "dropouts" in our system. This endpoint was introduced to reverse this mistake by removing the dropout status from both the enrollment records and the student table
     patch("/student/remove-dropout-status/:student_id", StudentController, :remove_dropout_status)
     delete("/cleanup-student/:student_id", UserSessionController, :cleanup_student)
+    delete("/remove-batch/:student_id/:batch_id", UserSessionController, :remove_batch_mapping)
     post("/student/:student_id/status", StudentController, :update_student_status)
 
     def swagger_info do
