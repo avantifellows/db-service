@@ -171,7 +171,8 @@ defmodule DbserviceWeb.GroupUserController do
             where:
               er.user_id == ^user_id and
                 er.group_type == ^type and
-                er.group_id == ^current_batch_pk
+                er.group_id == ^current_batch_pk and
+                er.is_current == true
           )
           |> Repo.one()
 
