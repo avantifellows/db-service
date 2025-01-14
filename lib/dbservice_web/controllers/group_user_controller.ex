@@ -313,6 +313,9 @@ defmodule DbserviceWeb.GroupUserController do
       "auth_group" ->
         handle_group_user(group_user_data)
 
+      "grade" ->
+        handle_group_user(group_user_data)
+
       _ ->
         {:error, "Unknown enrollment type"}
     end
@@ -372,7 +375,6 @@ defmodule DbserviceWeb.GroupUserController do
       "group_id" => group.child_id,
       "group_type" => group.type,
       "user_id" => params["user_id"],
-      "grade_id" => params["grade_id"],
       "academic_year" => academic_year,
       "start_date" => params["start_date"]
     }
