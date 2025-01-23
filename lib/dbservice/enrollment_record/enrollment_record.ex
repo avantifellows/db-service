@@ -6,7 +6,6 @@ defmodule Dbservice.EnrollmentRecords.EnrollmentRecord do
   import Dbservice.Utils.Util
 
   alias Dbservice.Users.User
-  alias Dbservice.Grades.Grade
   alias Dbservice.Subjects.Subject
 
   schema "enrollment_record" do
@@ -17,7 +16,6 @@ defmodule Dbservice.EnrollmentRecords.EnrollmentRecord do
     field :group_id, :integer
     field :group_type, :string
 
-    belongs_to(:grade, Grade)
     belongs_to(:subject, Subject)
 
     belongs_to(:user, User)
@@ -47,7 +45,6 @@ defmodule Dbservice.EnrollmentRecords.EnrollmentRecord do
       :academic_year,
       :group_id,
       :group_type,
-      :grade_id,
       :subject_id
     ])
     |> validate_required(required_fields)
