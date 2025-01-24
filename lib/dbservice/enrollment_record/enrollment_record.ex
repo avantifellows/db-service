@@ -25,7 +25,7 @@ defmodule Dbservice.EnrollmentRecords.EnrollmentRecord do
 
   @doc false
   def changeset(enrollment_record, attrs) do
-    required_fields = [:user_id, :group_id, :group_type, :start_date, :grade_id]
+    required_fields = [:user_id, :group_id, :group_type, :start_date]
 
     group_type = Map.get(attrs, "group_type") || Map.get(enrollment_record, :group_type)
 
