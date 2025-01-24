@@ -69,14 +69,12 @@ defmodule Dbservice.EnrollmentRecords do
         user_id,
         group_id,
         group_type,
-        grade_id,
         academic_year
       ) do
     Repo.get_by(EnrollmentRecord,
       user_id: user_id,
       group_id: group_id,
       group_type: group_type,
-      grade_id: grade_id,
       academic_year: academic_year
     )
   end
