@@ -3,6 +3,7 @@ defmodule DbserviceWeb.GroupUserController do
   alias Dbservice.Schools
   alias Dbservice.Groups
   alias Dbservice.EnrollmentRecords
+  alias Dbservice.Grades
   use DbserviceWeb, :controller
 
   import Ecto.Query
@@ -299,7 +300,7 @@ defmodule DbserviceWeb.GroupUserController do
         handle_group_user(group_user_data)
 
       "grade" ->
-        handle_group_user(group_user_data)
+        handle_grade_enrollment(group_user_data)
 
       _ ->
         {:error, "Unknown enrollment type"}
@@ -326,6 +327,18 @@ defmodule DbserviceWeb.GroupUserController do
       batch_group_id ->
         group_user_data
         |> Map.put("group_id", batch_group_id)
+        |> handle_group_user()
+    end
+  end
+
+  defp handle_grade_enrollment(group_user_data) do
+    case get_grade_group_id(group_user_data["grade_id"]) do
+      {:error, error_msg} ->
+        {:error, error_msg}
+
+      grade_group_id ->
+        group_user_data
+        |> Map.put("group_id", grade_group_id)
         |> handle_group_user()
     end
   end
@@ -368,6 +381,22 @@ defmodule DbserviceWeb.GroupUserController do
         case Groups.get_group_by_child_id_and_type(batch.id, "batch") do
           nil ->
             {:error, "Batch group not found"}
+
+          group ->
+            group.id
+        end
+    end
+  end
+
+  defp get_grade_group_id(grade_id) do
+    case Grades.get_grade!(grade_id) do
+      nil ->
+        {:error, "Grade not found"}
+
+      grade ->
+        case Groups.get_group_by_child_id_and_type(grade.id, "grade") do
+          nil ->
+            {:error, "Grade group not found"}
 
           group ->
             group.id
