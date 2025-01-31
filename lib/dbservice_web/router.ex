@@ -17,6 +17,7 @@ defmodule DbserviceWeb.Router do
 
     resources("/user", UserController, only: [:index, :create, :update, :show])
     post("/user/:id/update-groups", UserController, :update_group)
+    get("/student/get-schema", StudentController, :get_schema)
     resources("/student", StudentController, except: [:new, :edit])
     post("/student/generate-id", StudentController, :create_student_id)
     post("/student/verify-student", StudentController, :verify_student)
@@ -62,7 +63,14 @@ defmodule DbserviceWeb.Router do
     post("/school-with-user", SchoolController, :create_school_with_user)
     patch("/update-group-user-by-type", GroupUserController, :update_by_type)
     patch("/update-user-enrollment-records", StudentController, :update_user_enrollment_records)
-    patch("/student/update-status/:student_id", StudentController, :update_student_status)
+    post("/student/batch-process", StudentController, :batch_process)
+    post("/group-user/batch-process", GroupUserController, :batch_process)
+
+    # Some students were incorrectly marked as "dropouts" in our system. This endpoint was introduced to reverse this mistake by removing the dropout status from both the enrollment records and the student table
+    patch("/student/remove-dropout-status/:student_id", StudentController, :remove_dropout_status)
+    delete("/cleanup-student/:student_id", UserSessionController, :cleanup_student)
+    delete("/remove-batch/:student_id/:batch_id", UserSessionController, :remove_batch_mapping)
+    post("/student/:student_id/status", StudentController, :update_student_status)
 
     def swagger_info do
       source(["config/.env", "config/.env"])

@@ -11,6 +11,7 @@ defmodule Dbservice.Users.Teacher do
   schema "teacher" do
     field :designation, :string
     field :teacher_id, :string
+    field :is_af_teacher, :boolean
 
     belongs_to :user, User
     has_one :teacher_profile, TeacherProfile
@@ -26,7 +27,8 @@ defmodule Dbservice.Users.Teacher do
       :user_id,
       :designation,
       :teacher_id,
-      :subject_id
+      :subject_id,
+      :is_af_teacher
     ])
     |> validate_required([:user_id, :teacher_id])
   end
