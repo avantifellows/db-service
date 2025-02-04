@@ -11,9 +11,12 @@ defmodule DbserviceWeb.ChapterView do
   end
 
   def render("chapter.json", %{chapter: chapter}) do
+    default_name = get_default_name(chapter.name)
+
     %{
       id: chapter.id,
-      name: chapter.name,
+      name: default_name,
+      names: chapter.name,
       code: chapter.code,
       grade_id: chapter.grade_id,
       subject_id: chapter.subject_id,
@@ -21,4 +24,37 @@ defmodule DbserviceWeb.ChapterView do
       curriculum_id: chapter.curriculum_id
     }
   end
+
+  defp get_english_language_id do
+    alias Dbservice.Repo
+    alias Dbservice.Languages.Language
+    case Repo.get_by(Language, name: "English") do
+      %Language{id: id} -> id
+      nil -> nil
+    end
+  end
+
+  defp get_default_name(names) when is_list(names) do
+    case get_english_language_id() do
+      nil ->
+        case List.first(names) do
+          %{"subject" => value} -> value
+          _ -> nil
+        end
+
+      english_id ->
+        case Enum.find(names, &(&1["lang_id"] == english_id)) do
+          %{"subject" => value} ->
+            value
+
+          nil ->
+            case List.first(names) do
+              %{"subject" => value} -> value
+              _ -> nil
+            end
+        end
+    end
+  end
+
+  defp get_default_name(_), do: nil
 end
