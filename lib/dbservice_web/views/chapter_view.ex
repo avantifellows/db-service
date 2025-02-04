@@ -28,6 +28,7 @@ defmodule DbserviceWeb.ChapterView do
   defp get_english_language_id do
     alias Dbservice.Repo
     alias Dbservice.Languages.Language
+
     case Repo.get_by(Language, name: "English") do
       %Language{id: id} -> id
       nil -> nil
