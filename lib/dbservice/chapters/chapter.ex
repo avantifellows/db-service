@@ -12,7 +12,7 @@ defmodule Dbservice.Chapters.Chapter do
   alias Dbservice.Curriculums.Curriculum
 
   schema "chapter" do
-    field(:name, :string)
+    field :name, {:array, :map}
     field(:code, :string)
 
     timestamps()
