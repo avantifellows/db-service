@@ -3,7 +3,7 @@ variable "environment" {
   type        = string
 }
 
-variable "environments" {
+variable "environmentSpecificConfig" {
   description = "Environment specific variables"
   type = map(object({
     instance_type = string

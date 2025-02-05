@@ -176,7 +176,7 @@ resource "aws_instance" "bastion_host" {
   connection {
     type        = "ssh"
     user        = "ubuntu"
-    private_key = file("C:/Users/amanb/.ssh/AvantiFellows.pem")
+    private_key = file(local.pem_file_path)
     host        = self.public_ip
   }
 

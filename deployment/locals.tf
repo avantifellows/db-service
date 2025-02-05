@@ -3,7 +3,7 @@ locals {
   environment        = terraform.workspace        # Gets current workspace name (staging/production)
   environment_prefix = "${local.environment}-DB-" # Creates prefix for resource naming
 
-  env_config = var.environments[local.environment] # Loads environment-specific configurations
+  env_config = var.environmentSpecificConfig[local.environment] # Loads environment-specific configurations
 
   # Defines common tags applied to resources
   common_tags = {

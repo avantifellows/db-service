@@ -2,65 +2,88 @@
 
 # Define variables
 echo "Defining variables..."
-instanceName=$BASTION_HOST_INSTANCE_NAME
-bastionHostPrivateKeyPath="/tmp/bastion_host_key.pem"
-updateScript="runOnBastion.sh"
-envFile=".env"
+ASG_NAME="${ENVIRONMENT_PREFIX}asg"
+echo "Using Auto Scaling Group: $ASG_NAME"
 
-# Save the private key to a file
-echo "Decoding and saving the private key..."
-echo "$BASTION_HOST_PRIVATE_KEY" > $bastionHostPrivateKeyPath
-chmod 600 $bastionHostPrivateKeyPath
+# Get Launch Template ID from ASG
+echo "Getting Launch Template ID..."
+LAUNCH_TEMPLATE_ID=$(aws autoscaling describe-auto-scaling-groups \
+    --auto-scaling-group-names "$ASG_NAME" \
+    --query 'AutoScalingGroups[0].LaunchTemplate.LaunchTemplateId' \
+    --output text)
 
-
-# Check if the EC2 instance exists and is not terminated
-echo "Checking if the EC2 instance with the name $instanceName exists and is not terminated..."
-instanceId=$(aws ec2 describe-instances \
-    --filters "Name=tag:Name,Values=$instanceName" "Name=instance-state-name,Values=pending,running,shutting-down,stopping,stopped" \
-    --query "Reservations[*].Instances[*].InstanceId" \
-    --region ap-south-1 --output text | head -n 1)
-
-if [ -z "$instanceId" ]; then
-    echo "Error: EC2 instance with the name $instanceName does not exist or is terminated."
+if [ -z "$LAUNCH_TEMPLATE_ID" ]; then
+    echo "Error: Could not find Launch Template ID"
     exit 1
 fi
 
-# Check instance state and start if necessary
-echo "Checking the state of the instance..."
-instanceState=$(aws ec2 describe-instance-status --instance-ids $instanceId --query "InstanceStatuses[*].InstanceState.Name" --region ap-south-1 --output text)
+# Process user data template with current environment variables
+echo "Processing user data template..."
+PROCESSED_USER_DATA=$(cat deployment/user_data.sh.tpl | \
+    sed "s|\${BRANCH_NAME_TO_DEPLOY}|$BRANCH_NAME_TO_DEPLOY|g" | \
+    sed "s|\${TARGET_GROUP_NAME}|$TARGET_GROUP_NAME|g" | \
+    sed "s|\${environment_prefix}|$ENVIRONMENT_PREFIX|g" | \
+    sed "s|\${DATABASE_URL}|$DATABASE_URL|g" | \
+    sed "s|\${SECRET_KEY_BASE}|$SECRET_KEY_BASE|g" | \
+    sed "s|\${BEARER_TOKEN}|$BEARER_TOKEN|g" | \
+    sed "s|\${PORT}|$PORT|g" | \
+    sed "s|\${POOL_SIZE}|$POOL_SIZE|g")
 
-if [ "$instanceState" != "running" ]; then
-    echo "Starting instance $instanceId..."
-    AWS_PAGER="" aws ec2 start-instances --instance-ids $instanceId --region ap-south-1
-    echo "Waiting for instance $instanceId to enter running state..."
-    AWS_PAGER="" aws ec2 wait instance-running --instance-ids $instanceId --region ap-south-1
-else
-    echo "Instance $instanceId is already running."
+# Create new launch template version with updated user data
+echo "Creating new Launch Template version..."
+NEW_VERSION=$(aws ec2 create-launch-template-version \
+    --launch-template-id "$LAUNCH_TEMPLATE_ID" \
+    --source-version '$Latest' \
+    --launch-template-data "{\"UserData\":\"$(echo "$PROCESSED_USER_DATA" | base64 -w 0)\"}" \
+    --query 'LaunchTemplateVersion.VersionNumber' \
+    --output text)
+
+if [ -z "$NEW_VERSION" ]; then
+    echo "Error: Failed to create new Launch Template version"
+    exit 1
 fi
 
-# Get public IP of the instance
-echo "Retrieving public IP of the Bastion Host..."
-bastionHostIP=$(aws ec2 describe-instances --instance-ids $instanceId --query "Reservations[*].Instances[*].PublicIpAddress" --region ap-south-1 --output text)
+# Get current ASG capacity before scaling down
+echo "Getting current ASG capacity..."
+CURRENT_DESIRED=$(aws autoscaling describe-auto-scaling-groups \
+    --auto-scaling-group-names "$ASG_NAME" \
+    --query 'AutoScalingGroups[0].DesiredCapacity' \
+    --output text)
 
-# Build the .env file from GitHub Secrets
-echo "Building .env file..."
-echo "BRANCH_NAME_TO_DEPLOY=$BRANCH_NAME_TO_DEPLOY" >> $envFile
-echo "TARGET_GROUP_NAME=$TARGET_GROUP_NAME" >> $envFile
-echo "ENVIRONMENT_PREFIX=$ENVIRONMENT_PREFIX" >> $envFile
+# Update ASG to use new template version
+echo "Updating ASG to use new template version..."
+aws autoscaling update-auto-scaling-group \
+    --auto-scaling-group-name "$ASG_NAME" \
+    --launch-template LaunchTemplateId="$LAUNCH_TEMPLATE_ID",Version="$NEW_VERSION"
 
-# Transfer the update script and .env file to the Bastion Host
-echo "Transferring scripts to the Bastion Host at $bastionHostIP..."
-scp -o StrictHostKeyChecking=no -i $bastionHostPrivateKeyPath deployment/$updateScript $envFile ubuntu@$bastionHostIP:/home/ubuntu/
+# Scale down to 0
+echo "Scaling down ASG to 0 instances..."
+aws autoscaling update-auto-scaling-group \
+    --auto-scaling-group-name "$ASG_NAME" \
+    --min-size 0 \
+    --max-size 0 \
+    --desired-capacity 0
 
-# SSH into the Bastion Host and execute the update script
-echo "Executing the update script on the Bastion Host..."
-ssh -o StrictHostKeyChecking=no -i $bastionHostPrivateKeyPath ubuntu@$bastionHostIP "bash /home/ubuntu/$updateScript"
+# Wait for instances to terminate
+echo "Waiting for instances to terminate..."
+while true; do
+    INSTANCE_COUNT=$(aws autoscaling describe-auto-scaling-groups \
+        --auto-scaling-group-names "$ASG_NAME" \
+        --query 'AutoScalingGroups[0].Instances[*]' \
+        --output text | wc -l)
+    if [ "$INSTANCE_COUNT" -eq 0 ]; then
+        break
+    fi
+    echo "Waiting for instances to terminate... ($INSTANCE_COUNT remaining)"
+    sleep 10
+done
 
-# Stop the instance
-echo "Stopping instance $instanceId..."
-AWS_PAGER="" aws ec2 stop-instances --instance-ids $instanceId --region ap-south-1
+# Scale back up to original capacity
+echo "Scaling back up ASG to original capacity..."
+aws autoscaling update-auto-scaling-group \
+    --auto-scaling-group-name "$ASG_NAME" \
+    --min-size 1 \
+    --max-size 2 \
+    --desired-capacity "$CURRENT_DESIRED"
 
-# Check if the instance is stopped
-echo "Waiting for instance $instanceId to enter stopped state..."
-AWS_PAGER="" aws ec2 wait instance-stopped --instance-ids $instanceId --region ap-south-1
-echo "Instance $instanceId has been stopped."
+echo "Deployment completed successfully"

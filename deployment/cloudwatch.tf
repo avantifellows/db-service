@@ -86,20 +86,6 @@ resource "aws_ssm_parameter" "cloudwatch_agent_config" {
         }
       }
     }
-    traces = {
-      buffer_size_mb    = 3
-      concurrency       = 8
-      insecure         = false
-      region_override  = "ap-south-1"
-      traces_collected = {
-        xray = {
-          bind_address = "127.0.0.1:2000"
-          tcp_proxy = {
-            bind_address = "127.0.0.1:2000"
-          }
-        }
-      }
-    }
   })
 
   tags = local.common_tags

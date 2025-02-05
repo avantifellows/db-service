@@ -13,7 +13,7 @@ terraform {
 
     cloudflare = {
       source  = "cloudflare/cloudflare" # Official Cloudflare provider
-      version = "~> 4.0"                # Uses 4.x version
+      version = "~> 5"
     }
   }
 }
