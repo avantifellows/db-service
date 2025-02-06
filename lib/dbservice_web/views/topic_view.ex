@@ -11,13 +11,48 @@ defmodule DbserviceWeb.TopicView do
   end
 
   def render("topic.json", %{topic: topic}) do
+    default_name = get_default_name(topic.name)
+
     %{
       id: topic.id,
-      name: topic.name,
+      name: default_name,
+      names: topic.name,
       code: topic.code,
-      grade_id: topic.grade_id,
-      chapter_id: topic.chapter_id,
-      tag_id: topic.tag_id
+      chapter_id: topic.chapter_id
     }
   end
+
+  defp get_english_language_id do
+    alias Dbservice.Repo
+    alias Dbservice.Languages.Language
+
+    case Repo.get_by(Language, name: "English") do
+      %Language{id: id} -> id
+      nil -> nil
+    end
+  end
+
+  defp get_default_name(names) when is_list(names) do
+    case get_english_language_id() do
+      nil ->
+        case List.first(names) do
+          %{"topic" => value} -> value
+          _ -> nil
+        end
+
+      english_id ->
+        case Enum.find(names, &(&1["lang_id"] == english_id)) do
+          %{"topic" => value} ->
+            value
+
+          nil ->
+            case List.first(names) do
+              %{"topic" => value} -> value
+              _ -> nil
+            end
+        end
+    end
+  end
+
+  defp get_default_name(_), do: nil
 end

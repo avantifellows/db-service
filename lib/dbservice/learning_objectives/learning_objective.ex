@@ -8,7 +8,7 @@ defmodule Dbservice.LearningObjectives.LearningObjective do
   alias Dbservice.Resources.Resource
 
   schema "learning_objective" do
-    field(:title, :string)
+    field(:title, {:array, :map})
 
     timestamps()
 

@@ -56,4 +56,102 @@ defmodule DbserviceWeb.SwaggerSchema.Resource do
         end
     }
   end
+
+  def resource_curriculum do
+    %{
+      ResourceCurriculum:
+        swagger_schema do
+          title("ResourceCurriculum")
+          description("A resource-curriculum in the application")
+
+          properties do
+            resource_id(:integer, "Resource id associated with the resource")
+            curriculum_id(:integer, "Curriculum id associated with the resource")
+            difficulty_level(:string, "Difficulty level of a resource")
+          end
+
+          example(%{
+            resource_id: 1,
+            curriculum_id: 1,
+            difficulty_level: "medium"
+          })
+        end
+    }
+  end
+
+  def resource_curriculums do
+    %{
+      ResourceCurriculums:
+        swagger_schema do
+          title("ResourceCurriculums")
+          description("All resources-curriculums in the application")
+          type(:array)
+          items(Schema.ref(:ResourceCurriculum))
+        end
+    }
+  end
+
+  def resource_chapter do
+    %{
+      ResourceChapter:
+        swagger_schema do
+          title("ResourceChapter")
+          description("A resource-chapter in the application")
+
+          properties do
+            resource_id(:integer, "Resource id associated with the resource")
+            chapter_id(:integer, "Chapter id associated with the resource")
+          end
+
+          example(%{
+            resource_id: 1,
+            chapter_id: 1
+          })
+        end
+    }
+  end
+
+  def resource_chapters do
+    %{
+      ResourceChapters:
+        swagger_schema do
+          title("ResourceChapters")
+          description("All resources-chapters in the application")
+          type(:array)
+          items(Schema.ref(:ResourceCurriculum))
+        end
+    }
+  end
+
+  def resource_topic do
+    %{
+      ResourceTopic:
+        swagger_schema do
+          title("ResourceTopic")
+          description("A resource-chapter in the application")
+
+          properties do
+            resource_id(:integer, "Resource id associated with the resource")
+            topic_id(:integer, "Topic id associated with the resource")
+          end
+
+          example(%{
+            resource_id: 1,
+            topic_id: 1
+          })
+        end
+    }
+  end
+
+  def resource_topics do
+    %{
+      ResourceTopics:
+        swagger_schema do
+          title("ResourceTopics")
+          description("All resources-topics in the application")
+          type(:array)
+          items(Schema.ref(:ResourceTopic))
+        end
+    }
+  end
 end

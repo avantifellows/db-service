@@ -9,7 +9,7 @@ defmodule Dbservice.Concepts.Concept do
   alias Dbservice.Resources.Resource
 
   schema "concept" do
-    field(:name, :string)
+    field(:name, {:array, :map})
 
     timestamps()
 
