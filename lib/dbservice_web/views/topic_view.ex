@@ -14,6 +14,7 @@ defmodule DbserviceWeb.TopicView do
 
   def render("topic.json", %{topic: topic}) do
     default_name = get_default_name(topic.name)
+
     %{
       id: topic.id,
       # For backward compatibility
@@ -43,6 +44,7 @@ defmodule DbserviceWeb.TopicView do
     cond do
       english_id != nil ->
         find_english_name(names, english_id)
+
       true ->
         get_first_name(names)
     end
