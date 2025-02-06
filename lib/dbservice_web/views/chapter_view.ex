@@ -36,31 +36,22 @@ defmodule DbserviceWeb.ChapterView do
 
   defp get_default_name(names) when is_list(names) do
     english_id = get_english_language_id()
-    find_name_by_language(names, english_id)
+
+    if english_id do
+      case Enum.find(names, &(&1["lang_id"] == english_id)) do
+        %{"chapter" => value} -> value
+        _ -> get_first_name(names)
+      end
+    else
+      get_first_name(names)
+    end
   end
 
   defp get_default_name(_), do: nil
 
-  defp find_name_by_language(names, english_id) do
-    cond do
-      english_id != nil ->
-        find_english_name(names, english_id)
-
-      true ->
-        get_first_name(names)
-    end
-  end
-
-  defp find_english_name(names, english_id) do
-    case Enum.find(names, &(&1["lang_id"] == english_id)) do
-      %{"topic" => value} -> value
-      _ -> get_first_name(names)
-    end
-  end
-
   defp get_first_name(names) do
     case List.first(names) do
-      %{"topic" => value} -> value
+      %{"chapter" => value} -> value
       _ -> nil
     end
   end

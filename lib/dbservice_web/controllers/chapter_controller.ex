@@ -58,7 +58,7 @@ defmodule DbserviceWeb.ChapterController do
             from(u in acc,
               where:
                 fragment(
-                  "EXISTS (SELECT 1 FROM JSONB_ARRAY_ELEMENTS(?) obj WHERE obj->>'subject' = ?)",
+                  "EXISTS (SELECT 1 FROM JSONB_ARRAY_ELEMENTS(?) obj WHERE obj->>'chapter' = ?)",
                   u.name,
                   ^value
                 )
