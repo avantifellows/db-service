@@ -4,7 +4,6 @@ defmodule Dbservice.Tags.Tag do
   use Ecto.Schema
   import Ecto.Changeset
 
-  alias Dbservice.Topics.Topic
   alias Dbservice.Sources.Source
   alias Dbservice.Resources.Resource
 
@@ -14,7 +13,6 @@ defmodule Dbservice.Tags.Tag do
 
     timestamps()
 
-    has_one(:topic, Topic)
     has_one(:source, Source)
     has_one(:resource, Resource)
   end
