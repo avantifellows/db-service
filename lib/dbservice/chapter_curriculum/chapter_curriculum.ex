@@ -1,4 +1,6 @@
 defmodule Dbservice.ChapterCurriculums.ChapterCurriculum do
+  @moduledoc false
+
   use Ecto.Schema
   import Ecto.Changeset
 
