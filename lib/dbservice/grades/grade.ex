@@ -8,6 +8,7 @@ defmodule Dbservice.Grades.Grade do
   alias Dbservice.Chapters.Chapter
   alias Dbservice.Groups.Group
   alias Dbservice.EnrollmentRecords.EnrollmentRecord
+  alias Dbservice.Users.Student
 
   schema "grade" do
     field(:number, :integer)
@@ -21,6 +22,8 @@ defmodule Dbservice.Grades.Grade do
       foreign_key: :group_id,
       where: [group_type: "group"]
     )
+
+    has_many(:student, Student)
   end
 
   @doc false
