@@ -128,7 +128,7 @@ defmodule DbserviceWeb.SwaggerSchema.Resource do
       ResourceTopic:
         swagger_schema do
           title("ResourceTopic")
-          description("A resource-chapter in the application")
+          description("A resource-topic in the application")
 
           properties do
             resource_id(:integer, "Resource id associated with the resource")
@@ -151,6 +151,38 @@ defmodule DbserviceWeb.SwaggerSchema.Resource do
           description("All resources-topics in the application")
           type(:array)
           items(Schema.ref(:ResourceTopic))
+        end
+    }
+  end
+
+  def resource_concept do
+    %{
+      ResourceConcept:
+        swagger_schema do
+          title("ResourceConcept")
+          description("A resource-concept in the application")
+
+          properties do
+            resource_id(:integer, "Resource id associated with the resource")
+            concept_id(:integer, "Concept id associated with the resource")
+          end
+
+          example(%{
+            resource_id: 1,
+            concept_id: 1
+          })
+        end
+    }
+  end
+
+  def resource_concepts do
+    %{
+      ResourceConcepts:
+        swagger_schema do
+          title("ResourceConcepts")
+          description("All resources-topics in the application")
+          type(:array)
+          items(Schema.ref(:ResourceConcept))
         end
     }
   end

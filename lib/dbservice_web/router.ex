@@ -75,6 +75,7 @@ defmodule DbserviceWeb.Router do
     resources("/resource-curriculum", ResourceCurriculumController, except: [:new, :edit])
     resources("/resource-chapter", ResourceChapterController, except: [:new, :edit])
     resources("/resource-topic", ResourceTopicController, except: [:new, :edit])
+    resources("/resource-concept", ResourceConceptController, except: [:new, :edit])
 
     def swagger_info do
       source(["config/.env", "config/.env"])
