@@ -4,13 +4,11 @@ defmodule Dbservice.Tags.Tag do
   use Ecto.Schema
   import Ecto.Changeset
 
-
   schema "tag" do
     field(:name, :string)
     field(:description, :string)
 
     timestamps()
-
   end
 
   @doc false

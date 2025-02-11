@@ -9,7 +9,6 @@ defmodule Dbservice.Purposes.Purpose do
     field(:description, :string)
 
     timestamps()
-
   end
 
   @doc false
