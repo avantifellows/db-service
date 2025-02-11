@@ -4,15 +4,12 @@ defmodule Dbservice.Purposes.Purpose do
   use Ecto.Schema
   import Ecto.Changeset
 
-  alias Dbservice.Resources.Resource
-
   schema "purpose" do
     field(:name, :string)
     field(:description, :string)
 
     timestamps()
 
-    has_many(:resource, Resource)
   end
 
   @doc false

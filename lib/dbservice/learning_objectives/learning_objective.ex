@@ -5,14 +5,12 @@ defmodule Dbservice.LearningObjectives.LearningObjective do
   import Ecto.Changeset
 
   alias Dbservice.Concepts.Concept
-  alias Dbservice.Resources.Resource
 
   schema "learning_objective" do
     field(:title, {:array, :map})
 
     timestamps()
 
-    has_many(:resource, Resource)
     belongs_to(:concept, Concept)
   end
 

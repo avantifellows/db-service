@@ -6,7 +6,6 @@ defmodule Dbservice.Concepts.Concept do
 
   alias Dbservice.Topics.Topic
   alias Dbservice.LearningObjectives.LearningObjective
-  alias Dbservice.Resources.Resource
 
   schema "concept" do
     field(:name, {:array, :map})
@@ -14,7 +13,6 @@ defmodule Dbservice.Concepts.Concept do
     timestamps()
 
     has_many(:learning_objective, LearningObjective)
-    has_many(:resource, Resource)
     belongs_to(:topic, Topic)
   end
 

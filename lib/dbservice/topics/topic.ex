@@ -6,7 +6,6 @@ defmodule Dbservice.Topics.Topic do
 
   alias Dbservice.Chapters.Chapter
   alias Dbservice.Concepts.Concept
-  alias Dbservice.Resources.Resource
 
   schema "topic" do
     field :name, {:array, :map}
@@ -15,7 +14,6 @@ defmodule Dbservice.Topics.Topic do
     timestamps()
 
     has_many(:concept, Concept)
-    has_many(:resource, Resource)
     belongs_to(:chapter, Chapter)
   end
 
