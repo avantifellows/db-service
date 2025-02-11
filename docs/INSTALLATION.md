@@ -44,12 +44,28 @@ Install the following packages using your favorite package manager. Links are pr
     CREATE EXTENSION "uuid-ossp";
     ```
 
-### Recommended Versions
+### Required Versions
 
-For development, we recommend using the following versions:
+The following versions are required for this project:
 
 - Elixir: 1.14.2
 - Erlang/OTP: 25
+
+There are several ways to install these specific versions:
+
+1. **Using Version Managers (Recommended)**
+   - Visit [Version Managers documentation](https://elixir-lang.org/install.html#version-managers)
+   - Popular version managers include asdf and kiex
+
+2. **Using Install Scripts**
+   - Visit [Install Scripts documentation](https://elixir-lang.org/install.html#install-scripts)
+   - Download the install script for your operating system
+   - Modify the script to specify version 1.14.2 before running
+
+3. **Manual Installation**
+   - Download the specific version zip file from [Elixir releases](https://elixir-lang.org/docs)
+   - Extract the contents
+   - Add the `bin` directory to your system's PATH
 
 ## Installation steps
 
