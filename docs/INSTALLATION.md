@@ -55,7 +55,7 @@ There are several ways to install these specific versions:
 
 1. **Using Version Managers (Recommended)**
    - Visit [Version Managers documentation](https://elixir-lang.org/install.html#version-managers)
-   - Popular version managers include asdf and kiex
+   - Popular version managers include asdf and kerl
 
 2. **Using Install Scripts**
    - Visit [Install Scripts documentation](https://elixir-lang.org/install.html#install-scripts)
