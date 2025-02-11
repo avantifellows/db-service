@@ -49,7 +49,7 @@ Install the following packages using your favorite package manager. Links are pr
 The following versions are required for this project:
 
 - Elixir: 1.14.2
-- Erlang/OTP: 25
+- Erlang/OTP: 25.0
 
 There are several ways to install these specific versions:
 
