@@ -15,7 +15,6 @@ defmodule DbserviceWeb.CurriculumView do
       id: curriculum.id,
       name: curriculum.name,
       code: curriculum.code
-      # tag_id: curriculum.tag_id
     }
   end
 end

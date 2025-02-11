@@ -14,7 +14,6 @@ defmodule DbserviceWeb.SwaggerSchema.Subject do
             name(:string, "Subject name")
             code(:string, "Subject Code")
             parent_id(:integer, "Parent subject ID")
-            # tag_id(:integer, "Tag id associated with the subject")
           end
 
           example(%{

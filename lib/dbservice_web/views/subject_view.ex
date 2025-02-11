@@ -1,8 +1,7 @@
 defmodule DbserviceWeb.SubjectView do
   use DbserviceWeb, :view
   alias DbserviceWeb.SubjectView
-  alias Dbservice.Repo
-  alias Dbservice.Languages.Language
+  alias Dbservice.Utils.Util
 
   def render("index.json", %{subject: subject}) do
     render_many(subject, SubjectView, "subject.json")
@@ -13,7 +12,7 @@ defmodule DbserviceWeb.SubjectView do
   end
 
   def render("subject.json", %{subject: subject}) do
-    default_name = get_default_name(subject.name)
+    default_name = Util.get_default_name(subject.name, :subject)
 
     %{
       id: subject.id,
@@ -24,34 +23,5 @@ defmodule DbserviceWeb.SubjectView do
       code: subject.code,
       parent_id: subject.parent_id
     }
-  end
-
-  defp get_english_language_id do
-    case Repo.get_by(Language, name: "English") do
-      %Language{id: id} -> id
-      nil -> nil
-    end
-  end
-
-  defp get_default_name(names) when is_list(names) do
-    english_id = get_english_language_id()
-
-    if english_id do
-      case Enum.find(names, &(&1["lang_id"] == english_id)) do
-        %{"subject" => value} -> value
-        _ -> get_first_name(names)
-      end
-    else
-      get_first_name(names)
-    end
-  end
-
-  defp get_default_name(_), do: nil
-
-  defp get_first_name(names) do
-    case List.first(names) do
-      %{"subject" => value} -> value
-      _ -> nil
-    end
   end
 end
