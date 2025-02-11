@@ -1,6 +1,8 @@
 defmodule DbserviceWeb.ResourceView do
   use DbserviceWeb, :view
   alias DbserviceWeb.ResourceView
+  alias Dbservice.Repo
+  alias Dbservice.Languages.Language
 
   def render("index.json", %{resource: resource}) do
     render_many(resource, ResourceView, "resource.json")
@@ -11,21 +13,51 @@ defmodule DbserviceWeb.ResourceView do
   end
 
   def render("resource.json", %{resource: resource}) do
+    default_name = get_default_name(resource.name)
+
     %{
       id: resource.id,
-      name: resource.name,
+      name: default_name,
+      names: resource.name,
       type: resource.type,
       type_params: resource.type_params,
-      difficulty_level: resource.difficulty_level,
-      curriculum_id: resource.curriculum_id,
-      chapter_id: resource.chapter_id,
-      topic_id: resource.topic_id,
-      source_id: resource.source_id,
-      purpose_id: resource.purpose_id,
-      concept_id: resource.concept_id,
-      learning_objective_id: resource.learning_objective_id,
-      tag_id: resource.tag_id,
+      subtype: resource.subtype,
+      source: resource.source,
+      code: resource.code,
+      purpose_ids: resource.purpose_ids,
+      tag_ids: resource.tag_ids,
+      skill_ids: resource.skill_ids,
+      learning_objective_ids: resource.learning_objective_ids,
       teacher_id: resource.teacher_id
     }
+  end
+
+  defp get_english_language_id do
+    case Repo.get_by(Language, name: "English") do
+      %Language{id: id} -> id
+      nil -> nil
+    end
+  end
+
+  defp get_default_name(names) when is_list(names) do
+    english_id = get_english_language_id()
+
+    if english_id do
+      case Enum.find(names, &(&1["lang_id"] == english_id)) do
+        %{"resource" => value} -> value
+        _ -> get_first_name(names)
+      end
+    else
+      get_first_name(names)
+    end
+  end
+
+  defp get_default_name(_), do: nil
+
+  defp get_first_name(names) do
+    case List.first(names) do
+      %{"resource" => value} -> value
+      _ -> nil
+    end
   end
 end

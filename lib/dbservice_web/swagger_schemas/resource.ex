@@ -14,14 +14,12 @@ defmodule DbserviceWeb.SwaggerSchema.Resource do
             name(:string, "Resource name")
             type(:string, "Resource type")
             type_params(:map, "Parameters of the resource type")
-            difficulty_level(:string, "Difficulty level of a resource")
-            curriculum_id(:integer, "Curriculum id associated with the resource")
-            chapter_id(:integer, "Chapter id associated with the resource")
-            topic_id(:integer, "Topic id associated with the resource")
-            purpose_id(:integer, "Purpose id associated with the resource")
-            concept_id(:integer, "Concept id associated with the resource")
-            learning_objective_id(:integer, "Learning objective id associated with the resource")
-            tag_id(:integer, "Tag id associated with the resource")
+            subtype(:string, "Sub-type of a resource")
+            source(:string, "Source of a resource")
+            code(:string, "Code of a resource")
+            purpose_ids(:array, "Purpose ids associated with the resource")
+            learning_objective_ids(:array, "Learning objective ids associated with the resource")
+            tag_ids(:array, "Tag ids associated with the resource")
             teacher_id(:integer, "Teacher id associated with the resource")
           end
 
@@ -31,14 +29,12 @@ defmodule DbserviceWeb.SwaggerSchema.Resource do
             type_params: %{
               "duration" => "45 minutes"
             },
-            difficulty_level: "medium",
-            curriculum_id: 1,
-            chapter_id: 1,
-            topic_id: 1,
-            purpose_id: 1,
-            concept_id: 1,
-            learning_objective_id: 1,
-            tag_id: 5,
+            subtype: "lecture",
+            source: "youtube",
+            code: "RES_001",
+            purpose_ids: [1, 2, 3],
+            learning_objective_ids: [4, 5, 6],
+            tag_ids: [5, 7, 9],
             teacher_id: 1
           })
         end

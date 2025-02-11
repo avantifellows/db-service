@@ -4,52 +4,41 @@ defmodule Dbservice.Resources.Resource do
   use Ecto.Schema
   import Ecto.Changeset
 
-  alias Dbservice.Curriculums.Curriculum
-  alias Dbservice.Chapters.Chapter
-  alias Dbservice.Topics.Topic
-  alias Dbservice.Sources.Source
-  alias Dbservice.Purposes.Purpose
-  alias Dbservice.Concepts.Concept
-  alias Dbservice.LearningObjectives.LearningObjective
-  alias Dbservice.Tags.Tag
   alias Dbservice.Users.Teacher
 
   schema "resource" do
-    field(:name, :string)
+    field(:name, {:array, :map})
     field(:type, :string)
     field(:type_params, :map)
-    field(:difficulty_level, :string)
+    field(:subtype, :string)
+    field(:source, :string)
+    field(:code, :string)
+    field(:purpose_ids, {:array, :integer})
+    field(:tag_ids, {:array, :integer})
+    field(:skill_ids, {:array, :integer})
+    field(:learning_objective_ids, {:array, :integer})
 
     timestamps()
 
-    belongs_to(:curriculum, Curriculum)
-    belongs_to(:chapter, Chapter)
-    belongs_to(:topic, Topic)
-    belongs_to(:source, Source)
-    belongs_to(:purpose, Purpose)
-    belongs_to(:concept, Concept)
-    belongs_to(:learning_objective, LearningObjective)
-    belongs_to(:tag, Tag)
     belongs_to(:teacher, Teacher)
   end
 
   @doc false
-  def changeset(purpose, attrs) do
-    purpose
+  def changeset(resource, attrs) do
+    resource
     |> cast(attrs, [
       :name,
       :type,
       :type_params,
-      :difficulty_level,
-      :curriculum_id,
-      :chapter_id,
-      :topic_id,
-      :source_id,
-      :purpose_id,
-      :concept_id,
-      :learning_objective_id,
-      :tag_id,
+      :subtype,
+      :source,
+      :code,
+      :purpose_ids,
+      :tag_ids,
+      :skill_ids,
+      :learning_objective_ids,
       :teacher_id
     ])
+    |> validate_required([:name, :type])
   end
 end
