@@ -85,7 +85,7 @@ defmodule DbserviceWeb.ResourceController do
 
   def get_subtypes(conn, %{"type" => type}) do
     subtypes = Resources.list_subtypes_by_type(type)
-    json(conn, %{subtypes: subtypes})
+    json(conn, subtypes)
   end
 
   def create(conn, params) do
