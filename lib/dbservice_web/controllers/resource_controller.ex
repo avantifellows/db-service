@@ -83,6 +83,11 @@ defmodule DbserviceWeb.ResourceController do
     response(201, "Created", Schema.ref(:Resource))
   end
 
+  def get_subtypes(conn, %{"type" => type}) do
+    subtypes = Resources.list_subtypes_by_type(type)
+    json(conn, %{subtypes: subtypes})
+  end
+
   def create(conn, params) do
     case Resources.get_resource_by_name_and_source_id(params["name"], params["source_id"]) do
       nil ->
