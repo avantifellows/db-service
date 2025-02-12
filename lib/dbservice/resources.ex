@@ -43,7 +43,7 @@ defmodule Dbservice.Resources do
   def list_subtypes_by_type(type) do
     query =
       from(r in Resource,
-        where: r.type == ^type,
+        where: r.type == ^type and not is_nil(r.subtype),
         select: r.subtype,
         distinct: true,
         order_by: r.subtype
