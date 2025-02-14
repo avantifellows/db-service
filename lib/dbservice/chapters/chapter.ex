@@ -7,7 +7,6 @@ defmodule Dbservice.Chapters.Chapter do
   alias Dbservice.Grades.Grade
   alias Dbservice.Subjects.Subject
   alias Dbservice.Topics.Topic
-  alias Dbservice.Curriculums.Curriculum
 
   schema "chapter" do
     field :name, {:array, :map}
@@ -18,8 +17,6 @@ defmodule Dbservice.Chapters.Chapter do
     has_many(:topic, Topic)
     belongs_to(:grade, Grade)
     belongs_to(:subject, Subject)
-    # belongs_to(:tag, Tag)
-    belongs_to(:curriculum, Curriculum)
   end
 
   @doc false
@@ -29,8 +26,7 @@ defmodule Dbservice.Chapters.Chapter do
       :name,
       :code,
       :grade_id,
-      :subject_id,
-      :curriculum_id
+      :subject_id
     ])
   end
 end

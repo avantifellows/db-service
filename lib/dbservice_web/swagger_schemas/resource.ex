@@ -20,6 +20,7 @@ defmodule DbserviceWeb.SwaggerSchema.Resource do
             purpose_ids(:array, "Purpose ids associated with the resource")
             learning_objective_ids(:array, "Learning objective ids associated with the resource")
             tag_ids(:array, "Tag ids associated with the resource")
+            skill_ids(:array, "Skill ids associated with the resource")
             teacher_id(:integer, "Teacher id associated with the resource")
           end
 
@@ -35,6 +36,7 @@ defmodule DbserviceWeb.SwaggerSchema.Resource do
             purpose_ids: [1, 2, 3],
             learning_objective_ids: [4, 5, 6],
             tag_ids: [5, 7, 9],
+            skill_ids: [1, 3, 7],
             teacher_id: 1
           })
         end
