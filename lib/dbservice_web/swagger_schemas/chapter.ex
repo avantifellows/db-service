@@ -21,7 +21,7 @@ defmodule DbserviceWeb.SwaggerSchema.Chapter do
             name: "हमारे आस-पास के पदार्थ | Matter in Our Surroundings",
             code: "9C01",
             grade_id: 1,
-            subject_id: 1,
+            subject_id: 1
           })
         end
     }
