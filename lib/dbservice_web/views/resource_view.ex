@@ -2,6 +2,10 @@ defmodule DbserviceWeb.ResourceView do
   use DbserviceWeb, :view
   alias DbserviceWeb.ResourceView
   alias Dbservice.Utils.Util
+  alias Dbservice.Resources.ResourceTopic
+  alias Dbservice.Resources.ResourceChapter
+  alias Dbservice.Repo
+  import Ecto.Query
 
   def render("index.json", %{resource: resource}) do
     render_many(resource, ResourceView, "resource.json")
@@ -13,6 +17,22 @@ defmodule DbserviceWeb.ResourceView do
 
   def render("resource.json", %{resource: resource}) do
     default_name = Util.get_default_name(resource.name, :resource)
+
+    topic_id =
+      Repo.one(
+        from rt in ResourceTopic,
+          where: rt.resource_id == ^resource.id,
+          select: rt.topic_id,
+          limit: 1
+      )
+
+    chapter_id =
+      Repo.one(
+        from rt in ResourceChapter,
+          where: rt.resource_id == ^resource.id,
+          select: rt.chapter_id,
+          limit: 1
+      )
 
     %{
       id: resource.id,
@@ -27,7 +47,9 @@ defmodule DbserviceWeb.ResourceView do
       tag_ids: resource.tag_ids,
       skill_ids: resource.skill_ids,
       learning_objective_ids: resource.learning_objective_ids,
-      teacher_id: resource.teacher_id
+      teacher_id: resource.teacher_id,
+      topic_id: topic_id,
+      chapter_id: chapter_id
     }
   end
 end

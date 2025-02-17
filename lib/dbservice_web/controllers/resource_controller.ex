@@ -5,6 +5,8 @@ defmodule DbserviceWeb.ResourceController do
   alias Dbservice.Repo
   alias Dbservice.Resources
   alias Dbservice.Resources.Resource
+  alias Dbservice.Resources.ResourceTopic
+  alias Dbservice.Resources.ResourceChapter
 
   action_fallback(DbserviceWeb.FallbackController)
 
@@ -33,7 +35,7 @@ defmodule DbserviceWeb.ResourceController do
   end
 
   def index(conn, params) do
-    query =
+    base_query =
       from(m in Resource,
         order_by: [asc: m.id],
         offset: ^params["offset"],
@@ -41,32 +43,47 @@ defmodule DbserviceWeb.ResourceController do
       )
 
     query =
-      Enum.reduce(params, query, fn {key, value}, acc ->
-        case String.to_existing_atom(key) do
-          :offset ->
-            acc
+      Enum.reduce(params, base_query, fn
+        {"topic_id", value}, acc ->
+          from(u in acc,
+            join: rt in ResourceTopic,
+            on: rt.resource_id == u.id,
+            where: rt.topic_id == ^value
+          )
 
-          :limit ->
-            acc
+        {"chapter_id", value}, acc ->
+          from(u in acc,
+            join: rc in ResourceChapter,
+            on: rc.resource_id == u.id,
+            where: rc.chapter_id == ^value
+          )
 
-          :name ->
-            from(u in acc,
-              where:
-                fragment(
-                  "EXISTS (SELECT 1 FROM JSONB_ARRAY_ELEMENTS(?) obj WHERE obj->>'resource' = ?)",
-                  u.name,
-                  ^value
-                )
-            )
+        {key, value}, acc ->
+          case String.to_existing_atom(key) do
+            :offset ->
+              acc
 
-          :resource_type ->
-            from(u in acc,
-              where: fragment("?->>'resource_type' = ?", u.type_params, ^value)
-            )
+            :limit ->
+              acc
 
-          atom ->
-            from(u in acc, where: field(u, ^atom) == ^value)
-        end
+            :name ->
+              from(u in acc,
+                where:
+                  fragment(
+                    "EXISTS (SELECT 1 FROM JSONB_ARRAY_ELEMENTS(?) obj WHERE obj->>'resource' = ?)",
+                    u.name,
+                    ^value
+                  )
+              )
+
+            :resource_type ->
+              from(u in acc,
+                where: fragment("?->>'resource_type' = ?", u.type_params, ^value)
+              )
+
+            atom ->
+              from(u in acc, where: field(u, ^atom) == ^value)
+          end
       end)
 
     resource = Repo.all(query)
