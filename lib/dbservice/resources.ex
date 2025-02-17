@@ -59,15 +59,15 @@ defmodule Dbservice.Resources do
 
   ## Examples
 
-      iex> get_resource_by_name_and_source_id(12)
-      %School{}
+      iex> get_resource_by_name_and_source("abc", "youtube")
+      %Resource{}
 
-      iex> get_resource_by_name_and_source_id(12)
+      iex> get_resource_by_name_and_source("abc", "youtube")
       ** (Ecto.NoResultsError)
 
   """
-  def get_resource_by_name_and_source_id(name, source_id) do
-    Repo.get_by(Resource, name: name, source_id: source_id)
+  def get_resource_by_name_and_source(name, source) do
+    Repo.get_by(Resource, name: name, source: source)
   end
 
   @doc """
