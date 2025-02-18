@@ -7,6 +7,7 @@ defmodule Dbservice.Chapters.Chapter do
   alias Dbservice.Grades.Grade
   alias Dbservice.Subjects.Subject
   alias Dbservice.Topics.Topic
+  alias Dbservice.Resources.Resource
 
   schema "chapter" do
     field :name, {:array, :map}
@@ -17,6 +18,7 @@ defmodule Dbservice.Chapters.Chapter do
     has_many(:topic, Topic)
     belongs_to(:grade, Grade)
     belongs_to(:subject, Subject)
+    many_to_many(:resource, Resource, join_through: "resource_chapter", on_replace: :delete)
   end
 
   @doc false

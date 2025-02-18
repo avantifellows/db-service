@@ -5,6 +5,8 @@ defmodule Dbservice.Resources.Resource do
   import Ecto.Changeset
 
   alias Dbservice.Users.Teacher
+  alias Dbservice.Chapters.Chapter
+  alias Dbservice.Topics.Topic
 
   schema "resource" do
     field(:name, {:array, :map})
@@ -20,6 +22,8 @@ defmodule Dbservice.Resources.Resource do
 
     timestamps()
 
+    many_to_many(:chapter, Chapter, join_through: "resource_chapter", on_replace: :delete)
+    many_to_many(:topic, Topic, join_through: "resource_topic", on_replace: :delete)
     belongs_to(:teacher, Teacher)
   end
 
