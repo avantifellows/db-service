@@ -9,7 +9,7 @@ defmodule Dbservice.Utils.Util do
   alias Dbservice.GroupUsers
   alias Dbservice.Users
 
-  @valid_categories ~w(Gen OBC SC ST Gen-EWS PWD-SC PWD-Gen PWD-OBC PWD-EWS)
+  @valid_categories ~w(Gen OBC SC ST Gen-EWS PWD-SC PWD-Gen PWD-OBC PWD-EWS PWD-ST)
   @valid_genders ~w(Male Female Others)
   @valid_streams ~w(engineering medical pcmb foundation)
 
