@@ -106,7 +106,7 @@ defmodule DbserviceWeb.ResourceController do
   end
 
   def create(conn, params) do
-    case Resources.get_resource_by_name_and_source(params["name"], params["source"]) do
+    case Resources.get_resource_by_type_and_type_params(params["type"], params["type_params"]) do
       nil ->
         create_new_resource(conn, params)
 

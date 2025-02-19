@@ -184,4 +184,40 @@ defmodule DbserviceWeb.SwaggerSchema.Resource do
         end
     }
   end
+
+  def problem_language do
+    %{
+      ProblemLanguage:
+        swagger_schema do
+          title("ProblemLanguage")
+          description("A problem-language in the application")
+
+          properties do
+            res_id(:integer, "Resource id associated with the resource")
+            lang_id(:integer, "Language id associated with the resource")
+            meta_data(:map, "Additional meta data for the session")
+          end
+
+          example(%{
+            res_id: 1,
+            lang_id: 1,
+            meta_data: %{
+              "difficulty" => "medium"
+            }
+          })
+        end
+    }
+  end
+
+  def problem_languages do
+    %{
+      ProblemLanguages:
+        swagger_schema do
+          title("ProblemLanguages")
+          description("All problem-languages in the application")
+          type(:array)
+          items(Schema.ref(:ProblemLanguage))
+        end
+    }
+  end
 end

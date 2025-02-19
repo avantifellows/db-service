@@ -59,15 +59,15 @@ defmodule Dbservice.Resources do
 
   ## Examples
 
-      iex> get_resource_by_name_and_source("abc", "youtube")
+      iex> get_resource_by_type_and_type_params("abc",{"src_link": "youtube"})
       %Resource{}
 
-      iex> get_resource_by_name_and_source("abc", "youtube")
+      iex> get_resource_by_type_and_type_params("abc", {"src_link": "youtube"})
       ** (Ecto.NoResultsError)
 
   """
-  def get_resource_by_name_and_source(name, source) do
-    Repo.get_by(Resource, name: name, source: source)
+  def get_resource_by_type_and_type_params(type, type_params) do
+    Repo.get_by(Resource, type: type, type_params: type_params)
   end
 
   @doc """

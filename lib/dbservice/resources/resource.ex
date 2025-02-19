@@ -43,6 +43,6 @@ defmodule Dbservice.Resources.Resource do
       :learning_objective_ids,
       :teacher_id
     ])
-    |> validate_required([:name, :type])
+    |> validate_required([:type, :type_params])
   end
 end
