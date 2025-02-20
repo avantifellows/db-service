@@ -1,6 +1,11 @@
 defmodule DbserviceWeb.ResourceView do
   use DbserviceWeb, :view
   alias DbserviceWeb.ResourceView
+  alias Dbservice.Utils.Util
+  alias Dbservice.Resources.ResourceTopic
+  alias Dbservice.Resources.ResourceChapter
+  alias Dbservice.Repo
+  import Ecto.Query
 
   def render("index.json", %{resource: resource}) do
     render_many(resource, ResourceView, "resource.json")
@@ -11,21 +16,40 @@ defmodule DbserviceWeb.ResourceView do
   end
 
   def render("resource.json", %{resource: resource}) do
+    default_name = Util.get_default_name(resource.name, :resource)
+
+    topic_id =
+      Repo.one(
+        from rt in ResourceTopic,
+          where: rt.resource_id == ^resource.id,
+          select: rt.topic_id,
+          limit: 1
+      )
+
+    chapter_id =
+      Repo.one(
+        from rt in ResourceChapter,
+          where: rt.resource_id == ^resource.id,
+          select: rt.chapter_id,
+          limit: 1
+      )
+
     %{
       id: resource.id,
-      name: resource.name,
+      name: default_name,
+      names: resource.name,
       type: resource.type,
       type_params: resource.type_params,
-      difficulty_level: resource.difficulty_level,
-      curriculum_id: resource.curriculum_id,
-      chapter_id: resource.chapter_id,
-      topic_id: resource.topic_id,
-      source_id: resource.source_id,
-      purpose_id: resource.purpose_id,
-      concept_id: resource.concept_id,
-      learning_objective_id: resource.learning_objective_id,
-      tag_id: resource.tag_id,
-      teacher_id: resource.teacher_id
+      subtype: resource.subtype,
+      source: resource.source,
+      code: resource.code,
+      purpose_ids: resource.purpose_ids,
+      tag_ids: resource.tag_ids,
+      skill_ids: resource.skill_ids,
+      learning_objective_ids: resource.learning_objective_ids,
+      teacher_id: resource.teacher_id,
+      topic_id: topic_id,
+      chapter_id: chapter_id
     }
   end
 end

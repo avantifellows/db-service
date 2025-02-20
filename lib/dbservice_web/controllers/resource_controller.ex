@@ -5,6 +5,8 @@ defmodule DbserviceWeb.ResourceController do
   alias Dbservice.Repo
   alias Dbservice.Resources
   alias Dbservice.Resources.Resource
+  alias Dbservice.Resources.ResourceTopic
+  alias Dbservice.Resources.ResourceChapter
 
   action_fallback(DbserviceWeb.FallbackController)
 
@@ -33,7 +35,7 @@ defmodule DbserviceWeb.ResourceController do
   end
 
   def index(conn, params) do
-    query =
+    base_query =
       from(m in Resource,
         order_by: [asc: m.id],
         offset: ^params["offset"],
@@ -41,12 +43,47 @@ defmodule DbserviceWeb.ResourceController do
       )
 
     query =
-      Enum.reduce(params, query, fn {key, value}, acc ->
-        case String.to_existing_atom(key) do
-          :offset -> acc
-          :limit -> acc
-          atom -> from(u in acc, where: field(u, ^atom) == ^value)
-        end
+      Enum.reduce(params, base_query, fn
+        {"topic_id", value}, acc ->
+          from(u in acc,
+            join: rt in ResourceTopic,
+            on: rt.resource_id == u.id,
+            where: rt.topic_id == ^value
+          )
+
+        {"chapter_id", value}, acc ->
+          from(u in acc,
+            join: rc in ResourceChapter,
+            on: rc.resource_id == u.id,
+            where: rc.chapter_id == ^value
+          )
+
+        {key, value}, acc ->
+          case String.to_existing_atom(key) do
+            :offset ->
+              acc
+
+            :limit ->
+              acc
+
+            :name ->
+              from(u in acc,
+                where:
+                  fragment(
+                    "EXISTS (SELECT 1 FROM JSONB_ARRAY_ELEMENTS(?) obj WHERE obj->>'resource' = ?)",
+                    u.name,
+                    ^value
+                  )
+              )
+
+            :resource_type ->
+              from(u in acc,
+                where: fragment("?->>'resource_type' = ?", u.type_params, ^value)
+              )
+
+            atom ->
+              from(u in acc, where: field(u, ^atom) == ^value)
+          end
       end)
 
     resource = Repo.all(query)
@@ -63,8 +100,13 @@ defmodule DbserviceWeb.ResourceController do
     response(201, "Created", Schema.ref(:Resource))
   end
 
+  def get_subtypes(conn, %{"type" => type}) do
+    subtypes = Resources.list_subtypes_by_type(type)
+    json(conn, subtypes)
+  end
+
   def create(conn, params) do
-    case Resources.get_resource_by_name_and_source_id(params["name"], params["source_id"]) do
+    case Resources.get_resource_by_type_and_type_params(params["type"], params["type_params"]) do
       nil ->
         create_new_resource(conn, params)
 

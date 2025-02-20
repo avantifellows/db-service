@@ -8,6 +8,7 @@ defmodule Dbservice.Utils.Util do
   alias Dbservice.Groups
   alias Dbservice.GroupUsers
   alias Dbservice.Users
+  alias Dbservice.Languages.Language
 
   def invalidate_future_date(changeset, date_field_atom) do
     utc_now = DateTime.utc_now()
@@ -99,5 +100,47 @@ defmodule Dbservice.Utils.Util do
     end)
 
     {:ok, :updated}
+  end
+
+  def get_default_name(names, entity_type) when is_list(names) do
+    english_id = get_english_language_id()
+    key = entity_type_key(entity_type)
+
+    if english_id do
+      names
+      |> Enum.find(&(&1["lang_id"] == english_id))
+      |> extract_name(key)
+      |> case do
+        nil -> get_first_name(names, key)
+        name -> name
+      end
+    else
+      get_first_name(names, key)
+    end
+  end
+
+  def get_default_name(_, _), do: nil
+
+  @doc """
+  Gets the English language ID from the database.
+  """
+  def get_english_language_id do
+    case Repo.get_by(Language, name: "English") do
+      %Language{id: id} -> id
+      nil -> nil
+    end
+  end
+
+  defp get_first_name(names, key) do
+    names
+    |> List.first()
+    |> extract_name(key)
+  end
+
+  defp extract_name(nil, _key), do: nil
+  defp extract_name(map, key) when is_map(map), do: Map.get(map, key)
+
+  defp entity_type_key(entity_type) when is_atom(entity_type) do
+    Atom.to_string(entity_type)
   end
 end
