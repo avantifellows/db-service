@@ -15,9 +15,10 @@ defmodule Dbservice.Application do
       # Start the PubSub system
       {Phoenix.PubSub, name: Dbservice.PubSub},
       # Start the Endpoint (http/https)
-      DbserviceWeb.Endpoint
+      DbserviceWeb.Endpoint,
       # Start a worker by calling: Dbservice.Worker.start_link(arg)
       # {Dbservice.Worker, arg}
+      {Oban, Application.fetch_env!(:dbservice, Oban)}
     ]
 
     # See https://hexdocs.pm/elixir/Supervisor.html

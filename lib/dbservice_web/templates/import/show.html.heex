@@ -1,0 +1,36 @@
+<div class="mt-8 mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
+    <div class="mb-8">
+      <h1 class="text-3xl font-semibold text-gray-900">Import Details</h1>
+    </div>
+  
+    <div class="bg-white shadow sm:rounded-lg">
+      <div class="px-4 py-5 sm:p-6">
+        <dl class="grid grid-cols-1 gap-x-4 gap-y-6 sm:grid-cols-2">
+          <div class="sm:col-span-1">
+            <dt class="text-sm font-medium text-gray-500">Status</dt>
+            <dd class="mt-1 text-sm text-gray-900"><%= @import.status %></dd>
+          </div>
+  
+          <div class="sm:col-span-1">
+            <dt class="text-sm font-medium text-gray-500">Progress</dt>
+            <dd class="mt-1 text-sm text-gray-900"><%= @import.processed_rows %>/<%= @import.total_rows %> records</dd>
+          </div>
+  
+          <%= if @import.error_count && @import.error_count > 0 do %>
+            <div class="sm:col-span-2">
+              <dt class="text-sm font-medium text-gray-500">Errors (<%= @import.error_count %>)</dt>
+              <dd class="mt-1 text-sm text-gray-900">
+                <div class="mt-2 space-y-2">
+                  <%= for error <- @import.error_details do %>
+                    <div class="text-red-600">
+                      Row <%= error.row %>: <%= error.error %>
+                    </div>
+                  <% end %>
+                </div>
+              </dd>
+            </div>
+          <% end %>
+        </dl>
+      </div>
+    </div>
+  </div>
