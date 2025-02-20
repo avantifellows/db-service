@@ -70,10 +70,22 @@ defmodule Dbservice.Repo.Migrations.ModifyResourceTable do
       remove :source_id
     end
 
-    # 4. Add code column
+    # 4. Add code column and populate it
     alter table(:resource) do
       add :code, :string
     end
+
+    # Update code based on first letter of resource name from JSONB and ID
+    execute """
+    UPDATE resource
+    SET code = UPPER(LEFT(
+      (
+        SELECT elements->>'resource'
+    FROM jsonb_array_elements(name) AS elements
+        LIMIT 1
+      )::text
+    , 1)) || id::text
+    """
 
     # 5. Change purpose_id to purpose_ids array
     alter table(:resource) do
