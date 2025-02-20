@@ -8,6 +8,19 @@ defmodule DbserviceWeb.Router do
     plug(:accepts, ["json"])
   end
 
+  pipeline :browser do
+    plug :accepts, ["html"]
+    plug(:fetch_session)
+    plug(:fetch_flash)
+    plug(:put_secure_browser_headers)
+  end
+
+  scope "/", DbserviceWeb do
+    pipe_through :browser
+
+    resources("/imports", ImportController, only: [:index, :new, :create, :show])
+  end
+
   scope "/api", DbserviceWeb do
     pipe_through(:api)
 

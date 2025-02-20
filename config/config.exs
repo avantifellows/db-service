@@ -63,6 +63,12 @@ config :dbservice, Dbservice.Repo,
   queue_target: 15_000,
   queue_interval: 100_000
 
+# Oban configuration
+config :dbservice, Oban,
+  repo: Dbservice.Repo,
+  plugins: [Oban.Plugins.Pruner],
+  queues: [imports: 10]
+
 # Import environment-specific config. This must remain at the bottom
 # of this file so it overrides the configuration defined above.
 import_config "#{config_env()}.exs"
