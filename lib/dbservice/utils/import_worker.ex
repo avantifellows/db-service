@@ -169,25 +169,29 @@ defmodule Dbservice.DataImport.ImportWorker do
   # New function to map sheet column names to database field names
   defp map_fields(record) do
     # First, map all string fields
-    base_record = Enum.reduce(@field_mapping, %{}, fn {sheet_column, db_field}, acc ->
-      case Map.get(record, sheet_column) do
-        nil -> acc
-        value -> Map.put(acc, db_field, value)
-      end
-    end)
+    base_record =
+      Enum.reduce(@field_mapping, %{}, fn {sheet_column, db_field}, acc ->
+        case Map.get(record, sheet_column) do
+          nil -> acc
+          value -> Map.put(acc, db_field, value)
+        end
+      end)
 
     # Then handle boolean fields
-    bool_record = Enum.reduce(@bool_fields, base_record, fn field, acc ->
-      case Map.get(base_record, field) do
-        "TRUE" -> Map.put(acc, field, true)
-        "FALSE" -> Map.put(acc, field, false)
-        _ -> acc
-      end
-    end)
+    bool_record =
+      Enum.reduce(@bool_fields, base_record, fn field, acc ->
+        case Map.get(base_record, field) do
+          "TRUE" -> Map.put(acc, field, true)
+          "FALSE" -> Map.put(acc, field, false)
+          _ -> acc
+        end
+      end)
 
     # Finally, get grade_id if grade is present
     case Map.get(bool_record, "grade") do
-      nil -> bool_record
+      nil ->
+        bool_record
+
       grade ->
         case Grades.get_grade_by_number(grade) do
           {:ok, grade_record} -> Map.put(bool_record, "grade_id", grade_record.id)
@@ -208,7 +212,9 @@ defmodule Dbservice.DataImport.ImportWorker do
 
       existing_student ->
         user = Users.get_user!(existing_student.user_id)
-        with {:ok, updated_student} <- Users.update_student_with_user(existing_student, user, record),
+
+        with {:ok, updated_student} <-
+               Users.update_student_with_user(existing_student, user, record),
              {:ok, _} <- DataImport.StudentEnrollment.create_enrollments(user, record) do
           {:ok, updated_student}
         else

@@ -22,14 +22,15 @@ defmodule Dbservice.DataImport.StudentEnrollment do
   end
 
   defp create_auth_group_enrollment(user_id, %{"auth_group" => auth_group_name} = params) do
-
     case AuthGroups.get_auth_group_by_name(auth_group_name) do
       nil ->
         {:error, :auth_group_not_found}
+
       auth_group ->
         case Groups.get_group_by_child_id_and_type(auth_group.id, "auth_group") do
           nil ->
             {:error, :group_not_found}
+
           group ->
             create_or_update_enrollment(user_id, group, params)
         end
@@ -42,10 +43,12 @@ defmodule Dbservice.DataImport.StudentEnrollment do
     case Schools.get_school_by_code(school_code) do
       nil ->
         {:error, :school_not_found}
+
       school ->
         case Groups.get_group_by_child_id_and_type(school.id, "school") do
           nil ->
             {:error, :group_not_found}
+
           group ->
             create_or_update_enrollment(user_id, group, params)
         end
@@ -58,10 +61,12 @@ defmodule Dbservice.DataImport.StudentEnrollment do
     case Batches.get_batch_by_batch_id(batch_id) do
       nil ->
         {:error, :batch_not_found}
+
       batch ->
         case Groups.get_group_by_child_id_and_type(batch.id, "batch") do
           nil ->
             {:error, :group_not_found}
+
           group ->
             create_or_update_enrollment(user_id, group, params)
         end
@@ -74,10 +79,12 @@ defmodule Dbservice.DataImport.StudentEnrollment do
     case Grades.get_grade_by_number(grade) do
       nil ->
         {:error, :grade_not_found}
+
       grade_record ->
         case Groups.get_group_by_child_id_and_type(grade_record.id, "grade") do
           nil ->
             {:error, :group_not_found}
+
           group ->
             create_or_update_enrollment(user_id, group, params)
         end
@@ -97,6 +104,7 @@ defmodule Dbservice.DataImport.StudentEnrollment do
     case GroupUsers.get_group_user_by_user_id_and_group_id(user_id, group.id) do
       nil ->
         create_new_group_user(group, group_user_params)
+
       existing_group_user ->
         update_existing_group_user(existing_group_user, group_user_params)
     end
