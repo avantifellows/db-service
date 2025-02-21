@@ -46,7 +46,8 @@ defmodule DbserviceWeb.ImportController do
     sheet_id = extract_sheet_id(url)
 
     # Convert to CSV download URL - using the export API with key parameters
-    csv_url = "https://docs.google.com/spreadsheets/d/#{sheet_id}/export?format=csv&id=#{sheet_id}"
+    csv_url =
+      "https://docs.google.com/spreadsheets/d/#{sheet_id}/export?format=csv&id=#{sheet_id}"
 
     # Set up headers to mimic browser request
     headers = [
@@ -59,7 +60,7 @@ defmodule DbserviceWeb.ImportController do
     path = Path.join(["priv", "static", "uploads", filename])
 
     # Make request with headers and handle redirects
-    case HTTPoison.get(csv_url, headers, [follow_redirect: true, max_redirects: 5]) do
+    case HTTPoison.get(csv_url, headers, follow_redirect: true, max_redirects: 5) do
       {:ok, %{status_code: 200, body: content}} when byte_size(content) > 0 ->
         # Ensure directory exists
         File.mkdir_p!(Path.dirname(path))
@@ -70,9 +71,11 @@ defmodule DbserviceWeb.ImportController do
             case File.stat(path) do
               {:ok, %{size: size}} when size > 0 ->
                 {:ok, filename}
+
               _ ->
                 {:error, "File was created but is empty"}
             end
+
           {:error, reason} ->
             {:error, "Failed to write file: #{reason}"}
         end

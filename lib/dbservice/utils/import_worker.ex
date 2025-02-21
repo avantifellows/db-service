@@ -3,6 +3,7 @@ defmodule Dbservice.DataImport.ImportWorker do
 
   alias Dbservice.DataImport
   alias Dbservice.Users
+  alias Dbservice.Grades
 
   # Field mapping from sheet columns to database fields
   @field_mapping %{
@@ -37,6 +38,7 @@ defmodule Dbservice.DataImport.ImportWorker do
     "student_percentage_in_grade_10_science" => "percentage_in_grade_10_science",
     "student_percentage_in_grade_10_math" => "percentage_in_grade_10_math",
     "student_percentage_in_grade_10_english" => "percentage_in_grade_10_english",
+    # User fields
     "user_first_name" => "first_name",
     "user_last_name" => "last_name",
     "user_email" => "email",
@@ -49,10 +51,25 @@ defmodule Dbservice.DataImport.ImportWorker do
     "user_district" => "district",
     "user_state" => "state",
     "user_pincode" => "pincode",
+    # Boolean fields
     "student_physically_handicapped" => "physically_handicapped",
     "student_has_category_certificate" => "has_category_certificate",
-    "student_has_air_conditioner" => "has_air_conditioner"
+    "student_has_air_conditioner" => "has_air_conditioner",
+    # Additional fields that stay the same
+    "student_id" => "student_id",
+    "academic_year" => "academic_year",
+    "start_date" => "start_date",
+    "grade" => "grade",
+    "school_code" => "school_code",
+    "batch_id" => "batch_id",
+    "auth_group" => "auth_group"
   }
+
+  @bool_fields [
+    "physically_handicapped",
+    "has_category_certificate",
+    "has_air_conditioner"
+  ]
 
   @impl Oban.Worker
   def perform(%Oban.Job{args: %{"id" => import_id}}) do
@@ -151,24 +168,52 @@ defmodule Dbservice.DataImport.ImportWorker do
 
   # New function to map sheet column names to database field names
   defp map_fields(record) do
-    Enum.reduce(@field_mapping, %{}, fn {sheet_column, db_field}, acc ->
+    # First, map all string fields
+    base_record = Enum.reduce(@field_mapping, %{}, fn {sheet_column, db_field}, acc ->
       case Map.get(record, sheet_column) do
         nil -> acc
         value -> Map.put(acc, db_field, value)
       end
     end)
-    # Keep fields that don't need mapping
-    |> Map.merge(Map.take(record, ["student_id"]))
+
+    # Then handle boolean fields
+    bool_record = Enum.reduce(@bool_fields, base_record, fn field, acc ->
+      case Map.get(base_record, field) do
+        "TRUE" -> Map.put(acc, field, true)
+        "FALSE" -> Map.put(acc, field, false)
+        _ -> acc
+      end
+    end)
+
+    # Finally, get grade_id if grade is present
+    case Map.get(bool_record, "grade") do
+      nil -> bool_record
+      grade ->
+        case Grades.get_grade_by_number(grade) do
+          {:ok, grade_record} -> Map.put(bool_record, "grade_id", grade_record.id)
+          _ -> bool_record
+        end
+    end
   end
 
   defp process_student_record(record) do
     case Users.get_student_by_student_id(record["student_id"]) do
       nil ->
-        Users.create_student_with_user(record)
+        with {:ok, student} <- Users.create_student_with_user(record),
+             {:ok, _} <- DataImport.StudentEnrollment.create_enrollments(student, record) do
+          {:ok, student}
+        else
+          {:error, _} = error -> error
+        end
 
       existing_student ->
         user = Users.get_user!(existing_student.user_id)
-        Users.update_student_with_user(existing_student, user, record)
+        with {:ok, updated_student} <- Users.update_student_with_user(existing_student, user, record),
+             {:ok, _} <- DataImport.StudentEnrollment.create_enrollments(user, record) do
+          {:ok, updated_student}
+        else
+          {:error, _} = error -> error
+        end
     end
   end
 end

@@ -16,7 +16,15 @@ defmodule Dbservice.DataImport.Import do
 
   def changeset(import, attrs) do
     import
-    |> cast(attrs, [:filename, :status, :type, :total_rows, :processed_rows, :error_count, :error_details])
+    |> cast(attrs, [
+      :filename,
+      :status,
+      :type,
+      :total_rows,
+      :processed_rows,
+      :error_count,
+      :error_details
+    ])
     |> validate_required([:filename, :status, :type])
   end
 end
