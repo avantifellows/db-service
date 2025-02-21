@@ -1,4 +1,12 @@
 defmodule Dbservice.DataImport.StudentEnrollment do
+  @moduledoc """
+  This module handles the student enrollment process by assigning users to different
+  groups such as auth groups, schools, batches, and grades.
+
+  The `create_enrollments/2` function ensures that a user is enrolled in all
+  applicable groups by delegating to specific enrollment functions for each group type.
+  """
+
   alias Dbservice.Groups
   alias Dbservice.GroupUsers
   alias Dbservice.AuthGroups
