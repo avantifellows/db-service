@@ -57,7 +57,8 @@ defmodule Dbservice.MixProject do
       {:observer_cli, "~> 1.7"},
       {:oban, "~> 2.13"},
       {:csv, "~> 3.0"},
-      {:httpoison, "~> 2.0"}
+      {:httpoison, "~> 2.0"},
+      {:tailwind, "~> 0.2", runtime: Mix.env() == :dev}
     ]
   end
 
@@ -72,7 +73,11 @@ defmodule Dbservice.MixProject do
       setup: ["deps.get", "ecto.setup"],
       "ecto.setup": ["ecto.create", "ecto.migrate", "run priv/repo/seeds.exs"],
       "ecto.reset": ["ecto.drop", "ecto.setup"],
-      test: ["ecto.create --quiet", "ecto.migrate --quiet", "test"]
+      test: ["ecto.create --quiet", "ecto.migrate --quiet", "test"],
+      "assets.deploy": [
+        "tailwind dbservice --minify",
+        "phx.digest"
+      ]
     ]
   end
 end
