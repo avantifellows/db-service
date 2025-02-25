@@ -7,6 +7,7 @@ defmodule DbserviceWeb.ResourceController do
   alias Dbservice.Resources.Resource
   alias Dbservice.Resources.ResourceTopic
   alias Dbservice.Resources.ResourceChapter
+  alias Dbservice.Resources.ResourceCurriculum
 
   action_fallback(DbserviceWeb.FallbackController)
 
@@ -182,6 +183,69 @@ defmodule DbserviceWeb.ResourceController do
       conn
       |> put_status(:ok)
       |> render("show.json", resource: resource)
+    end
+  end
+
+  def curriculum_resources(conn, params) do
+    query =
+      from(r in Resource,
+        join: rc in ResourceCurriculum,
+        on: rc.resource_id == r.id,
+        where:
+          rc.curriculum_id == ^params["curriculum_id"] and rc.grade_id == ^params["grade_id"],
+        order_by: [asc: r.id]
+      )
+
+    query =
+      query
+      |> filter_by_subject(params)
+      |> filter_by_type(params)
+      |> filter_by_subtype(params)
+      |> apply_pagination(params)
+
+    resources = Repo.all(query)
+    render(conn, "index.json", resource: resources)
+  end
+
+  # Helper functions for each filter
+  defp filter_by_subject(query, %{"subject_id" => subject_id})
+       when not is_nil(subject_id) do
+    from(r in query,
+      join: rc in ResourceCurriculum,
+      on: rc.resource_id == r.id,
+      where: rc.subject_id == ^subject_id
+    )
+  end
+
+  defp filter_by_subject(query, _), do: query
+
+  defp filter_by_type(query, %{"type" => type}) when not is_nil(type) do
+    from(r in query, where: r.type == ^type)
+  end
+
+  defp filter_by_type(query, _), do: query
+
+  defp filter_by_subtype(query, %{"subtype" => subtype}) when not is_nil(subtype) do
+    from(r in query, where: r.subtype == ^subtype)
+  end
+
+  defp filter_by_subtype(query, _), do: query
+
+  defp apply_pagination(query, params) do
+    case Map.get(params, "limit") do
+      nil ->
+        query
+
+      limit_str ->
+        limit = String.to_integer(limit_str)
+
+        offset =
+          case Map.get(params, "offset") do
+            nil -> 0
+            offset_str -> String.to_integer(offset_str)
+          end
+
+        from(r in query, limit: ^limit, offset: ^offset)
     end
   end
 end

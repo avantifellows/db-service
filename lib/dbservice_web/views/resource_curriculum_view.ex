@@ -15,6 +15,8 @@ defmodule DbserviceWeb.ResourceCurriculumView do
       id: resource_curriculum.id,
       resource_id: resource_curriculum.resource_id,
       curriculum_id: resource_curriculum.curriculum_id,
+      grade_id: resource_curriculum.grade_id,
+      subject_id: resource_curriculum.subject_id,
       difficulty_level: resource_curriculum.difficulty_level
     }
   end

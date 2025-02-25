@@ -66,6 +66,8 @@ defmodule DbserviceWeb.SwaggerSchema.Resource do
             resource_id(:integer, "Resource id associated with the resource")
             curriculum_id(:integer, "Curriculum id associated with the resource")
             difficulty_level(:string, "Difficulty level of a resource")
+            grade_id(:integer, "Grade id associated with the resource")
+            subject_id(:integer, "Subject id associated with the resource")
           end
 
           example(%{
