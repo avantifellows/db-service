@@ -937,8 +937,8 @@
   // node_modules/phoenix_live_view/priv/static/phoenix_live_view.esm.js
   var CONSECUTIVE_RELOADS = "consecutive-reloads";
   var MAX_RELOADS = 10;
-  var RELOAD_JITTER_MIN = 1e3;
-  var RELOAD_JITTER_MAX = 3e3;
+  var RELOAD_JITTER_MIN = 5e3;
+  var RELOAD_JITTER_MAX = 1e4;
   var FAILSAFE_JITTER = 3e4;
   var PHX_EVENT_CLASSES = [
     "phx-click-loading",
@@ -1294,7 +1294,7 @@
       let { prefix, suffix } = titleEl.dataset;
       document.title = `${prefix || ""}${str}${suffix || ""}`;
     },
-    debounce(el, event, phxDebounce, defaultDebounce, phxThrottle, defaultThrottle, callback) {
+    debounce(el, event, phxDebounce, defaultDebounce, phxThrottle, defaultThrottle, asyncFilter, callback) {
       let debounce = el.getAttribute(phxDebounce);
       let throttle = el.getAttribute(phxThrottle);
       if (debounce === "") {
@@ -1331,10 +1331,18 @@
             } else {
               callback();
               this.putPrivate(el, THROTTLED, true);
-              setTimeout(() => this.triggerCycle(el, DEBOUNCE_TRIGGER), timeout);
+              setTimeout(() => {
+                if (asyncFilter()) {
+                  this.triggerCycle(el, DEBOUNCE_TRIGGER);
+                }
+              }, timeout);
             }
           } else {
-            setTimeout(() => this.triggerCycle(el, DEBOUNCE_TRIGGER, currentCycle), timeout);
+            setTimeout(() => {
+              if (asyncFilter()) {
+                this.triggerCycle(el, DEBOUNCE_TRIGGER, currentCycle);
+              }
+            }, timeout);
           }
           let form = el.form;
           if (form && this.once(form, "bind-debounce")) {
@@ -3111,7 +3119,7 @@ within:
       this.href = href;
     }
     isMain() {
-      return this.el.getAttribute(PHX_MAIN) !== null;
+      return this.el.hasAttribute(PHX_MAIN);
     }
     connectParams() {
       let params = this.liveSocket.params(this.el);
@@ -3574,13 +3582,15 @@ within:
         return this.onLiveRedirect(resp.live_redirect);
       }
       this.log("error", () => ["unable to join", resp]);
-      return this.liveSocket.reloadWithJitter(this);
+      if (this.liveSocket.isConnected()) {
+        this.liveSocket.reloadWithJitter(this);
+      }
     }
     onClose(reason) {
       if (this.isDestroyed()) {
         return;
       }
-      if (this.isJoinPending() && document.visibilityState !== "hidden" || this.liveSocket.hasPendingLink() && reason !== "leave") {
+      if (this.liveSocket.hasPendingLink() && reason !== "leave") {
         return this.liveSocket.reloadWithJitter(this);
       }
       this.destroyAllChildren();
@@ -3594,7 +3604,9 @@ within:
     }
     onError(reason) {
       this.onClose(reason);
-      this.log("error", () => ["view crashed", reason]);
+      if (this.liveSocket.isConnected()) {
+        this.log("error", () => ["view crashed", reason]);
+      }
       if (!this.liveSocket.isUnloaded()) {
         this.displayError();
       }
@@ -4077,6 +4089,7 @@ within:
       this.hooks = opts.hooks || {};
       this.uploaders = opts.uploaders || {};
       this.loaderTimeout = opts.loaderTimeout || LOADER_TIMEOUT;
+      this.reloadWithJitterTimer = null;
       this.maxReloads = opts.maxReloads || MAX_RELOADS;
       this.reloadJitterMin = opts.reloadJitterMin || RELOAD_JITTER_MIN;
       this.reloadJitterMax = opts.reloadJitterMax || RELOAD_JITTER_MAX;
@@ -4139,6 +4152,8 @@ within:
         if (this.joinRootViews()) {
           this.bindTopLevelEvents();
           this.socket.connect();
+        } else if (this.main) {
+          this.socket.connect();
         }
       };
       if (["complete", "loaded", "interactive"].indexOf(document.readyState) >= 0) {
@@ -4148,7 +4163,13 @@ within:
       }
     }
     disconnect(callback) {
+      clearTimeout(this.reloadWithJitterTimer);
       this.socket.disconnect(callback);
+    }
+    replaceTransport(transport) {
+      clearTimeout(this.reloadWithJitterTimer);
+      this.socket.replaceTransport(transport);
+      this.connect();
     }
     execJS(el, encodedJS, eventType = null) {
       this.owner(el, (view) => js_default.exec(eventType, encodedJS, view, el));
@@ -4224,18 +4245,24 @@ within:
       return fakePush;
     }
     reloadWithJitter(view, log) {
-      view.destroy();
+      clearTimeout(this.reloadWithJitterTimer);
       this.disconnect();
       let minMs = this.reloadJitterMin;
       let maxMs = this.reloadJitterMax;
       let afterMs = Math.floor(Math.random() * (maxMs - minMs + 1)) + minMs;
       let tries = browser_default.updateLocal(this.localStorage, window.location.pathname, CONSECUTIVE_RELOADS, 0, (count) => count + 1);
-      log ? log() : this.log(view, "join", () => [`encountered ${tries} consecutive reloads`]);
       if (tries > this.maxReloads) {
-        this.log(view, "join", () => [`exceeded ${this.maxReloads} consecutive reloads. Entering failsafe mode`]);
         afterMs = this.failsafeJitter;
       }
-      setTimeout(() => {
+      this.reloadWithJitterTimer = setTimeout(() => {
+        if (view.isDestroyed() || view.isConnected()) {
+          return;
+        }
+        view.destroy();
+        log ? log() : this.log(view, "join", () => [`encountered ${tries} consecutive reloads`]);
+        if (tries > this.maxReloads) {
+          this.log(view, "join", () => [`exceeded ${this.maxReloads} consecutive reloads. Entering failsafe mode`]);
+        }
         if (this.hasPendingLink()) {
           window.location = this.pendingLink;
         } else {
@@ -4268,7 +4295,7 @@ within:
           let view = this.newRootView(rootEl);
           view.setHref(this.getHref());
           view.join();
-          if (rootEl.getAttribute(PHX_MAIN)) {
+          if (rootEl.hasAttribute(PHX_MAIN)) {
             this.main = view;
           }
         }
@@ -4294,7 +4321,7 @@ within:
             dom_default.findPhxSticky(document).forEach((el) => newMainEl.appendChild(el));
             this.outgoingMainEl.replaceWith(newMainEl);
             this.outgoingMainEl = null;
-            callback && callback();
+            callback && requestAnimationFrame(callback);
             onDone();
           });
         }
@@ -4338,6 +4365,7 @@ within:
         this.roots[id].destroy();
         delete this.roots[id];
       }
+      this.main = null;
     }
     destroyViewByEl(el) {
       let root = this.getRootById(el.getAttribute(PHX_ROOT_ID));
@@ -4485,7 +4513,7 @@ within:
           let windowBinding = this.binding(`window-${event}`);
           let targetPhxEvent = e.target.getAttribute && e.target.getAttribute(binding);
           if (targetPhxEvent) {
-            this.debounce(e.target, e, () => {
+            this.debounce(e.target, e, browserEventName, () => {
               this.withinOwners(e.target, (view) => {
                 callback(e, event, view, e.target, targetPhxEvent, null);
               });
@@ -4493,7 +4521,7 @@ within:
           } else {
             dom_default.all(document, `[${windowBinding}]`, (el) => {
               let phxEvent = el.getAttribute(windowBinding);
-              this.debounce(el, e, () => {
+              this.debounce(el, e, browserEventName, () => {
                 this.withinOwners(el, (view) => {
                   callback(e, event, view, el, phxEvent, "window");
                 });
@@ -4527,7 +4555,7 @@ within:
         if (target.getAttribute("href") === "#") {
           e.preventDefault();
         }
-        this.debounce(target, e, () => {
+        this.debounce(target, e, "click", () => {
           this.withinOwners(target, (view) => {
             js_default.exec("click", phxEvent, view, target, ["push", { data: this.eventMeta("click", e, target) }]);
           });
@@ -4691,7 +4719,7 @@ within:
             return;
           }
           dom_default.putPrivate(input, "prev-iteration", { at: currentIterations, type });
-          this.debounce(input, e, () => {
+          this.debounce(input, e, type, () => {
             this.withinOwners(dispatcher, (view) => {
               dom_default.putPrivate(input, PHX_HAS_FOCUSED, true);
               if (!dom_default.isTextualInput(input)) {
@@ -4703,12 +4731,20 @@ within:
         }, false);
       }
     }
-    debounce(el, event, callback) {
+    debounce(el, event, eventType, callback) {
+      if (eventType === "blur" || eventType === "focusout") {
+        return callback();
+      }
       let phxDebounce = this.binding(PHX_DEBOUNCE);
       let phxThrottle = this.binding(PHX_THROTTLE);
       let defaultDebounce = this.defaults.debounce.toString();
       let defaultThrottle = this.defaults.throttle.toString();
-      dom_default.debounce(el, event, phxDebounce, defaultDebounce, phxThrottle, defaultThrottle, callback);
+      this.withinOwners(el, (view) => {
+        let asyncFilter = () => !view.isDestroyed() && document.body.contains(el);
+        dom_default.debounce(el, event, phxDebounce, defaultDebounce, phxThrottle, defaultThrottle, asyncFilter, () => {
+          callback();
+        });
+      });
     }
     silenceEvents(callback) {
       this.silenced = true;
@@ -4768,7 +4804,9 @@ within:
 
   // js/app.js
   var csrfToken = document.querySelector("meta[name='csrf-token']").getAttribute("content");
-  var liveSocket = new LiveSocket("/live", Socket, { params: { _csrf_token: csrfToken } });
+  var liveSocket = new LiveSocket("/live", Socket, {
+    params: { _csrf_token: csrfToken }
+  });
   liveSocket.connect();
   window.liveSocket = liveSocket;
 })();
