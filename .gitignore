@@ -30,3 +30,9 @@ dbservice-*.tar
 
 # Ignore mix.lock file
 mix.lock
+
+# Ignore node_modules
+/assets/node_modules
+
+# Ignore uploades folder
+/priv/static/uploads

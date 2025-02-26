@@ -3,7 +3,7 @@ defmodule Dbservice.DataImport.ImportWorker do
   This module defines a worker for processing student data imports using Oban.
 
   It reads CSV files, maps their fields to the database schema, and processes
-  student records by creating or updating them in the database. It also 
+  student records by creating or updating them in the database. It also
   handles student enrollments based on the imported data.
 
   The worker updates the import record's status and keeps track of processing
@@ -214,7 +214,8 @@ defmodule Dbservice.DataImport.ImportWorker do
     case Users.get_student_by_student_id(record["student_id"]) do
       nil ->
         with {:ok, student} <- Users.create_student_with_user(record),
-             {:ok, _} <- DataImport.StudentEnrollment.create_enrollments(student, record) do
+             student <- Dbservice.Repo.preload(student, [:user]),
+             {:ok, _} <- DataImport.StudentEnrollment.create_enrollments(student.user, record) do
           {:ok, student}
         else
           {:error, _} = error -> error
