@@ -84,9 +84,10 @@ defmodule Dbservice.DataImport.ImportWorker do
   @impl Oban.Worker
   def perform(%Oban.Job{args: %{"id" => import_id}}) do
     import_record = DataImport.get_import!(import_id)
+    total_rows = count_total_rows(import_record.filename)
 
     # Update status to processing
-    DataImport.update_import(import_record, %{status: "processing"})
+    DataImport.update_import(import_record, %{status: "processing", total_rows: total_rows})
 
     # Process the file based on type
     case import_record.type do
@@ -214,6 +215,15 @@ defmodule Dbservice.DataImport.ImportWorker do
           _ -> record
         end
     end
+  end
+
+  defp count_total_rows(filename) do
+    path = Path.join(["priv", "static", "uploads", filename])
+
+    path
+    |> File.stream!()
+    |> CSV.decode!(headers: true, separator: ?;)
+    |> Enum.count()
   end
 
   defp process_student_record(record) do

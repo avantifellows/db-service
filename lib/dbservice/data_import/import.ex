@@ -12,6 +12,8 @@ defmodule Dbservice.DataImport.Import do
     field :processed_rows, :integer
     field :error_count, :integer, default: 0
     field :error_details, {:array, :map}, default: []
+    field :start_row, :integer
+    field :completed_at, :utc_datetime
 
     timestamps()
   end
