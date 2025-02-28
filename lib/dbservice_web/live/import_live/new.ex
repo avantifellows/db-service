@@ -45,9 +45,6 @@ defmodule DbserviceWeb.ImportLive.New do
             |> Map.put(:action, :validate)
 
           {:noreply, assign(socket, changeset: changeset, submitting: false)}
-
-        {:error, changeset} ->
-          {:noreply, assign(socket, changeset: changeset, submitting: false)}
       end
     end
   end
