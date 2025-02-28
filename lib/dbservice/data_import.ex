@@ -151,29 +151,27 @@ defmodule Dbservice.DataImport do
   end
 
   defp download_google_sheet(url) do
-    sheet_id = extract_sheet_id(url)
+    case extract_sheet_id(url) do
+      sheet_id when is_binary(sheet_id) ->
+        with {:ok, content} <- fetch_google_sheet(sheet_id),
+             {:ok, filename} <- save_csv_file(content) do
+          {:ok, filename}
+        end
 
+      error ->
+        {:error, "Invalid sheet ID: #{inspect(error)}"}
+    end
+  end
+
+  defp fetch_google_sheet(sheet_id) do
     csv_url =
       "https://docs.google.com/spreadsheets/d/#{sheet_id}/export?format=csv&id=#{sheet_id}"
 
     headers = [{"User-Agent", "Mozilla/5.0"}, {"Accept", "text/csv,application/csv"}]
-    filename = "#{Ecto.UUID.generate()}.csv"
-    path = Path.join(["priv", "static", "uploads", filename])
 
     case HTTPoison.get(csv_url, headers, follow_redirect: true, max_redirects: 5) do
       {:ok, %{status_code: 200, body: content}} when byte_size(content) > 0 ->
-        File.mkdir_p!(Path.dirname(path))
-
-        case File.write(path, content) do
-          :ok ->
-            case File.stat(path) do
-              {:ok, %{size: size}} when size > 0 -> {:ok, filename}
-              _ -> {:error, "File was created but is empty"}
-            end
-
-          {:error, reason} ->
-            {:error, "Failed to write file: #{reason}"}
-        end
+        {:ok, content}
 
       {:ok, %{status_code: status_code}} ->
         {:error, "Unexpected status code: #{status_code}"}
@@ -183,6 +181,25 @@ defmodule Dbservice.DataImport do
 
       {:error, %HTTPoison.Error{reason: reason}} ->
         {:error, "HTTP request failed: #{reason}"}
+    end
+  end
+
+  defp save_csv_file(content) do
+    filename = "#{Ecto.UUID.generate()}.csv"
+    path = Path.join(["priv", "static", "uploads", filename])
+
+    File.mkdir_p!(Path.dirname(path))
+
+    case File.write(path, content) do
+      :ok -> validate_file(path, filename)
+      {:error, reason} -> {:error, "Failed to write file: #{reason}"}
+    end
+  end
+
+  defp validate_file(path, filename) do
+    case File.stat(path) do
+      {:ok, %{size: size}} when size > 0 -> {:ok, filename}
+      _ -> {:error, "File was created but is empty"}
     end
   end
 
