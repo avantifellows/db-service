@@ -156,6 +156,8 @@ defmodule Dbservice.DataImport do
         with {:ok, content} <- fetch_google_sheet(sheet_id),
              {:ok, filename} <- save_csv_file(content) do
           {:ok, filename}
+        else
+          {:error, reason} -> {:error, "Failed to download or save file: #{inspect(reason)}"}
         end
 
       error ->

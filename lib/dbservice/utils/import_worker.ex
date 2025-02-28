@@ -178,34 +178,40 @@ defmodule Dbservice.DataImport.ImportWorker do
 
   # New function to map sheet column names to database field names
   defp map_fields(record) do
-    # First, map all string fields
-    base_record =
-      Enum.reduce(@field_mapping, %{}, fn {sheet_column, db_field}, acc ->
-        case Map.get(record, sheet_column) do
-          nil -> acc
-          value -> Map.put(acc, db_field, value)
-        end
-      end)
+    record
+    |> map_string_fields()
+    |> map_boolean_fields()
+    |> add_grade_id()
+  end
 
-    # Then handle boolean fields
-    bool_record =
-      Enum.reduce(@bool_fields, base_record, fn field, acc ->
-        case Map.get(base_record, field) do
-          "TRUE" -> Map.put(acc, field, true)
-          "FALSE" -> Map.put(acc, field, false)
-          _ -> acc
-        end
-      end)
+  defp map_string_fields(record) do
+    Enum.reduce(@field_mapping, %{}, fn {sheet_column, db_field}, acc ->
+      case Map.get(record, sheet_column) do
+        nil -> acc
+        value -> Map.put(acc, db_field, value)
+      end
+    end)
+  end
 
-    # Finally, get grade_id if grade is present
-    case Map.get(bool_record, "grade") do
+  defp map_boolean_fields(record) do
+    Enum.reduce(@bool_fields, record, fn field, acc ->
+      case Map.get(acc, field) do
+        "TRUE" -> Map.put(acc, field, true)
+        "FALSE" -> Map.put(acc, field, false)
+        _ -> acc
+      end
+    end)
+  end
+
+  defp add_grade_id(record) do
+    case Map.get(record, "grade") do
       nil ->
-        bool_record
+        record
 
       grade ->
         case Grades.get_grade_by_number(grade) do
-          {:ok, grade_record} -> Map.put(bool_record, "grade_id", grade_record.id)
-          _ -> bool_record
+          {:ok, grade_record} -> Map.put(record, "grade_id", grade_record.id)
+          _ -> record
         end
     end
   end
