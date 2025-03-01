@@ -14,6 +14,11 @@ defmodule DbserviceWeb.ImportLive.Index do
     {:noreply, apply_action(socket, socket.assigns.live_action, params)}
   end
 
+  @impl true
+  def handle_event("validate", _params, socket) do
+    {:noreply, socket}
+  end
+
   defp apply_action(socket, :index, _params) do
     assign(socket, :page_title, "Data Imports")
   end

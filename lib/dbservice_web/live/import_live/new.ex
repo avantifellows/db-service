@@ -36,7 +36,8 @@ defmodule DbserviceWeb.ImportLive.New do
 
       case DataImport.start_import(import_params) do
         {:ok, _import} ->
-          {:noreply, push_redirect(socket, to: "/imports")}
+          {:noreply,
+           push_redirect(socket, to: Routes.live_path(socket, DbserviceWeb.ImportLive.Index))}
 
         {:error, reason} when is_binary(reason) ->
           changeset =
