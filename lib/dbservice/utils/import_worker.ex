@@ -150,18 +150,10 @@ defmodule Dbservice.DataImport.ImportWorker do
 
     total_records = length(records)
 
-    successful_imports =
-      Enum.count(records, fn
-        {:ok, _} -> true
-        _ -> false
-      end)
-
-    DataImport.update_import(import_record, %{
-      status: "completed",
-      total_rows: total_records,
-      processed_rows: total_records,
-      successful_rows: successful_imports
-    })
+    DataImport.complete_import(
+      import_record.id,
+      total_records
+    )
 
     {:ok, records}
   end
