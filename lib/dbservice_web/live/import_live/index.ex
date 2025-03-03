@@ -1,6 +1,7 @@
 defmodule DbserviceWeb.ImportLive.Index do
   use DbserviceWeb, :live_view
   alias Dbservice.DataImport
+  alias Dbservice.Utils.Util
   import Phoenix.HTML, only: [raw: 1]
 
   @impl true
@@ -176,11 +177,13 @@ defmodule DbserviceWeb.ImportLive.Index do
 
   # Helper functions
   defp format_date(datetime) do
-    "#{datetime.year}-#{pad(datetime.month)}-#{pad(datetime.day)}"
+    ist_datetime = datetime |> Util.naive_to_datetime() |> Util.to_ist()
+    "#{ist_datetime.year}-#{pad(ist_datetime.month)}-#{pad(ist_datetime.day)}"
   end
 
   defp format_time(datetime) do
-    "#{pad(datetime.hour)}:#{pad(datetime.minute)}"
+    ist_datetime = datetime |> Util.naive_to_datetime() |> Util.to_ist()
+    "#{pad(ist_datetime.hour)}:#{pad(ist_datetime.minute)}"
   end
 
   defp pad(number) when number < 10, do: "0#{number}"

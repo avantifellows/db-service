@@ -1,6 +1,7 @@
 defmodule DbserviceWeb.ImportLive.Show do
   use DbserviceWeb, :live_view
   alias Dbservice.DataImport
+  alias Dbservice.Utils.Util
   import Phoenix.HTML, only: [raw: 1]
 
   @impl true
@@ -225,7 +226,10 @@ defmodule DbserviceWeb.ImportLive.Show do
   defp format_datetime(datetime) when is_nil(datetime), do: "-"
 
   defp format_datetime(datetime) do
-    "#{datetime.year}-#{pad(datetime.month)}-#{pad(datetime.day)} #{pad(datetime.hour)}:#{pad(datetime.minute)}:#{pad(datetime.second)}"
+    # Convert to IST before formatting
+    ist_datetime = datetime |> Util.naive_to_datetime() |> Util.to_ist()
+
+    "#{ist_datetime.year}-#{pad(ist_datetime.month)}-#{pad(ist_datetime.day)} #{pad(ist_datetime.hour)}:#{pad(ist_datetime.minute)}:#{pad(ist_datetime.second)}"
   end
 
   defp pad(number) when number < 10, do: "0#{number}"
@@ -245,26 +249,20 @@ defmodule DbserviceWeb.ImportLive.Show do
   defp processing_time(%{inserted_at: inserted_at, completed_at: completed_at})
        when not is_nil(inserted_at) and not is_nil(completed_at) do
     # Convert NaiveDateTime to DateTime if needed
-    start_time = naive_to_datetime(inserted_at)
-    end_time = naive_to_datetime(completed_at)
+    start_time = Util.naive_to_datetime(inserted_at) |> Util.to_ist()
+    end_time = Util.naive_to_datetime(completed_at) |> Util.to_ist()
 
     DateTime.diff(end_time, start_time)
   end
 
-  defp processing_time(%{inserted_at: inserted_at})
-       when not is_nil(inserted_at) do
-    start_time = naive_to_datetime(inserted_at)
-    DateTime.diff(DateTime.utc_now(), start_time)
+  defp processing_time(%{inserted_at: inserted_at}) when not is_nil(inserted_at) do
+    start_time = Util.naive_to_datetime(inserted_at) |> Util.to_ist()
+    now_ist = DateTime.utc_now() |> Util.to_ist()
+
+    DateTime.diff(now_ist, start_time)
   end
 
   defp processing_time(_), do: 0
-
-  # Helper to convert between datetime types
-  defp naive_to_datetime(%DateTime{} = dt), do: dt
-
-  defp naive_to_datetime(%NaiveDateTime{} = ndt) do
-    DateTime.from_naive!(ndt, "Etc/UTC")
-  end
 
   # Format duration in seconds to human-readable string
   defp format_duration(seconds) when seconds < 60 do
