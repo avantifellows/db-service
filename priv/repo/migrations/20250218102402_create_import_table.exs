@@ -10,6 +10,8 @@ defmodule Dbservice.Repo.Migrations.CreateImportTable do
       add :processed_rows, :integer
       add :error_count, :integer
       add :error_details, {:array, :map}
+      add :start_row, :integer, default: 2, null: false
+      add :completed_at, :utc_datetime
 
       timestamps()
     end

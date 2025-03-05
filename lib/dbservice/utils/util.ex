@@ -100,4 +100,18 @@ defmodule Dbservice.Utils.Util do
 
     {:ok, :updated}
   end
+
+  def to_ist(datetime) do
+    ist_offset = 5 * 60 * 60 + 30 * 60
+    DateTime.add(datetime, ist_offset, :second)
+  end
+
+  # Helper function to ensure we have a DateTime
+  def naive_to_datetime(%NaiveDateTime{} = naive) do
+    # Convert NaiveDateTime to UTC DateTime
+    {:ok, datetime} = DateTime.from_naive(naive, "Etc/UTC")
+    datetime
+  end
+
+  def naive_to_datetime(%DateTime{} = datetime), do: datetime
 end

@@ -22,6 +22,8 @@ defmodule DbserviceWeb do
       use Phoenix.Controller, namespace: DbserviceWeb
 
       import Plug.Conn
+      import Phoenix.LiveView.Helpers
+      import Phoenix.Component
       use Gettext, backend: DbserviceWeb.Gettext
       alias DbserviceWeb.Router.Helpers, as: Routes
     end
@@ -38,6 +40,23 @@ defmodule DbserviceWeb do
         only: [get_flash: 1, get_flash: 2, view_module: 1, view_template: 1]
 
       # Include shared imports and aliases for views
+      unquote(view_helpers())
+    end
+  end
+
+  def live_view do
+    quote do
+      use Phoenix.LiveView,
+        layout: {DbserviceWeb.LayoutView, "app.html"}
+
+      unquote(view_helpers())
+    end
+  end
+
+  def live_component do
+    quote do
+      use Phoenix.LiveComponent
+
       unquote(view_helpers())
     end
   end

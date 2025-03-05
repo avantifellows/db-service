@@ -3,7 +3,7 @@ defmodule Dbservice.DataImport.ImportWorker do
   This module defines a worker for processing student data imports using Oban.
 
   It reads CSV files, maps their fields to the database schema, and processes
-  student records by creating or updating them in the database. It also 
+  student records by creating or updating them in the database. It also
   handles student enrollments based on the imported data.
 
   The worker updates the import record's status and keeps track of processing
@@ -84,9 +84,10 @@ defmodule Dbservice.DataImport.ImportWorker do
   @impl Oban.Worker
   def perform(%Oban.Job{args: %{"id" => import_id}}) do
     import_record = DataImport.get_import!(import_id)
+    total_rows = count_total_rows(import_record.filename)
 
     # Update status to processing
-    DataImport.update_import(import_record, %{status: "processing"})
+    DataImport.update_import(import_record, %{status: "processing", total_rows: total_rows})
 
     # Process the file based on type
     case import_record.type do
@@ -149,18 +150,10 @@ defmodule Dbservice.DataImport.ImportWorker do
 
     total_records = length(records)
 
-    successful_imports =
-      Enum.count(records, fn
-        {:ok, _} -> true
-        _ -> false
-      end)
-
-    DataImport.update_import(import_record, %{
-      status: "completed",
-      total_rows: total_records,
-      processed_rows: total_records,
-      successful_rows: successful_imports
-    })
+    DataImport.complete_import(
+      import_record.id,
+      total_records
+    )
 
     {:ok, records}
   end
@@ -178,43 +171,59 @@ defmodule Dbservice.DataImport.ImportWorker do
 
   # New function to map sheet column names to database field names
   defp map_fields(record) do
-    # First, map all string fields
-    base_record =
-      Enum.reduce(@field_mapping, %{}, fn {sheet_column, db_field}, acc ->
-        case Map.get(record, sheet_column) do
-          nil -> acc
-          value -> Map.put(acc, db_field, value)
-        end
-      end)
+    record
+    |> map_string_fields()
+    |> map_boolean_fields()
+    |> add_grade_id()
+  end
 
-    # Then handle boolean fields
-    bool_record =
-      Enum.reduce(@bool_fields, base_record, fn field, acc ->
-        case Map.get(base_record, field) do
-          "TRUE" -> Map.put(acc, field, true)
-          "FALSE" -> Map.put(acc, field, false)
-          _ -> acc
-        end
-      end)
+  defp map_string_fields(record) do
+    Enum.reduce(@field_mapping, %{}, fn {sheet_column, db_field}, acc ->
+      case Map.get(record, sheet_column) do
+        nil -> acc
+        value -> Map.put(acc, db_field, value)
+      end
+    end)
+  end
 
-    # Finally, get grade_id if grade is present
-    case Map.get(bool_record, "grade") do
+  defp map_boolean_fields(record) do
+    Enum.reduce(@bool_fields, record, fn field, acc ->
+      case Map.get(acc, field) do
+        "TRUE" -> Map.put(acc, field, true)
+        "FALSE" -> Map.put(acc, field, false)
+        _ -> acc
+      end
+    end)
+  end
+
+  defp add_grade_id(record) do
+    case Map.get(record, "grade") do
       nil ->
-        bool_record
+        record
 
       grade ->
         case Grades.get_grade_by_number(grade) do
-          {:ok, grade_record} -> Map.put(bool_record, "grade_id", grade_record.id)
-          _ -> bool_record
+          {:ok, grade_record} -> Map.put(record, "grade_id", grade_record.id)
+          _ -> record
         end
     end
+  end
+
+  defp count_total_rows(filename) do
+    path = Path.join(["priv", "static", "uploads", filename])
+
+    path
+    |> File.stream!()
+    |> CSV.decode!(headers: true, separator: ?;)
+    |> Enum.count()
   end
 
   defp process_student_record(record) do
     case Users.get_student_by_student_id(record["student_id"]) do
       nil ->
         with {:ok, student} <- Users.create_student_with_user(record),
-             {:ok, _} <- DataImport.StudentEnrollment.create_enrollments(student, record) do
+             student <- Dbservice.Repo.preload(student, [:user]),
+             {:ok, _} <- DataImport.StudentEnrollment.create_enrollments(student.user, record) do
           {:ok, student}
         else
           {:error, _} = error -> error

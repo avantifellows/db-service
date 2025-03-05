@@ -57,8 +57,11 @@ defmodule Dbservice.MixProject do
       {:observer_cli, "~> 1.7"},
       {:oban, "~> 2.13"},
       {:csv, "~> 3.0"},
-      {:httpoison, "~> 2.0"},
-      {:tailwind, "~> 0.2", runtime: Mix.env() == :dev}
+      {:httpoison, "~> 1.7"},
+      {:tailwind, "~> 0.2", runtime: Mix.env() == :dev},
+      {:phoenix_live_view, "~> 0.17.14"},
+      {:esbuild, "~> 0.4", runtime: Mix.env() == :dev},
+      {:hackney, "~> 1.17.0"}
     ]
   end
 
