@@ -538,7 +538,8 @@ defmodule DbserviceWeb.StudentController do
   end
 
   defp generate_new_id(params, school_code) do
-    class_code = get_class_code(params["grade"])
+    grade = String.to_integer(params["grade"])
+    class_code = get_class_code(grade)
     three_digit_code = generate_three_digit_code()
 
     class_code <> school_code <> three_digit_code
