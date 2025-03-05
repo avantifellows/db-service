@@ -12,7 +12,7 @@ defmodule Dbservice.Repo.Migrations.ModifyResourceTable do
     SET name_jsonb = (
       SELECT jsonb_build_array(
         jsonb_build_object(
-          'lang_id', (SELECT id FROM language WHERE name = 'English'),
+          'lang_code', (SELECT code FROM language WHERE name = 'English'),
           'resource', trim(regexp_replace(name, E'\\r|\\n', '', 'g'))
         )
       )

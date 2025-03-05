@@ -15,7 +15,7 @@ defmodule Dbservice.Repo.Migrations.ModifyTopicTable do
     SET name_jsonb = (
       SELECT jsonb_build_array(
         jsonb_build_object(
-          'lang_id', (SELECT id FROM language WHERE name = 'English'),
+          'lang_code', (SELECT code FROM language WHERE name = 'English'),
           'topic', trim(regexp_replace(name, E'\\r|\\n', '', 'g'))
         )
       )

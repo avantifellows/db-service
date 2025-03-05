@@ -8,6 +8,7 @@ defmodule DbserviceWeb.ResourceController do
   alias Dbservice.Resources.ResourceTopic
   alias Dbservice.Resources.ResourceChapter
   alias Dbservice.Resources.ResourceCurriculum
+  alias Dbservice.Utils.Util
 
   action_fallback(DbserviceWeb.FallbackController)
 
@@ -67,6 +68,9 @@ defmodule DbserviceWeb.ResourceController do
             :limit ->
               acc
 
+            :lang_code ->
+              acc
+
             :name ->
               from(u in acc,
                 where:
@@ -86,6 +90,9 @@ defmodule DbserviceWeb.ResourceController do
               from(u in acc, where: field(u, ^atom) == ^value)
           end
       end)
+
+    # Language filtering
+    query = Util.filter_by_lang(query, params)
 
     resource = Repo.all(query)
     render(conn, "index.json", resource: resource)

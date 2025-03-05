@@ -10,22 +10,22 @@ defmodule Dbservice.Repo.Migrations.UpdateSubjectWithLanguages do
     # First update existing subjects
     execute """
     UPDATE subject SET name_jsonb = json_build_array(
-      json_build_object('lang_id', 1, 'subject', name),
-      json_build_object('lang_id', 2, 'subject',
+      json_build_object('lang_code', 'en', 'subject', name),
+      json_build_object('lang_code', 'hi', 'subject',
         CASE
           WHEN name = 'maths' THEN 'गणित'
           WHEN name = 'chemistry' THEN 'रसायन विज्ञान'
           WHEN name = 'biology' THEN 'जीव विज्ञान'
           WHEN name = 'physics' THEN 'भौतिक विज्ञान'
         END),
-      json_build_object('lang_id', 3, 'subject',
+      json_build_object('lang_code', 'ta', 'subject',
         CASE
           WHEN name = 'maths' THEN 'கணிதம்'
           WHEN name = 'chemistry' THEN 'வேதியியல்'
           WHEN name = 'biology' THEN 'உயிரியல்'
           WHEN name = 'physics' THEN 'இயற்பியல்'
         END),
-      json_build_object('lang_id', 4, 'subject',
+      json_build_object('lang_code', 'gu', 'subject',
         CASE
           WHEN name = 'maths' THEN 'ગણિત'
           WHEN name = 'chemistry' THEN 'રસાયણ વિજ્ઞાન'
@@ -51,20 +51,20 @@ defmodule Dbservice.Repo.Migrations.UpdateSubjectWithLanguages do
     VALUES
       ((SELECT id FROM biology_id),
        '[
-          {"lang_id": 1, "subject": "botany"},
-          {"lang_id": 2, "subject": "वनस्पति विज्ञान"},
-          {"lang_id": 3, "subject": "தாவரவியல்"},
-          {"lang_id": 4, "subject": "વનસ્પતિશાસ્ત્ર"}
+          {"lang_code": "en", "subject": "botany"},
+          {"lang_code": "hi", "subject": "वनस्पति विज्ञान"},
+          {"lang_code": "ta", "subject": "தாவரவியல்"},
+          {"lang_code": "gu", "subject": "વનસ્પતિશાસ્ત્ર"}
         ]',
         NOW(),
         NOW()
       ),
       ((SELECT id FROM biology_id),
        '[
-          {"lang_id": 1, "subject": "zoology"},
-          {"lang_id": 2, "subject": "प्राणि विज्ञान"},
-          {"lang_id": 3, "subject": "விலங்கியல்"},
-          {"lang_id": 4, "subject": "પ્રાણીશાસ્ત્ર"}
+          {"lang_code": "en", "subject": "zoology"},
+          {"lang_code": "hi", "subject": "प्राणि विज्ञान"},
+          {"lang_code": "ta", "subject": "விலங்கியல்"},
+          {"lang_code": "gu", "subject": "પ્રાણીશાસ્ત્ર"}
         ]',
         NOW(),
         NOW()

@@ -5,6 +5,7 @@ defmodule DbserviceWeb.TopicController do
   alias Dbservice.Repo
   alias Dbservice.Topics
   alias Dbservice.Topics.Topic
+  alias Dbservice.Utils.Util
 
   action_fallback(DbserviceWeb.FallbackController)
 
@@ -56,6 +57,9 @@ defmodule DbserviceWeb.TopicController do
           :limit ->
             acc
 
+          :lang_code ->
+            acc
+
           :name ->
             from(u in acc,
               where:
@@ -71,8 +75,11 @@ defmodule DbserviceWeb.TopicController do
         end
       end)
 
-    topic = Repo.all(query)
-    render(conn, "index.json", topic: topic)
+    # Language filtering
+    query = Util.filter_by_lang(query, params)
+
+    topics = Repo.all(query)
+    render(conn, "index.json", topic: topics)
   end
 
   swagger_path :create do

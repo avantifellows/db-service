@@ -8,7 +8,6 @@ defmodule Dbservice.Utils.Util do
   alias Dbservice.Groups
   alias Dbservice.GroupUsers
   alias Dbservice.Users
-  alias Dbservice.Languages.Language
 
   def invalidate_future_date(changeset, date_field_atom) do
     utc_now = DateTime.utc_now()
@@ -102,45 +101,33 @@ defmodule Dbservice.Utils.Util do
     {:ok, :updated}
   end
 
-  def get_default_name(names, entity_type) when is_list(names) do
-    english_id = get_english_language_id()
-    key = entity_type_key(entity_type)
-
-    if english_id do
-      names
-      |> Enum.find(&(&1["lang_id"] == english_id))
-      |> extract_name(key)
-      |> case do
-        nil -> get_first_name(names, key)
-        name -> name
-      end
-    else
-      get_first_name(names, key)
-    end
-  end
-
-  def get_default_name(_, _), do: nil
-
   @doc """
-  Gets the English language ID from the database.
+  Filters a JSONB `name` field by `lang_code`. If `lang_code` is `"all"`, returns all.
+  Defaults to `"en"` if `lang_code` is missing.
   """
-  def get_english_language_id do
-    case Repo.get_by(Language, name: "English") do
-      %Language{id: id} -> id
-      nil -> nil
+  def filter_by_lang(query, params) do
+    case Map.get(params, "lang_code", "en") do
+      "all" ->
+        # No filtering, return all languages
+        query
+
+      lang_code ->
+        from(u in query,
+          where:
+            fragment(
+              "EXISTS (SELECT 1 FROM JSONB_ARRAY_ELEMENTS(?) obj WHERE obj->>'lang_code' = ?)",
+              u.name,
+              ^lang_code
+            ),
+          select_merge: %{
+            name:
+              fragment(
+                "COALESCE((SELECT JSONB_AGG(obj) FROM JSONB_ARRAY_ELEMENTS(?) obj WHERE obj->>'lang_code' = ?), '[]'::JSONB)",
+                u.name,
+                ^lang_code
+              )
+          }
+        )
     end
-  end
-
-  defp get_first_name(names, key) do
-    names
-    |> List.first()
-    |> extract_name(key)
-  end
-
-  defp extract_name(nil, _key), do: nil
-  defp extract_name(map, key) when is_map(map), do: Map.get(map, key)
-
-  defp entity_type_key(entity_type) when is_atom(entity_type) do
-    Atom.to_string(entity_type)
   end
 end

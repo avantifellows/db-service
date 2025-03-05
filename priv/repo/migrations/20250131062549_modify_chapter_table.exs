@@ -13,7 +13,7 @@ defmodule Dbservice.Repo.Migrations.ModifyChapterTable do
     SET name_jsonb = (
       SELECT jsonb_build_array(
         jsonb_build_object(
-          'lang_id', (SELECT id FROM language WHERE name = 'English'),
+          'lang_code', (SELECT code FROM language WHERE name = 'English'),
           'chapter', trim(regexp_replace(name, E'\\r|\\n', '', 'g'))
         )
       )
@@ -41,7 +41,7 @@ defmodule Dbservice.Repo.Migrations.ModifyChapterTable do
       COALESCE(
         (SELECT chapter
          FROM jsonb_array_elements(name) AS elements
-         WHERE (elements->>'lang_id')::integer = (SELECT id FROM language WHERE name = 'English')
+         WHERE elements->>'lang_code' = (SELECT code FROM language WHERE name = 'English')
          LIMIT 1),
         (SELECT chapter
          FROM jsonb_array_elements(name) AS elements

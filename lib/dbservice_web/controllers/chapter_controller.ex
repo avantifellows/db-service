@@ -6,6 +6,7 @@ defmodule DbserviceWeb.ChapterController do
   alias Dbservice.Chapters
   alias Dbservice.Chapters.Chapter
   alias Dbservice.ChapterCurriculums.ChapterCurriculum
+  alias Dbservice.Utils.Util
 
   action_fallback(DbserviceWeb.FallbackController)
 
@@ -63,6 +64,9 @@ defmodule DbserviceWeb.ChapterController do
             :limit ->
               acc
 
+            :lang_code ->
+              acc
+
             :name ->
               from(u in acc,
                 where:
@@ -78,8 +82,11 @@ defmodule DbserviceWeb.ChapterController do
           end
       end)
 
-    chapter = Repo.all(query)
-    render(conn, "index.json", chapter: chapter)
+    # Language filtering
+    query = Util.filter_by_lang(query, params)
+
+    chapters = Repo.all(query)
+    render(conn, "index.json", chapter: chapters)
   end
 
   swagger_path :create do

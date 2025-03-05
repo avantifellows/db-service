@@ -1,7 +1,6 @@
 defmodule DbserviceWeb.ResourceView do
   use DbserviceWeb, :view
   alias DbserviceWeb.ResourceView
-  alias Dbservice.Utils.Util
   alias Dbservice.Resources.ResourceTopic
   alias Dbservice.Resources.ResourceChapter
   alias Dbservice.Repo
@@ -16,8 +15,6 @@ defmodule DbserviceWeb.ResourceView do
   end
 
   def render("resource.json", %{resource: resource}) do
-    default_name = Util.get_default_name(resource.name, :resource)
-
     topic_id =
       Repo.one(
         from rt in ResourceTopic,
@@ -36,7 +33,6 @@ defmodule DbserviceWeb.ResourceView do
 
     %{
       id: resource.id,
-      name: default_name,
       names: resource.name,
       type: resource.type,
       type_params: resource.type_params,
