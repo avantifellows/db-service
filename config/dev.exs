@@ -23,7 +23,7 @@ config :dbservice, DbserviceWeb.Endpoint,
   code_reloader: true,
   debug_errors: true,
   secret_key_base: "ATXS8cenJ+WIJegIC5wMDVOd09aFTtuWpb0mBOeAAxnsQrIYfdN/sEMPoXvbO9l/",
-  watchers: []
+  watchers: [tailwind: {Tailwind, :install_and_run, [:dbservice, ~w(--watch)]}]
 
 # ## SSL Support
 #
