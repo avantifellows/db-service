@@ -33,7 +33,7 @@ defmodule DbserviceWeb.ResourceView do
 
     %{
       id: resource.id,
-      names: resource.name,
+      name: resource.name,
       type: resource.type,
       type_params: resource.type_params,
       subtype: resource.subtype,
