@@ -13,13 +13,11 @@ defmodule DbserviceWeb.SwaggerSchema.Purpose do
           properties do
             name(:string, "Purpose name")
             description(:text, "Purpose description")
-            tag_id(:integer, "Tag id associated with the purpose")
           end
 
           example(%{
             name: "learningModule",
-            description: "workbook for the program",
-            tag_id: 6
+            description: "workbook for the program"
           })
         end
     }

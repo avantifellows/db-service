@@ -30,21 +30,44 @@ defmodule Dbservice.Resources do
   def get_resource!(id), do: Repo.get!(Resource, id)
 
   @doc """
+  Returns a list of unique subtypes for a given type.
+
+  ## Examples
+
+      iex> list_subtypes_by_type("test")
+      ["subtype1", "subtype2", "subtype3"]
+
+      iex> list_subtypes_by_type("nonexistent")
+      []
+  """
+  def list_subtypes_by_type(type) do
+    query =
+      from(r in Resource,
+        where: r.type == ^type and not is_nil(r.subtype),
+        select: r.subtype,
+        distinct: true,
+        order_by: r.subtype
+      )
+
+    Repo.all(query)
+  end
+
+  @doc """
   Gets a resource by name and sourceId.
 
   Raises `Ecto.NoResultsError` if the School does not exist.
 
   ## Examples
 
-      iex> get_resource_by_name_and_source_id(12)
-      %School{}
+      iex> get_resource_by_type_and_type_params("abc",{"src_link": "youtube"})
+      %Resource{}
 
-      iex> get_resource_by_name_and_source_id(12)
+      iex> get_resource_by_type_and_type_params("abc", {"src_link": "youtube"})
       ** (Ecto.NoResultsError)
 
   """
-  def get_resource_by_name_and_source_id(name, source_id) do
-    Repo.get_by(Resource, name: name, source_id: source_id)
+  def get_resource_by_type_and_type_params(type, type_params) do
+    Repo.get_by(Resource, type: type, type_params: type_params)
   end
 
   @doc """

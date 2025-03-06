@@ -5,6 +5,10 @@ defmodule DbserviceWeb.ResourceController do
   alias Dbservice.Repo
   alias Dbservice.Resources
   alias Dbservice.Resources.Resource
+  alias Dbservice.Resources.ResourceTopic
+  alias Dbservice.Resources.ResourceChapter
+  alias Dbservice.Resources.ResourceCurriculum
+  alias Dbservice.Utils.Util
 
   action_fallback(DbserviceWeb.FallbackController)
 
@@ -33,7 +37,7 @@ defmodule DbserviceWeb.ResourceController do
   end
 
   def index(conn, params) do
-    query =
+    base_query =
       from(m in Resource,
         order_by: [asc: m.id],
         offset: ^params["offset"],
@@ -41,13 +45,54 @@ defmodule DbserviceWeb.ResourceController do
       )
 
     query =
-      Enum.reduce(params, query, fn {key, value}, acc ->
-        case String.to_existing_atom(key) do
-          :offset -> acc
-          :limit -> acc
-          atom -> from(u in acc, where: field(u, ^atom) == ^value)
-        end
+      Enum.reduce(params, base_query, fn
+        {"topic_id", value}, acc ->
+          from(u in acc,
+            join: rt in ResourceTopic,
+            on: rt.resource_id == u.id,
+            where: rt.topic_id == ^value
+          )
+
+        {"chapter_id", value}, acc ->
+          from(u in acc,
+            join: rc in ResourceChapter,
+            on: rc.resource_id == u.id,
+            where: rc.chapter_id == ^value
+          )
+
+        {key, value}, acc ->
+          case String.to_existing_atom(key) do
+            :offset ->
+              acc
+
+            :limit ->
+              acc
+
+            :lang_code ->
+              acc
+
+            :name ->
+              from(u in acc,
+                where:
+                  fragment(
+                    "EXISTS (SELECT 1 FROM JSONB_ARRAY_ELEMENTS(?) obj WHERE obj->>'resource' = ?)",
+                    u.name,
+                    ^value
+                  )
+              )
+
+            :resource_type ->
+              from(u in acc,
+                where: fragment("?->>'resource_type' = ?", u.type_params, ^value)
+              )
+
+            atom ->
+              from(u in acc, where: field(u, ^atom) == ^value)
+          end
       end)
+
+    # Language filtering
+    query = Util.filter_by_lang(query, params)
 
     resource = Repo.all(query)
     render(conn, "index.json", resource: resource)
@@ -63,8 +108,13 @@ defmodule DbserviceWeb.ResourceController do
     response(201, "Created", Schema.ref(:Resource))
   end
 
+  def get_subtypes(conn, %{"type" => type}) do
+    subtypes = Resources.list_subtypes_by_type(type)
+    json(conn, subtypes)
+  end
+
   def create(conn, params) do
-    case Resources.get_resource_by_name_and_source_id(params["name"], params["source_id"]) do
+    case Resources.get_resource_by_type_and_type_params(params["type"], params["type_params"]) do
       nil ->
         create_new_resource(conn, params)
 
@@ -140,6 +190,69 @@ defmodule DbserviceWeb.ResourceController do
       conn
       |> put_status(:ok)
       |> render("show.json", resource: resource)
+    end
+  end
+
+  def curriculum_resources(conn, params) do
+    query =
+      from(r in Resource,
+        join: rc in ResourceCurriculum,
+        on: rc.resource_id == r.id,
+        where:
+          rc.curriculum_id == ^params["curriculum_id"] and rc.grade_id == ^params["grade_id"],
+        order_by: [asc: r.id]
+      )
+
+    query =
+      query
+      |> filter_by_subject(params)
+      |> filter_by_type(params)
+      |> filter_by_subtype(params)
+      |> apply_pagination(params)
+
+    resources = Repo.all(query)
+    render(conn, "index.json", resource: resources)
+  end
+
+  # Helper functions for each filter
+  defp filter_by_subject(query, %{"subject_id" => subject_id})
+       when not is_nil(subject_id) do
+    from(r in query,
+      join: rc in ResourceCurriculum,
+      on: rc.resource_id == r.id,
+      where: rc.subject_id == ^subject_id
+    )
+  end
+
+  defp filter_by_subject(query, _), do: query
+
+  defp filter_by_type(query, %{"type" => type}) when not is_nil(type) do
+    from(r in query, where: r.type == ^type)
+  end
+
+  defp filter_by_type(query, _), do: query
+
+  defp filter_by_subtype(query, %{"subtype" => subtype}) when not is_nil(subtype) do
+    from(r in query, where: r.subtype == ^subtype)
+  end
+
+  defp filter_by_subtype(query, _), do: query
+
+  defp apply_pagination(query, params) do
+    case Map.get(params, "limit") do
+      nil ->
+        query
+
+      limit_str ->
+        limit = String.to_integer(limit_str)
+
+        offset =
+          case Map.get(params, "offset") do
+            nil -> 0
+            offset_str -> String.to_integer(offset_str)
+          end
+
+        from(r in query, limit: ^limit, offset: ^offset)
     end
   end
 end
