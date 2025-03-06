@@ -64,8 +64,6 @@ defmodule Dbservice.DataImport do
 
   def start_import(%{"sheet_url" => url, "type" => type, "start_row" => start_row})
       when url != "" do
-    IO.inspect(start_row, label: "Start Row in start import")
-
     start_row = String.to_integer(start_row)
 
     case download_google_sheet(url) do
