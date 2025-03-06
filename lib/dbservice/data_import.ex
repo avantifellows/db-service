@@ -159,23 +159,28 @@ defmodule Dbservice.DataImport do
   end
 
   defp download_google_sheet(url) do
-    case extract_sheet_id(url) do
-      sheet_id when is_binary(sheet_id) ->
-        with {:ok, content} <- fetch_google_sheet(sheet_id),
+    case extract_sheet_info(url) do
+      {:ok, sheet_id, gid} ->
+        with {:ok, content} <- fetch_google_sheet(sheet_id, gid),
              {:ok, filename} <- save_csv_file(content) do
           {:ok, filename}
         else
           {:error, reason} -> {:error, "Failed to download or save file: #{inspect(reason)}"}
         end
 
-      error ->
-        {:error, "Invalid sheet ID: #{inspect(error)}"}
+      {:error, reason} ->
+        {:error, reason}
     end
   end
 
-  defp fetch_google_sheet(sheet_id) do
+  defp fetch_google_sheet(sheet_id, gid) do
+    # Build URL with gid parameter if provided
     csv_url =
-      "https://docs.google.com/spreadsheets/d/#{sheet_id}/export?format=csv&id=#{sheet_id}"
+      if gid do
+        "https://docs.google.com/spreadsheets/d/#{sheet_id}/export?format=csv&id=#{sheet_id}&gid=#{gid}"
+      else
+        "https://docs.google.com/spreadsheets/d/#{sheet_id}/export?format=csv&id=#{sheet_id}"
+      end
 
     headers = [{"User-Agent", "Mozilla/5.0"}, {"Accept", "text/csv,application/csv"}]
 
@@ -213,18 +218,49 @@ defmodule Dbservice.DataImport do
     end
   end
 
-  defp extract_sheet_id(url) do
-    cond do
-      Regex.match?(~r/spreadsheets\/d\/([a-zA-Z0-9-_]+)/, url) ->
-        [[_, sheet_id]] = Regex.scan(~r/spreadsheets\/d\/([a-zA-Z0-9-_]+)/, url)
-        sheet_id
+  defp extract_sheet_info(url) do
+    # First extract the sheet ID
+    sheet_id =
+      cond do
+        Regex.match?(~r/spreadsheets\/d\/([a-zA-Z0-9-_]+)/, url) ->
+          [[_, id]] = Regex.scan(~r/spreadsheets\/d\/([a-zA-Z0-9-_]+)/, url)
+          id
 
-      Regex.match?(~r/id=([a-zA-Z0-9-_]+)/, url) ->
-        [[_, sheet_id]] = Regex.scan(~r/id=([a-zA-Z0-9-_]+)/, url)
-        sheet_id
+        Regex.match?(~r/id=([a-zA-Z0-9-_]+)/, url) ->
+          [[_, id]] = Regex.scan(~r/id=([a-zA-Z0-9-_]+)/, url)
+          id
 
-      true ->
-        String.trim(url)
+        true ->
+          String.trim(url)
+      end
+
+    # Extract gid - prefer query parameter over fragment
+    gid = extract_gid_from_url(url)
+
+    if is_binary(sheet_id) and byte_size(sheet_id) > 0 do
+      {:ok, sheet_id, gid}
+    else
+      {:error, "Invalid sheet ID: #{inspect(sheet_id)}"}
     end
+  end
+
+  # Extract gid from URL, safely handling cases with multiple gid occurrences
+  defp extract_gid_from_url(url) do
+    # First check query parameters (after ? and before #)
+    query_gid =
+      case Regex.run(~r/[?&]gid=([0-9]+)/, url) do
+        [_, gid] -> gid
+        _ -> nil
+      end
+
+    # If no query gid, check fragment (after #)
+    fragment_gid =
+      case Regex.run(~r/#.*gid=([0-9]+)/, url) do
+        [_, gid] -> gid
+        _ -> nil
+      end
+
+    # Prefer query parameter gid if available, otherwise use fragment gid
+    query_gid || fragment_gid
   end
 end

@@ -7,6 +7,15 @@ defmodule DbserviceWeb.ImportLive.Index do
   @impl true
   def mount(_params, _session, socket) do
     imports = DataImport.list_imports()
+
+    if connected?(socket) do
+      # Check if any imports are still processing
+      if Enum.any?(imports, &(&1.status in ["pending", "processing"])) do
+        # Set up timer to refresh data every second
+        :timer.send_interval(1000, self(), :update_imports)
+      end
+    end
+
     {:ok, assign(socket, imports: imports)}
   end
 
@@ -18,6 +27,13 @@ defmodule DbserviceWeb.ImportLive.Index do
   @impl true
   def handle_event("validate", _params, socket) do
     {:noreply, socket}
+  end
+
+  @impl true
+  def handle_info(:update_imports, socket) do
+    imports = DataImport.list_imports()
+
+    {:noreply, assign(socket, imports: imports)}
   end
 
   defp apply_action(socket, :index, _params) do
@@ -206,6 +222,17 @@ defmodule DbserviceWeb.ImportLive.Index do
     """)
   end
 
+  defp get_status_badge("pending") do
+    raw("""
+    <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-400">
+      <svg class="-ml-0.5 mr-1.5 h-2 w-2 text-blue-400 dark:text-blue-500" fill="currentColor" viewBox="0 0 8 8">
+        <circle cx="4" cy="4" r="3" />
+      </svg>
+      Pending
+    </span>
+    """)
+  end
+
   defp get_status_badge("processing") do
     raw("""
     <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-amber-100 text-amber-800 dark:bg-amber-900/30 dark:text-amber-400">
@@ -224,6 +251,18 @@ defmodule DbserviceWeb.ImportLive.Index do
         <circle cx="4" cy="4" r="3" />
       </svg>
       Failed
+    </span>
+    """)
+  end
+
+  # Added a fallback clause for any unexpected status values
+  defp get_status_badge(status) do
+    raw("""
+    <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-gray-100 text-gray-800 dark:bg-gray-900/30 dark:text-gray-400">
+      <svg class="-ml-0.5 mr-1.5 h-2 w-2 text-gray-400 dark:text-gray-500" fill="currentColor" viewBox="0 0 8 8">
+        <circle cx="4" cy="4" r="3" />
+      </svg>
+      #{status}
     </span>
     """)
   end
