@@ -62,7 +62,12 @@ defmodule Dbservice.DataImport do
     |> Repo.update()
   end
 
-  def start_import(%{"sheet_url" => url, "type" => type}) when url != "" do
+  def start_import(%{"sheet_url" => url, "type" => type, "start_row" => start_row})
+      when url != "" do
+    IO.inspect(start_row, label: "Start Row in start import")
+
+    start_row = String.to_integer(start_row)
+
     case download_google_sheet(url) do
       {:ok, filename} ->
         {:ok, import_record} =
@@ -71,7 +76,8 @@ defmodule Dbservice.DataImport do
             status: "pending",
             type: type,
             total_rows: 0,
-            processed_rows: 0
+            processed_rows: 0,
+            start_row: start_row
           })
 
         %{id: import_record.id}

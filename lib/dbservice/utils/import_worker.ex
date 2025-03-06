@@ -84,7 +84,7 @@ defmodule Dbservice.DataImport.ImportWorker do
   @impl Oban.Worker
   def perform(%Oban.Job{args: %{"id" => import_id}}) do
     import_record = DataImport.get_import!(import_id)
-    total_rows = count_total_rows(import_record.filename)
+    total_rows = count_total_rows(import_record.filename, import_record.start_row || 2)
 
     # Update status to processing
     DataImport.update_import(import_record, %{status: "processing", total_rows: total_rows})
@@ -98,6 +98,8 @@ defmodule Dbservice.DataImport.ImportWorker do
 
   defp process_student_import(import_record) do
     path = Path.join(["priv", "static", "uploads", import_record.filename])
+    # Default to 2 if not specified
+    start_row = import_record.start_row || 2
 
     records =
       path
@@ -110,19 +112,21 @@ defmodule Dbservice.DataImport.ImportWorker do
         validate_row_length: false
       )
       |> Stream.map(&extract_fields/1)
-      # Add field mapping step
       |> Stream.map(&map_fields/1)
-      |> Stream.with_index()
+      # Start index from 1 to match row numbers
+      |> Stream.with_index(1)
+      # Skip rows before start_row
+      |> Stream.filter(fn {_record, index} -> index >= start_row end)
       |> Stream.map(fn {record, index} ->
         try do
           case process_student_record(record) do
             {:ok, _} = result ->
-              DataImport.update_import(import_record, %{processed_rows: index + 1})
+              DataImport.update_import(import_record, %{processed_rows: index + 1 - start_row})
               result
 
             {:error, _} = error ->
               DataImport.update_import(import_record, %{
-                processed_rows: index + 1,
+                processed_rows: index + 1 - start_row,
                 error_count: (import_record.error_count || 0) + 1,
                 error_details: [
                   %{row: index + 1, error: inspect(error)}
@@ -135,7 +139,7 @@ defmodule Dbservice.DataImport.ImportWorker do
         rescue
           e ->
             DataImport.update_import(import_record, %{
-              processed_rows: index + 1,
+              processed_rows: index + 1 - start_row,
               error_count: (import_record.error_count || 0) + 1,
               error_details: [
                 %{row: index + 1, error: Exception.message(e)}
@@ -209,13 +213,17 @@ defmodule Dbservice.DataImport.ImportWorker do
     end
   end
 
-  defp count_total_rows(filename) do
+  defp count_total_rows(filename, start_row) do
     path = Path.join(["priv", "static", "uploads", filename])
 
-    path
-    |> File.stream!()
-    |> CSV.decode!(headers: true, separator: ?;)
-    |> Enum.count()
+    count =
+      path
+      |> File.stream!()
+      |> CSV.decode!(headers: true, separator: ?;)
+      |> Enum.count()
+
+    # Adjust count based on start_row
+    max(0, count - (start_row - 1))
   end
 
   defp process_student_record(record) do

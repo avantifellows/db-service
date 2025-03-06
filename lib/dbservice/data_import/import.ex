@@ -28,6 +28,7 @@ defmodule Dbservice.DataImport.Import do
       :processed_rows,
       :error_count,
       :error_details,
+      :start_row,
       :completed_at
     ])
     |> validate_required([:filename, :status, :type])
