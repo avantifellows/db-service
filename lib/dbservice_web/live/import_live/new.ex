@@ -18,35 +18,32 @@ defmodule DbserviceWeb.ImportLive.New do
   end
 
   def handle_event("save", params, socket) do
-    case params do
-      %{"import" => import_params} ->
-        process_import_submission(import_params, socket)
-
-      _ ->
-        IO.puts("Unexpected empty parameters received!")
-        {:noreply, socket}
-    end
-  end
-
-  defp process_import_submission(import_params, socket) do
     if socket.assigns.submitting do
+      # If already submitting, ignore this event
       {:noreply, socket}
     else
       socket = assign(socket, submitting: true)
 
-      case DataImport.start_import(import_params) do
-        {:ok, _import} ->
-          {:noreply,
-           push_redirect(socket, to: Routes.live_path(socket, DbserviceWeb.ImportLive.Index))}
+      case params do
+        %{"import" => import_params} ->
+          case DataImport.start_import(import_params) do
+            {:ok, _import} ->
+              {:noreply,
+               push_redirect(socket, to: Routes.live_path(socket, DbserviceWeb.ImportLive.Index))}
 
-        {:error, reason} when is_binary(reason) ->
-          changeset =
-            %DataImport.Import{}
-            |> DataImport.Import.changeset(import_params)
-            |> Ecto.Changeset.add_error(:sheet_url, reason)
-            |> Map.put(:action, :validate)
+            {:error, reason} when is_binary(reason) ->
+              changeset =
+                %DataImport.Import{}
+                |> DataImport.Import.changeset(import_params)
+                |> Ecto.Changeset.add_error(:sheet_url, reason)
+                |> Map.put(:action, :validate)
 
-          {:noreply, assign(socket, changeset: changeset, submitting: false)}
+              {:noreply, assign(socket, changeset: changeset, submitting: false)}
+          end
+
+        _ ->
+          IO.puts("Unexpected empty parameters received!")
+          {:noreply, assign(socket, submitting: false)}
       end
     end
   end
@@ -155,11 +152,12 @@ defmodule DbserviceWeb.ImportLive.New do
 
               <!-- Submit button -->
               <div class="pt-4">
-                <%= submit(
-                  (if @submitting, do: "Processing...", else: "Start Import"),
-                  class: "w-full flex justify-center py-2 px-4 border border-transparent rounded-md shadow-sm text-sm font-medium text-white #{if @submitting, do: "bg-indigo-400 cursor-not-allowed", else: "bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500"}",
-                  disabled: @submitting
-                ) %>
+              <%= submit(
+    (if @submitting, do: "Processing...", else: "Start Import"),
+    class: "w-full flex justify-center py-2 px-4 border border-transparent rounded-md shadow-sm text-sm font-medium text-white #{if @submitting, do: "bg-indigo-400 cursor-not-allowed", else: "bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500"}",
+    disabled: @submitting,
+    phx_disable_with: "Processing..."
+    ) %>
               </div>
             </.form>
           </div>

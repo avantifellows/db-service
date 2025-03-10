@@ -8,15 +8,15 @@ defmodule DbserviceWeb.ImportLive.Index do
   def mount(_params, _session, socket) do
     imports = DataImport.list_imports()
 
-    if connected?(socket) do
-      # Check if any imports are still processing
-      if Enum.any?(imports, &(&1.status in ["pending", "processing"])) do
-        # Set up timer to refresh data every second
-        :timer.send_interval(1000, self(), :update_imports)
+    timer_ref =
+      if connected?(socket) && Enum.any?(imports, &(&1.status in ["pending", "processing"])) do
+        {:ok, timer} = :timer.send_interval(1000, self(), :update_imports)
+        timer
+      else
+        nil
       end
-    end
 
-    {:ok, assign(socket, imports: imports)}
+    {:ok, assign(socket, imports: imports, timer_ref: timer_ref)}
   end
 
   @impl true
@@ -33,7 +33,19 @@ defmodule DbserviceWeb.ImportLive.Index do
   def handle_info(:update_imports, socket) do
     imports = DataImport.list_imports()
 
-    {:noreply, assign(socket, imports: imports)}
+    # Check if we should continue updating or cancel the timer
+    current_timer_ref = socket.assigns.timer_ref
+
+    {new_timer_ref} =
+      if not Enum.any?(imports, &(&1.status in ["pending", "processing"])) && current_timer_ref do
+        # No more processing imports, cancel the timer
+        :timer.cancel(current_timer_ref)
+        {nil}
+      else
+        {current_timer_ref}
+      end
+
+    {:noreply, assign(socket, imports: imports, timer_ref: new_timer_ref)}
   end
 
   defp apply_action(socket, :index, _params) do
