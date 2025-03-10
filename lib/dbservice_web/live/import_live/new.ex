@@ -22,30 +22,30 @@ defmodule DbserviceWeb.ImportLive.New do
       # If already submitting, ignore this event
       {:noreply, socket}
     else
-      socket = assign(socket, submitting: true)
-
-      case params do
-        %{"import" => import_params} ->
-          case DataImport.start_import(import_params) do
-            {:ok, _import} ->
-              {:noreply,
-               push_redirect(socket, to: Routes.live_path(socket, DbserviceWeb.ImportLive.Index))}
-
-            {:error, reason} when is_binary(reason) ->
-              changeset =
-                %DataImport.Import{}
-                |> DataImport.Import.changeset(import_params)
-                |> Ecto.Changeset.add_error(:sheet_url, reason)
-                |> Map.put(:action, :validate)
-
-              {:noreply, assign(socket, changeset: changeset, submitting: false)}
-          end
-
-        _ ->
-          IO.puts("Unexpected empty parameters received!")
-          {:noreply, assign(socket, submitting: false)}
-      end
+      handle_save(params, assign(socket, submitting: true))
     end
+  end
+
+  defp handle_save(%{"import" => import_params}, socket) do
+    case DataImport.start_import(import_params) do
+      {:ok, _import} ->
+        {:noreply,
+         push_redirect(socket, to: Routes.live_path(socket, DbserviceWeb.ImportLive.Index))}
+
+      {:error, reason} when is_binary(reason) ->
+        changeset =
+          %DataImport.Import{}
+          |> DataImport.Import.changeset(import_params)
+          |> Ecto.Changeset.add_error(:sheet_url, reason)
+          |> Map.put(:action, :validate)
+
+        {:noreply, assign(socket, changeset: changeset, submitting: false)}
+    end
+  end
+
+  defp handle_save(_, socket) do
+    IO.puts("Unexpected empty parameters received!")
+    {:noreply, assign(socket, submitting: false)}
   end
 
   def render(assigns) do
