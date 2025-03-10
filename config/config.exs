@@ -63,6 +63,32 @@ config :dbservice, Dbservice.Repo,
   queue_target: 15_000,
   queue_interval: 100_000
 
+# Oban configuration
+config :dbservice, Oban,
+  repo: Dbservice.Repo,
+  plugins: [Oban.Plugins.Pruner],
+  queues: [imports: 10]
+
+# Tailwind configuration
+config :tailwind,
+  version: "4.0.0",
+  dbservice: [
+    args: ~w(
+      --input=css/app.css
+      --output=../priv/static/assets/app.css
+    ),
+    cd: Path.expand("../assets", __DIR__)
+  ]
+
+# Configure esbuild
+config :esbuild,
+  version: "0.14.41",
+  default: [
+    args: ~w(js/app.js --bundle --target=es2017 --outdir=../priv/static/assets),
+    cd: Path.expand("../assets", __DIR__),
+    env: %{"NODE_PATH" => Path.expand("../deps", __DIR__)}
+  ]
+
 # Import environment-specific config. This must remain at the bottom
 # of this file so it overrides the configuration defined above.
 import_config "#{config_env()}.exs"
