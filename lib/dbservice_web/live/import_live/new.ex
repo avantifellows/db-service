@@ -5,7 +5,7 @@ defmodule DbserviceWeb.ImportLive.New do
 
   def mount(_params, _session, socket) do
     changeset = DataImport.change_import(%DataImport.Import{start_row: 2})
-    {:ok, assign(socket, changeset: changeset, submitting: false)}
+    {:ok, assign(socket, changeset: changeset, submitting: false, debounce_timer: nil)}
   end
 
   def handle_event("validate", %{"import" => import_params}, socket) do
@@ -18,12 +18,32 @@ defmodule DbserviceWeb.ImportLive.New do
   end
 
   def handle_event("save", params, socket) do
+    # Return early if already submitting
     if socket.assigns.submitting do
-      # If already submitting, ignore this event
       {:noreply, socket}
     else
-      handle_save(params, assign(socket, submitting: true))
+      # Cancel any existing timer
+      cancel_existing_timer(socket)
+
+      # Set submitting to true immediately to disable the button
+      socket = assign(socket, submitting: true)
+
+      # Create a debounce timer to delay the actual form submission
+      timer_ref = Process.send_after(self(), {:do_save, params}, 300)
+
+      {:noreply, assign(socket, debounce_timer: timer_ref)}
     end
+  end
+
+  # Helper function to extract nested logic
+  defp cancel_existing_timer(socket) do
+    if socket.assigns.debounce_timer do
+      Process.cancel_timer(socket.assigns.debounce_timer)
+    end
+  end
+
+  def handle_info({:do_save, params}, socket) do
+    handle_save(params, socket)
   end
 
   defp handle_save(%{"import" => import_params}, socket) do
@@ -39,13 +59,13 @@ defmodule DbserviceWeb.ImportLive.New do
           |> Ecto.Changeset.add_error(:sheet_url, reason)
           |> Map.put(:action, :validate)
 
-        {:noreply, assign(socket, changeset: changeset, submitting: false)}
+        {:noreply, assign(socket, changeset: changeset, submitting: false, debounce_timer: nil)}
     end
   end
 
   defp handle_save(_, socket) do
     IO.puts("Unexpected empty parameters received!")
-    {:noreply, assign(socket, submitting: false)}
+    {:noreply, assign(socket, submitting: false, debounce_timer: nil)}
   end
 
   def render(assigns) do
@@ -152,12 +172,19 @@ defmodule DbserviceWeb.ImportLive.New do
 
               <!-- Submit button -->
               <div class="pt-4">
-              <%= submit(
-    (if @submitting, do: "Processing...", else: "Start Import"),
-    class: "w-full flex justify-center py-2 px-4 border border-transparent rounded-md shadow-sm text-sm font-medium text-white #{if @submitting, do: "bg-indigo-400 cursor-not-allowed", else: "bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500"}",
-    disabled: @submitting,
-    phx_disable_with: "Processing..."
-    ) %>
+                <button type="submit"
+                  class={"w-full flex justify-center items-center py-2 px-4 border border-transparent rounded-md shadow-sm text-sm font-medium text-white #{if @submitting, do: "bg-indigo-400 cursor-not-allowed", else: "bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500"}"}
+                  disabled={@submitting}
+                  phx-disable-with="Processing...">
+                  <%= if @submitting do %>
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 mr-2 text-white animate-spin" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+                    </svg>
+                    Processing...
+                  <% else %>
+                    Start Import
+                  <% end %>
+                </button>
               </div>
             </.form>
           </div>
