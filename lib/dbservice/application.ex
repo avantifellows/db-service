@@ -7,6 +7,8 @@ defmodule Dbservice.Application do
 
   @impl true
   def start(_type, _args) do
+    Dbservice.DataImport.init_token_tracker()
+
     children = [
       # Start the Ecto repository
       Dbservice.Repo,
