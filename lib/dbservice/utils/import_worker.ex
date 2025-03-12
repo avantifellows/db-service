@@ -111,12 +111,11 @@ defmodule Dbservice.DataImport.ImportWorker do
         escape_max_lines: 1,
         validate_row_length: false
       )
-      |> Stream.map(&extract_fields/1)
-      |> Stream.map(&map_fields/1)
-      # Start index from 1 to match row numbers
       |> Stream.with_index(1)
       # Skip rows before start_row
-      |> Stream.filter(fn {_record, index} -> index >= start_row end)
+      |> Stream.filter(fn {_record, index} -> index >= start_row - 1 end)
+      |> Stream.map(fn {record, index} -> {extract_fields(record), index} end)
+      |> Stream.map(fn {record, index} -> {map_fields(record), index} end)
       |> Stream.map(fn {record, index} ->
         try do
           case process_student_record(record) do
@@ -207,8 +206,14 @@ defmodule Dbservice.DataImport.ImportWorker do
 
       grade ->
         case Grades.get_grade_by_number(grade) do
-          {:ok, grade_record} -> Map.put(record, "grade_id", grade_record.id)
-          _ -> record
+          %Dbservice.Grades.Grade{} = grade_record ->
+            Map.put(record, "grade_id", grade_record.id)
+
+          {:ok, grade_record} ->
+            Map.put(record, "grade_id", grade_record.id)
+
+          _ ->
+            record
         end
     end
   end
