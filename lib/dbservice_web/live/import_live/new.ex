@@ -11,6 +11,7 @@ defmodule DbserviceWeb.ImportLive.New do
      assign(socket,
        changeset: changeset,
        submitting: false,
+       submitted: false,
        debounce_timer: nil,
        submission_token: submission_token
      )}
@@ -30,8 +31,8 @@ defmodule DbserviceWeb.ImportLive.New do
   end
 
   def handle_event("save", params, socket) do
-    # Return early if already submitting
-    if socket.assigns.submitting do
+    # Return early if already submitting or submitted
+    if socket.assigns.submitting || socket.assigns.submitted do
       {:noreply, socket}
     else
       # Cancel any existing timer
@@ -55,16 +56,17 @@ defmodule DbserviceWeb.ImportLive.New do
   end
 
   def handle_info({:do_save, params}, socket) do
-    # Add the submission token to the params
-    params_with_token =
-      Map.put(params["import"] || %{}, "submission_token", socket.assigns.submission_token)
-
-    updated_params = Map.put(params, "import", params_with_token)
-
-    handle_save(updated_params, socket)
+    # Mark as submitted to prevent double-submission
+    if socket.assigns.submitted do
+      {:noreply, socket}
+    else
+      socket = assign(socket, submitted: true)
+      handle_save(params, socket)
+    end
   end
 
   defp handle_save(%{"import" => import_params}, socket) do
+    # The import_params already contain the submission_token from the hidden field
     case DataImport.start_import(import_params) do
       {:ok, _import} ->
         {:noreply,
@@ -83,6 +85,7 @@ defmodule DbserviceWeb.ImportLive.New do
          assign(socket,
            changeset: changeset,
            submitting: false,
+           submitted: false,
            debounce_timer: nil,
            submission_token: new_token
          )}
@@ -91,7 +94,7 @@ defmodule DbserviceWeb.ImportLive.New do
 
   defp handle_save(_, socket) do
     IO.puts("Unexpected empty parameters received!")
-    {:noreply, assign(socket, submitting: false, debounce_timer: nil)}
+    {:noreply, assign(socket, submitting: false, submitted: false, debounce_timer: nil)}
   end
 
   def render(assigns) do
