@@ -61,7 +61,9 @@ defmodule Dbservice.MixProject do
       {:tailwind, "~> 0.2", runtime: Mix.env() == :dev},
       {:phoenix_live_view, "~> 0.17.14"},
       {:esbuild, "~> 0.4", runtime: Mix.env() == :dev},
-      {:hackney, "~> 1.17.0"}
+      {:hackney, "~> 1.17.0"},
+      {:google_api_sheets, "~> 0.29.0"},
+      {:goth, "~> 1.3"}
     ]
   end
 

@@ -4,10 +4,28 @@ defmodule Dbservice.Application do
   @moduledoc false
 
   use Application
+  alias Dbservice.Utils.Util
+  import Dotenvy
 
   @impl true
   def start(_type, _args) do
     Dbservice.DataImport.init_token_tracker()
+    source(["config/.env"])
+
+    # Read and decode the JSON file
+    json_path = env!("PATH_TO_CREDENTIALS", :string!)
+
+    credentials =
+      case File.read(json_path) do
+        {:ok, content} ->
+          Jason.decode!(content)
+
+        {:error, reason} ->
+          raise "Failed to read Google service account JSON: #{inspect(reason)}"
+      end
+
+    # Ensure the private key is correctly formatted
+    credentials = Util.process_credentials(credentials)
 
     children = [
       # Start the Ecto repository
@@ -18,13 +36,21 @@ defmodule Dbservice.Application do
       {Phoenix.PubSub, name: Dbservice.PubSub},
       # Start the Endpoint (http/https)
       DbserviceWeb.Endpoint,
-      # Start a worker by calling: Dbservice.Worker.start_link(arg)
-      # {Dbservice.Worker, arg}
-      {Oban, Application.fetch_env!(:dbservice, Oban)}
+      # Start Oban
+      {Oban, Application.fetch_env!(:dbservice, Oban)},
+      # Start Goth with additional configuration
+      {Goth,
+       name: Dbservice.Goth,
+       source:
+         {:service_account, credentials,
+          [
+            scopes: [
+              "https://www.googleapis.com/auth/spreadsheets",
+              "https://www.googleapis.com/auth/drive.readonly"
+            ]
+          ]}}
     ]
 
-    # See https://hexdocs.pm/elixir/Supervisor.html
-    # for other strategies and supported options
     opts = [strategy: :one_for_one, name: Dbservice.Supervisor]
     Supervisor.start_link(children, opts)
   end

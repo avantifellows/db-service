@@ -198,7 +198,8 @@ defmodule Dbservice.DataImport do
   defp download_google_sheet(url) do
     case extract_sheet_info(url) do
       {:ok, sheet_id, gid} ->
-        with {:ok, content} <- fetch_google_sheet(sheet_id, gid),
+        with {:ok, token} <- get_google_access_token(),
+             {:ok, content} <- fetch_google_sheet(sheet_id, gid, token),
              {:ok, filename} <- save_csv_file(content) do
           {:ok, filename}
         else
@@ -210,7 +211,14 @@ defmodule Dbservice.DataImport do
     end
   end
 
-  defp fetch_google_sheet(sheet_id, gid) do
+  defp get_google_access_token do
+    case Goth.fetch(Dbservice.Goth) do
+      {:ok, %Goth.Token{token: token}} -> {:ok, token}
+      {:error, reason} -> {:error, "Failed to get Google OAuth token: #{inspect(reason)}"}
+    end
+  end
+
+  defp fetch_google_sheet(sheet_id, gid, token) do
     # Build URL with gid parameter if provided
     csv_url =
       if gid do
@@ -219,7 +227,11 @@ defmodule Dbservice.DataImport do
         "https://docs.google.com/spreadsheets/d/#{sheet_id}/export?format=csv&id=#{sheet_id}"
       end
 
-    headers = [{"User-Agent", "Mozilla/5.0"}, {"Accept", "text/csv,application/csv"}]
+    headers = [
+      {"Authorization", "Bearer #{token}"},
+      {"User-Agent", "Mozilla/5.0"},
+      {"Accept", "text/csv,application/csv"}
+    ]
 
     case HTTPoison.get(csv_url, headers, follow_redirect: true, max_redirects: 5) do
       {:ok, %{status_code: 200, body: content}} when byte_size(content) > 0 ->
