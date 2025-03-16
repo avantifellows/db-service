@@ -3,7 +3,7 @@
 # Define variables
 echo "Defining variables..."
 ENV_NAME_PREFIX="${ENVIRONMENT_PREFIX%?}" # Remove trailing dash if present
-ASG_PATTERN="${ENV_NAME_PREFIX}-DB-asg"
+ASG_PATTERN="${ENV_NAME_PREFIX}asg"
 echo "Looking for ASG with pattern: $ASG_PATTERN"
 
 # Find the correct ASG name with pattern matching
