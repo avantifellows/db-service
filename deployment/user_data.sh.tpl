@@ -23,6 +23,9 @@ Content-Disposition: attachment; filename="userdata.txt"
 LOG_FILE="${LOG_FILE}"
 exec > >(tee -a $LOG_FILE) 2>&1
 
+echo "Sleeping for 60 seconds before executing commands..."
+sleep 60
+
 echo "[$(date)] Starting user_data script execution"
 
 # Function to install system dependencies
@@ -63,20 +66,22 @@ setup_application() {
     if [ ! -d "/home/ubuntu/db-service" ]; then
         echo "Cloning repository..."
         git clone https://github.com/avantifellows/db-service.git /home/ubuntu/db-service
-    else
-        echo "Repository exists, pulling latest changes..."
-        cd /home/ubuntu/db-service
-        git stash
-        git checkout ${BRANCH_NAME_TO_DEPLOY}
-        git pull origin ${BRANCH_NAME_TO_DEPLOY}
     fi
+
+    echo "Setting up application repository..."
+    cd /home/ubuntu/db-service
+
+    # Ensure we are on the correct branch
+    git fetch --all
+    git stash
+    git checkout ${BRANCH_NAME_TO_DEPLOY}
+    git pull origin ${BRANCH_NAME_TO_DEPLOY}
 
     # Create logs directory if needed
     mkdir -p /home/ubuntu/db-service/logs
     chown -R ubuntu:ubuntu /home/ubuntu/db-service
 
     # Setup environment file
-    cd /home/ubuntu/db-service
     HOST_IP=$(curl -s http://169.254.169.254/latest/meta-data/local-ipv4)
     
     cat > .env << EOF
@@ -99,6 +104,9 @@ EOF
 # Function to setup and start application
 start_application() {
     cd /home/ubuntu/db-service
+
+    # Ensure HOME is set
+    export HOME=/home/ubuntu
     
     echo "Setting up Elixir environment..."
     MIX_ENV=prod mix local.hex --force

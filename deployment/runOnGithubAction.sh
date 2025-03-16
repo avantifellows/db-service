@@ -45,19 +45,19 @@ PROCESSED_USER_DATA=$(cat deployment/user_data.sh.tpl | \
     sed "s|\${POOL_SIZE}|$POOL_SIZE|g" | \
     sed "s|\${LOG_FILE}|/home/ubuntu/db-service/logs/user_data.log|g")
 
-# Add this after processing the template
+# Ensure no leftover template variables
 echo "Checking processed user data for any remaining template variables..."
 if grep -q "\${" <<< "$PROCESSED_USER_DATA"; then
   echo "WARNING: Found unparsed variables in user data:"
   grep "\${" <<< "$PROCESSED_USER_DATA"
 fi
 
-# Create new launch template version with updated user data
+# Update user data in Launch Template
 echo "Creating new Launch Template version..."
 NEW_VERSION=$(aws ec2 create-launch-template-version \
     --launch-template-id "$LAUNCH_TEMPLATE_ID" \
     --source-version '$Latest' \
-    --launch-template-data "{\"UserData\":\"$(echo "$PROCESSED_USER_DATA" | base64 -w 0)\"}" \
+    --launch-template-data "{\"UserData\":\"$(echo \"$PROCESSED_USER_DATA\" | base64 -w 0)\"}" \
     --query 'LaunchTemplateVersion.VersionNumber' \
     --output text)
 
@@ -67,14 +67,6 @@ if [ -z "$NEW_VERSION" ]; then
 fi
 
 echo "Created new Launch Template version: $NEW_VERSION"
-
-# Add after creating the template version
-echo "Verifying new launch template version..."
-aws ec2 describe-launch-template-versions \
-  --launch-template-id "$LAUNCH_TEMPLATE_ID" \
-  --versions "$NEW_VERSION" \
-  --query 'LaunchTemplateVersions[0].LaunchTemplateData.UserData' \
-  --output text | base64 -d | grep -A 5 "Starting user_data script execution"
 
 # Get current ASG capacity before scaling down
 echo "Getting current ASG capacity..."
@@ -91,48 +83,28 @@ aws autoscaling update-auto-scaling-group \
     --auto-scaling-group-name "$ASG_NAME" \
     --launch-template LaunchTemplateId="$LAUNCH_TEMPLATE_ID",Version="$NEW_VERSION"
 
-# Scale down to 0
-echo "Scaling down ASG to 0 instances..."
-aws autoscaling update-auto-scaling-group \
-    --auto-scaling-group-name "$ASG_NAME" \
-    --min-size 0 \
-    --max-size 0 \
-    --desired-capacity 0
-
-# Wait for instances to terminate
-echo "Waiting for instances to terminate..."
-while true; do
-    INSTANCE_COUNT=$(aws autoscaling describe-auto-scaling-groups \
-        --auto-scaling-group-names "$ASG_NAME" \
-        --query 'AutoScalingGroups[0].Instances[*]' \
-        --output text | wc -l)
-    if [ "$INSTANCE_COUNT" -eq 0 ]; then
-        break
-    fi
-    echo "Waiting for instances to terminate... ($INSTANCE_COUNT remaining)"
-    sleep 10
-done
-
-# Scale back up to original capacity
-echo "Scaling back up ASG to original capacity..."
-aws autoscaling update-auto-scaling-group \
-    --auto-scaling-group-name "$ASG_NAME" \
-    --min-size 1 \
-    --max-size 2 \
-    --desired-capacity "$CURRENT_DESIRED"
-
-# Add at the end of the script
-echo "Verifying instances are using the new launch template version..."
+# Reboot instances instead of terminating them
+echo "Rebooting instances to apply changes..."
 INSTANCE_IDS=$(aws autoscaling describe-auto-scaling-groups \
   --auto-scaling-group-names "$ASG_NAME" \
   --query 'AutoScalingGroups[0].Instances[*].InstanceId' \
   --output text)
 
 for INSTANCE_ID in $INSTANCE_IDS; do
+  echo "Rebooting instance $INSTANCE_ID..."
+  aws ec2 reboot-instances --instance-ids "$INSTANCE_ID"
+done
+
+# Wait for instances to come back online
+echo "Waiting for instances to initialize..."
+sleep 60  # Adjust based on expected instance reboot time
+
+echo "Verifying instances are using the new launch template version..."
+for INSTANCE_ID in $INSTANCE_IDS; do
   echo "Checking instance $INSTANCE_ID..."
   aws ec2 describe-instances \
     --instance-ids "$INSTANCE_ID" \
-    --query 'Reservations[0].Instances[0].LaunchTemplateVersion' \
+    --query 'Reservations[0].Instances[0].LaunchTemplate.Version' \
     --output text
 done
 

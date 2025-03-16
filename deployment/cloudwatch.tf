@@ -2,7 +2,7 @@
 resource "aws_cloudwatch_log_group" "app_logs" {
   name              = "${local.environment}-dbservice"
   retention_in_days = 30
-  
+
   tags = merge(
     local.common_tags,
     {
@@ -44,13 +44,13 @@ resource "aws_iam_role_policy_attachment" "cloudwatch_logs" {
 
 # Create SSM Parameter for CloudWatch Agent config
 resource "aws_ssm_parameter" "cloudwatch_agent_config" {
-  name  = "${local.environment_prefix}cloudwatch-agent-config"
-  type  = "String"
-  tier  = "Standard"
+  name = "${local.environment_prefix}cloudwatch-agent-config"
+  type = "String"
+  tier = "Standard"
   value = jsonencode({
     agent = {
       metrics_collection_interval = 60
-      run_as_user                = "root"
+      run_as_user                 = "root"
     }
     logs = {
       logs_collected = {
@@ -61,27 +61,33 @@ resource "aws_ssm_parameter" "cloudwatch_agent_config" {
               log_group_name    = "${local.environment}-dbservice"
               log_stream_name   = "{instance_id}"
               retention_in_days = 30
+            },
+            {
+              file_path         = "/var/log/user_data.log"
+              log_group_name    = "${local.environment}-userdata"
+              log_stream_name   = "{instance_id}"
+              retention_in_days = 30
             }
           ]
         }
       }
     }
     metrics = {
-      aggregation_dimensions  = [["InstanceId"]]
+      aggregation_dimensions = [["InstanceId"]]
       append_dimensions = {
         AutoScalingGroupName = "$${aws:AutoScalingGroupName}"
-        ImageId             = "$${aws:ImageId}"
-        InstanceId          = "$${aws:InstanceId}"
-        InstanceType        = "$${aws:InstanceType}"
+        ImageId              = "$${aws:ImageId}"
+        InstanceId           = "$${aws:InstanceId}"
+        InstanceType         = "$${aws:InstanceType}"
       }
       metrics_collected = {
         disk = {
-          measurement               = ["used_percent"]
+          measurement                 = ["used_percent"]
           metrics_collection_interval = 60
-          resources                 = ["*"]
+          resources                   = ["*"]
         }
         mem = {
-          measurement               = ["mem_used_percent"]
+          measurement                 = ["mem_used_percent"]
           metrics_collection_interval = 60
         }
       }
