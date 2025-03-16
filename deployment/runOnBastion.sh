@@ -34,7 +34,6 @@ echo "[EC2 Action] Found ARN for target group: $targetGroupArn"
 
 keyPath="/home/ubuntu/AvantiFellows.pem"
 envFile="/home/ubuntu/.env"
-pathToCloudwatchConfig="/home/ubuntu/db-service/deployment/cloudwatch-agent-config.json"
 
 # Fetch the instance IDs of the target group using the ARN
 echo "[EC2 Action] Fetching instance IDs of the target group..."
@@ -97,6 +96,17 @@ for i in "${!instanceIdsArray[@]}"; do
         sudo MIX_ENV=prod mix phx.swagger.generate || { echo "Swagger generation failed!" ; exit 1; } &&
         
         sudo MIX_ENV=prod elixir --erl "-detached" -S mix phx.server || { echo "Server start failed!" ; exit 1; }
+
+        echo "[CloudWatch Agent] Downloading and applying CloudWatch Agent configuration from AWS SSM..."
+        sudo mkdir -p /opt/aws/amazon-cloudwatch-agent/etc
+        
+        # Fetch and apply CloudWatch Agent config from SSM
+        aws ssm get-parameter --name "staging-cloudwatch-agent-config" --query "Parameter.Value" --output text > /opt/aws/amazon-cloudwatch-agent/etc/cloudwatch-config.json
+
+        # Restart the CloudWatch agent
+        echo "[CloudWatch Agent] Restarting CloudWatch Agent..."
+        sudo systemctl stop amazon-cloudwatch-agent
+        sudo amazon-cloudwatch-agent-ctl -a fetch-config -m ec2 -c file:/opt/aws/amazon-cloudwatch-agent/etc/cloudwatch-config.json -s
 EOF
     echo "[EC2 Action] Completed actions on instance $id."
 done
