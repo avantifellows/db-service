@@ -45,6 +45,13 @@ PROCESSED_USER_DATA=$(cat deployment/user_data.sh.tpl | \
     sed "s|\${POOL_SIZE}|$POOL_SIZE|g" | \
     sed "s|\${LOG_FILE}|/home/ubuntu/db-service/logs/user_data.log|g")
 
+# Add this after processing the template
+echo "Checking processed user data for any remaining template variables..."
+if grep -q "\${" <<< "$PROCESSED_USER_DATA"; then
+  echo "WARNING: Found unparsed variables in user data:"
+  grep "\${" <<< "$PROCESSED_USER_DATA"
+fi
+
 # Create new launch template version with updated user data
 echo "Creating new Launch Template version..."
 NEW_VERSION=$(aws ec2 create-launch-template-version \
@@ -60,6 +67,14 @@ if [ -z "$NEW_VERSION" ]; then
 fi
 
 echo "Created new Launch Template version: $NEW_VERSION"
+
+# Add after creating the template version
+echo "Verifying new launch template version..."
+aws ec2 describe-launch-template-versions \
+  --launch-template-id "$LAUNCH_TEMPLATE_ID" \
+  --versions "$NEW_VERSION" \
+  --query 'LaunchTemplateVersions[0].LaunchTemplateData.UserData' \
+  --output text | base64 -d | grep -A 5 "Starting user_data script execution"
 
 # Get current ASG capacity before scaling down
 echo "Getting current ASG capacity..."
@@ -105,5 +120,20 @@ aws autoscaling update-auto-scaling-group \
     --min-size 1 \
     --max-size 2 \
     --desired-capacity "$CURRENT_DESIRED"
+
+# Add at the end of the script
+echo "Verifying instances are using the new launch template version..."
+INSTANCE_IDS=$(aws autoscaling describe-auto-scaling-groups \
+  --auto-scaling-group-names "$ASG_NAME" \
+  --query 'AutoScalingGroups[0].Instances[*].InstanceId' \
+  --output text)
+
+for INSTANCE_ID in $INSTANCE_IDS; do
+  echo "Checking instance $INSTANCE_ID..."
+  aws ec2 describe-instances \
+    --instance-ids "$INSTANCE_ID" \
+    --query 'Reservations[0].Instances[0].LaunchTemplateVersion' \
+    --output text
+done
 
 echo "Deployment completed successfully"
