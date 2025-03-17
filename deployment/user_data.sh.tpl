@@ -62,6 +62,8 @@ setup_cloudwatch() {
 
 # Function to setup application
 setup_application() {
+    export HOME=/home/ubuntu
+    
     # Create and set permissions for application directory
     if [ ! -d "/home/ubuntu/db-service" ]; then
         echo "Cloning repository..."
