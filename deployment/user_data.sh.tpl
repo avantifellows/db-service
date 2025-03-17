@@ -71,6 +71,8 @@ setup_application() {
     echo "Setting up application repository..."
     cd /home/ubuntu/db-service
 
+    git config --global --add safe.directory /home/ubuntu/db-service
+
     # Ensure we are on the correct branch
     git fetch --all
     git stash
