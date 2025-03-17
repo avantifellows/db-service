@@ -35,6 +35,11 @@ jobs:
           BASTION_HOST_INSTANCE_NAME: "staging-DB-Bastion-Host"
           TARGET_GROUP_NAME: "staging-DB-lb-alb-tg"
           ENVIRONMENT_PREFIX: "staging-DB-"
+          DATABASE_URL: ${{ secrets.STAGING_DATABASE_URL }}
+          SECRET_KEY_BASE: ${{ secrets.STAGING_SECRET_KEY_BASE }}
+          BEARER_TOKEN: ${{ secrets.STAGING_BEARER_TOKEN }}
+          PORT: ${{ secrets.STAGING_PORT }}
+          POOL_SIZE: ${{ secrets.STAGING_POOL_SIZE }}
         run: |
           echo "Deploying branch: $BRANCH_NAME_TO_DEPLOY"
           bash deployment/runOnGithubAction.sh

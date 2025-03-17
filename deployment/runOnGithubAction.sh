@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/bin/bash 
 
 # Define variables
 echo "Defining variables..."
@@ -6,24 +6,15 @@ ENV_NAME_PREFIX="${ENVIRONMENT_PREFIX}" # Remove trailing dash if present
 ASG_PATTERN="${ENV_NAME_PREFIX}asg"
 echo "Looking for ASG with pattern: $ASG_PATTERN"
 
-# Read environment variables from appropriate .env file
-if [[ "$ENVIRONMENT_PREFIX" == *"staging"* ]]; then
-  echo "Reading from .env.staging file..."
-  if [ -f ".env.staging" ]; then
-    source .env.staging
-  else
-    echo "Error: .env.staging file not found"
-    exit 1
-  fi
-else
-  echo "Reading from .env file..."
-  if [ -f ".env" ]; then
-    source .env
-  else
-    echo "Error: .env file not found"
-    exit 1
-  fi
-fi
+# Read environment variables from GitHub Secrets
+echo "Reading environment variables from GitHub Secrets..."
+BRANCH_NAME_TO_DEPLOY="${BRANCH_NAME_TO_DEPLOY}"
+TARGET_GROUP_NAME="${TARGET_GROUP_NAME}"
+DATABASE_URL="${DATABASE_URL}"
+SECRET_KEY_BASE="${SECRET_KEY_BASE}"
+BEARER_TOKEN="${BEARER_TOKEN}"
+PORT="${PORT}"
+POOL_SIZE="${POOL_SIZE}"
 
 # Find the correct ASG name with pattern matching
 ASG_NAME=$(aws autoscaling describe-auto-scaling-groups \
