@@ -69,19 +69,32 @@ setup_application() {
     fi
 
     echo "Setting up application repository..."
+    
+    # Fix ownership issues once
+    chown -R ubuntu:ubuntu /home/ubuntu/db-service
     cd /home/ubuntu/db-service
-
-    git config --system --add safe.directory /home/ubuntu/db-service
-
-    # Ensure we are on the correct branch
-    git fetch --all
-    git stash
-    git checkout ${BRANCH_NAME_TO_DEPLOY}
-    git pull origin ${BRANCH_NAME_TO_DEPLOY}
+    
+    # Determine if we need sudo (if running as root)
+    if [ "$(whoami)" = "root" ]; then
+        echo "Running as root, using sudo -u ubuntu for git operations..."
+        sudo -u ubuntu git config --global --add safe.directory /home/ubuntu/db-service
+        
+        sudo -u ubuntu bash -c "cd /home/ubuntu/db-service && \
+          git fetch --all && \
+          git stash && \
+          git checkout ${BRANCH_NAME_TO_DEPLOY} && \
+          git pull origin ${BRANCH_NAME_TO_DEPLOY}"
+    else
+        echo "Running as $(whoami), executing git commands directly..."
+        git config --global --add safe.directory /home/ubuntu/db-service
+        git fetch --all
+        git stash
+        git checkout ${BRANCH_NAME_TO_DEPLOY}
+        git pull origin ${BRANCH_NAME_TO_DEPLOY}
+    fi
 
     # Create logs directory if needed
     mkdir -p /home/ubuntu/db-service/logs
-    chown -R ubuntu:ubuntu /home/ubuntu/db-service
 
     # Setup environment file
     HOST_IP=$(curl -s http://169.254.169.254/latest/meta-data/local-ipv4)
