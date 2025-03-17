@@ -101,7 +101,21 @@ EOF
     cp .env config/.env
 }
 
-# Function to setup and start application
+# Function to stop the running application if it's already running
+stop_existing_application() {
+    echo "Checking for existing application process running on port ${PORT}..."
+    PID=$(sudo lsof -t -i :${PORT})
+
+    if [ -n "$PID" ]; then
+        echo "Process found with PID $PID. Restarting the application..."
+        kill $PID
+        echo "Process terminated."
+    else
+        echo "No existing process found on port ${PORT}."
+    fi
+}
+
+# Function to start application
 start_application() {
     cd /home/ubuntu/db-service
 
@@ -137,6 +151,7 @@ fi
 install_system_dependencies
 setup_cloudwatch
 setup_application
+stop_existing_application
 start_application
 
 echo "[$(date)] Completed user_data script execution"
