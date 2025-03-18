@@ -143,30 +143,4 @@ else
     done
 fi
 
-# After waiting for instances to be running
-for INSTANCE_ID in $INSTANCE_IDS; do
-    INSTANCE_IP=$(aws ec2 describe-instances --instance-ids $INSTANCE_ID --query 'Reservations[0].Instances[0].PrivateIpAddress' --output text)
-    echo "Checking deployment status on $INSTANCE_IP..."
-    
-    # Loop until deployment is complete or timeout
-    timeout=600 # 10 minutes
-    start_time=$(date +%s)
-    while true; do
-        current_time=$(date +%s)
-        if [ $((current_time - start_time)) -gt $timeout ]; then
-            echo "Timeout waiting for deployment to complete on $INSTANCE_IP"
-            break
-        fi
-        
-        # Check if deployment is complete by looking for a success marker in logs
-        if ssh -o StrictHostKeyChecking=no ubuntu@$INSTANCE_IP "grep 'Deployment completed successfully' /home/ubuntu/db-service/logs/user_data.log"; then
-            echo "Deployment completed on $INSTANCE_IP"
-            break
-        fi
-        
-        echo "Deployment still in progress on $INSTANCE_IP, waiting..."
-        sleep 30
-    done
-done
-
 echo "Deployment completed successfully"
