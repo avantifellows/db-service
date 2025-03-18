@@ -181,7 +181,7 @@ resource "aws_instance" "bastion_host" {
   }
 
   provisioner "local-exec" {
-    command = "aws ec2 stop-instances --instance-ids ${self.id} --region ap-south-1"
+    command = "export AWS_PROFILE='${data.dotenv.env_file.env["LOCAL_AWS_PROFILE_NAME"]}' && aws ec2 stop-instances --instance-ids ${self.id} --region ap-south-1"
     when    = create
   }
 }
