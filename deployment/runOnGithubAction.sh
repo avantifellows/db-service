@@ -76,7 +76,7 @@ PROCESSED_USER_DATA=$(cat deployment/user_data.sh.tpl | \
     sed "s|\${BEARER_TOKEN}|$BEARER_TOKEN|g" | \
     sed "s|\${PORT}|$PORT|g" | \
     sed "s|\${POOL_SIZE}|$POOL_SIZE|g" | \
-    sed "s|\${LOG_FILE}|/var/log/user_data.log|g"
+    sed "s|\${LOG_FILE}|/var/log/user_data.log|g")
 # Combine cloud-config header with processed user data and add the footer
 FINAL_USER_DATA="${CLOUD_CONFIG_HEADER}${PROCESSED_USER_DATA}
 
