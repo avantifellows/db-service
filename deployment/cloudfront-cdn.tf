@@ -60,7 +60,7 @@ resource "null_resource" "cloudfront_invalidation" {
 
   # Runs AWS CLI command to invalidate the cache with specified AWS profile
   provisioner "local-exec" {
-    command = "export AWS_DEFAULT_PROFILE='${data.dotenv.env_file.env["LOCAL_AWS_PROFILE_NAME"]}' && aws cloudfront create-invalidation --distribution-id ${aws_cloudfront_distribution.backend_cdn.id} --paths /*"
+    command = local.is_windows ? "set \"AWS_DEFAULT_PROFILE=${trimspace(data.dotenv.env_file.env["LOCAL_AWS_PROFILE_NAME"])}\" && aws cloudfront create-invalidation --distribution-id ${aws_cloudfront_distribution.backend_cdn.id} --paths /*" : "export AWS_DEFAULT_PROFILE='${trimspace(data.dotenv.env_file.env["LOCAL_AWS_PROFILE_NAME"])}' && aws cloudfront create-invalidation --distribution-id ${aws_cloudfront_distribution.backend_cdn.id} --paths /*"
   }
 
   depends_on = [aws_cloudfront_distribution.backend_cdn] # Ensures distribution exists before invalidation

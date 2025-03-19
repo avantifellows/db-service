@@ -14,6 +14,9 @@ locals {
 
   # Path to SSH key file from environment variables
   pem_file_path = data.dotenv.env_file.env["PEM_FILE_PATH"]
+
+  # Detects operating system for command compatibility
+  is_windows = substr(pathexpand("~"), 0, 1) == "/" ? false : true
 }
 
 # Loads environment-specific variables from .env files

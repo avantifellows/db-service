@@ -181,7 +181,7 @@ resource "aws_instance" "bastion_host" {
   }
 
   provisioner "local-exec" {
-    command = "export AWS_PROFILE='${data.dotenv.env_file.env["LOCAL_AWS_PROFILE_NAME"]}' && aws ec2 stop-instances --instance-ids ${self.id} --region ap-south-1"
+    command = local.is_windows ? "set \"AWS_DEFAULT_PROFILE=${trimspace(data.dotenv.env_file.env["LOCAL_AWS_PROFILE_NAME"])}\" && aws ec2 stop-instances --instance-ids ${self.id} --region ap-south-1" : "export AWS_DEFAULT_PROFILE='${trimspace(data.dotenv.env_file.env["LOCAL_AWS_PROFILE_NAME"])}' && aws ec2 stop-instances --instance-ids ${self.id} --region ap-south-1"
     when    = create
   }
 }
