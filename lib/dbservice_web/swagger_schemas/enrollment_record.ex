@@ -11,7 +11,6 @@ defmodule DbserviceWeb.SwaggerSchema.EnrollmentRecord do
           description("An enrollment record for the student")
 
           properties do
-            grade(:string, "Grade")
             academic_year(:string, "Academic Year")
             is_current(:boolean, "Is current enrollment record for student")
             student_id(:integer, "Student ID that the program enrollment belongs to")
@@ -22,7 +21,6 @@ defmodule DbserviceWeb.SwaggerSchema.EnrollmentRecord do
           end
 
           example(%{
-            grade: "7",
             academic_year: "2022",
             is_current: true,
             student_id: 1,

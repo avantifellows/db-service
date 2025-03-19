@@ -9,6 +9,8 @@ defmodule DbserviceWeb.UserSessionController do
   alias Dbservice.Users.Student
   alias Dbservice.Groups.GroupUser
   alias Dbservice.EnrollmentRecords.EnrollmentRecord
+  alias Dbservice.Batches.Batch
+  alias Dbservice.Groups.Group
 
   action_fallback DbserviceWeb.FallbackController
 
@@ -156,6 +158,30 @@ defmodule DbserviceWeb.UserSessionController do
     end
   end
 
+  def remove_batch_mapping(conn, %{"student_id" => student_id, "batch_id" => batch_id}) do
+    with {:ok, student} <- get_student(student_id),
+         {:ok, user_id} <- extract_user_id(student),
+         {:ok, batch} <- get_batch(batch_id),
+         {:ok, _} <- delete_batch_mappings(user_id, batch) do
+      send_resp(conn, 200, "Batch mapping removed successfully!")
+    else
+      {:error, :not_found} ->
+        conn
+        |> put_status(:not_found)
+        |> json(%{error: "Student not found"})
+
+      {:error, :user_id_not_found} ->
+        conn
+        |> put_status(:bad_request)
+        |> json(%{error: "User ID not found for student"})
+
+      {:error, reason} ->
+        conn
+        |> put_status(:bad_request)
+        |> json(%{error: "Error occurred: #{inspect(reason)}"})
+    end
+  end
+
   defp get_student(student_id) do
     case Repo.get_by(Student, student_id: student_id) do
       nil -> {:error, :not_found}
@@ -205,6 +231,59 @@ defmodule DbserviceWeb.UserSessionController do
 
   defp delete_enrollment_record(user_id) do
     {count, _} = from(er in EnrollmentRecord, where: er.user_id == ^user_id) |> Repo.delete_all()
+    {:ok, count}
+  end
+
+  defp get_batch(batch_id) do
+    case Repo.get_by(Batch, batch_id: batch_id) do
+      nil -> {:error, :batch_not_found}
+      batch -> {:ok, batch}
+    end
+  end
+
+  defp delete_batch_mappings(user_id, batch) do
+    Repo.transaction(fn ->
+      with {:ok, _} <- delete_batch_group_user(user_id, batch),
+           {:ok, _} <- delete_batch_enrollment_record(user_id, batch.id) do
+        {:ok, :deleted}
+      else
+        error -> Repo.rollback(error)
+      end
+    end)
+  end
+
+  defp delete_batch_group_user(user_id, batch) do
+    # First get the group_id for this batch from the groups table
+    group_query =
+      from g in Group,
+        where: g.type == "batch" and g.child_id == ^batch.id,
+        select: g.id
+
+    case Repo.one(group_query) do
+      nil ->
+        {:error, :batch_group_not_found}
+
+      group_id ->
+        {count, _} =
+          from(gu in GroupUser,
+            where: gu.user_id == ^user_id and gu.group_id == ^group_id
+          )
+          |> Repo.delete_all()
+
+        {:ok, count}
+    end
+  end
+
+  defp delete_batch_enrollment_record(user_id, batch_id) do
+    {count, _} =
+      from(er in EnrollmentRecord,
+        where:
+          er.user_id == ^user_id and
+            er.group_type == "batch" and
+            er.group_id == ^batch_id
+      )
+      |> Repo.delete_all()
+
     {:ok, count}
   end
 end

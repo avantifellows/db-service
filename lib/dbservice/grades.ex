@@ -8,6 +8,7 @@ defmodule Dbservice.Grades do
   alias Dbservice.Repo
 
   alias Dbservice.Grades.Grade
+  alias Dbservice.Groups.Group
 
   @doc """
   Returns the list of grade.
@@ -59,6 +60,7 @@ defmodule Dbservice.Grades do
   def create_grade(attrs \\ %{}) do
     %Grade{}
     |> Grade.changeset(attrs)
+    |> Ecto.Changeset.put_assoc(:group, [%Group{type: "grade", child_id: attrs["id"]}])
     |> Repo.insert()
   end
 

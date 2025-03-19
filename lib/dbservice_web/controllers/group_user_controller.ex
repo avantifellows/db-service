@@ -3,6 +3,7 @@ defmodule DbserviceWeb.GroupUserController do
   alias Dbservice.Schools
   alias Dbservice.Groups
   alias Dbservice.EnrollmentRecords
+  alias Dbservice.Grades
   use DbserviceWeb, :controller
 
   import Ecto.Query
@@ -171,7 +172,8 @@ defmodule DbserviceWeb.GroupUserController do
             where:
               er.user_id == ^user_id and
                 er.group_type == ^type and
-                er.group_id == ^current_batch_pk
+                er.group_id == ^current_batch_pk and
+                er.is_current == true
           )
           |> Repo.one()
 
@@ -231,12 +233,13 @@ defmodule DbserviceWeb.GroupUserController do
   defp create_new_group_user(conn, params) do
     group = Groups.get_group!(params["group_id"])
 
+    academic_year = resolve_academic_year(group.type, params)
+
     enrollment_record = %{
       "group_id" => group.child_id,
       "group_type" => group.type,
       "user_id" => params["user_id"],
-      "grade_id" => params["grade_id"],
-      "academic_year" => params["academic_year"],
+      "academic_year" => academic_year,
       "start_date" => params["start_date"]
     }
 
@@ -288,30 +291,55 @@ defmodule DbserviceWeb.GroupUserController do
   defp process_group_user(group_user_data) do
     case group_user_data["enrollment_type"] do
       "school" ->
-        case get_school_group_id(group_user_data["school_code"]) do
-          {:error, error_msg} ->
-            {:error, error_msg}
-
-          school_group_id ->
-            group_user_data = Map.put(group_user_data, "group_id", school_group_id)
-            handle_group_user(group_user_data)
-        end
+        handle_school_enrollment(group_user_data)
 
       "batch" ->
-        case get_batch_group_id(group_user_data["batch_id"]) do
-          {:error, error_msg} ->
-            {:error, error_msg}
-
-          batch_group_id ->
-            group_user_data = Map.put(group_user_data, "group_id", batch_group_id)
-            handle_group_user(group_user_data)
-        end
+        handle_batch_enrollment(group_user_data)
 
       "auth_group" ->
         handle_group_user(group_user_data)
 
+      "grade" ->
+        handle_grade_enrollment(group_user_data)
+
       _ ->
         {:error, "Unknown enrollment type"}
+    end
+  end
+
+  defp handle_school_enrollment(group_user_data) do
+    case get_school_group_id(group_user_data["school_code"]) do
+      {:error, error_msg} ->
+        {:error, error_msg}
+
+      school_group_id ->
+        group_user_data
+        |> Map.put("group_id", school_group_id)
+        |> handle_group_user()
+    end
+  end
+
+  defp handle_batch_enrollment(group_user_data) do
+    case get_batch_group_id(group_user_data["batch_id"]) do
+      {:error, error_msg} ->
+        {:error, error_msg}
+
+      batch_group_id ->
+        group_user_data
+        |> Map.put("group_id", batch_group_id)
+        |> handle_group_user()
+    end
+  end
+
+  defp handle_grade_enrollment(group_user_data) do
+    case get_grade_group_id(group_user_data["grade_id"]) do
+      {:error, error_msg} ->
+        {:error, error_msg}
+
+      grade_group_id ->
+        group_user_data
+        |> Map.put("group_id", grade_group_id)
+        |> handle_group_user()
     end
   end
 
@@ -360,15 +388,32 @@ defmodule DbserviceWeb.GroupUserController do
     end
   end
 
+  defp get_grade_group_id(grade_id) do
+    case Grades.get_grade!(grade_id) do
+      nil ->
+        {:error, "Grade not found"}
+
+      grade ->
+        case Groups.get_group_by_child_id_and_type(grade.id, "grade") do
+          nil ->
+            {:error, "Grade group not found"}
+
+          group ->
+            group.id
+        end
+    end
+  end
+
   defp create_new_group_user_from_batch(params) do
     group = Groups.get_group!(params["group_id"])
+
+    academic_year = resolve_academic_year(group.type, params)
 
     enrollment_record = %{
       "group_id" => group.child_id,
       "group_type" => group.type,
       "user_id" => params["user_id"],
-      "grade_id" => params["grade_id"],
-      "academic_year" => params["academic_year"],
+      "academic_year" => academic_year,
       "start_date" => params["start_date"]
     }
 
@@ -385,6 +430,14 @@ defmodule DbserviceWeb.GroupUserController do
     case GroupUsers.update_group_user(existing_group_user, params) do
       {:ok, group_user} -> {:ok, group_user}
       {:error, _changeset} -> {:error, "Failed to update group user. Some problem with changeset"}
+    end
+  end
+
+  defp resolve_academic_year(group_type, params) do
+    if group_type == "auth_group" do
+      nil
+    else
+      params["academic_year"]
     end
   end
 end
