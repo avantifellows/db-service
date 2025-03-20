@@ -119,27 +119,79 @@ aws autoscaling update-auto-scaling-group \
     --auto-scaling-group-name "$ASG_NAME" \
     --launch-template LaunchTemplateId="$LAUNCH_TEMPLATE_ID",Version="$NEW_VERSION"
 
-# Get all running instances in the ASG
-echo "Getting instances in ASG..."
-INSTANCE_IDS=$(aws autoscaling describe-auto-scaling-groups \
+# Get the minimum and maximum instance counts to determine healthy percentage
+echo "Getting ASG size information..."
+MIN_SIZE=$(aws autoscaling describe-auto-scaling-groups \
     --auto-scaling-group-names "$ASG_NAME" \
-    --query 'AutoScalingGroups[0].Instances[*].InstanceId' \
+    --query 'AutoScalingGroups[0].MinSize' \
     --output text)
 
-if [ -z "$INSTANCE_IDS" ]; then
-    echo "No instances found in ASG"
+MAX_SIZE=$(aws autoscaling describe-auto-scaling-groups \
+    --auto-scaling-group-names "$ASG_NAME" \
+    --query 'AutoScalingGroups[0].MaxSize' \
+    --output text)
+
+DESIRED_SIZE=$(aws autoscaling describe-auto-scaling-groups \
+    --auto-scaling-group-names "$ASG_NAME" \
+    --query 'AutoScalingGroups[0].DesiredCapacity' \
+    --output text)
+
+echo "ASG size - Min: $MIN_SIZE, Max: $MAX_SIZE, Desired: $DESIRED_SIZE"
+
+# Calculate healthy percentage based on ASG size
+# For small ASGs, we might need to temporarily adjust the minimum healthy percentage
+if [ "$DESIRED_SIZE" -eq 1 ]; then
+    HEALTHY_PERCENTAGE=0
+elif [ "$DESIRED_SIZE" -eq 2 ]; then
+    HEALTHY_PERCENTAGE=50
 else
-    # Reboot all instances
-    echo "Rebooting instances..."
-    aws ec2 reboot-instances --instance-ids $INSTANCE_IDS
-    
-    # Wait for instances to come back online
-    echo "Waiting for instances to reboot..."
-    for INSTANCE_ID in $INSTANCE_IDS; do
-        echo "Waiting for instance $INSTANCE_ID to become running..."
-        aws ec2 wait instance-status-ok --instance-ids $INSTANCE_ID
-        echo "Instance $INSTANCE_ID is now running"
-    done
+    HEALTHY_PERCENTAGE=70
 fi
 
-echo "Deployment completed successfully"
+echo "Using minimum healthy percentage: $HEALTHY_PERCENTAGE%"
+
+# Start instance refresh
+echo "Starting instance refresh..."
+REFRESH_ID=$(aws autoscaling start-instance-refresh \
+    --auto-scaling-group-name "$ASG_NAME" \
+    --strategy "Rolling" \
+    --preferences "{\"MinHealthyPercentage\":$HEALTHY_PERCENTAGE,\"InstanceWarmup\":300}" \
+    --query 'InstanceRefreshId' \
+    --output text)
+
+if [ -z "$REFRESH_ID" ]; then
+    echo "Error: Failed to start instance refresh"
+    exit 1
+fi
+
+echo "Instance refresh started with ID: $REFRESH_ID"
+
+# Wait for instance refresh to complete
+echo "Waiting for instance refresh to complete..."
+aws autoscaling wait instance-refresh-in-progress \
+    --auto-scaling-group-name "$ASG_NAME" \
+    --instance-refresh-ids "$REFRESH_ID"
+
+# Check final status of instance refresh
+REFRESH_STATUS=$(aws autoscaling describe-instance-refreshes \
+    --auto-scaling-group-name "$ASG_NAME" \
+    --instance-refresh-ids "$REFRESH_ID" \
+    --query 'InstanceRefreshes[0].Status' \
+    --output text)
+
+if [ "$REFRESH_STATUS" = "Successful" ]; then
+    echo "Instance refresh completed successfully"
+    exit 0
+else
+    echo "Instance refresh failed with status: $REFRESH_STATUS"
+    
+    # Get more details about the failure
+    FAILED_INSTANCES=$(aws autoscaling describe-instance-refreshes \
+        --auto-scaling-group-name "$ASG_NAME" \
+        --instance-refresh-ids "$REFRESH_ID" \
+        --query 'InstanceRefreshes[0].FailedInstances' \
+        --output json)
+    
+    echo "Failed instances details: $FAILED_INSTANCES"
+    exit 1
+fi
