@@ -26,8 +26,6 @@ exec > >(tee -a $LOG_FILE) 2>&1
 echo "Sleeping for 60 seconds before executing commands..."
 sleep 60
 
-echo "Testing debug statements"
-
 echo "[$(date)] Starting user_data script execution"
 
 # Debugging user context
