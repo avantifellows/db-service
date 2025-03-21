@@ -26,8 +26,6 @@ exec > >(tee -a $LOG_FILE) 2>&1
 echo "Sleeping for 60 seconds before executing commands..."
 sleep 60
 
-echo "Booting..."
-
 echo "[$(date)] Starting user_data script execution"
 
 # Function to install system dependencies
