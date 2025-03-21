@@ -119,43 +119,11 @@ aws autoscaling update-auto-scaling-group \
     --auto-scaling-group-name "$ASG_NAME" \
     --launch-template LaunchTemplateId="$LAUNCH_TEMPLATE_ID",Version="$NEW_VERSION"
 
-# Get the minimum and maximum instance counts to determine healthy percentage
-echo "Getting ASG size information..."
-MIN_SIZE=$(aws autoscaling describe-auto-scaling-groups \
-    --auto-scaling-group-names "$ASG_NAME" \
-    --query 'AutoScalingGroups[0].MinSize' \
-    --output text)
-
-MAX_SIZE=$(aws autoscaling describe-auto-scaling-groups \
-    --auto-scaling-group-names "$ASG_NAME" \
-    --query 'AutoScalingGroups[0].MaxSize' \
-    --output text)
-
-DESIRED_SIZE=$(aws autoscaling describe-auto-scaling-groups \
-    --auto-scaling-group-names "$ASG_NAME" \
-    --query 'AutoScalingGroups[0].DesiredCapacity' \
-    --output text)
-
-echo "ASG size - Min: $MIN_SIZE, Max: $MAX_SIZE, Desired: $DESIRED_SIZE"
-
-# Calculate healthy percentage based on ASG size
-# For small ASGs, we might need to temporarily adjust the minimum healthy percentage
-if [ "$DESIRED_SIZE" -eq 1 ]; then
-    HEALTHY_PERCENTAGE=0
-elif [ "$DESIRED_SIZE" -eq 2 ]; then
-    HEALTHY_PERCENTAGE=50
-else
-    HEALTHY_PERCENTAGE=70
-fi
-
-echo "Using minimum healthy percentage: $HEALTHY_PERCENTAGE%"
-
-# Start instance refresh
-echo "Starting instance refresh..."
+# Start instance refresh to apply new user data to all instances
+echo "Starting instance refresh to apply new user data..."
 REFRESH_ID=$(aws autoscaling start-instance-refresh \
     --auto-scaling-group-name "$ASG_NAME" \
-    --strategy "Rolling" \
-    --preferences "{\"MinHealthyPercentage\":$HEALTHY_PERCENTAGE,\"InstanceWarmup\":300}" \
+    --preferences '{"MinHealthyPercentage": 90, "InstanceWarmup": 300}' \
     --query 'InstanceRefreshId' \
     --output text)
 
@@ -164,34 +132,44 @@ if [ -z "$REFRESH_ID" ]; then
     exit 1
 fi
 
-echo "Instance refresh started with ID: $REFRESH_ID"
+echo "Started instance refresh with ID: $REFRESH_ID"
 
-# Wait for instance refresh to complete
-echo "Waiting for instance refresh to complete..."
-aws autoscaling wait instance-refresh-in-progress \
-    --auto-scaling-group-name "$ASG_NAME" \
-    --instance-refresh-ids "$REFRESH_ID"
-
-# Check final status of instance refresh
-REFRESH_STATUS=$(aws autoscaling describe-instance-refreshes \
-    --auto-scaling-group-name "$ASG_NAME" \
-    --instance-refresh-ids "$REFRESH_ID" \
-    --query 'InstanceRefreshes[0].Status' \
-    --output text)
-
-if [ "$REFRESH_STATUS" = "Successful" ]; then
-    echo "Instance refresh completed successfully"
-    exit 0
-else
-    echo "Instance refresh failed with status: $REFRESH_STATUS"
-    
-    # Get more details about the failure
-    FAILED_INSTANCES=$(aws autoscaling describe-instance-refreshes \
+# Wait for the instance refresh to complete
+echo "Waiting for instance refresh to complete (this may take several minutes)..."
+while true; do
+    STATUS=$(aws autoscaling describe-instance-refreshes \
         --auto-scaling-group-name "$ASG_NAME" \
         --instance-refresh-ids "$REFRESH_ID" \
-        --query 'InstanceRefreshes[0].FailedInstances' \
-        --output json)
+        --query 'InstanceRefreshes[0].Status' \
+        --output text)
     
-    echo "Failed instances details: $FAILED_INSTANCES"
-    exit 1
-fi
+    PROGRESS=$(aws autoscaling describe-instance-refreshes \
+        --auto-scaling-group-name "$ASG_NAME" \
+        --instance-refresh-ids "$REFRESH_ID" \
+        --query 'InstanceRefreshes[0].PercentageComplete' \
+        --output text)
+    
+    echo "Instance refresh status: $STATUS (${PROGRESS}% complete)"
+    
+    if [ "$STATUS" = "Successful" ]; then
+        echo "Instance refresh completed successfully"
+        break
+    elif [ "$STATUS" = "Failed" ] || [ "$STATUS" = "Cancelled" ]; then
+        echo "Instance refresh failed or was cancelled"
+        
+        # Get the failure reason
+        REASON=$(aws autoscaling describe-instance-refreshes \
+            --auto-scaling-group-name "$ASG_NAME" \
+            --instance-refresh-ids "$REFRESH_ID" \
+            --query 'InstanceRefreshes[0].StatusReason' \
+            --output text)
+        
+        echo "Failure reason: $REASON"
+        exit 1
+    fi
+    
+    echo "Waiting for 30 seconds before checking again..."
+    sleep 30
+done
+
+echo "Deployment completed successfully"

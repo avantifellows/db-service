@@ -28,18 +28,6 @@ sleep 60
 
 echo "[$(date)] Starting user_data script execution"
 
-# Debugging user context
-echo "=============================="
-echo "Debugging User Information"
-echo "=============================="
-echo "Script is running as user: $(whoami)"
-echo "User ID (UID): $(id -u)"
-echo "Group ID (GID): $(id -g)"
-echo "User Groups: $(id -Gn)"
-echo "Home Directory: $HOME"
-echo "Shell: $SHELL"
-echo "=============================="
-
 # Function to install system dependencies
 install_system_dependencies() {
     echo "Checking and installing system dependencies..."
