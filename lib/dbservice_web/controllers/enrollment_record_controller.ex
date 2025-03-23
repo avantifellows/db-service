@@ -78,7 +78,6 @@ defmodule DbserviceWeb.EnrollmentRecordController do
            params["user_id"],
            params["group_id"],
            params["group_type"],
-           params["grade_id"],
            params["academic_year"]
          ) do
       nil ->

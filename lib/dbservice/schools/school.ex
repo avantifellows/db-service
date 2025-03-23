@@ -55,6 +55,14 @@ defmodule Dbservice.Schools.School do
       # :board_medium,
       :user_id
     ])
-    |> validate_required([:code, :name])
+    |> validate_required([
+      :code,
+      :name,
+      :af_school_category,
+      :district_code,
+      :district,
+      :state_code,
+      :state
+    ])
   end
 end

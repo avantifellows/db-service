@@ -6,7 +6,6 @@ defmodule Dbservice.EnrollmentRecords.EnrollmentRecord do
   import Dbservice.Utils.Util
 
   alias Dbservice.Users.User
-  alias Dbservice.Grades.Grade
   alias Dbservice.Subjects.Subject
 
   schema "enrollment_record" do
@@ -17,7 +16,6 @@ defmodule Dbservice.EnrollmentRecords.EnrollmentRecord do
     field :group_id, :integer
     field :group_type, :string
 
-    belongs_to(:grade, Grade)
     belongs_to(:subject, Subject)
 
     belongs_to(:user, User)
@@ -27,12 +25,16 @@ defmodule Dbservice.EnrollmentRecords.EnrollmentRecord do
 
   @doc false
   def changeset(enrollment_record, attrs) do
-    required_fields = [:user_id, :group_id, :group_type, :start_date, :grade_id]
+    required_fields = [:user_id, :group_id, :group_type, :start_date]
+
+    group_type = Map.get(attrs, "group_type") || Map.get(enrollment_record, :group_type)
 
     required_fields =
-      if Map.get(attrs, "group_type") == "auth_group",
-        do: required_fields,
-        else: [:academic_year | required_fields]
+      if group_type != "auth_group" do
+        [:academic_year | required_fields]
+      else
+        required_fields
+      end
 
     enrollment_record
     |> cast(attrs, [
@@ -43,7 +45,6 @@ defmodule Dbservice.EnrollmentRecords.EnrollmentRecord do
       :academic_year,
       :group_id,
       :group_type,
-      :grade_id,
       :subject_id
     ])
     |> validate_required(required_fields)

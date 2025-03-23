@@ -31,6 +31,19 @@ defmodule Dbservice.Statuses do
   def get_status!(id), do: Repo.get!(Status, id)
 
   @doc """
+  Gets a status by title.
+  Raises `Ecto.NoResultsError` if the Status does not exist.
+  ## Examples
+      iex> get_status_by_title(abc)
+      %Status{}
+      iex> get_status_by_title(1234)
+      ** (Ecto.NoResultsError)
+  """
+  def get_status_by_title(title) do
+    Repo.get_by(Status, title: title)
+  end
+
+  @doc """
   Creates a status.
   ## Examples
       iex> create_status(%{field: value})
