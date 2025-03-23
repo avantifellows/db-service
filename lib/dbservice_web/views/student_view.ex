@@ -66,7 +66,8 @@ defmodule DbserviceWeb.StudentView do
       user: render_one(student.user, UserView, "user.json"),
       status: student.status,
       board_stream: student.board_stream,
-      planned_competitive_exams: student.planned_competitive_exams
+      planned_competitive_exams: student.planned_competitive_exams,
+      school_medium: student.school_medium
     }
   end
 
