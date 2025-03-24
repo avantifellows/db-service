@@ -5,6 +5,8 @@ defmodule DbserviceWeb.ChapterController do
   alias Dbservice.Repo
   alias Dbservice.Chapters
   alias Dbservice.Chapters.Chapter
+  alias Dbservice.ChapterCurriculums.ChapterCurriculum
+  alias Dbservice.Utils.Util
 
   action_fallback(DbserviceWeb.FallbackController)
 
@@ -38,7 +40,7 @@ defmodule DbserviceWeb.ChapterController do
   end
 
   def index(conn, params) do
-    query =
+    base_query =
       from(m in Chapter,
         order_by: [asc: m.id],
         offset: ^params["offset"],
@@ -46,16 +48,45 @@ defmodule DbserviceWeb.ChapterController do
       )
 
     query =
-      Enum.reduce(params, query, fn {key, value}, acc ->
-        case String.to_existing_atom(key) do
-          :offset -> acc
-          :limit -> acc
-          atom -> from(u in acc, where: field(u, ^atom) == ^value)
-        end
+      Enum.reduce(params, base_query, fn
+        {"curriculum_id", value}, acc ->
+          from(u in acc,
+            join: cc in ChapterCurriculum,
+            on: cc.chapter_id == u.id,
+            where: cc.curriculum_id == ^value
+          )
+
+        {key, value}, acc ->
+          case String.to_existing_atom(key) do
+            :offset ->
+              acc
+
+            :limit ->
+              acc
+
+            :lang_code ->
+              acc
+
+            :name ->
+              from(u in acc,
+                where:
+                  fragment(
+                    "EXISTS (SELECT 1 FROM JSONB_ARRAY_ELEMENTS(?) obj WHERE obj->>'chapter' = ?)",
+                    u.name,
+                    ^value
+                  )
+              )
+
+            atom ->
+              from(u in acc, where: field(u, ^atom) == ^value)
+          end
       end)
 
-    chapter = Repo.all(query)
-    render(conn, "index.json", chapter: chapter)
+    # Language filtering
+    query = Util.filter_by_lang(query, params)
+
+    chapters = Repo.all(query)
+    render(conn, "index.json", chapter: chapters)
   end
 
   swagger_path :create do

@@ -16,9 +16,7 @@ defmodule DbserviceWeb.ChapterView do
       name: chapter.name,
       code: chapter.code,
       grade_id: chapter.grade_id,
-      subject_id: chapter.subject_id,
-      tag_id: chapter.tag_id,
-      curriculum_id: chapter.curriculum_id
+      subject_id: chapter.subject_id
     }
   end
 end

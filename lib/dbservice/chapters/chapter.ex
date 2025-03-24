@@ -6,23 +6,19 @@ defmodule Dbservice.Chapters.Chapter do
 
   alias Dbservice.Grades.Grade
   alias Dbservice.Subjects.Subject
-  alias Dbservice.Tags.Tag
   alias Dbservice.Topics.Topic
   alias Dbservice.Resources.Resource
-  alias Dbservice.Curriculums.Curriculum
 
   schema "chapter" do
-    field(:name, :string)
+    field :name, {:array, :map}
     field(:code, :string)
 
     timestamps()
 
     has_many(:topic, Topic)
-    has_many(:resource, Resource)
     belongs_to(:grade, Grade)
     belongs_to(:subject, Subject)
-    belongs_to(:tag, Tag)
-    belongs_to(:curriculum, Curriculum)
+    many_to_many(:resource, Resource, join_through: "resource_chapter", on_replace: :delete)
   end
 
   @doc false
@@ -32,9 +28,7 @@ defmodule Dbservice.Chapters.Chapter do
       :name,
       :code,
       :grade_id,
-      :subject_id,
-      :tag_id,
-      :curriculum_id
+      :subject_id
     ])
   end
 end
