@@ -81,20 +81,29 @@ defmodule Dbservice.Resources do
   """
   def extract_problem_ids_from_test(type_params) do
     subjects = Map.get(type_params, "subjects", [])
+    extract_problems_from_subjects(subjects)
+  end
 
+  defp extract_problems_from_subjects(subjects) do
     Enum.flat_map(subjects, fn subject ->
       sections = Map.get(subject, "sections", [])
-
-      Enum.flat_map(sections, fn section ->
-        compulsory_problems = get_in(section, ["compulsory", "problems"]) || []
-        optional_problems = get_in(section, ["optional", "problems"]) || []
-
-        # Combine and extract IDs from both problem lists
-        (compulsory_problems ++ optional_problems)
-        |> Enum.map(fn problem -> Map.get(problem, "id") end)
-        |> Enum.reject(&is_nil/1)
-      end)
+      extract_problems_from_sections(sections)
     end)
+  end
+
+  defp extract_problems_from_sections(sections) do
+    Enum.flat_map(sections, fn section ->
+      extract_problems_from_section(section)
+    end)
+  end
+
+  defp extract_problems_from_section(section) do
+    compulsory_problems = get_in(section, ["compulsory", "problems"]) || []
+    optional_problems = get_in(section, ["optional", "problems"]) || []
+
+    (compulsory_problems ++ optional_problems)
+    |> Enum.map(fn problem -> Map.get(problem, "id") end)
+    |> Enum.reject(&is_nil/1)
   end
 
   @doc """
