@@ -31,7 +31,7 @@ defmodule DbserviceWeb.ResourceView do
           limit: 1
       )
 
-    %{
+    base_map = %{
       id: resource.id,
       name: resource.name,
       type: resource.type,
@@ -47,5 +47,11 @@ defmodule DbserviceWeb.ResourceView do
       topic_id: topic_id,
       chapter_id: chapter_id
     }
+
+    if Map.has_key?(resource, :meta_data) do
+      Map.put(base_map, :meta_data, resource.meta_data)
+    else
+      base_map
+    end
   end
 end

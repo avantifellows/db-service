@@ -255,4 +255,45 @@ defmodule DbserviceWeb.ResourceController do
         from(r in query, limit: ^limit, offset: ^offset)
     end
   end
+
+  swagger_path :test_problems do
+    get("/api/resource/test/{testId}/problems")
+
+    parameters do
+      testId(:path, :integer, "The ID of the test resource", required: true)
+      langId(:query, :integer, "The ID of the language to fetch problems in", required: true)
+    end
+
+    response(200, "OK", Schema.array(:Resource))
+  end
+
+  @doc """
+  Returns all problems for a specific test in a specific language.
+
+  GET /api/resource/test/:id/problems?lang_id=1
+  """
+  def test_problems(conn, %{"id" => test_id, "lang_id" => lang_id}) do
+    # Parse IDs to integers
+    test_id = String.to_integer(test_id)
+    lang_id = String.to_integer(lang_id)
+
+    result = Resources.get_problems_by_test_and_language(test_id, lang_id)
+
+    case result do
+      {:error, :test_not_found} ->
+        conn
+        |> put_status(:not_found)
+        |> json(%{error: "Test resource not found"})
+
+      {:error, :resource_not_test_type} ->
+        conn
+        |> put_status(:bad_request)
+        |> json(%{error: "The specified resource is not a test"})
+
+      problems ->
+        conn
+        |> put_status(:ok)
+        |> render("index.json", resource: problems)
+    end
+  end
 end
