@@ -261,7 +261,13 @@ defmodule DbserviceWeb.ResourceController do
 
     parameters do
       testId(:path, :integer, "The ID of the test resource", required: true)
-      langId(:query, :integer, "The ID of the language to fetch problems in", required: true)
+
+      langCode(
+        :query,
+        :string,
+        "The code of the language to fetch problems in (e.g., 'en', 'hi')",
+        required: true
+      )
     end
 
     response(200, "OK", Schema.array(:Resource))
@@ -270,16 +276,20 @@ defmodule DbserviceWeb.ResourceController do
   @doc """
   Returns all problems for a specific test in a specific language.
 
-  GET /api/resource/test/:id/problems?lang_id=1
+  GET /api/resource/test/:id/problems?lang_code=en
   """
-  def test_problems(conn, %{"id" => test_id, "lang_id" => lang_id}) do
-    # Parse IDs to integers
+  def test_problems(conn, %{"id" => test_id, "lang_code" => lang_code}) do
+    # Parse test ID to integer
     test_id = String.to_integer(test_id)
-    lang_id = String.to_integer(lang_id)
 
-    result = Resources.get_problems_by_test_and_language(test_id, lang_id)
+    result = Resources.get_problems_by_test_and_language(test_id, lang_code)
 
     case result do
+      {:error, :language_not_found} ->
+        conn
+        |> put_status(:not_found)
+        |> json(%{error: "Language with code '#{lang_code}' not found"})
+
       {:error, :test_not_found} ->
         conn
         |> put_status(:not_found)

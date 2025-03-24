@@ -6,6 +6,7 @@ defmodule Dbservice.Languages.Language do
 
   schema "language" do
     field :name, :string
+    field :code, :string
 
     timestamps()
   end
@@ -14,8 +15,9 @@ defmodule Dbservice.Languages.Language do
   def changeset(language, attrs) do
     language
     |> cast(attrs, [
-      :name
+      :name,
+      :code
     ])
-    |> validate_required([:name])
+    |> validate_required([:name, :code])
   end
 end

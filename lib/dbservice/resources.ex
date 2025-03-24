@@ -8,6 +8,7 @@ defmodule Dbservice.Resources do
 
   alias Dbservice.Resources.Resource
   alias Dbservice.Resources.ProblemLanguage
+  alias Dbservice.Languages.Language
 
   @doc """
   Returns the list of resource.
@@ -35,49 +36,61 @@ defmodule Dbservice.Resources do
 
   ## Parameters
     - test_id: ID of the test resource
-    - lang_id: ID of the language to fetch problems in
+    - lang_code: Code of the language to fetch problems in (e.g., "en", "hi")
 
   ## Returns
     - List of problem resources with their metadata from problem_lang table
   """
-  def get_problems_by_test_and_language(test_id, lang_id) do
-    # First, get the test resource to extract problem IDs
-    with %Resource{} = test_resource <- Repo.get(Resource, test_id),
-         true <- test_resource.type == "test" do
-      # Extract all problem IDs from the test resource's type_params
-      problem_ids = extract_problem_ids_from_test(test_resource.type_params)
+  def get_problems_by_test_and_language(test_id, lang_code) do
+    # First, get the language ID from the code
+    language =
+      from(l in Language,
+        where: l.code == ^lang_code,
+        select: l
+      )
+      |> Repo.one()
 
-      # Query for all problems with those IDs
-      problems =
-        from(r in Resource,
-          where: r.id in ^problem_ids and r.type == "problem"
-        )
-        |> Repo.all()
+    case language do
+      nil ->
+        {:error, :language_not_found}
 
-      # For each problem, fetch and merge the language metadata
-      Enum.map(problems, fn problem ->
-        meta_data =
-          from(pl in ProblemLanguage,
-            where: pl.res_id == ^problem.id and pl.lang_id == ^lang_id,
-            select: pl.meta_data
-          )
-          |> Repo.one()
+      %Language{id: lang_id} ->
+        # Get the test resource to extract problem IDs
+        with %Resource{} = test_resource <- Repo.get(Resource, test_id),
+             true <- test_resource.type == "test" do
+          # Extract all problem IDs from the test resource's type_params
+          problem_ids = extract_problem_ids_from_test(test_resource.type_params)
 
-        # Add the meta_data field to the problem
-        Map.put(problem, :meta_data, meta_data)
-      end)
-    else
-      nil -> {:error, :test_not_found}
-      false -> {:error, :resource_not_test_type}
-      error -> error
+          # Query for all problems with those IDs
+          problems =
+            from(r in Resource,
+              where: r.id in ^problem_ids and r.type == "problem"
+            )
+            |> Repo.all()
+
+          # For each problem, fetch and merge the language metadata
+          Enum.map(problems, fn problem ->
+            meta_data =
+              from(pl in ProblemLanguage,
+                where: pl.res_id == ^problem.id and pl.lang_id == ^lang_id,
+                select: pl.meta_data
+              )
+              |> Repo.one()
+
+            # Add the meta_data field to the problem
+            Map.put(problem, :meta_data, meta_data)
+          end)
+        else
+          nil -> {:error, :test_not_found}
+          false -> {:error, :resource_not_test_type}
+          error -> error
+        end
     end
   end
 
   @doc """
-  Recursively extracts all problem IDs from a test's type_params structure.
-
-  This handles the nested structure with subjects, sections, and both
-  compulsory and optional problem lists.
+  Extracts all problem IDs from a test's type_params structure.
+  Keeps nesting depth at maximum of 2 levels.
   """
   def extract_problem_ids_from_test(type_params) do
     subjects = Map.get(type_params, "subjects", [])
