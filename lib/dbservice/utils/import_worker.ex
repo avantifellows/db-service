@@ -188,98 +188,123 @@ defmodule Dbservice.DataImport.ImportWorker do
 
   defp process_student_import(import_record) do
     path = Path.join(["priv", "static", "uploads", import_record.filename])
-    # Default to 2 if not specified
     start_row = import_record.start_row || 2
 
+    with {:ok, parsed_records} <- parse_csv_records(path, start_row),
+         {:ok, processed_records} <- process_parsed_records(parsed_records, import_record) do
+      finalize_import(import_record, processed_records)
+    else
+      {:error, reason} -> handle_import_error(import_record, reason)
+    end
+  end
+
+  defp parse_csv_records(path, start_row) do
     try do
       records =
         path
         |> File.stream!()
         |> CSV.decode!(
-          # Comma separator
           separator: ?,,
-          # Explicit escape character
           escape_character: ?",
-          # Use headers to be more lenient
           headers: true,
-          # Allow variable row lengths
           validate_row_length: false,
-          # Allow multi-line escapes
           escape_max_lines: 2
         )
         |> Stream.with_index(1)
-        # Skip rows before start_row
         |> Stream.filter(fn {_record, index} -> index >= start_row - 1 end)
         |> Stream.map(fn {record, index} -> {extract_fields(record), index} end)
         |> Stream.map(fn {record, index} -> {map_fields(record), index} end)
-        |> Stream.map(fn {record, index} ->
-          try do
-            case process_student_record(record) do
-              {:ok, _} = result ->
-                DataImport.update_import(import_record, %{processed_rows: index + 1 - start_row})
-                result
-
-              {:error, _} = error ->
-                DataImport.update_import(import_record, %{
-                  processed_rows: index + 1 - start_row,
-                  error_count: (import_record.error_count || 0) + 1,
-                  error_details: [
-                    %{row: index + 1, error: inspect(error)}
-                    | import_record.error_details || []
-                  ]
-                })
-
-                error
-            end
-          rescue
-            e ->
-              DataImport.update_import(import_record, %{
-                processed_rows: index + 1 - start_row,
-                error_count: (import_record.error_count || 0) + 1,
-                error_details: [
-                  %{row: index + 1, error: Exception.message(e)}
-                  | import_record.error_details || []
-                ]
-              })
-
-              {:error, Exception.message(e)}
-          end
-        end)
         |> Enum.to_list()
-
-      total_records = length(records)
-
-      DataImport.complete_import(
-        import_record.id,
-        total_records
-      )
 
       {:ok, records}
     rescue
-      e in CSV.StrayEscapeCharacterError ->
-        # Detailed error handling for stray escape character
-        require Logger
-        Logger.error("CSV Parsing Error: #{inspect(e)}")
+      _e in CSV.StrayEscapeCharacterError ->
+        {:error, "CSV parsing failed: Stray escape character. Check file formatting."}
 
-        # Optional: Try to read the problematic line for debugging
-        problematic_line =
-          try do
-            File.stream!(path)
-            |> Enum.at(start_row + 6, "No line found")
-          rescue
-            _ -> "Could not read line"
-          end
-
-        Logger.error("Problematic line: #{inspect(problematic_line)}")
-
-        # Fail the import with a descriptive error
-        DataImport.fail_import(
-          import_record.id,
-          "CSV parsing failed: Stray escape character. Check file formatting and try re-exporting."
-        )
-
-        {:error, "CSV parsing failed"}
+      error ->
+        {:error, "Unexpected error parsing CSV: #{inspect(error)}"}
     end
+  end
+
+  defp process_parsed_records(records, import_record) do
+    processed_records =
+      Enum.map(records, fn {record, index} ->
+        process_single_record(record, index, import_record)
+      end)
+
+    {:ok, processed_records}
+  end
+
+  defp process_single_record(record, index, import_record) do
+    try do
+      case process_student_record(record) do
+        {:ok, _} = result ->
+          update_import_progress(import_record, index, :success)
+          result
+
+        {:error, _} = error ->
+          update_import_progress(import_record, index, :error)
+          error
+      end
+    rescue
+      e ->
+        update_import_progress(import_record, index, :exception, e)
+        {:error, Exception.message(e)}
+    end
+  end
+
+  defp update_import_progress(import_record, index, status, error \\ nil) do
+    processed_rows = index + 1 - (import_record.start_row || 2)
+
+    update_params = %{
+      processed_rows: processed_rows
+    }
+
+    update_params =
+      case status do
+        :error ->
+          Map.merge(update_params, %{
+            error_count: (import_record.error_count || 0) + 1,
+            error_details: [
+              %{row: index + 1, error: inspect(error)}
+              | import_record.error_details || []
+            ]
+          })
+
+        :exception ->
+          Map.merge(update_params, %{
+            error_count: (import_record.error_count || 0) + 1,
+            error_details: [
+              %{row: index + 1, error: Exception.message(error)}
+              | import_record.error_details || []
+            ]
+          })
+
+        _ ->
+          update_params
+      end
+
+    DataImport.update_import(import_record, update_params)
+  end
+
+  defp finalize_import(import_record, records) do
+    total_records = length(records)
+
+    DataImport.complete_import(
+      import_record.id,
+      total_records
+    )
+
+    {:ok, records}
+  end
+
+  defp handle_import_error(import_record, reason) do
+    DataImport.fail_import(
+      import_record.id,
+      reason
+    )
+
+    {:error, reason}
   end
 
   defp extract_fields(record) do
