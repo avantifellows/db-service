@@ -96,82 +96,6 @@ defmodule Dbservice.DataImport.ImportWorker do
     end
   end
 
-  defp process_student_import(import_record) do
-    path = Path.join(["priv", "static", "uploads", import_record.filename])
-    # Default to 2 if not specified
-    start_row = import_record.start_row || 2
-
-    records =
-      path
-      |> File.stream!()
-      |> CSV.decode!(
-        headers: true,
-        separator: ?;,
-        escape_character: ?",
-        escape_max_lines: 1,
-        validate_row_length: false
-      )
-      |> Stream.with_index(1)
-      # Skip rows before start_row
-      |> Stream.filter(fn {_record, index} -> index >= start_row - 1 end)
-      |> Stream.map(fn {record, index} -> {extract_fields(record), index} end)
-      |> Stream.map(fn {record, index} -> {map_fields(record), index} end)
-      |> Stream.map(fn {record, index} ->
-        try do
-          case process_student_record(record) do
-            {:ok, _} = result ->
-              DataImport.update_import(import_record, %{processed_rows: index + 1 - start_row})
-              result
-
-            {:error, _} = error ->
-              DataImport.update_import(import_record, %{
-                processed_rows: index + 1 - start_row,
-                error_count: (import_record.error_count || 0) + 1,
-                error_details: [
-                  %{row: index + 1, error: inspect(error)}
-                  | import_record.error_details || []
-                ]
-              })
-
-              error
-          end
-        rescue
-          e ->
-            DataImport.update_import(import_record, %{
-              processed_rows: index + 1 - start_row,
-              error_count: (import_record.error_count || 0) + 1,
-              error_details: [
-                %{row: index + 1, error: Exception.message(e)}
-                | import_record.error_details || []
-              ]
-            })
-
-            {:error, Exception.message(e)}
-        end
-      end)
-      |> Enum.to_list()
-
-    total_records = length(records)
-
-    DataImport.complete_import(
-      import_record.id,
-      total_records
-    )
-
-    {:ok, records}
-  end
-
-  defp extract_fields(record) do
-    combined_key = Map.keys(record) |> List.first()
-    combined_value = Map.values(record) |> List.first()
-
-    headers = String.split(combined_key, ",")
-    values = String.split(combined_value, ",")
-
-    Enum.zip(headers, values)
-    |> Enum.into(%{})
-  end
-
   # New function to map sheet column names to database field names
   defp map_fields(record) do
     record
@@ -221,14 +145,172 @@ defmodule Dbservice.DataImport.ImportWorker do
   defp count_total_rows(filename, start_row) do
     path = Path.join(["priv", "static", "uploads", filename])
 
-    count =
-      path
-      |> File.stream!()
-      |> CSV.decode!(headers: true, separator: ?;)
-      |> Enum.count()
+    try do
+      count =
+        path
+        |> File.stream!()
+        |> Stream.drop(start_row - 1)
+        |> CSV.decode!(
+          # Comma separator
+          separator: ?,,
+          # Explicit escape character
+          escape_character: ?",
+          # Use headers to be more lenient
+          headers: true,
+          # Allow variable row lengths
+          validate_row_length: false,
+          # Allow multi-line escapes
+          escape_max_lines: 2
+        )
+        |> Enum.count()
 
-    # Adjust count based on start_row
-    max(0, count - (start_row - 1))
+      max(0, count)
+    rescue
+      _e in CSV.StrayEscapeCharacterError ->
+        # Try alternative parsing if standard CSV parsing fails
+        path
+        |> File.read!()
+        |> String.split("\n")
+        |> Enum.drop(start_row - 1)
+        |> Enum.filter(fn line -> String.trim(line) != "" end)
+        |> length()
+
+      _ ->
+        # Fallback to simple line counting
+        path
+        |> File.read!()
+        |> String.split("\n")
+        |> Enum.drop(start_row - 1)
+        |> Enum.filter(fn line -> String.trim(line) != "" end)
+        |> length()
+    end
+  end
+
+  defp process_student_import(import_record) do
+    path = Path.join(["priv", "static", "uploads", import_record.filename])
+    # Default to 2 if not specified
+    start_row = import_record.start_row || 2
+
+    try do
+      records =
+        path
+        |> File.stream!()
+        |> CSV.decode!(
+          # Comma separator
+          separator: ?,,
+          # Explicit escape character
+          escape_character: ?",
+          # Use headers to be more lenient
+          headers: true,
+          # Allow variable row lengths
+          validate_row_length: false,
+          # Allow multi-line escapes
+          escape_max_lines: 2
+        )
+        |> Stream.with_index(1)
+        # Skip rows before start_row
+        |> Stream.filter(fn {_record, index} -> index >= start_row - 1 end)
+        |> Stream.map(fn {record, index} -> {extract_fields(record), index} end)
+        |> Stream.map(fn {record, index} -> {map_fields(record), index} end)
+        |> Stream.map(fn {record, index} ->
+          try do
+            case process_student_record(record) do
+              {:ok, _} = result ->
+                DataImport.update_import(import_record, %{processed_rows: index + 1 - start_row})
+                result
+
+              {:error, _} = error ->
+                DataImport.update_import(import_record, %{
+                  processed_rows: index + 1 - start_row,
+                  error_count: (import_record.error_count || 0) + 1,
+                  error_details: [
+                    %{row: index + 1, error: inspect(error)}
+                    | import_record.error_details || []
+                  ]
+                })
+
+                error
+            end
+          rescue
+            e ->
+              DataImport.update_import(import_record, %{
+                processed_rows: index + 1 - start_row,
+                error_count: (import_record.error_count || 0) + 1,
+                error_details: [
+                  %{row: index + 1, error: Exception.message(e)}
+                  | import_record.error_details || []
+                ]
+              })
+
+              {:error, Exception.message(e)}
+          end
+        end)
+        |> Enum.to_list()
+
+      total_records = length(records)
+
+      DataImport.complete_import(
+        import_record.id,
+        total_records
+      )
+
+      {:ok, records}
+    rescue
+      e in CSV.StrayEscapeCharacterError ->
+        # Detailed error handling for stray escape character
+        require Logger
+        Logger.error("CSV Parsing Error: #{inspect(e)}")
+
+        # Optional: Try to read the problematic line for debugging
+        problematic_line =
+          try do
+            File.stream!(path)
+            |> Enum.at(start_row + 6, "No line found")
+          rescue
+            _ -> "Could not read line"
+          end
+
+        Logger.error("Problematic line: #{inspect(problematic_line)}")
+
+        # Fail the import with a descriptive error
+        DataImport.fail_import(
+          import_record.id,
+          "CSV parsing failed: Stray escape character. Check file formatting and try re-exporting."
+        )
+
+        {:error, "CSV parsing failed"}
+    end
+  end
+
+  defp extract_fields(record) do
+    case record do
+      # If the record is already a map with multiple keys, return it directly
+      record when is_map(record) and map_size(record) > 1 ->
+        record
+
+      # Handle single-key map scenario (potentially problematic CSV parsing)
+      record when is_map(record) ->
+        combined_key = Map.keys(record) |> List.first()
+        combined_value = Map.values(record) |> List.first()
+
+        # More robust splitting with CSV parsing
+        headers = String.split(combined_key, ",", trim: true)
+        values = String.split(combined_value, ",", trim: true)
+
+        # Ensure headers and values have the same length
+        headers
+        |> Enum.zip(values)
+        |> Enum.into(%{}, fn
+          {header, value} when is_binary(header) ->
+            # Trim whitespace and remove quotes if present
+            {String.trim(header), String.trim(value, "\"' ")}
+
+          _ ->
+            nil
+        end)
+        |> Enum.reject(fn {_, v} -> v == nil end)
+        |> Enum.into(%{})
+    end
   end
 
   defp process_student_record(record) do

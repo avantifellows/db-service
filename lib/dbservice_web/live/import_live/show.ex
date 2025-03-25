@@ -32,6 +32,51 @@ defmodule DbserviceWeb.ImportLive.Show do
     {:noreply, assign(socket, import: import_record)}
   end
 
+  defp parse_error_details(error_details) when is_list(error_details) do
+    Enum.map(error_details, fn
+      detail when is_map(detail) ->
+        detail
+
+      detail when is_binary(detail) ->
+        try do
+          # Attempt to parse JSON-like string
+          case Jason.decode(detail) do
+            {:ok, parsed_detail} ->
+              parsed_detail
+
+            _ ->
+              # Fallback parsing for string-encoded error
+              %{
+                "row" => extract_row(detail),
+                "error" => detail
+              }
+          end
+        rescue
+          _ ->
+            %{
+              "row" => "Unknown",
+              "error" => detail
+            }
+        end
+
+      _ ->
+        %{
+          "row" => "Unknown",
+          "error" => "Unprocessable error format"
+        }
+    end)
+  end
+
+  defp parse_error_details(_), do: []
+
+  defp extract_row(error_string) do
+    # Try to extract row number from the error string
+    case Regex.run(~r/row\s*(\d+)/, error_string) do
+      [_, row] -> row
+      _ -> "Unknown"
+    end
+  end
+
   @impl true
   def render(assigns) do
     ~H"""
@@ -161,36 +206,36 @@ defmodule DbserviceWeb.ImportLive.Show do
 
           <!-- Errors section if applicable -->
           <%= if @import.error_count && @import.error_count > 0 do %>
-            <div class="px-6 py-6 border-t border-gray-100 dark:border-gray-700 bg-red-50 dark:bg-red-900/10">
-              <h2 class="text-lg font-semibold text-red-700 dark:text-red-400 mb-4">
-                <div class="flex items-center">
-                  <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
-                  </svg>
-                  Errors (<%= @import.error_count %>)
-                </div>
-              </h2>
-
-              <div class="bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-red-200 dark:border-red-900/30 overflow-hidden">
-                <ul class="divide-y divide-red-100 dark:divide-red-900/30">
-                  <%= for error <- @import.error_details || [] do %>
-                    <li class="px-4 py-3 text-sm">
-                      <div class="flex items-start">
-                        <div class="flex-shrink-0 pt-0.5">
-                          <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 text-red-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
-                          </svg>
-                        </div>
-                        <div class="ml-3">
-                          <p class="font-medium text-red-800 dark:text-red-400">Row <%= error.row %></p>
-                          <p class="text-red-700 dark:text-red-300"><%= error.error %></p>
-                        </div>
-                      </div>
-                    </li>
-                  <% end %>
-                </ul>
+          <div class="px-6 py-6 border-t border-gray-100 dark:border-gray-700 bg-red-50 dark:bg-red-900/10">
+            <h2 class="text-lg font-semibold text-red-700 dark:text-red-400 mb-4">
+              <div class="flex items-center">
+                <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+                </svg>
+                Errors (<%= @import.error_count %>)
               </div>
+            </h2>
+
+            <div class="bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-red-200 dark:border-red-900/30 overflow-hidden">
+              <ul class="divide-y divide-red-100 dark:divide-red-900/30">
+                <%= for error <- parse_error_details(@import.error_details) do %>
+                  <li class="px-4 py-3 text-sm">
+                    <div class="flex items-start">
+                      <div class="flex-shrink-0 pt-0.5">
+                        <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 text-red-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+                        </svg>
+                      </div>
+                      <div class="ml-3">
+                        <p class="font-medium text-red-800 dark:text-red-400">Row <%= error["row"] %></p>
+                        <p class="text-red-700 dark:text-red-300 break-words"><%= inspect(error["error"]) %></p>
+                      </div>
+                    </div>
+                  </li>
+                <% end %>
+              </ul>
             </div>
+          </div>
           <% end %>
 
           <!-- Actions -->
