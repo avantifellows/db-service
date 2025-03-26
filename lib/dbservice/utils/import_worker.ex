@@ -9,7 +9,7 @@ defmodule Dbservice.DataImport.ImportWorker do
   The worker updates the import record's status and keeps track of processing
   progress, including errors encountered.
   """
-  use Oban.Worker, queue: :imports
+  use Oban.Worker, queue: :imports, max_attempts: 3
 
   alias Dbservice.DataImport
   alias Dbservice.Users
@@ -227,12 +227,20 @@ defmodule Dbservice.DataImport.ImportWorker do
   end
 
   defp process_parsed_records(records, import_record) do
-    processed_records =
-      Enum.map(records, fn {record, index} ->
-        process_single_record(record, index, import_record)
-      end)
+    Enum.reduce_while(records, {:ok, []}, fn {record, index}, {:ok, processed_records} ->
+      case process_single_record(record, index, import_record) do
+        {:ok, result} ->
+          {:cont, {:ok, [result | processed_records]}}
 
-    {:ok, processed_records}
+        {:error, reason} ->
+          # Halt the entire import process if any row fails
+          {:halt, {:error, "Error processing row #{index}: #{reason}"}}
+      end
+    end)
+    |> case do
+      {:ok, processed_records} -> {:ok, Enum.reverse(processed_records)}
+      error -> error
+    end
   end
 
   defp process_single_record(record, index, import_record) do
@@ -242,8 +250,8 @@ defmodule Dbservice.DataImport.ImportWorker do
           update_import_progress(import_record, index, :success)
           result
 
-        {:error, _} = error ->
-          update_import_progress(import_record, index, :error)
+        {:error, reason} = error ->
+          update_import_progress(import_record, index, :error, reason)
           error
       end
     rescue

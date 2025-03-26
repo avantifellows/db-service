@@ -185,7 +185,7 @@ defmodule Dbservice.DataImport do
     {:ok, updated_import} =
       update_import(import_record, %{
         status: "failed",
-        error_message: reason,
+        error_details: reason,
         completed_at: DateTime.utc_now()
       })
 
