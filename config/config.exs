@@ -5,6 +5,7 @@
 # is restricted to this project.
 
 # General application configuration
+import_config "logger.exs"
 import Config
 
 config :dbservice,

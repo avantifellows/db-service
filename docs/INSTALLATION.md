@@ -96,6 +96,14 @@ For development, we recommend using the following versions:
 - Elixir: 1.14.2
 - Erlang/OTP: 25
 
+### Version Compatibility Note
+
+The application currently works best with:
+- Elixir: 1.14.x
+- Erlang/OTP: 25.x
+
+For Erlang/OTP 27+ users, additional configuration is required (automatically handled in latest versions).
+
 ## Installation steps
 
 Follow the steps below to set up the repo for development
