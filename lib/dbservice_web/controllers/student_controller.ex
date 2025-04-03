@@ -13,10 +13,9 @@ defmodule DbserviceWeb.StudentController do
   alias Dbservice.EnrollmentRecords.EnrollmentRecord
   alias Dbservice.Statuses.Status
   alias Dbservice.Groups.Group
-  alias Dbservice.EnrollmentRecords
   alias Dbservice.Batches.Batch
   alias Dbservice.GroupUsers
-  alias Dbservice.Grades
+  alias Dbservice.Grades.Grade
   alias DbserviceWeb.EnrollmentRecordView
   alias Dbservice.Statuses
 
@@ -271,21 +270,23 @@ defmodule DbserviceWeb.StudentController do
     start_date = params["start_date"]
 
     # Get batch information and enrolled status information
-
-    {group_id, batch_id, group_type} = get_batch_info(params["batch_id"])
+    {batch_group_id, batch_id, batch_group_type} = get_batch_info(params["batch_id"])
+    {grade_group_id, grade_id, grade_group_type} = get_grade_info(params["grade"])
     {status_id, status_group_type} = get_enrolled_status_info()
 
     academic_year = params["academic_year"]
-    grade_id = params["grade_id"]
+
+    # Fetch current grade from database to compare
+    current_grade = EnrollmentRecords.get_current_grade_id(user_id)
+    grade_changed = current_grade != grade_id
 
     # Check if the student is already enrolled in the specified batch
     unless existing_batch_enrollment?(user_id, batch_id) do
       handle_batch_enrollment(
         user_id,
         batch_id,
-        group_type,
+        batch_group_type,
         academic_year,
-        grade_id,
         start_date
       )
 
@@ -295,13 +296,23 @@ defmodule DbserviceWeb.StudentController do
         status_id,
         status_group_type,
         academic_year,
-        grade_id,
         start_date
       )
     end
 
-    # Update the group user with the new group ID
-    update_group_user(user_id, group_id, group_users)
+    # If grade has changed, create a new grade entry in ER
+    if grade_changed do
+      handle_grade_change(user_id, grade_id, start_date, academic_year, grade_group_type)
+
+      # Update grade in group_user
+      update_group_user_grade(user_id, grade_group_id, group_users)
+
+      # Update grade in student table
+      update_student_grade(student, grade_id)
+    end
+
+    # Always update the batch group user
+    update_batch_user(user_id, batch_group_id, group_users)
 
     # Update the student's status to "enrolled" and render the response
     with {:ok, %Student{} = updated_student} <-
@@ -310,12 +321,63 @@ defmodule DbserviceWeb.StudentController do
     end
   end
 
+  # Handle grade change by creating a new grade entry in ER
+  defp handle_grade_change(user_id, grade_id, start_date, academic_year, grade_group_type) do
+    # First mark all current grade entries as not current
+    from(e in EnrollmentRecord,
+      where: e.user_id == ^user_id and e.group_type == "grade" and e.is_current == true,
+      update: [set: [is_current: false, end_date: ^start_date]]
+    )
+    |> Repo.update_all([])
+
+    # Create new grade enrollment record
+    EnrollmentRecords.create_enrollment_record(%{
+      user_id: user_id,
+      is_current: true,
+      start_date: start_date,
+      group_id: grade_id,
+      group_type: grade_group_type,
+      academic_year: academic_year
+    })
+  end
+
+  # Update grade in group_user
+  defp update_group_user_grade(user_id, grade_group_id, group_users) do
+    grade_group_user = Enum.find(group_users, &group_user_by_type?(&1, "grade"))
+
+    if grade_group_user do
+      GroupUsers.update_group_user(grade_group_user, %{group_id: grade_group_id})
+    else
+      # Create a new grade group user if one doesn't exist
+      GroupUsers.create_group_user(%{
+        user_id: user_id,
+        group_id: grade_group_id
+      })
+    end
+  end
+
+  # Update grade in student table
+  defp update_student_grade(student, grade_id) do
+    Users.update_student(student, %{"grade_id" => grade_id})
+  end
+
   # Fetches batch information based on the batch ID
   defp get_batch_info(batch_id) do
     from(b in Batch,
       join: g in Group,
       on: g.child_id == b.id and g.type == "batch",
       where: b.batch_id == ^batch_id,
+      select: {g.id, g.child_id, g.type}
+    )
+    |> Repo.one()
+  end
+
+  # Fetches grade information based on the grade number
+  defp get_grade_info(grade) do
+    from(gr in Grade,
+      join: g in Group,
+      on: g.child_id == gr.id and g.type == "grade",
+      where: gr.number == ^grade,
       select: {g.id, g.child_id, g.type}
     )
     |> Repo.one()
@@ -348,7 +410,6 @@ defmodule DbserviceWeb.StudentController do
          batch_id,
          group_type,
          academic_year,
-         grade_id,
          start_date
        ) do
     new_enrollment_attrs = %{
@@ -357,8 +418,7 @@ defmodule DbserviceWeb.StudentController do
       start_date: start_date,
       group_id: batch_id,
       group_type: group_type,
-      academic_year: academic_year,
-      grade_id: grade_id
+      academic_year: academic_year
     }
 
     # Update existing enrollments to mark them as not current
@@ -372,7 +432,6 @@ defmodule DbserviceWeb.StudentController do
          status_id,
          status_group_type,
          academic_year,
-         grade_id,
          start_date
        ) do
     new_status_enrollment_attrs = %{
@@ -381,8 +440,7 @@ defmodule DbserviceWeb.StudentController do
       start_date: start_date,
       group_id: status_id,
       group_type: status_group_type,
-      academic_year: academic_year,
-      grade_id: grade_id
+      academic_year: academic_year
     }
 
     # Update existing enrollments to mark them as not current
@@ -400,22 +458,22 @@ defmodule DbserviceWeb.StudentController do
   end
 
   # Updates or creates a group user record for the batch
-  defp update_group_user(user_id, group_id, group_users) do
-    batch_group_user = Enum.find(group_users, &batch_group_user?(&1))
+  defp update_batch_user(user_id, group_id, group_users) do
+    batch_group_user = Enum.find(group_users, &group_user_by_type?(&1, "batch"))
 
     if batch_group_user do
       # Update existing group user with the new group ID
       GroupUsers.update_group_user(batch_group_user, %{group_id: group_id})
     else
       # Create a new group user record
-      GroupUsers.create_group_user(%{user_id: user_id, group_id: group_id})
+      GroupUsers.create_group_user(%{user_id: user_id, group_id: group_id, type: "batch"})
     end
   end
 
-  # Checks if a group user is associated with a batch
-  defp batch_group_user?(group_user) do
+  # Checks if a group user is associated with a specific type
+  defp group_user_by_type?(group_user, type) do
     from(g in Group,
-      where: g.id == ^group_user.group_id and g.type == "batch",
+      where: g.id == ^group_user.group_id and g.type == ^type,
       select: g.id
     )
     |> Repo.exists?()
