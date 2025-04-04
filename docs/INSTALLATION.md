@@ -43,7 +43,52 @@ Install the following packages using your favorite package manager. Links are pr
     ```sql
     CREATE EXTENSION "uuid-ossp";
     ```
+### Setup Steps for Windows 
+ - Download the installer from (https://www.postgresql.org/download/)
 
+ - Run the installer with
+      - Default port: 5432
+      - Set password for 'postgres' user
+      - Check "Add to PATH option"
+
+ - Verify after Installation
+    '''
+      psql --version
+    '''
+
+### For Ubuntu/Debian
+  '''sudo apt update
+sudo apt install -y postgresql postgresql-contrib
+sudo systemctl start postgresql
+sudo systemctl enable postgresql
+psql --version
+'''
+
+### For Fedora/CentOS/RHEL
+'''
+sudo dnf install -y postgresql postgresql-server
+sudo postgresql-setup --initdb
+sudo systemctl start postgresql
+sudo systemctl enable postgresql
+psql --version
+'''
+
+### Troubleshooting
+- You may encounter some issues while setting up like:-
+  - Command not found -> For handling this ensure these conditions are satisfied:-
+  
+  # Windows: Ensure C:\Program Files\PostgreSQL\<version>\bin(Or the path specific to your directory) is in PATH
+# Linux/macOS: Verify installation path with 'which psql'
+  
+- Connection Refused Issue -> For handling this :-
+# Check if service is running
+'''sudo systemctl status postgresql  # Linux/macOS
+services.msc  # Windows (look for postgresql service)
+'''
+# Verify port 5432 is open
+'''sudo netstat -tulnp | grep 5432  # Linux/macOS
+netstat -ano | findstr 5432      # Windows
+'''
 ### Recommended Versions
 
 For development, we recommend using the following versions:
