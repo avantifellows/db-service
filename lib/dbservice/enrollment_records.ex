@@ -80,6 +80,40 @@ defmodule Dbservice.EnrollmentRecords do
   end
 
   @doc """
+  Retrieves the current grade ID for a given user.
+
+  The function fetches the most recent enrollment record where:
+  - The user is currently enrolled (`is_current == true`)
+  - The enrollment is of type "grade"
+  - Results are ordered by `inserted_at` in descending order to get the latest entry.
+
+  Returns `nil` if no enrollment record is found.
+
+  ## Examples
+
+      iex> get_current_grade_id(123)
+      9
+
+      iex> get_current_grade_id(456)
+      nil
+
+  """
+  def get_current_grade_id(user_id) do
+    current_enrollment =
+      from(e in EnrollmentRecord,
+        where: e.user_id == ^user_id and e.is_current == true and e.group_type == "grade",
+        order_by: [desc: e.inserted_at],
+        limit: 1
+      )
+      |> Repo.one()
+
+    case current_enrollment do
+      nil -> nil
+      enrollment -> enrollment.group_id
+    end
+  end
+
+  @doc """
   Creates a enrollment_record.
 
   ## Examples
