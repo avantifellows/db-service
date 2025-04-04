@@ -35,13 +35,13 @@ jobs:
         with:
           node-version: 13.8.0
 
-      - uses: actions/cache@v1
+      - uses: actions/cache@v4
         id: deps-cache
         with:
           path: deps
           key: ${{ runner.os }}-mix-${{ hashFiles(format('{0}{1}', github.workspace, '/mix.lock')) }}
 
-      - uses: actions/cache@v1
+      - uses: actions/cache@v4
         id: build-cache
         with:
           path: _build
@@ -51,7 +51,7 @@ jobs:
         id: yarn-cache
         run: echo "::set-output name=dir::$(yarn cache dir)"
 
-      - uses: actions/cache@v1
+      - uses: actions/cache@v4
         with:
           path: ${{ steps.yarn-cache.outputs.dir }}
           key: ${{ runner.os }}-yarn-${{ hashFiles('**/yarn.lock') }}
@@ -67,7 +67,7 @@ jobs:
       # Don't cache PLTs based on mix.lock hash, as Dialyzer can incrementally update even old ones
       # Cache key based on Elixir & Erlang version (also useful when running in matrix)
       - name: Restore PLT cache
-        uses: actions/cache@v2
+        uses: actions/cache@v4
         id: plt_cache
         with:
           key: ${{ runner.os }}-${{ matrix.elixir }}-${{ matrix.otp }}-plt
