@@ -1,13 +1,13 @@
 defmodule DbserviceWeb.StudentController do
+  use DbserviceWeb, :controller
+
+  import Ecto.Query
+  alias Dbservice.Repo
   alias Dbservice.Users.User
   alias Dbservice.Groups
   alias Dbservice.EnrollmentRecords
   alias Dbservice.Schools
   alias Dbservice.Grades
-  use DbserviceWeb, :controller
-
-  import Ecto.Query
-  alias Dbservice.Repo
   alias Dbservice.Users
   alias Dbservice.Users.Student
   alias Dbservice.EnrollmentRecords.EnrollmentRecord
@@ -271,14 +271,9 @@ defmodule DbserviceWeb.StudentController do
 
     # Get batch information and enrolled status information
     {batch_group_id, batch_id, batch_group_type} = get_batch_info(params["batch_id"])
-    {grade_group_id, grade_id, grade_group_type} = get_grade_info(params["grade"])
     {status_id, status_group_type} = get_enrolled_status_info()
 
     academic_year = params["academic_year"]
-
-    # Fetch current grade from database to compare
-    current_grade = EnrollmentRecords.get_current_grade_id(user_id)
-    grade_changed = current_grade != grade_id
 
     # Check if the student is already enrolled in the specified batch
     unless existing_batch_enrollment?(user_id, batch_id) do
@@ -300,15 +295,24 @@ defmodule DbserviceWeb.StudentController do
       )
     end
 
-    # If grade has changed, create a new grade entry in ER
-    if grade_changed do
-      handle_grade_change(user_id, grade_id, start_date, academic_year, grade_group_type)
+    # Only handle grade if it's provided in the params
+    if Map.has_key?(params, "grade") do
+      {grade_group_id, grade_id, grade_group_type} = get_grade_info(params["grade"])
 
-      # Update grade in group_user
-      update_group_user_grade(user_id, grade_group_id, group_users)
+      # Fetch current grade from database to compare
+      current_grade = EnrollmentRecords.get_current_grade_id(user_id)
+      grade_changed = current_grade != grade_id
 
-      # Update grade in student table
-      update_student_grade(student, grade_id)
+      # If grade has changed, create a new grade entry in ER
+      if grade_changed do
+        handle_grade_change(user_id, grade_id, start_date, academic_year, grade_group_type)
+
+        # Update grade in group_user
+        update_group_user_grade(user_id, grade_group_id, group_users)
+
+        # Update grade in student table
+        update_student_grade(student, grade_id)
+      end
     end
 
     # Always update the batch group user
