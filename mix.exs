@@ -20,8 +20,16 @@ defmodule Dbservice.MixProject do
   def application do
     [
       mod: {Dbservice.Application, []},
-      extra_applications: [:logger, :runtime_tools]
+      extra_applications: extra_apps()
     ]
+  end
+
+  defp extra_apps do
+    if System.otp_release() >= "27" do
+      [:logger]  # OTP 27+ doesn't need runtime_tools
+    else
+      [:logger, :runtime_tools]  # Keep existing behavior for older versions
+    end
   end
 
   # Specifies which paths to compile per environment.
