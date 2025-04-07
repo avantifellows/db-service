@@ -7,6 +7,8 @@ defmodule Dbservice.Chapters do
   alias Dbservice.Repo
 
   alias Dbservice.Chapters.Chapter
+  alias Dbservice.ChapterCurriculums.ChapterCurriculum
+  alias Dbservice.ChapterCurriculums
 
   @doc """
   Returns the list of chapter.
@@ -73,6 +75,95 @@ defmodule Dbservice.Chapters do
     chapter
     |> Chapter.changeset(attrs)
     |> Repo.update()
+  end
+
+  @doc """
+  Creates a chapter and associates it with a curriculum if `curriculum_id` is provided.
+
+  ## Examples
+
+      iex> create_chapter_with_curriculum(%{
+      ...>   "title" => "Chapter 1",
+      ...>   "curriculum_id" => 1,
+      ...>   "priority" => 1,
+      ...>   "priority_text" => "High",
+      ...>   "weightage" => 10
+      ...> })
+      {:ok, %Chapter{}}
+
+      iex> create_chapter_with_curriculum(%{field: bad_value})
+      {:error, %Ecto.Changeset{}}
+  """
+  def create_chapter_with_curriculum(attrs \\ %{}) do
+    curriculum_id = Map.get(attrs, "curriculum_id")
+
+    if curriculum_id do
+      with {:ok, %Chapter{} = chapter} <- create_chapter(attrs),
+           chapter_curriculum_attrs = %{
+             "chapter_id" => chapter.id,
+             "curriculum_id" => curriculum_id,
+             "priority" => Map.get(attrs, "priority"),
+             "priority_text" => Map.get(attrs, "priority_text"),
+             "weightage" => Map.get(attrs, "weightage")
+           },
+           {:ok, %ChapterCurriculum{}} <-
+             ChapterCurriculums.create_chapter_curriculum(chapter_curriculum_attrs) do
+        {:ok, chapter}
+      end
+    else
+      create_chapter(attrs)
+    end
+  end
+
+  @doc """
+  Updates a chapter and its associated curriculum data if `curriculum_id` is provided.
+
+  ## Examples
+
+      iex> update_chapter_with_curriculum(chapter, %{
+      ...>   "title" => "Updated Title",
+      ...>   "curriculum_id" => 1,
+      ...>   "priority" => 2,
+      ...>   "priority_text" => "Medium",
+      ...>   "weightage" => 15
+      ...> })
+      {:ok, %Chapter{}}
+
+      iex> update_chapter_with_curriculum(chapter, %{field: bad_value})
+      {:error, %Ecto.Changeset{}}
+  """
+  def update_chapter_with_curriculum(chapter, attrs \\ %{}) do
+    curriculum_id = Map.get(attrs, "curriculum_id")
+
+    if curriculum_id do
+      with {:ok, %Chapter{} = updated_chapter} <- update_chapter(chapter, attrs) do
+        chapter_curriculum_attrs = %{
+          "chapter_id" => updated_chapter.id,
+          "curriculum_id" => curriculum_id,
+          "priority" => Map.get(attrs, "priority"),
+          "priority_text" => Map.get(attrs, "priority_text"),
+          "weightage" => Map.get(attrs, "weightage")
+        }
+
+        case ChapterCurriculums.get_chapter_curriculum_by_chapter_id_and_curriculum_id(
+               updated_chapter.id,
+               curriculum_id
+             ) do
+          nil ->
+            ChapterCurriculums.create_chapter_curriculum(chapter_curriculum_attrs)
+
+          existing_chapter_curriculum ->
+            ChapterCurriculums.update_chapter_curriculum(
+              existing_chapter_curriculum,
+              chapter_curriculum_attrs
+            )
+        end
+
+        {:ok, updated_chapter}
+      end
+    else
+      update_chapter(chapter, attrs)
+    end
   end
 
   @doc """
