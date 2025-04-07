@@ -7,6 +7,7 @@ defmodule Dbservice.Users.Student do
   alias Dbservice.Users.User
   alias Dbservice.Profiles.StudentProfile
   alias Dbservice.Exams.StudentExamRecord
+  alias Dbservice.Grades.Grade
 
   schema "student" do
     field(:student_id, :string)

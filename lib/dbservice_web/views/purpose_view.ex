@@ -14,8 +14,7 @@ defmodule DbserviceWeb.PurposeView do
     %{
       id: purpose.id,
       name: purpose.name,
-      description: purpose.description,
-      tag_id: purpose.tag_id
+      description: purpose.description
     }
   end
 end

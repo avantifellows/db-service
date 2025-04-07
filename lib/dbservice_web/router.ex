@@ -26,6 +26,8 @@ defmodule DbserviceWeb.Router do
     resources("/student-profile", StudentProfileController, except: [:new, :edit])
     resources("/teacher-profile", TeacherProfileController, except: [:new, :edit])
     resources("/school", SchoolController, except: [:new, :edit])
+    resources("/language", LanguageController, except: [:new, :edit])
+    resources("/skill", SkillController, except: [:new, :edit])
     resources("/enrollment-record", EnrollmentRecordController, except: [:new, :edit])
     resources("/session", SessionController, only: [:index, :create, :update, :show])
     post("/session/:id/update-groups", SessionController, :update_groups)
@@ -47,7 +49,6 @@ defmodule DbserviceWeb.Router do
     resources("/topic", TopicController, except: [:new, :edit])
     resources("/concept", ConceptController, except: [:new, :edit])
     resources("/learning-objective", LearningObjectiveController, except: [:new, :edit])
-    resources("/source", SourceController, except: [:new, :edit])
     resources("/purpose", PurposeController, except: [:new, :edit])
     resources("/resource", ResourceController, except: [:new, :edit])
     resources("/exam", ExamController)
@@ -63,12 +64,21 @@ defmodule DbserviceWeb.Router do
     patch("/update-user-enrollment-records", StudentController, :update_user_enrollment_records)
     post("/student/batch-process", StudentController, :batch_process)
     post("/group-user/batch-process", GroupUserController, :batch_process)
+    get("/resources/curriculum", ResourceController, :curriculum_resources)
+    get("/resource/subtypes/:type", ResourceController, :get_subtypes)
 
     # Some students were incorrectly marked as "dropouts" in our system. This endpoint was introduced to reverse this mistake by removing the dropout status from both the enrollment records and the student table
     patch("/student/remove-dropout-status/:student_id", StudentController, :remove_dropout_status)
     delete("/cleanup-student/:student_id", UserSessionController, :cleanup_student)
     delete("/remove-batch/:student_id/:batch_id", UserSessionController, :remove_batch_mapping)
     post("/student/:student_id/status", StudentController, :update_student_status)
+    resources("/chapter-curriculum", ChapterCurriculumController, except: [:new, :edit])
+    resources("/resource-curriculum", ResourceCurriculumController, except: [:new, :edit])
+    resources("/resource-chapter", ResourceChapterController, except: [:new, :edit])
+    resources("/resource-topic", ResourceTopicController, except: [:new, :edit])
+    resources("/resource-concept", ResourceConceptController, except: [:new, :edit])
+    resources("/problem-language", ProblemLanguageController, except: [:new, :edit])
+    get("/resource/test/:id/problems", ResourceController, :test_problems)
 
     def swagger_info do
       source(["config/.env", "config/.env"])
