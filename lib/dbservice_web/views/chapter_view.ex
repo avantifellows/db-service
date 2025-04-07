@@ -40,13 +40,11 @@ defmodule DbserviceWeb.ChapterView do
 
   # Helper function to get the chapter_curriculum
   defp get_chapter_curriculum(chapter) do
-    # If chapter_curriculums is preloaded, take the first one
-    cond do
-      Ecto.assoc_loaded?(chapter.chapter_curriculum) && length(chapter.chapter_curriculum) > 0 ->
-        List.first(chapter.chapter_curriculum)
-
-      true ->
-        nil
+    # If chapter_curriculum is preloaded and contains records
+    if Ecto.assoc_loaded?(chapter.chapter_curriculum) && length(chapter.chapter_curriculum) > 0 do
+      List.first(chapter.chapter_curriculum)
+    else
+      nil
     end
   end
 end
