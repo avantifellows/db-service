@@ -70,7 +70,9 @@ defmodule DbserviceWeb.ImportLive.New do
     case DataImport.start_import(import_params) do
       {:ok, _import} ->
         {:noreply,
-         push_redirect(socket, to: Routes.live_path(socket, DbserviceWeb.ImportLive.Index))}
+         socket
+         |> put_flash(:info, "Import submitted successfully!")
+         |> push_redirect(to: Routes.live_path(socket, DbserviceWeb.ImportLive.Index))}
 
       {:error, reason} when is_binary(reason) ->
         changeset =
@@ -137,9 +139,7 @@ defmodule DbserviceWeb.ImportLive.New do
                 <div class="mt-1">
                   <%= select(f, :type,
                     [
-                      {"Student", "student"},
-                      {"Faculty", "faculty"},
-                      {"Course", "course"}
+                      {"Student", "student"}
                     ],
                     class: "block w-full pl-3 pr-10 py-2 text-base border-gray-300 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm rounded-md dark:bg-gray-700 dark:border-gray-600 dark:text-white") %>
                 </div>

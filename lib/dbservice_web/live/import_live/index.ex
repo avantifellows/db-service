@@ -45,6 +45,8 @@ defmodule DbserviceWeb.ImportLive.Index do
         {current_timer_ref}
       end
 
+    socket = clear_flash(socket)
+
     {:noreply, assign(socket, imports: imports, timer_ref: new_timer_ref)}
   end
 
@@ -60,6 +62,17 @@ defmodule DbserviceWeb.ImportLive.Index do
   def render(assigns) do
     ~H"""
     <div class="min-h-screen bg-gradient-to-br from-gray-50 to-gray-100 dark:from-gray-900 dark:to-gray-800">
+      <%= if live_flash(@flash, :info) do %>
+        <div id="flash-info" class="fixed top-6 left-1/2 transform -translate-x-1/2 z-50" phx-hook="AutoDismiss">
+          <div class="bg-emerald-600 backdrop-blur-sm border border-emerald-400/30 text-white px-6 py-3 rounded-xl shadow-lg text-sm flex items-center space-x-3 animate-fade-in-down">
+            <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 text-emerald-300" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4" />
+            </svg>
+            <span class="font-medium"><%= live_flash(@flash, :info) %></span>
+          </div>
+        </div>
+      <% end %>
+
       <div class="max-w-7xl mx-auto px-4 py-10 sm:px-6 lg:px-8">
         <!-- Header with glass morphism effect -->
         <div class="mb-10 backdrop-blur-sm bg-white/80 dark:bg-gray-800/80 rounded-2xl p-6 shadow-lg border border-gray-100 dark:border-gray-700">
