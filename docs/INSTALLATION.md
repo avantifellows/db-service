@@ -100,7 +100,7 @@ sh ./fetch-data.sh
 
 This script pulls data from the production/staging environment into your local setup.
 
-Note: Access to staging/production credentials is restricted to authorized personnel within the organization. Please contact the repository maintainers if you're an employee and require access.
+**Note:** Access to staging/production credentials is restricted to authorized personnel within the organization. Please contact the repository maintainers if you're an employee and require access.
 
 For external contributors, please use the seed data to populate your local database:
 
