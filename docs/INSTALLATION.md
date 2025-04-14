@@ -74,15 +74,25 @@ Follow the steps below to set up the repo for development
     WHITELISTED_DOMAINS="localhost"
     ```
 
-### Adding data to local database
+### Adding Data to Local Database
 
-You can add data to local database by running `sh ./fetch-data.sh`. This will fetch data from production/staging database and sync with your local database. Please ask repository owners for the following credentials:
+For **internal developers (employees)**, you can sync your local database with the production or staging database by running:
 
-```production_db_host="xxx.rds.amazonaws.com"
-production_db_name="xxx"
-production_db_user="postgres"
-production_db_password="xxx"
+```bash
+sh ./fetch-data.sh
 ```
+
+This script pulls data from the production/staging environment into your local setup.
+
+Note: Access to staging/production credentials is restricted to authorized personnel within the organization. Please contact the repository maintainers if you're an employee and require access.
+
+For external contributors, please use the seed data to populate your local database:
+
+```bash
+mix run priv/repo/seeds.exs
+```
+
+This ensures you have the necessary data to develop and test the application locally without needing access to production data.
 
 ## Editor Support
 
