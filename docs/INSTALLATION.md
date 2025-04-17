@@ -44,12 +44,28 @@ Install the following packages using your favorite package manager. Links are pr
     CREATE EXTENSION "uuid-ossp";
     ```
 
-### Recommended Versions
+### Required Versions
 
-For development, we recommend using the following versions:
+The following versions are required for this project:
 
 - Elixir: 1.14.2
-- Erlang/OTP: 25
+- Erlang/OTP: 25.0
+
+There are several ways to install these specific versions:
+
+1. **Using Version Managers (Recommended)**
+   - Visit [Version Managers documentation](https://elixir-lang.org/install.html#version-managers)
+   - Popular version managers include asdf and kerl
+
+2. **Using Install Scripts**
+   - Visit [Install Scripts documentation](https://elixir-lang.org/install.html#install-scripts)
+   - Download the install script for your operating system
+   - Modify the script to specify version 1.14.2 before running
+
+3. **Manual Installation**
+   - Download the specific version zip file from [Elixir releases](https://elixir-lang.org/docs)
+   - Extract the contents
+   - Add the `bin` directory to your system's PATH
 
 ## Installation steps
 
@@ -74,15 +90,25 @@ Follow the steps below to set up the repo for development
     WHITELISTED_DOMAINS="localhost"
     ```
 
-### Adding data to local database
+### Adding Data to Local Database
 
-You can add data to local database by running `sh ./fetch-data.sh`. This will fetch data from production/staging database and sync with your local database. Please ask repository owners for the following credentials:
+For **internal developers (employees)**, you can sync your local database with the production or staging database by running:
 
-```production_db_host="xxx.rds.amazonaws.com"
-production_db_name="xxx"
-production_db_user="postgres"
-production_db_password="xxx"
+```bash
+sh ./fetch-data.sh
 ```
+
+This script pulls data from the production/staging environment into your local setup.
+
+**Note:** Access to staging/production credentials is restricted to authorized personnel within the organization. Please contact the repository maintainers if you're an employee and require access.
+
+For external contributors, please use the seed data to populate your local database:
+
+```bash
+mix run priv/repo/seeds.exs
+```
+
+This ensures you have the necessary data to develop and test the application locally without needing access to production data.
 
 ## Editor Support
 
