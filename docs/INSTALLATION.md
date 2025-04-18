@@ -84,10 +84,10 @@ Follow the steps below to set up the repo for development
    3. Start Phoenix endpoint with `mix phx.server` or inside IEx with `iex -S mix phx.server`
 3. Now you can visit [`localhost:4000`](http://localhost:4000) from your browser.
 4. You can see Swagger docs at `http://localhost:4000/docs/swagger/index.html`.
-5. Please verify that `localhost` is part of whitelisted domains. If not, you can create a file `db-service/config/.env` and add the following lines to it:
+5. Create a .env file inside db-service/config/ directory and set a bearer token for authorization:
 
     ```
-    WHITELISTED_DOMAINS="localhost"
+    BEARER_TOKEN="your_token_here"
     ```
 
 ### Adding Data to Local Database
