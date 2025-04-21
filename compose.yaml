@@ -1,0 +1,43 @@
+services:
+  db:
+    image: postgres:14.9
+    container_name: dbservice_db
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+      POSTGRES_DB: dbservice_dev
+    ports:
+      - "5432:5432"
+    volumes:
+      - db_data:/var/lib/postgresql/data
+      - ./postgres-init:/docker-entrypoint-initdb.d
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  app:
+    build:
+      context: .
+      dockerfile: DockerFile
+    container_name: dbservice_app
+    environment:
+      MIX_ENV: dev
+      DB_HOST: db
+      DATABASE_URL: ecto://postgres:postgres@db/dbservice_dev
+    ports:
+      - "4000:4000"
+    depends_on:
+      db:
+        condition: service_healthy
+    volumes:
+      - .:/app
+    command: >
+      sh -c "
+      mix deps.get &&
+      mix phx.server
+      "
+
+volumes:
+  db_data:

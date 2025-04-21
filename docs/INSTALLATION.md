@@ -2,6 +2,46 @@
 
 DB Service is built using the Phoenix framework which is based on Elixir programming language. Before setting up this project, there are certain tools required to be installed on your machine.
 
+## Docker
+
+1. [Setup Docker](https://docs.docker.com/get-started/introduction/get-docker-desktop/)
+
+2. Clone the repository and change the working directory
+
+    ```sh
+    git clone https://github.com/avantifellows/db-service.git
+    cd db-service/
+    ```
+
+3. Start the services
+
+    ```sh
+    docker compose up
+    ```
+
+3. Now you can visit [`localhost:4000`](http://localhost:4000) from your browser.
+4. You can see Swagger docs at `http://localhost:4000/docs/swagger/index.html`.
+
+### Interact with DB service
+
+1. For interactive shell run: `docker exec -it dbservice_dev bash`
+
+2. Log into the database created, with: `psql -U postgres -d dbservice_dev`
+  - Check the enabled extensions:
+
+    ```sql
+    SELECT * FROM pg_extension;
+    ```
+
+  - If the `uuid-ossp` module isn't showing up, then run the following command. We require this extension in order to support the Postgres' `uuid_generate_v4` function that auto-generate UUIDs.
+
+    ```sql
+    CREATE EXTENSION "uuid-ossp";
+    ```
+
+> If Docker is not preferred, you can set up the project locally by following the instructions below.
+
+
 ## Pre-requisites
 
 Install the following packages using your favorite package manager. Links are provided for some
