@@ -1,8 +1,28 @@
 defmodule DbserviceWeb.JacDelhiCutoff2023Controller do
   use DbserviceWeb, :controller
+  use PhoenixSwagger
   alias Dbservice.{Repo, JacDelhiCutoff2023}
 
   import Ecto.Query
+
+ # added the swagger block for testing
+  swagger_path :index do
+    get("/api/jac_delhi_cutoff_2023")
+    summary("Get JAC Delhi Cutoff 2023 data")
+    description("Fetches cutoff data with optional filters for category, gender, defense, pwd, state, and rank.")
+
+    parameters do
+      category(:query, :string, "Category", required: false, enum: ["EWS", "Kashmiri Minority", "OBC", "General", "ST", "SC"])
+    gender(:query, :string, "Gender", required: false, enum: ["Gender-Neutral", "Female-Only"])
+    defense(:query, :boolean, "Defense", required: false, enum: [true, false])
+    pwd(:query, :boolean, "PWD", required: false, enum: [true, false])
+    state(:query, :string, "State", required: false, enum: ["Delhi", "Outside Delhi"])
+    rank(:query, :integer, "Minimum closing rank", required: false)
+    end
+
+    response(200, "Success")
+  end
+  # --- End Swagger block ---
 
   def index(conn, params) do
     query = from c in JacDelhiCutoff2023
