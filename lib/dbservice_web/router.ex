@@ -59,6 +59,7 @@ defmodule DbserviceWeb.Router do
     patch("/enrolled", StudentController, :enrolled)
     resources("/school-batch", SchoolBatchController, except: [:new, :edit])
     post("/school-with-user", SchoolController, :create_school_with_user)
+    get("/jac_delhi_cutoff_2023", JacDelhiCutoff2023Controller, :index)
     patch("/update-group-user-by-type", GroupUserController, :update_by_type)
     patch("/update-user-enrollment-records", StudentController, :update_user_enrollment_records)
     post("/student/batch-process", StudentController, :batch_process)
