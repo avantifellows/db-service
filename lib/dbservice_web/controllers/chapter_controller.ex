@@ -154,10 +154,24 @@ defmodule DbserviceWeb.ChapterController do
   end
 
   def delete(conn, %{"id" => id}) do
-    chapter = Chapters.get_chapter!(id)
+    Repo.transaction(fn ->
+      # First delete related chapter_curriculum records
+      from(cc in ChapterCurriculum, where: cc.chapter_id == ^id)
+      |> Repo.delete_all()
 
-    with {:ok, %Chapter{}} <- Chapters.delete_chapter(chapter) do
-      send_resp(conn, :no_content, "")
+      # Then retrieve and delete the chapter
+      chapter = Chapters.get_chapter!(id)
+      Chapters.delete_chapter(chapter)
+    end)
+    |> case do
+      {:ok, {:ok, %Chapter{}}} ->
+        send_resp(conn, :no_content, "")
+
+      _ ->
+        conn
+        |> put_status(:unprocessable_entity)
+        |> put_view(DbserviceWeb.ErrorView)
+        |> render("422.json", message: "Failed to delete chapter")
     end
   end
 
