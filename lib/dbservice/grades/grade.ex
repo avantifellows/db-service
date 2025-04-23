@@ -4,7 +4,6 @@ defmodule Dbservice.Grades.Grade do
   use Ecto.Schema
   import Ecto.Changeset
 
-  # alias Dbservice.Tags.Tag
   alias Dbservice.Chapters.Chapter
   alias Dbservice.Groups.Group
   alias Dbservice.EnrollmentRecords.EnrollmentRecord
