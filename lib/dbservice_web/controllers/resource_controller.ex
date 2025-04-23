@@ -9,6 +9,8 @@ defmodule DbserviceWeb.ResourceController do
   alias Dbservice.Resources.ResourceChapter
   alias Dbservice.Resources.ResourceCurriculum
   alias Dbservice.Utils.Util
+  alias Dbservice.Languages.Language
+  alias Dbservice.Resources.ProblemLanguage
 
   action_fallback(DbserviceWeb.FallbackController)
 
@@ -304,6 +306,61 @@ defmodule DbserviceWeb.ResourceController do
         conn
         |> put_status(:ok)
         |> render("index.json", resource: problems)
+    end
+  end
+
+  swagger_path :fetch_problems do
+    get("/api/problems")
+    summary("Fetch problems by topic, curriculum and language")
+    description("Returns problems filtered by topic_id, curriculum_id and lang_code")
+
+    parameters do
+      topic_id(:query, :integer, "Topic ID", required: true)
+      curriculum_id(:query, :integer, "Curriculum ID", required: true)
+      lang_code(:query, :string, "Language code", required: true)
+    end
+
+    response(200, "OK", Schema.ref(:Resource))
+  end
+
+  def fetch_problems(conn, %{
+        "topic_id" => topic_id,
+        "curriculum_id" => curriculum_id,
+        "lang_code" => lang_code
+      }) do
+    language = Repo.get_by(Language, code: lang_code)
+
+    if is_nil(language) do
+      conn
+      |> put_status(:not_found)
+      |> json(%{error: "Language not found"})
+    else
+      # First build the query to get the correct resources
+      query =
+        from(r in Resource,
+          join: rt in ResourceTopic,
+          on: rt.resource_id == r.id,
+          join: rc in ResourceCurriculum,
+          on: rc.resource_id == r.id,
+          join: pl in ProblemLanguage,
+          on: pl.res_id == r.id,
+          join: l in Language,
+          on: l.id == pl.lang_id,
+          where: rt.topic_id == ^topic_id,
+          where: rc.curriculum_id == ^curriculum_id,
+          where: l.code == ^lang_code,
+          where: r.type == "problem",
+          select: %{
+            resource: r,
+            resource_topic: rt,
+            resource_curriculum: rc,
+            problem_lang: pl
+          }
+        )
+
+      problems = Repo.all(query)
+
+      render(conn, "problems.json", problems: problems)
     end
   end
 end
