@@ -50,7 +50,7 @@ defmodule DbserviceWeb.SwaggerSchema.Student do
             father_education_level: "UG",
             mother_profession: "Housewife",
             mother_education_level: "UG",
-            time_of_device_availability: "2022-10-07",
+            time_of_device_availability: "Between 8am-10am",
             has_internet_access: "Yes",
             primary_smartphone_owner: "Father",
             primary_smartphone_owner_profession: "Employed",
