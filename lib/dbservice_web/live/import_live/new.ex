@@ -128,9 +128,9 @@ defmodule DbserviceWeb.ImportLive.New do
 
           <!-- Form section -->
           <div class="px-6 py-6">
-            <.form let={f} for={@changeset} phx-submit="save" phx-change="validate" class="space-y-6">
-            <!-- Added hidden field for submission token -->
-            <input type="hidden" name="import[submission_token]" value={@submission_token} />
+            <form phx-submit="save" phx-change="validate" class="space-y-6">
+              <input type="hidden" name="import[submission_token]" value={@submission_token} />
+              <%= form_for @changeset, "#", fn f -> %>
               <!-- Type selection -->
               <div>
                 <label for="import_type" class="block text-sm font-medium text-gray-700 dark:text-gray-300">
@@ -217,7 +217,8 @@ defmodule DbserviceWeb.ImportLive.New do
                   <% end %>
                 </button>
               </div>
-            </.form>
+              <% end %>
+            </form>
           </div>
 
           <!-- Info section -->
