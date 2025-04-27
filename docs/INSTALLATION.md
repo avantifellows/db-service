@@ -72,7 +72,27 @@ Follow the steps below to set up the repo for development
 
     ```
     WHITELISTED_DOMAINS="localhost"
+    BEARER_TOKEN="your_bearer_token"
+    PATH_TO_CREDENTIALS="/full/path/to/your/service-account.json"
     ```
+
+   - `BEARER_TOKEN` is used for API authentication
+   - `PATH_TO_CREDENTIALS` should point to the absolute path of your Google Cloud service account JSON file
+
+### Google Cloud Service Account Setup
+
+For features that interact with Google services (like importing data from Google Sheets):
+
+1. Create a service account from the Google Cloud Console
+2. Generate a new key for this service account and download the JSON credentials file
+3. Place this file in a secure location and set the `PATH_TO_CREDENTIALS` environment variable to its absolute path
+4. To import data from a Google Sheet, you need to share the sheet with the service account:
+   - Open your Google Sheet
+   - Click "Share"
+   - Paste the service account email (found in the credentials JSON file)
+   - Give it Viewer access (read-only permissions are sufficient)
+
+This configuration allows the application to authenticate with Google Cloud Platform and access shared Google Sheets for data import operations.
 
 ### Adding Data to Local Database
 
