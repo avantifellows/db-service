@@ -13,18 +13,21 @@ defmodule Dbservice.UsersFixtures do
     {:ok, user} =
       attrs
       |> Enum.into(%{
+        first_name: "some first name",
+        last_name: "some last name",
+        email: "some email",
+        phone: "9456591269",
+        gender: "some gender",
         address: "some address",
         city: "some city",
         district: "some district",
-        email: "some email",
-        full_name: "some full name",
-        gender: "some gender",
-        phone: "9456591269",
+        state: "some state",
+        region: "some region",
         pincode: "some pincode",
         role: "some role",
-        state: "some state",
         whatsapp_phone: "some whatsapp phone",
-        date_of_birth: ~U[2022-04-28 13:58:00Z]
+        date_of_birth: ~D[2000-01-01],
+        country: "some country"
       })
       |> Dbservice.Users.create_user()
 
