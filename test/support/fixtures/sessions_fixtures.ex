@@ -10,6 +10,10 @@ defmodule Dbservice.SessionsFixtures do
   Generate a session.
   """
   def session_fixture(attrs \\ %{}) do
+    # Create valid owner and created_by IDs (e.g., from a Users fixture)
+    owner = Dbservice.UsersFixtures.user_fixture()
+    created_by = Dbservice.UsersFixtures.user_fixture()
+
     {:ok, session} =
       attrs
       |> Enum.into(%{
@@ -20,12 +24,24 @@ defmodule Dbservice.SessionsFixtures do
         start_time: ~U[2022-04-28 13:58:00Z],
         platform: "some platform",
         platform_link: "some platform_link",
-        owner_id: get_owner_id(),
-        created_by_id: get_created_by_id(),
-        uuid: "",
+        # Use valid owner ID
+        owner_id: owner.id,
+        # Use valid created_by ID
+        created_by_id: created_by.id,
+        # Generate a unique session ID
+        session_id: Ecto.UUID.generate(),
         is_active: false,
         purpose: %{},
-        repeat_schedule: %{}
+        repeat_schedule: %{},
+        platform_id: "some_platform_id",
+        type: "some_type",
+        auth_type: "some_auth_type",
+        signup_form: false,
+        signup_form_id: nil,
+        id_generation: false,
+        redirection: false,
+        popup_form: false,
+        popup_form_id: nil
       })
       |> Dbservice.Sessions.create_session()
 

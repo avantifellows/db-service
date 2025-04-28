@@ -11,10 +11,8 @@ defmodule Dbservice.GroupsFixtures do
     {:ok, group} =
       attrs
       |> Enum.into(%{
-        name: "some name",
-        input_schema: %{},
-        locale: "some locale",
-        locale_data: %{}
+        type: "some type",
+        child_id: 1
       })
       |> Dbservice.Groups.create_group()
 
