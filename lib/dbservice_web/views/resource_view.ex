@@ -1,16 +1,15 @@
 defmodule DbserviceWeb.ResourceView do
   use DbserviceWeb, :view
-  alias DbserviceWeb.ResourceView
 
-  def render("index.json", %{resource: resource}) do
-    render_many(resource, ResourceView, "resource.json")
+  def render("index.json", %{resource: resources}) do
+    Enum.map(resources, &resource_json/1)
   end
 
   def render("show.json", %{resource: resource}) do
-    render_one(resource, ResourceView, "resource.json")
+    resource_json(resource)
   end
 
-  def render("resource.json", %{resource: resource}) do
+  def resource_json(%{__meta__: _meta} = resource) do
     %{
       id: resource.id,
       name: resource.name,

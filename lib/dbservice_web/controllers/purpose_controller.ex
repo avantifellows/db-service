@@ -129,7 +129,7 @@ defmodule DbserviceWeb.PurposeController do
     with {:ok, %Purpose{} = purpose} <- Purposes.create_purpose(params) do
       conn
       |> put_status(:created)
-      |> put_resp_header("location", Routes.purpose_path(conn, :show, purpose))
+      |> put_resp_header("location", ~p"/api/purpose/#{purpose}")
       |> render("show.json", purpose: purpose)
     end
   end

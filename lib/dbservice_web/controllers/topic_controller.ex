@@ -135,7 +135,7 @@ defmodule DbserviceWeb.TopicController do
     with {:ok, %Topic{} = topic} <- Topics.create_topic(params) do
       conn
       |> put_status(:created)
-      |> put_resp_header("location", Routes.topic_path(conn, :show, topic))
+      |> put_resp_header("location", ~p"/api/topic/#{topic}")
       |> render("show.json", topic: topic)
     end
   end

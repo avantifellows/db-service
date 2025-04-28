@@ -75,7 +75,7 @@ defmodule DbserviceWeb.UserSessionController do
       |> put_status(:created)
       |> put_resp_header(
         "location",
-        Routes.user_session_path(conn, :show, user_session)
+        ~p"/api/user-session/#{user_session}"
       )
       |> render("show.json", user_session: user_session)
     end

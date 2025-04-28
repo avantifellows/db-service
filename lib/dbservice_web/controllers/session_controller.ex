@@ -206,7 +206,7 @@ defmodule DbserviceWeb.SessionController do
     with {:ok, %Session{} = session} <- Sessions.create_session(params) do
       conn
       |> put_status(:created)
-      |> put_resp_header("location", Routes.session_path(conn, :show, session))
+      |> put_resp_header("location", ~p"/api/session/#{session}")
       |> render("show.json", session: session)
     end
   end

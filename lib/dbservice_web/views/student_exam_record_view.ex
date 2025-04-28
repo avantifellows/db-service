@@ -1,16 +1,15 @@
 defmodule DbserviceWeb.StudentExamRecordView do
   use DbserviceWeb, :view
-  alias DbserviceWeb.StudentExamRecordView
-
-  def render("index.json", %{student_exam_record: student_exam_record}) do
-    render_many(student_exam_record, StudentExamRecordView, "student_exam_record.json")
+  def render("index.json", %{student_exam_record: student_exam_records}) do
+    Enum.map(student_exam_records, &student_exam_record_json/1)
   end
 
   def render("show.json", %{student_exam_record: student_exam_record}) do
-    render_one(student_exam_record, StudentExamRecordView, "student_exam_record.json")
+      student_exam_record_json(student_exam_record)
   end
 
-  def render("student_exam_record.json", %{student_exam_record: student_exam_record}) do
+  def student_exam_record_json(student_exam_record) do
+
     %{
       id: student_exam_record.id,
       student_id: student_exam_record.student_id,

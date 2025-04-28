@@ -1,16 +1,15 @@
 defmodule DbserviceWeb.SubjectView do
   use DbserviceWeb, :view
-  alias DbserviceWeb.SubjectView
 
   def render("index.json", %{subject: subject}) do
-    render_many(subject, SubjectView, "subject.json")
+    Enum.map(subject, &subject_json/1)
   end
 
   def render("show.json", %{subject: subject}) do
-    render_one(subject, SubjectView, "subject.json")
+    subject_json(subject)
   end
 
-  def render("subject.json", %{subject: subject}) do
+  def subject_json(subject) do
     %{
       id: subject.id,
       name: subject.name,

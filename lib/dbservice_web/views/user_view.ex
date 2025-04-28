@@ -1,21 +1,23 @@
 defmodule DbserviceWeb.UserView do
   use DbserviceWeb, :view
-  alias DbserviceWeb.UserView
-  alias DbserviceWeb.SessionView
-
-  def render("index.json", %{user: user}) do
-    render_many(user, UserView, "user.json")
+  
+  def render("index.json", %{users: users}) do
+    %{data: Enum.map(users, &user_json/1)}
   end
 
   def render("show.json", %{user: user}) do
-    render_one(user, UserView, "user.json")
+    user_json(user)
   end
 
   def render("show_user_with_compact_fields.json", %{user: user}) do
-    render_one(user, UserView, "user_with_compact_fields.json")
+    user_with_compact_fields_json(user)
   end
 
-  def render("user.json", %{user: user}) do
+  def render("user_sessions.json", %{sessions: sessions}) do
+    %{data: Enum.map(sessions, &session_json/1)}
+  end
+
+  def user_json(user) do
     %{
       id: user.id,
       first_name: user.first_name,
@@ -36,7 +38,7 @@ defmodule DbserviceWeb.UserView do
     }
   end
 
-  def render("user_with_compact_fields.json", %{user: user}) do
+  def user_with_compact_fields_json(user) do
     %{
       id: user.id,
       full_name: user.full_name,
@@ -54,7 +56,26 @@ defmodule DbserviceWeb.UserView do
     }
   end
 
-  def render("user_sessions.json", %{session: session}) do
-    render_many(session, SessionView, "session.json")
+  def session_json(session) do
+    %{:id => session.id,
+     :name => session.name,
+     :description => session.description,
+     :status => session.status,
+     :type => session.type,
+     :started_at => session.started_at,
+     :ended_at => session.ended_at,
+     :session_form_schema_id => session.session_form_schema_id,
+     :session_form_schema_name => session.session_form_schema_name,
+     :is_active => session.is_active,
+     :is_completed => session.is_completed,
+     :created_by => session.created_by,
+     :updated_by => session.updated_by,
+     :updated_at => session.updated_at,
+     :program_id => session.program_id,
+     :program_name => session.program_name,
+     :school_id => session.school_id,
+     :school_name => session.school_name,
+     :form_schema_id => session.form_schema_id,
+     :form_schema_name => session.form_schema_name}
   end
 end

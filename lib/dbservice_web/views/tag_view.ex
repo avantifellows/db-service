@@ -1,16 +1,15 @@
 defmodule DbserviceWeb.TagView do
   use DbserviceWeb, :view
-  alias DbserviceWeb.TagView
 
   def render("index.json", %{tag: tag}) do
-    render_many(tag, TagView, "tag.json")
+    Enum.map(tag, &tag_json/1)
   end
 
   def render("show.json", %{tag: tag}) do
-    render_one(tag, TagView, "tag.json")
+    tag_json(tag)
   end
 
-  def render("tag.json", %{tag: tag}) do
+  def tag_json(%{__meta__: _} = tag) do
     %{
       id: tag.id,
       name: tag.name,

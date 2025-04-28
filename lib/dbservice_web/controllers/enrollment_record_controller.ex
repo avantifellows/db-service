@@ -149,7 +149,7 @@ defmodule DbserviceWeb.EnrollmentRecordController do
       |> put_status(:created)
       |> put_resp_header(
         "location",
-        Routes.enrollment_record_path(conn, :show, enrollment_record)
+        ~p"/api/enrollment-record/#{enrollment_record}"
       )
       |> render("show.json", enrollment_record: enrollment_record)
     end

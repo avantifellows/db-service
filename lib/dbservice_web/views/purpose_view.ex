@@ -1,16 +1,24 @@
 defmodule DbserviceWeb.PurposeView do
   use DbserviceWeb, :view
-  alias DbserviceWeb.PurposeView
 
-  def render("index.json", %{purpose: purpose}) do
-    render_many(purpose, PurposeView, "purpose.json")
+  def render("index.json", %{purpose: purposes}) do
+    Enum.map(purposes, &purpose_json/1)
   end
 
   def render("show.json", %{purpose: purpose}) do
-    render_one(purpose, PurposeView, "purpose.json")
+    purpose_json(purpose)
   end
 
   def render("purpose.json", %{purpose: purpose}) do
+    %{
+      id: purpose.id,
+      name: purpose.name,
+      description: purpose.description,
+      tag_id: purpose.tag_id
+    }
+  end
+
+  defp purpose_json(%{__meta__: _} = purpose) do
     %{
       id: purpose.id,
       name: purpose.name,

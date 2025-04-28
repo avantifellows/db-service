@@ -1,21 +1,20 @@
 defmodule DbserviceWeb.ConceptView do
   use DbserviceWeb, :view
-  alias DbserviceWeb.ConceptView
 
   def render("index.json", %{concept: concept}) do
-    render_many(concept, ConceptView, "concept.json")
+    Enum.map(concept, &concept_json/1)
   end
 
   def render("show.json", %{concept: concept}) do
-    render_one(concept, ConceptView, "concept.json")
+    concept_json(concept)
   end
 
-  def render("concept.json", %{concept: concept}) do
+  def concept_json(%{id: id, name: name, topic_id: topic_id, tag_id: tag_id}) do
     %{
-      id: concept.id,
-      name: concept.name,
-      topic_id: concept.topic_id,
-      tag_id: concept.tag_id
+      id: id,
+      name: name,
+      topic_id: topic_id,
+      tag_id: tag_id
     }
   end
 end

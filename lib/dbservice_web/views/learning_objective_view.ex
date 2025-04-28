@@ -1,21 +1,20 @@
 defmodule DbserviceWeb.LearningObjectiveView do
   use DbserviceWeb, :view
-  alias DbserviceWeb.LearningObjectiveView
 
-  def render("index.json", %{learning_objective: learning_objective}) do
-    render_many(learning_objective, LearningObjectiveView, "learning_objective.json")
+  def render("index.json", %{learning_objective: learning_objectives}) do
+    Enum.map(learning_objectives, &learning_objective_json/1)
   end
 
   def render("show.json", %{learning_objective: learning_objective}) do
-    render_one(learning_objective, LearningObjectiveView, "learning_objective.json")
+    learning_objective_json(learning_objective)
   end
 
-  def render("learning_objective.json", %{learning_objective: learning_objective}) do
+  def learning_objective_json(%{__meta__: _} = learning_objective) do
     %{
       id: learning_objective.id,
-      title: learning_objective.title,
-      concept_id: learning_objective.concept_id,
-      tag_id: learning_objective.tag_id
+      name: learning_objective.name,
+      description: learning_objective.description,
+      type: learning_objective.type
     }
   end
 end

@@ -94,7 +94,7 @@ defmodule DbserviceWeb.SessionOccurrenceController do
       |> put_status(:created)
       |> put_resp_header(
         "location",
-        Routes.session_occurrence_path(conn, :show, session_occurrence)
+        ~p"/api/session-occurrence/#{session_occurrence}"
       )
       |> render("show.json", session_occurrence: session_occurrence)
     end

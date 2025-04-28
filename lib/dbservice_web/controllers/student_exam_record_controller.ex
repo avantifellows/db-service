@@ -135,7 +135,7 @@ defmodule DbserviceWeb.StudentExamRecordController do
       |> put_status(:created)
       |> put_resp_header(
         "location",
-        Routes.student_exam_record_path(conn, :show, student_exam_record)
+        ~p"/api/student-exam-record/#{student_exam_record}"
       )
       |> render("show.json", student_exam_record: student_exam_record)
     end

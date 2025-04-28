@@ -1,26 +1,25 @@
 defmodule DbserviceWeb.EnrollmentRecordView do
   use DbserviceWeb, :view
-  alias DbserviceWeb.EnrollmentRecordView
 
   def render("index.json", %{enrollment_record: enrollment_record}) do
-    render_many(enrollment_record, EnrollmentRecordView, "enrollment_record.json")
+    Enum.map(enrollment_record, &enrollment_record_json/1)
   end
 
   def render("show.json", %{enrollment_record: enrollment_record}) do
-    render_one(enrollment_record, EnrollmentRecordView, "enrollment_record.json")
+    enrollment_record_json(enrollment_record)
   end
 
-  def render("enrollment_record.json", %{enrollment_record: enrollment_record}) do
+  def enrollment_record_json(%{id: id, academic_year: academic_year, is_current: is_current, start_date: start_date, end_date: end_date, group_id: group_id, group_type: group_type, user_id: user_id, subject_id: subject_id}) do
     %{
-      id: enrollment_record.id,
-      academic_year: enrollment_record.academic_year,
-      is_current: enrollment_record.is_current,
-      start_date: enrollment_record.start_date,
-      end_date: enrollment_record.end_date,
-      group_id: enrollment_record.group_id,
-      group_type: enrollment_record.group_type,
-      user_id: enrollment_record.user_id,
-      subject_id: enrollment_record.subject_id
+      id: id,
+      academic_year: academic_year,
+      is_current: is_current,
+      start_date: start_date,
+      end_date: end_date,
+      group_id: group_id,
+      group_type: group_type,
+      user_id: user_id,
+      subject_id: subject_id
     }
   end
 end

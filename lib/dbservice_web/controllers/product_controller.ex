@@ -123,7 +123,7 @@ defmodule DbserviceWeb.ProductController do
     with {:ok, %Product{} = product} <- Products.create_product(params) do
       conn
       |> put_status(:created)
-      |> put_resp_header("location", Routes.product_path(conn, :show, product))
+      |> put_resp_header("location", ~p"/api/product/#{product}")
       |> render("show.json", product: product)
     end
   end

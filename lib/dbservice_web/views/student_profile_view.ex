@@ -1,22 +1,25 @@
 defmodule DbserviceWeb.StudentProfileView do
   use DbserviceWeb, :view
-  alias DbserviceWeb.StudentProfileView
+  alias DbserviceWeb.UserProfileView
   alias DbserviceWeb.UserProfileView
   alias Dbservice.Repo
 
   def render("index.json", %{student_profile: student_profile}) do
-    render_many(student_profile, StudentProfileView, "student_profile.json")
+    Enum.map(student_profile, &student_profile_json/1)
   end
 
   def render("show.json", %{student_profile: student_profile}) do
-    render_one(student_profile, StudentProfileView, "student_profile.json")
+    student_profile_json(student_profile)
   end
 
   def render("show_with_user_profile.json", %{student_profile: student_profile}) do
-    render_many(student_profile, StudentProfileView, "student_profile_with_user_profile.json")
+    Enum.map(student_profile, &student_profile_with_user_profile_json/1)
   end
 
-  def render("student_profile.json", %{student_profile: student_profile}) do
+  def student_profile_json(%{__meta__: _meta} = student_profile) do
+    student_profile_json(%{student_profile: student_profile})
+  end
+  def student_profile_json(%{student_profile: student_profile}) do
     student_profile = Repo.preload(student_profile, :user_profile)
 
     %{
@@ -37,11 +40,15 @@ defmodule DbserviceWeb.StudentProfileView do
       tests_number_of_correct_questions: student_profile.tests_number_of_correct_questions,
       tests_number_of_wrong_questions: student_profile.tests_number_of_wrong_questions,
       tests_number_of_skipped_questions: student_profile.tests_number_of_skipped_questions,
-      user_profile: render_one(student_profile.user_profile, UserProfileView, "user_profile.json")
+      user_profile: UserProfileView.user_profile_json(student_profile.user_profile)
     }
   end
 
-  def render("student_profile_with_user_profile.json", %{student_profile: student_profile}) do
+  def student_profile_with_user_profile_json(%{__meta__: _meta} = student_profile) do
+     student_profile_with_user_profile_json(%{student_profile: student_profile})
+  end
+
+  def student_profile_with_user_profile_json(%{student_profile: student_profile}) do
     %{
       id: student_profile.id,
       student_id: student_profile.student_id,
@@ -60,7 +67,7 @@ defmodule DbserviceWeb.StudentProfileView do
       tests_number_of_correct_questions: student_profile.tests_number_of_correct_questions,
       tests_number_of_wrong_questions: student_profile.tests_number_of_wrong_questions,
       tests_number_of_skipped_questions: student_profile.tests_number_of_skipped_questions,
-      user_profile: render_one(student_profile.user_profile, UserProfileView, "user_profile.json")
+      user_profile: UserProfileView.user_profile_json(student_profile.user_profile)
     }
   end
 end

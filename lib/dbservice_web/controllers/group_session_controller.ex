@@ -128,7 +128,7 @@ defmodule DbserviceWeb.GroupSessionController do
       |> put_status(:created)
       |> put_resp_header(
         "location",
-        Routes.group_session_path(conn, :show, group_session)
+        ~p"/api/group-session/#{group_session}"
       )
       |> render("show.json", group_session: group_session)
     end

@@ -139,7 +139,7 @@ defmodule DbserviceWeb.SchoolController do
     with {:ok, %School{} = school} <- Schools.create_school(params) do
       conn
       |> put_status(:created)
-      |> put_resp_header("location", Routes.school_path(conn, :show, school))
+      |> put_resp_header("location", ~p"/api/school/#{school}")
       |> render("show.json", school: school)
     end
   end

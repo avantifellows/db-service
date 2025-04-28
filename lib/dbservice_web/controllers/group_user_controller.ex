@@ -248,7 +248,7 @@ defmodule DbserviceWeb.GroupUserController do
       with {:ok, %GroupUser{} = group_user} <- GroupUsers.create_group_user(params) do
         conn
         |> put_status(:created)
-        |> put_resp_header("location", Routes.group_user_path(conn, :show, group_user))
+        |> put_resp_header("location", ~p"/api/group-user/#{group_user}")
         |> render("show.json", group_user: group_user)
       end
     end

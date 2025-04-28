@@ -1,16 +1,15 @@
 defmodule DbserviceWeb.SourceView do
   use DbserviceWeb, :view
-  alias DbserviceWeb.SourceView
 
   def render("index.json", %{source: source}) do
-    render_many(source, SourceView, "source.json")
+    Enum.map(source, &source_json/1)
   end
 
   def render("show.json", %{source: source}) do
-    render_one(source, SourceView, "source.json")
+    source_json(source)
   end
 
-  def render("source.json", %{source: source}) do
+  def source_json(source) do
     %{
       id: source.id,
       name: source.name,

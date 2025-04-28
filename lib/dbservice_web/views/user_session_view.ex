@@ -1,24 +1,23 @@
 defmodule DbserviceWeb.UserSessionView do
   use DbserviceWeb, :view
-  alias DbserviceWeb.UserSessionView
 
-  def render("index.json", %{user_session: user_session}) do
-    render_many(user_session, UserSessionView, "user_session.json")
+  def render("index.json", %{user_session: user_sessions}) do
+    Enum.map(user_sessions, &user_session_json/1)
   end
 
   def render("show.json", %{user_session: user_session}) do
-    render_one(user_session, UserSessionView, "user_session.json")
+    user_session_json(user_session)
   end
 
-  def render("user_session.json", %{user_session: user_session}) do
+  def user_session_json(%{id: id, timestamp: timestamp, session_id: session_id, session_occurrence_id: session_occurrence_id, data: data, user_id: user_id, user_activity_type: user_activity_type}) do
     %{
-      id: user_session.id,
-      timestamp: user_session.timestamp,
-      session_id: user_session.session_id,
-      session_occurrence_id: user_session.session_occurrence_id,
-      data: user_session.data,
-      user_id: user_session.user_id,
-      user_activity_type: user_session.user_activity_type
+      id: id,
+      timestamp: timestamp,
+      session_id: session_id,
+      session_occurrence_id: session_occurrence_id,
+      data: data,
+      user_id: user_id,
+      user_activity_type: user_activity_type
     }
   end
 end

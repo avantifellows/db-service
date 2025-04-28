@@ -70,7 +70,7 @@ defmodule DbserviceWeb.LearningObjectiveController do
       |> put_status(:created)
       |> put_resp_header(
         "location",
-        Routes.learning_objective_path(conn, :show, learning_objective)
+        ~p"/api/learning-objective/#{learning_objective}"
       )
       |> render("show.json", learning_objective: learning_objective)
     end

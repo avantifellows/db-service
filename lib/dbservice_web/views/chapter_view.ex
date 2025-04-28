@@ -1,24 +1,23 @@
 defmodule DbserviceWeb.ChapterView do
   use DbserviceWeb, :view
-  alias DbserviceWeb.ChapterView
 
   def render("index.json", %{chapter: chapter}) do
-    render_many(chapter, ChapterView, "chapter.json")
+    Enum.map(chapter, &chapter_json/1)
   end
 
   def render("show.json", %{chapter: chapter}) do
-    render_one(chapter, ChapterView, "chapter.json")
+    chapter_json(chapter)
   end
 
-  def render("chapter.json", %{chapter: chapter}) do
+  def chapter_json(%{id: id, name: name, code: code, grade_id: grade_id, subject_id: subject_id, tag_id: tag_id, curriculum_id: curriculum_id}) do
     %{
-      id: chapter.id,
-      name: chapter.name,
-      code: chapter.code,
-      grade_id: chapter.grade_id,
-      subject_id: chapter.subject_id,
-      tag_id: chapter.tag_id,
-      curriculum_id: chapter.curriculum_id
+      id: id,
+      name: name,
+      code: code,
+      grade_id: grade_id,
+      subject_id: subject_id,
+      tag_id: tag_id,
+      curriculum_id: curriculum_id
     }
   end
 end

@@ -130,7 +130,7 @@ defmodule DbserviceWeb.BatchController do
     with {:ok, %Batch{} = batch} <- Batches.create_batch(params) do
       conn
       |> put_status(:created)
-      |> put_resp_header("location", Routes.batch_path(conn, :show, batch))
+      |> put_resp_header("location", ~p"/api/batch/#{batch}")
       |> render("show.json", batch: batch)
     end
   end

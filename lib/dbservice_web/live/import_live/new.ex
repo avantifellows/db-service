@@ -1,20 +1,20 @@
 defmodule DbserviceWeb.ImportLive.New do
   use DbserviceWeb, :live_view
   alias Dbservice.DataImport
-  import Phoenix.HTML.Form
+  import Phoenix.LiveView
 
   def mount(_params, _session, socket) do
     changeset = DataImport.change_import(%DataImport.Import{start_row: 2})
+    form = Phoenix.Component.to_form(changeset)
     submission_token = generate_token()
-
-    {:ok,
-     assign(socket,
-       changeset: changeset,
-       submitting: false,
-       submitted: false,
-       debounce_timer: nil,
-       submission_token: submission_token
-     )}
+    {:ok, assign(socket,
+      form: form,
+      changeset: changeset,
+      submitting: false,
+      submitted: false,
+      debounce_timer: nil,
+      submission_token: submission_token
+    )}
   end
 
   defp generate_token do
@@ -72,7 +72,7 @@ defmodule DbserviceWeb.ImportLive.New do
         {:noreply,
          socket
          |> put_flash(:info, "Import submitted successfully!")
-         |> push_redirect(to: Routes.live_path(socket, DbserviceWeb.ImportLive.Index))}
+         |> push_navigate(to: ~p"/imports")}
 
       {:error, reason} when is_binary(reason) ->
         changeset =
@@ -105,13 +105,13 @@ defmodule DbserviceWeb.ImportLive.New do
       <div class="max-w-7xl mx-auto px-4 py-10 sm:px-6 lg:px-8">
         <!-- Header with navigation -->
         <div class="mb-8 flex items-center">
-          <%= live_redirect to: Routes.live_path(@socket, DbserviceWeb.ImportLive.Index),
-              class: "group flex items-center text-sm font-medium text-gray-600 hover:text-indigo-600 dark:text-gray-400 dark:hover:text-indigo-400 transition-colors" do %>
+          <.link navigate={~p"/imports"}
+              class="group flex items-center text-sm font-medium text-gray-600 hover:text-indigo-600 dark:text-gray-400 dark:hover:text-indigo-400 transition-colors">
             <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 mr-2 transition-transform group-hover:-translate-x-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">
               <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 19l-7-7m0 0l7-7m-7 7h18" />
             </svg>
             Back to imports
-          <% end %>
+          </.link>
         </div>
 
         <!-- Main content card with glass morphism -->
@@ -128,77 +128,68 @@ defmodule DbserviceWeb.ImportLive.New do
 
           <!-- Form section -->
           <div class="px-6 py-6">
-            <form phx-submit="save" phx-change="validate" class="space-y-6">
+            <.form
+              for={@form}
+              phx-submit="save"
+              phx-change="validate"
+              class="space-y-6"
+            >
               <input type="hidden" name="import[submission_token]" value={@submission_token} />
-              <%= form_for @changeset, "#", fn f -> %>
+
               <!-- Type selection -->
               <div>
-                <label for="import_type" class="block text-sm font-medium text-gray-700 dark:text-gray-300">
-                  Import Type
-                </label>
-                <div class="mt-1">
-                  <%= select(f, :type,
-                    [
-                      {"Student", "student"}
-                    ],
-                    class: "block w-full pl-3 pr-10 py-2 text-base border-gray-300 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm rounded-md dark:bg-gray-700 dark:border-gray-600 dark:text-white") %>
-                </div>
-                <%= if error = f.errors[:type] do %>
-                  <p class="mt-1 text-sm text-red-600 dark:text-red-400">
-                    <%= elem(error, 0) %>
-                  </p>
-                <% end %>
+                <.input
+                  type="select"
+                  field={@form[:type]}
+                  label="Import Type"
+                  options={[{"Student", "student"}]}
+                  class="block w-full pl-3 pr-10 py-2 text-base border-gray-300 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm rounded-md dark:bg-gray-700 dark:border-gray-600 dark:text-white"
+                />
               </div>
 
               <!-- Google Sheet URL -->
               <div>
-                <label for="import_sheet_url" class="block text-sm font-medium text-gray-700 dark:text-gray-300">
-                  Google Sheet URL
-                </label>
-                <div class="mt-1 relative rounded-md shadow-sm">
-                  <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                    <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 text-gray-400 dark:text-gray-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13.828 10.172a4 4 0 00-5.656 0l-4 4a4 4 0 105.656 5.656l1.102-1.101m-.758-4.899a4 4 0 005.656 0l4-4a4 4 0 00-5.656-5.656l-1.1 1.1" />
-                    </svg>
+                <.input
+                  type="text"
+                  field={@form[:sheet_url]}
+                  label="Google Sheet URL"
+                  placeholder="https://docs.google.com/spreadsheets/d/..."
+                  class="block w-full pl-10 pr-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm dark:bg-gray-700 dark:border-gray-600 dark:text-white"
+                >
+                  <div class="mt-1 relative rounded-md shadow-sm">
+                    <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                      <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 text-gray-400 dark:text-gray-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13.828 10.172a4 4 0 00-5.656 0l-4 4a4 4 0 105.656 5.656l1.102-1.101m-.758-4.899a4 4 0 005.656 0l4-4a4 4 0 00-5.656-5.656l-1.1 1.1" />
+                      </svg>
+                    </div>
                   </div>
-                  <%= text_input(f, :sheet_url,
-                    placeholder: "https://docs.google.com/spreadsheets/d/...",
-                    class: "block w-full pl-10 pr-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm dark:bg-gray-700 dark:border-gray-600 dark:text-white") %>
-                </div>
-                <p class="mt-1 text-xs text-gray-500 dark:text-gray-400">
-                  Make sure the sheet has been shared with the service account and has the correct format
-                </p>
-                <%= if error = f.errors[:sheet_url] do %>
-                  <p class="mt-1 text-sm text-red-600 dark:text-red-400">
-                    <%= elem(error, 0) %>
+                  <p class="mt-1 text-xs text-gray-500 dark:text-gray-400">
+                    Make sure the sheet has been shared with the service account and has the correct format
                   </p>
-                <% end %>
+                </.input>
               </div>
 
               <!-- Start Row -->
               <div>
-                <label for="import_start_row" class="block text-sm font-medium text-gray-700 dark:text-gray-300">
-                  Start Row Number
-                </label>
-                <div class="mt-1 relative rounded-md shadow-sm">
-                  <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                    <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 text-gray-400 dark:text-gray-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 7h6m0 10v-3m-3 3h.01M9 17h.01M9 14h.01M12 14h.01M15 11h.01M12 11h.01M9 11h.01M7 21h10a2 2 0 002-2V5a2 2 0 00-2-2H7a2 2 0 00-2 2v14a2 2 0 002 2z" />
-                    </svg>
+                <.input
+                  type="number"
+                  field={@form[:start_row]}
+                  label="Start Row Number"
+                  min="1"
+                  placeholder="2"
+                  class="block w-full pl-10 pr-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm dark:bg-gray-700 dark:border-gray-600 dark:text-white"
+                >
+                  <div class="mt-1 relative rounded-md shadow-sm">
+                    <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                      <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 text-gray-400 dark:text-gray-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 7h6m0 10v-3m-3 3h.01M9 17h.01M9 14h.01M12 14h.01M15 11h.01M12 11h.01M9 11h.01M7 21h10a2 2 0 002-2V5a2 2 0 00-2-2H7a2 2 0 00-2 2v14a2 2 0 002 2z" />
+                      </svg>
+                    </div>
                   </div>
-                  <%= number_input(f, :start_row,
-                    min: 1,
-                    placeholder: "2",
-                    class: "block w-full pl-10 pr-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm dark:bg-gray-700 dark:border-gray-600 dark:text-white") %>
-                </div>
-                <p class="mt-1 text-xs text-gray-500 dark:text-gray-400">
-                  Row number to start importing data from (e.g. 2 to skip header row)
-                </p>
-                <%= if error = f.errors[:start_row] do %>
-                  <p class="mt-1 text-sm text-red-600 dark:text-red-400">
-                    <%= elem(error, 0) %>
+                  <p class="mt-1 text-xs text-gray-500 dark:text-gray-400">
+                    Row number to start importing data from (e.g. 2 to skip header row)
                   </p>
-                <% end %>
+                </.input>
               </div>
 
               <!-- Submit button -->
@@ -217,8 +208,7 @@ defmodule DbserviceWeb.ImportLive.New do
                   <% end %>
                 </button>
               </div>
-              <% end %>
-            </form>
+            </.form>
           </div>
 
           <!-- Info section -->

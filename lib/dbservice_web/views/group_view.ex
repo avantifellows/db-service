@@ -1,36 +1,34 @@
 defmodule DbserviceWeb.GroupView do
-  alias DbserviceWeb.GradeView
-  alias DbserviceWeb.SchoolView
   alias Dbservice.Schools.School
   use DbserviceWeb, :view
-  alias DbserviceWeb.GroupView
-  alias DbserviceWeb.AuthGroupView
-  alias DbserviceWeb.ProgramView
-  alias DbserviceWeb.BatchView
-  alias DbserviceWeb.GradeView
   alias Dbservice.Repo
   alias Dbservice.Groups.AuthGroup
   alias Dbservice.Batches.Batch
   alias Dbservice.Programs.Program
   alias Dbservice.Grades.Grade
+  alias DbserviceWeb.AuthGroupView, as: AuthGroupView
+  alias DbserviceWeb.ProgramView, as: ProgramView
+  alias DbserviceWeb.BatchView, as: BatchView
+  alias DbserviceWeb.SchoolView, as: SchoolView
+  alias DbserviceWeb.GradeView, as: GradeView
 
-  def render("index.json", %{group: group}) do
-    render_many(group, GroupView, "group.json")
+  def render("index.json", %{group: groups}) do
+    Enum.map(groups, &group_json/1)
   end
 
   def render("show.json", %{group: group}) do
-    render_one(group, GroupView, "group.json")
+    group_json(group)
   end
 
-  def render("group.json", %{group: group}) do
+  def group_json(%{type: type, child_id: child_id} = group) do
     case group.type do
       "auth-group" ->
         auth_group = Repo.get!(AuthGroup, group.child_id)
 
         %{
           id: group.id,
-          type: group.type,
-          child_id: render_one(auth_group, AuthGroupView, "auth_group.json")
+          type: type,
+          child_id: AuthGroupView.auth_group_json(auth_group)
         }
 
       "program" ->
@@ -38,8 +36,8 @@ defmodule DbserviceWeb.GroupView do
 
         %{
           id: group.id,
-          type: group.type,
-          child_id: render_one(program, ProgramView, "program.json")
+          type: type,
+          child_id: ProgramView.program_json(program)
         }
 
       "batch" ->
@@ -47,8 +45,8 @@ defmodule DbserviceWeb.GroupView do
 
         %{
           id: group.id,
-          type: group.type,
-          child_id: render_one(batch, BatchView, "batch.json")
+          type: type,
+          child_id: BatchView.batch_json(batch)
         }
 
       "school" ->
@@ -56,8 +54,8 @@ defmodule DbserviceWeb.GroupView do
 
         %{
           id: group.id,
-          type: group.type,
-          child_id: render_one(school, SchoolView, "school.json")
+          type: type,
+          child_id: SchoolView.school_json(school)
         }
 
       "grade" ->
@@ -65,15 +63,15 @@ defmodule DbserviceWeb.GroupView do
 
         %{
           id: group.id,
-          type: group.type,
-          child_id: render_one(grade, GradeView, "grade.json")
+          type: type,
+          child_id: GradeView.grade_json(grade)
         }
 
       _ ->
         %{
           id: group.id,
-          type: group.type,
-          child_id: group.child_id
+          type: type,
+          child_id: child_id
         }
     end
   end

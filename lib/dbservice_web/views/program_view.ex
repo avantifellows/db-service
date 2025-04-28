@@ -1,23 +1,24 @@
 defmodule DbserviceWeb.ProgramView do
   use DbserviceWeb, :view
-  alias DbserviceWeb.ProgramView
 
   def render("index.json", %{program: program}) do
-    render_many(program, ProgramView, "program.json")
+    Enum.map(program, &program_json/1)
   end
 
   def render("show.json", %{program: program}) do
-    render_one(program, ProgramView, "program.json")
+    program_json(program)
   end
 
-  def render("program.json", %{program: program}) do
+  def program_json(program) do
     %{
       id: program.id,
       name: program.name,
       target_outreach: program.target_outreach,
       donor: program.donor,
       state: program.state,
-      product_id: program.product_id
+      product_id: program.product_id,
+      model: program.model,
+      is_current: program.is_current
     }
   end
 end

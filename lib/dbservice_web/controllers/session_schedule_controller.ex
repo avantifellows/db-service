@@ -71,7 +71,7 @@ defmodule DbserviceWeb.SessionScheduleController do
            SessionSchedules.create_session_schedule(params) do
       conn
       |> put_status(:created)
-      |> put_resp_header("location", Routes.session_schedule_path(conn, :show, session_schedule))
+      |> put_resp_header("location", ~p"/api/session-schedule/#{session_schedule}")
       |> render("show.json", session_schedule: session_schedule)
     end
   end

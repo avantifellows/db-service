@@ -126,7 +126,7 @@ defmodule DbserviceWeb.ExamController do
     with {:ok, %Exam{} = exam} <- Exams.create_exam(params) do
       conn
       |> put_status(:created)
-      |> put_resp_header("location", Routes.exam_path(conn, :show, exam))
+      |> put_resp_header("location", ~p"/api/exam/#{exam}")
       |> render("show.json", exam: exam)
     end
   end
