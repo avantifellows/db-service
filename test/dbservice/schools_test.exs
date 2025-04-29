@@ -35,7 +35,6 @@ defmodule Dbservice.SchoolsTest do
 
     test "get_school!/1 returns the school with the given id" do
       school = school_fixture()
-      dbg(Schools.get_school!(school.id))
       fetched_school = Schools.get_school!(school.id)
       fetched_school = Repo.preload(fetched_school, [:group])
       assert school == fetched_school
