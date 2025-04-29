@@ -128,7 +128,7 @@ defmodule DbserviceWeb.ProgramController do
     with {:ok, %Program{} = program} <- Programs.create_program(params) do
       conn
       |> put_status(:created)
-      |> put_resp_header("location", Routes.program_path(conn, :show, program))
+      |> put_resp_header("location", ~p"/api/program/#{program}")
       |> render("show.json", program: program)
     end
   end

@@ -68,7 +68,7 @@ defmodule DbserviceWeb.TagController do
     with {:ok, %Tag{} = tag} <- Tags.create_tag(params) do
       conn
       |> put_status(:created)
-      |> put_resp_header("location", Routes.tag_path(conn, :show, tag))
+      |> put_resp_header("location", ~p"/api/tag/#{tag}")
       |> render("show.json", tag: tag)
     end
   end

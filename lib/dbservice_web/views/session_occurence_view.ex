@@ -1,19 +1,30 @@
 defmodule DbserviceWeb.SessionOccurrenceView do
   use DbserviceWeb, :view
-  alias DbserviceWeb.SessionOccurrenceView
   alias DbserviceWeb.UserView
   alias DbserviceWeb.SessionView
   alias Dbservice.Repo
 
-  def render("index.json", %{session_occurrence: session_occurrence}) do
-    render_many(session_occurrence, SessionOccurrenceView, "session_occurrence.json")
+  def render("index.json", %{session_occurrences: session_occurrences}) do
+    Enum.map(session_occurrences, &session_occurrence_json/1)
   end
 
   def render("show.json", %{session_occurrence: session_occurrence}) do
-    render_one(session_occurrence, SessionOccurrenceView, "session_occurrence.json")
+    session_occurrence_json(session_occurrence)
+  end
+  def render("session_occurrence_with_users.json", %{session_occurrence: session_occurrence}) do
+    session_occurrence = session_occurrence |> Repo.preload(:users)
+
+    %{
+      id: session_occurrence.id,
+      start_time: session_occurrence.start_time,
+      end_time: session_occurrence.end_time,
+      session_fk: session_occurrence.session_fk,
+      session_id: session_occurrence.session_id,
+      users: Enum.map(session_occurrence.users, &UserView.user_json/1)
+    }
   end
 
-  def render("session_occurrence.json", %{session_occurrence: session_occurrence}) do
+  def session_occurrence_json(%{__meta__: _meta} = session_occurrence) do
     session_occurrence = session_occurrence |> Repo.preload(:session)
 
     %{
@@ -24,20 +35,8 @@ defmodule DbserviceWeb.SessionOccurrenceView do
       session_id: session_occurrence.session_id,
       inserted_at: session_occurrence.inserted_at,
       updated_at: session_occurrence.updated_at,
-      session: render_one(session_occurrence.session, SessionView, "session.json")
+      session: SessionView.session_json(session_occurrence.session)
     }
   end
 
-  def render("session_occurrence_with_users.json", %{session_occurrence: session_occurrence}) do
-    session_occurrence = session_occurrence |> Repo.preload(:users)
-
-    %{
-      id: session_occurrence.id,
-      start_time: session_occurrence.start_time,
-      end_time: session_occurrence.end_time,
-      session_fk: session_occurrence.session_fk,
-      session_id: session_occurrence.session_id,
-      users: render_many(session_occurrence.users, UserView, "user.json")
-    }
-  end
 end

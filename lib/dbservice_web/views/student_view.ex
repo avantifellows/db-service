@@ -1,23 +1,24 @@
 defmodule DbserviceWeb.StudentView do
   use DbserviceWeb, :view
-  alias DbserviceWeb.StudentView
   alias DbserviceWeb.UserView
   alias Dbservice.Repo
 
+  # --- Group all render/2 clauses together ---
+
   def render("index.json", %{student: student}) do
-    render_many(student, StudentView, "student.json")
+    Enum.map(student, &student_json/1)
   end
 
   def render("show.json", %{student: student}) do
-    render_one(student, StudentView, "student.json")
+    student_json(student)
   end
 
   def render("show_with_user.json", %{student: student}) do
-    render_many(student, StudentView, "student_with_user.json")
+    Enum.map(student, &student_with_user_json/1)
   end
 
   def render("show_student_user_with_compact_fields.json", %{student: student}) do
-    render_many(student, StudentView, "student_user_with_compact_fields.json")
+    Enum.map(student, &student_user_with_compact_fields_json/1)
   end
 
   def render("student.json", %{student: student}) do
@@ -63,20 +64,22 @@ defmodule DbserviceWeb.StudentView do
       percentage_in_grade_10_english: student.percentage_in_grade_10_english,
       grade_10_marksheet: student.grade_10_marksheet,
       photo: student.photo,
-      user: render_one(student.user, UserView, "user.json"),
+      user: UserView.user_json(student.user),
       status: student.status,
       board_stream: student.board_stream,
-      planned_competitive_exams: student.planned_competitive_exams
+      planned_competitive_exams: student.planned_competitive_exams,
+      school_medium: student.school_medium
     }
   end
 
   def render("student_user_with_compact_fields.json", %{student: student}) do
+    student = Repo.preload(student, :user)
+
     %{
       id: student.id,
       student_id: student.student_id,
       category: student.category,
-      stream: student.stream,
-      user: render_one(student.user, UserView, "user_with_compact_fields.json")
+      user: UserView.user_with_compact_fields_json(student.user)
     }
   end
 
@@ -93,11 +96,20 @@ defmodule DbserviceWeb.StudentView do
       results:
         Enum.map(results, fn
           {:ok, student} ->
-            %{status: :ok, student: render_one(student, StudentView, "student.json")}
-
+            %{status: :ok, student: student_json(student)}
           {:error, changeset} ->
             %{status: :error, errors: changeset}
         end)
     }
+  end
+
+  # --- Helper functions below render/2 group ---
+
+  defp student_json(student), do: render("student.json", %{student: student})
+
+  def student_with_user_json(student), do: student_json(student)
+
+  def student_user_with_compact_fields_json(student) do
+    render("student_compact_fields.json", %{student: student})
   end
 end

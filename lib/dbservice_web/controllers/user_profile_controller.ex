@@ -71,7 +71,7 @@ defmodule DbserviceWeb.UserProfileController do
     with {:ok, %UserProfile{} = user_profile} <- Profiles.create_user_profile(params) do
       conn
       |> put_status(:created)
-      |> put_resp_header("location", Routes.user_path(conn, :show, user_profile))
+      |> put_resp_header("location", ~p"/api/user/#{user_profile}")
       |> render("show.json", user_profile: user_profile)
     end
   end

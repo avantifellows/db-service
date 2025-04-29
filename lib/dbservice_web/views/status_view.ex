@@ -1,19 +1,15 @@
 defmodule DbserviceWeb.StatusView do
   use DbserviceWeb, :view
-  alias DbserviceWeb.StatusView
 
   def render("index.json", %{status: status}) do
-    render_many(status, StatusView, "status.json")
+    Enum.map(status, &status_json/1)
   end
 
   def render("show.json", %{status: status}) do
-    render_one(status, StatusView, "status.json")
+    status_json(status)
   end
 
-  def render("status.json", %{status: status}) do
-    %{
-      id: status.id,
-      title: status.title
-    }
+  def status_json(%{id: id, title: title}) do
+    %{id: id, title: title}
   end
 end

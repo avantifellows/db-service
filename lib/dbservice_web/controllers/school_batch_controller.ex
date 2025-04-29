@@ -132,7 +132,7 @@ defmodule DbserviceWeb.SchoolBatchController do
     with {:ok, %SchoolBatch{} = school_batch} <- SchoolBatches.create_school_batch(params) do
       conn
       |> put_status(:created)
-      |> put_resp_header("location", Routes.school_batch_path(conn, :show, school_batch))
+      |> put_resp_header("location", ~p"/api/school-batch/#{school_batch}")
       |> render("show.json", school_batch: school_batch)
     end
   end

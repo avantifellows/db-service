@@ -67,7 +67,7 @@ defmodule DbserviceWeb.ConceptController do
     with {:ok, %Concept{} = concept} <- Concepts.create_concept(params) do
       conn
       |> put_status(:created)
-      |> put_resp_header("location", Routes.concept_path(conn, :show, concept))
+      |> put_resp_header("location", ~p"/api/concept/#{concept}")
       |> render("show.json", concept: concept)
     end
   end

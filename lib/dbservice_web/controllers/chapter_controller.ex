@@ -134,7 +134,7 @@ defmodule DbserviceWeb.ChapterController do
     with {:ok, %Chapter{} = chapter} <- Chapters.create_chapter(params) do
       conn
       |> put_status(:created)
-      |> put_resp_header("location", Routes.chapter_path(conn, :show, chapter))
+      |> put_resp_header("location", ~p"/api/chapter/#{chapter}")
       |> render("show.json", chapter: chapter)
     end
   end

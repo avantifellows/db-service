@@ -1,13 +1,14 @@
 defmodule DbserviceWeb.SessionView do
   use DbserviceWeb, :view
-  alias DbserviceWeb.SessionView
 
-  def render("index.json", %{session: session}) do
-    render_many(session, SessionView, "session.json")
+  def session_json(session), do: render("session.json", %{session: session})
+
+  def render("index.json", %{session: sessions}) do
+    Enum.map(sessions, &session_json/1)
   end
-
+  
   def render("show.json", %{session: session}) do
-    render_one(session, SessionView, "session.json")
+    session_json(session)
   end
 
   def render("session.json", %{session: session}) do

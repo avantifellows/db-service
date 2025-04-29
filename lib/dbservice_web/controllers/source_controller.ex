@@ -134,7 +134,7 @@ defmodule DbserviceWeb.SourceController do
     with {:ok, %Source{} = source} <- Sources.create_source(params) do
       conn
       |> put_status(:created)
-      |> put_resp_header("location", Routes.source_path(conn, :show, source))
+      |> put_resp_header("location", ~p"/api/source/#{source}")
       |> render("show.json", source: source)
     end
   end

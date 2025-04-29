@@ -1,18 +1,17 @@
 defmodule DbserviceWeb.SessionScheduleView do
   use DbserviceWeb, :view
-  alias DbserviceWeb.SessionScheduleView
   alias DbserviceWeb.SessionView
   alias Dbservice.Repo
 
   def render("index.json", %{session_schedule: session_schedule}) do
-    render_many(session_schedule, SessionScheduleView, "session_schedule.json")
+    Enum.map(session_schedule, &session_schedule_json/1)
   end
 
   def render("show.json", %{session_schedule: session_schedule}) do
-    render_one(session_schedule, SessionScheduleView, "session_schedule.json")
+    session_schedule_json(session_schedule)
   end
 
-  def render("session_schedule.json", %{session_schedule: session_schedule}) do
+  def session_schedule_json(%{__meta__: _, session: session} = session_schedule) do
     session_schedule = Repo.preload(session_schedule, :session)
 
     %{
@@ -22,7 +21,7 @@ defmodule DbserviceWeb.SessionScheduleView do
       start_time: session_schedule.start_time,
       end_time: session_schedule.end_time,
       batch_id: session_schedule.batch_id,
-      session: render_one(session_schedule.session, SessionView, "session.json")
+      session: SessionView.session_json(session)
     }
-  end
+ end
 end

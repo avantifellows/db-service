@@ -5,9 +5,9 @@ defmodule Dbservice.MixProject do
     [
       app: :dbservice,
       version: "0.1.0",
-      elixir: "~> 1.12",
+      elixir: "~> 1.14",
       elixirc_paths: elixirc_paths(Mix.env()),
-      compilers: [:phoenix] ++ Mix.compilers() ++ [:phoenix_swagger],
+      compilers: Mix.compilers() ++ [:phoenix_swagger],
       start_permanent: Mix.env() == :prod,
       aliases: aliases(),
       deps: deps()
@@ -20,7 +20,7 @@ defmodule Dbservice.MixProject do
   def application do
     [
       mod: {Dbservice.Application, []},
-      extra_applications: [:logger, :runtime_tools]
+      extra_applications: [:logger, :runtime_tools, :ex_json_schema]
     ]
   end
 
@@ -33,37 +33,36 @@ defmodule Dbservice.MixProject do
   # Type `mix help deps` for examples and options.
   defp deps do
     [
-      {:phoenix, "~> 1.6.6"},
-      {:phoenix_ecto, "~> 4.4"},
-      {:ecto_sql, "~> 3.6"},
-      {:postgrex, ">= 0.0.0"},
-      {:phoenix_live_dashboard, "~> 0.6.5"},
-      {:swoosh, "~> 1.3"},
-      {:telemetry_metrics, "~> 0.6"},
-      {:telemetry_poller, "~> 1.0"},
-      {:gettext, "~> 0.26.0"},
-      {:jason, "~> 1.2"},
-      {:plug_cowboy, "~> 2.5"},
-      {:phoenix_swagger, "~> 0.8"},
-      {:ex_json_schema, "~> 0.5"},
-      {:faker, "~> 0.17", only: [:test, :dev]},
-      {:ex_check, "~> 0.14.0", only: [:dev], runtime: false},
-      {:dialyxir, ">= 0.0.0", only: [:dev], runtime: false},
-      {:credo, ">= 0.0.0", only: [:dev], runtime: false},
-      {:dotenvy, "~> 0.8.0"},
-      {:cors_plug, "~> 3.0"},
-      {:logger_file_backend, "~> 0.0.13"},
       {:calendar, "~> 1.0.0"},
-      {:observer_cli, "~> 1.7"},
-      {:oban, "~> 2.13"},
-      {:csv, "~> 3.0"},
-      {:httpoison, "~> 1.7"},
-      {:tailwind, "~> 0.2", runtime: Mix.env() == :dev},
-      {:phoenix_live_view, "~> 0.17.14"},
-      {:esbuild, "~> 0.4", runtime: Mix.env() == :dev},
-      {:hackney, "~> 1.17.0"},
+      {:cors_plug, "~> 3.0.3"},
+      {:credo, "~> 1.7.12", only: [:dev], runtime: false},
+      {:csv, "~> 3.2.2"},
+      {:dialyxir, "~> 1.4.5", only: [:dev], runtime: false},
+      {:dotenvy, "~> 1.1.0"},
+      {:ecto_sql, "~> 3.12.0"},
+      {:esbuild, "~> 0.9.0", runtime: Mix.env() == :dev},
+      {:ex_check, "~> 0.16.0", only: [:dev], runtime: false},
+      {:ex_json_schema, "~> 0.7.4"},
+      {:faker, "~> 0.18.0", only: [:test, :dev]},
+      {:gettext, "~> 0.26.0"},
       {:google_api_sheets, "~> 0.29.0"},
-      {:goth, "~> 1.3"}
+      {:goth, "~> 1.4.5"},
+      {:hackney, "~> 1.17.4"},
+      {:httpoison, "~> 1.8.2"},
+      {:jason, "~> 1.4.4"},
+      {:logger_file_backend, "~> 0.0.13"},
+      {:oban, "~> 2.18.0"}, # 2.19 needs elixir 1.15
+      {:observer_cli, "~> 1.8.3"},
+      {:postgrex, "~> 0.20.0"},
+      {:phoenix, "~> 1.7.10"},
+      {:phoenix_ecto, "~> 4.6.3"},
+      {:phoenix_live_dashboard, "~> 0.8.7"},
+      {:swoosh, "~> 1.18.4"},
+      {:tailwind, "~> 0.3.1", runtime: Mix.env() == :dev},
+      {:telemetry_metrics, "~> 1.1.0"},
+      {:telemetry_poller, "~> 1.2.0"},
+      {:plug_cowboy, "~> 2.7.3"},
+      {:phoenix_swagger, "~> 0.8.2"},
     ]
   end
 

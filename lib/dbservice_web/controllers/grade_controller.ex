@@ -129,7 +129,7 @@ defmodule DbserviceWeb.GradeController do
     with {:ok, %Grade{} = grade} <- Grades.create_grade(params) do
       conn
       |> put_status(:created)
-      |> put_resp_header("location", Routes.grade_path(conn, :show, grade))
+      |> put_resp_header("location", ~p"/api/grade/#{grade}")
       |> render("show.json", grade: grade)
     end
   end

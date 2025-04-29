@@ -1,22 +1,26 @@
 defmodule DbserviceWeb.AuthGroupView do
   use DbserviceWeb, :view
-  alias DbserviceWeb.AuthGroupView
-
   def render("index.json", %{auth_group: auth_group}) do
-    render_many(auth_group, AuthGroupView, "auth_group.json")
+    %{auth_groups: Enum.map(auth_group, &auth_group_json/1)}
   end
 
   def render("show.json", %{auth_group: auth_group}) do
-    render_one(auth_group, AuthGroupView, "auth_group.json")
+    %{auth_group: auth_group_json(auth_group)}
   end
 
-  def render("auth_group.json", %{auth_group: auth_group}) do
+  def auth_group_json(%{
+        id: id,
+        name: name,
+        input_schema: input_schema,
+        locale: locale,
+        locale_data: locale_data
+      }) do
     %{
-      id: auth_group.id,
-      name: auth_group.name,
-      input_schema: auth_group.input_schema,
-      locale: auth_group.locale,
-      locale_data: auth_group.locale_data
+      id: id,
+      name: name,
+      input_schema: input_schema,
+      locale: locale,
+      locale_data: locale_data
     }
   end
 end

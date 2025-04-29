@@ -164,7 +164,7 @@ defmodule DbserviceWeb.UserController do
     with {:ok, %User{} = user} <- Users.create_user(params) do
       conn
       |> put_status(:created)
-      |> put_resp_header("location", Routes.user_path(conn, :show, user))
+      |> put_resp_header("location", ~p"/api/user/#{user}")
       |> render("show.json", user: user)
     end
   end

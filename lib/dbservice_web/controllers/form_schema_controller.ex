@@ -64,7 +64,7 @@ defmodule DbserviceWeb.FormSchemaController do
     with {:ok, %FormSchema{} = form_schema} <- FormSchemas.create_form_schema(params) do
       conn
       |> put_status(:created)
-      |> put_resp_header("location", Routes.form_schema_path(conn, :show, form_schema))
+      |> put_resp_header("location", ~p"/api/form-schema/#{form_schema}")
       |> render("show.json", form_schema: form_schema)
     end
   end

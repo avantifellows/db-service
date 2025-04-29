@@ -131,7 +131,7 @@ defmodule DbserviceWeb.CurriculumController do
     with {:ok, %Curriculum{} = curriculum} <- Curriculums.create_curriculum(params) do
       conn
       |> put_status(:created)
-      |> put_resp_header("location", Routes.curriculum_path(conn, :show, curriculum))
+      |> put_resp_header("location", ~p"/api/curriculum/#{curriculum}")
       |> render("show.json", curriculum: curriculum)
     end
   end

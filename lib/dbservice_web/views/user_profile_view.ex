@@ -1,16 +1,15 @@
 defmodule DbserviceWeb.UserProfileView do
   use DbserviceWeb, :view
-  alias DbserviceWeb.UserProfileView
 
-  def render("index.json", %{user_profile: user_profile}) do
-    render_many(user_profile, UserProfileView, "user_profile.json")
+  def render("index.json", %{user_profile: user_profiles}) do
+    Enum.map(user_profiles, &user_profile_json/1)
   end
 
   def render("show.json", %{user_profile: user_profile}) do
-    render_one(user_profile, UserProfileView, "user_profile.json")
+    user_profile_json(user_profile)
   end
 
-  def render("user_profile.json", %{user_profile: user_profile}) do
+  def user_profile_json(%{__meta__: _meta} = user_profile) do
     %{
       id: user_profile.id,
       user_id: user_profile.user_id,

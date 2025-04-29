@@ -134,7 +134,7 @@ defmodule DbserviceWeb.SubjectController do
     with {:ok, %Subject{} = subject} <- Subjects.create_subject(params) do
       conn
       |> put_status(:created)
-      |> put_resp_header("location", Routes.subject_path(conn, :show, subject))
+      |> put_resp_header("location", ~p"/api/subject/#{subject}")
       |> render("show.json", subject: subject)
     end
   end

@@ -129,7 +129,7 @@ defmodule DbserviceWeb.AuthGroupController do
     with {:ok, %AuthGroup{} = auth_group} <- AuthGroups.create_auth_group(params) do
       conn
       |> put_status(:created)
-      |> put_resp_header("location", Routes.auth_group_path(conn, :show, auth_group))
+      |> put_resp_header("location", ~p"/api/auth-group/#{auth_group}")
       |> render("show.json", auth_group: auth_group)
     end
   end

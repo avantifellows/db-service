@@ -1,21 +1,20 @@
 defmodule DbserviceWeb.FormSchemaView do
   use DbserviceWeb, :view
-  alias DbserviceWeb.FormSchemaView
 
-  def render("index.json", %{form_schema: form_schema}) do
-    render_many(form_schema, FormSchemaView, "form_schema.json")
+  def render("index.json", %{form_schema: form_schemas}) do
+    Enum.map(form_schemas, &form_schema_json/1)
   end
 
   def render("show.json", %{form_schema: form_schema}) do
-    render_one(form_schema, FormSchemaView, "form_schema.json")
+    form_schema_json(form_schema)
   end
 
-  def render("form_schema.json", %{form_schema: form_schema}) do
+  def form_schema_json(%{id: id, name: name, attributes: attributes, meta_data: meta_data}) do
     %{
-      id: form_schema.id,
-      name: form_schema.name,
-      attributes: form_schema.attributes,
-      meta_data: form_schema.meta_data
+      id: id,
+      name: name,
+      attributes: attributes,
+      meta_data: meta_data
     }
   end
 end

@@ -33,8 +33,7 @@ config :swoosh, :api_client, false
 # Configures Elixir's Logger
 config :logger,
   backends: [:console, {LoggerFileBackend, :request_log}],
-  format: "$time $metadata[$level] $message\n",
-  metadata: [:request_id]
+  format: "$time $metadata[$level] $message\n"
 
 config :logger, :request_log,
   path: "logs/info.log",
