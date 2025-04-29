@@ -27,7 +27,7 @@ defmodule Dbservice.UserProfilesFixtures do
   end
 
   def student_profile_fixture(attrs \\ %{}) do
-    student = UsersFixtures.student_fixture()
+    {user, student} = UsersFixtures.student_fixture()
 
     {:ok, student_profile} =
       attrs
@@ -48,12 +48,12 @@ defmodule Dbservice.UserProfilesFixtures do
         tests_number_of_correct_questions: 75,
         tests_number_of_wrong_questions: 10,
         tests_number_of_skipped_questions: 15,
-        user_id: student.user_id,
         current_grade: "11",
-        current_program: "Science",
-        current_batch: "Batch A",
+        current_program: "HaryanaStudents",
+        current_batch: "Photon",
         logged_in_atleast_once: true,
-        latest_session_accessed: "LiveClass_10"
+        latest_session_accessed: "LiveClass_10",
+        user_id: user.id
       })
       |> Profiles.create_student_profile_with_user_profile()
 
@@ -61,7 +61,7 @@ defmodule Dbservice.UserProfilesFixtures do
   end
 
   def teacher_profile_fixture(attrs \\ %{}) do
-    teacher = UsersFixtures.teacher_fixture()
+    {user, _subject, teacher} = UsersFixtures.teacher_fixture()
 
     {:ok, teacher_profile} =
       attrs
@@ -70,8 +70,8 @@ defmodule Dbservice.UserProfilesFixtures do
         teacher_fk: teacher.id,
         school: "XYZ High School",
         program_manager: "John Doe",
-        avg_rating: 4.5,
-        user_id: teacher.user_id,
+        avg_rating: Decimal.new("4.5"),
+        user_id: user.id,
         current_grade: "11",
         current_program: "HaryanaStudents",
         current_batch: "Photon",
@@ -81,12 +81,6 @@ defmodule Dbservice.UserProfilesFixtures do
       |> Profiles.create_teacher_profile_with_user_profile()
 
     teacher_profile
-  end
-
-  def get_user_id do
-    [head | _tail] = Users.list_student()
-    user_id = head.user_id
-    user_id
   end
 
   def get_user_id_and_student_fk do

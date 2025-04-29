@@ -208,16 +208,14 @@ defmodule Dbservice.UsersTest do
     }
 
     test "list_student/0 returns all student" do
-      user = user_fixture()
-      student = student_fixture(%{user_id: user.id})
+      {_user, student} = student_fixture()
       [head | _tail] = Users.list_student()
 
       assert Map.keys(head) == Map.keys(student)
     end
 
     test "get_student!/1 returns the student with given id" do
-      user = user_fixture()
-      student = student_fixture(%{user_id: user.id})
+      {_user, student} = student_fixture()
 
       assert Users.get_student!(student.id) == student
     end
@@ -271,8 +269,7 @@ defmodule Dbservice.UsersTest do
     end
 
     test "update_student/2 with valid data updates the student" do
-      user = user_fixture()
-      student = student_fixture(%{user_id: user.id})
+      {_user, student} = student_fixture()
 
       update_attrs = %{
         category: "some updated category",
@@ -317,28 +314,24 @@ defmodule Dbservice.UsersTest do
     end
 
     test "update_student/2 with invalid data returns error changeset" do
-      user = user_fixture()
-      student = student_fixture(%{user_id: user.id})
+      {_user, student} = student_fixture()
       assert {:error, %Ecto.Changeset{}} = Users.update_student(student, @invalid_attrs)
       assert student == Users.get_student!(student.id)
     end
 
     test "delete_student/1 deletes the student" do
-      user = user_fixture()
-      student = student_fixture(%{user_id: user.id})
+      {_user, student} = student_fixture()
       assert {:ok, %Student{}} = Users.delete_student(student)
       assert_raise Ecto.NoResultsError, fn -> Users.get_student!(student.id) end
     end
 
     test "change_student/1 returns a student changeset" do
-      user = user_fixture()
-      student = student_fixture(%{user_id: user.id})
+      {_user, student} = student_fixture()
       assert %Ecto.Changeset{} = Users.change_student(student)
     end
 
     test "get_student_by_student_id/1 returns the student with given student_id" do
-      user = user_fixture()
-      student = student_fixture(%{user_id: user.id})
+      {_user, student} = student_fixture()
 
       assert Users.get_student_by_student_id(student.student_id) == student
     end
@@ -385,8 +378,7 @@ defmodule Dbservice.UsersTest do
     end
 
     test "update_student_with_user/3 updates a user and student" do
-      user = user_fixture()
-      student = student_fixture(%{user_id: user.id})
+      {user, student} = student_fixture()
 
       update_attrs = %{
         first_name: "Updated First Name",
@@ -423,17 +415,13 @@ defmodule Dbservice.UsersTest do
     }
 
     test "list_teacher/0 returns all teacher" do
-      user = user_fixture()
-      subject = subject_fixture()
-      teacher = teacher_fixture(%{user_id: user.id, subject_id: subject.id})
+      {_user, _subject, teacher} = teacher_fixture()
       [head | _tail] = Users.list_teacher()
       assert Map.keys(head) == Map.keys(teacher)
     end
 
     test "get_teacher!/1 returns the teacher with given id" do
-      user = user_fixture()
-      subject = subject_fixture()
-      teacher = teacher_fixture(%{user_id: user.id, subject_id: subject.id})
+      {_user, _subject, teacher} = teacher_fixture()
 
       assert Users.get_teacher!(teacher.id) == teacher
     end
@@ -458,47 +446,37 @@ defmodule Dbservice.UsersTest do
     end
 
     test "update_teacher/2 with valid data updates the teacher" do
-      user = user_fixture()
-      subject = subject_fixture()
-      teacher = teacher_fixture(%{user_id: user.id, subject_id: subject.id})
+      {_user, _subject, teacher} = teacher_fixture()
 
       update_attrs = %{
         is_af_teacher: true,
         designation: "some updated designation"
       }
 
-      assert {:ok, %Teacher{} = teacher} = Users.update_teacher(teacher, update_attrs)
-      assert teacher.designation == "some updated designation"
-      assert teacher.is_af_teacher == true
+      assert {:ok, %Teacher{} = updated_teacher} = Users.update_teacher(teacher, update_attrs)
+      assert updated_teacher.designation == "some updated designation"
+      assert updated_teacher.is_af_teacher == true
     end
 
     test "update_teacher/2 with invalid data returns error changeset" do
-      user = user_fixture()
-      subject = subject_fixture()
-      teacher = teacher_fixture(%{user_id: user.id, subject_id: subject.id})
+      {_user, _subject, teacher} = teacher_fixture()
       assert {:error, %Ecto.Changeset{}} = Users.update_teacher(teacher, @invalid_attrs)
       assert teacher == Users.get_teacher!(teacher.id)
     end
 
     test "delete_teacher/1 deletes the teacher" do
-      user = user_fixture()
-      subject = subject_fixture()
-      teacher = teacher_fixture(%{user_id: user.id, subject_id: subject.id})
+      {_user, _subject, teacher} = teacher_fixture()
       assert {:ok, %Teacher{}} = Users.delete_teacher(teacher)
       assert_raise Ecto.NoResultsError, fn -> Users.get_teacher!(teacher.id) end
     end
 
     test "change_teacher/1 returns a teacher changeset" do
-      user = user_fixture()
-      subject = subject_fixture()
-      teacher = teacher_fixture(%{user_id: user.id, subject_id: subject.id})
+      {_user, _subject, teacher} = teacher_fixture()
       assert %Ecto.Changeset{} = Users.change_teacher(teacher)
     end
 
     test "get_teacher_by_teacher_id/1 returns the teacher with given teacher_id" do
-      user = user_fixture()
-      subject = subject_fixture()
-      teacher = teacher_fixture(%{user_id: user.id, subject_id: subject.id})
+      {_user, _subject, teacher} = teacher_fixture()
 
       assert Users.get_teacher_by_teacher_id(teacher.teacher_id) == teacher
     end
@@ -531,9 +509,7 @@ defmodule Dbservice.UsersTest do
     end
 
     test "update_teacher_with_user/3 updates a user and teacher" do
-      user = user_fixture()
-      subject = subject_fixture()
-      teacher = teacher_fixture(%{user_id: user.id, subject_id: subject.id})
+      {user, _subject, teacher} = teacher_fixture()
 
       update_attrs = %{
         designation: "some updated designation",

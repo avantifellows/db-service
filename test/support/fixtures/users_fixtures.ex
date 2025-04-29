@@ -1,5 +1,6 @@
 defmodule Dbservice.UsersFixtures do
   alias Dbservice.Users
+  alias Dbservice.SubjectsFixtures
 
   @moduledoc """
   This module defines test helpers for creating
@@ -38,7 +39,8 @@ defmodule Dbservice.UsersFixtures do
   Generate a student.
   """
   def student_fixture(attrs \\ %{}) do
-    user_id = Map.fetch!(attrs, :user_id)
+    user = user_fixture()
+    user_id = user.id
 
     {:ok, student} =
       attrs
@@ -88,15 +90,17 @@ defmodule Dbservice.UsersFixtures do
       })
       |> Dbservice.Users.create_student()
 
-    student
+    {user, student}
   end
 
   @doc """
   Generate a teacher.
   """
   def teacher_fixture(attrs \\ %{}) do
-    user_id = Map.fetch!(attrs, :user_id)
-    subject_id = Map.fetch!(attrs, :subject_id)
+    user = user_fixture()
+    user_id = user.id
+    subject = SubjectsFixtures.subject_fixture()
+    subject_id = subject.id
 
     {:ok, teacher} =
       attrs
@@ -109,6 +113,6 @@ defmodule Dbservice.UsersFixtures do
       })
       |> Dbservice.Users.create_teacher()
 
-    teacher
+    {user, subject, teacher}
   end
 end
