@@ -741,24 +741,23 @@ defmodule DbserviceWeb.StudentController do
          group_id <- params["group_id"],
          group_type <- params["group_type"] do
       # Remove known metadata keys from params
-      excluded_keys = ["student_id", "group_id", "group_type"]
-      updateable_fields = Map.drop(params, excluded_keys)
+      update_attrs = Map.drop(params, ["student_id", "group_id", "group_type"])
 
       # Fetch the main record by group_type and group_id
-      main_record =
+      enrollment_record =
         Repo.get_by(EnrollmentRecord,
           user_id: user_id,
           group_id: group_id,
           group_type: group_type
         )
 
-      result_main =
-        case main_record do
+      enrollment_response =
+        case enrollment_record do
           nil ->
             %{error: "Enrollment record not found for given group_type and group_id"}
 
           record ->
-            case EnrollmentRecords.update_enrollment_record(record, updateable_fields) do
+            case EnrollmentRecords.update_enrollment_record(record, update_attrs) do
               {:ok, updated} ->
                 EnrollmentRecordView.render("enrollment_record.json", %{
                   enrollment_record: updated
@@ -784,7 +783,7 @@ defmodule DbserviceWeb.StudentController do
               %{error: "Status record not found"}
 
             record ->
-              case EnrollmentRecords.update_enrollment_record(record, updateable_fields) do
+              case EnrollmentRecords.update_enrollment_record(record, update_attrs) do
                 {:ok, updated} ->
                   EnrollmentRecordView.render("enrollment_record.json", %{
                     enrollment_record: updated
@@ -802,7 +801,7 @@ defmodule DbserviceWeb.StudentController do
       |> put_status(:ok)
       |> json(%{
         message: "Enrollment records updated.",
-        updated_record: result_main,
+        updated_record: enrollment_response,
         updated_status_record: result_status
       })
     else
