@@ -1,0 +1,17 @@
+FROM elixir:1.14.2
+
+# Install Hex + Rebar
+RUN mix local.hex --force && \
+    mix local.rebar --force
+
+# Set working directory
+WORKDIR /app
+
+# Copy source
+COPY . .
+
+# Install dependencies
+RUN mix deps.get
+
+EXPOSE 4000
+CMD ["mix", "phx.server"]
