@@ -14,25 +14,30 @@ defmodule DbserviceWeb.AuthenticationMiddleware do
   def init(_opts), do: %{}
 
   def call(conn, _opts) do
-    source(["config/.env", "config/.env"])
-
-    referer =
-      get_req_header(conn, "referer")
-      |> List.first()
-      |> to_string()
-
-    request_path = conn.request_path
-
-    api_key = get_req_header(conn, "authorization")
-
-    if api_key == ["Bearer " <> env!("BEARER_TOKEN", :string!)] ||
-         contains_swagger_request?(referer, request_path) ||
-         contains_phoneix_livedashboard?(referer, request_path) do
+    # Allow unauthenticated access to the cutoff endpoint
+    if conn.request_path == "/api/jac_delhi_cutoff_2023" do
       conn
     else
-      conn
-      |> send_resp(401, "Not Authorized")
-      |> halt()
+      source(["config/.env", "config/.env"])
+
+      referer =
+        get_req_header(conn, "referer")
+        |> List.first()
+        |> to_string()
+
+      request_path = conn.request_path
+
+      api_key = get_req_header(conn, "authorization")
+
+      if api_key == ["Bearer " <> env!("BEARER_TOKEN", :string!)] ||
+           contains_swagger_request?(referer, request_path) ||
+           contains_phoneix_livedashboard?(referer, request_path) do
+        conn
+      else
+        conn
+        |> send_resp(401, "Not Authorized")
+        |> halt()
+      end
     end
   end
 
