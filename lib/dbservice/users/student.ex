@@ -3,6 +3,7 @@ defmodule Dbservice.Users.Student do
 
   use Ecto.Schema
   import Ecto.Changeset
+  import Dbservice.Utils.Util
 
   alias Dbservice.Users.User
   alias Dbservice.Profiles.StudentProfile
@@ -109,5 +110,7 @@ defmodule Dbservice.Users.Student do
       :school_medium
     ])
     |> validate_required([:user_id])
+    |> validate_category(:category)
+    |> validate_stream(:stream)
   end
 end
