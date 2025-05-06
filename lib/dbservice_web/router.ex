@@ -73,6 +73,7 @@ defmodule DbserviceWeb.Router do
     delete("/remove-batch/:student_id/:batch_id", UserSessionController, :remove_batch_mapping)
     post("/student/:student_id/status", StudentController, :update_student_status)
     resources("/chapter-curriculum", ChapterCurriculumController, except: [:new, :edit])
+    resources("/topic-curriculum", TopicCurriculumController, except: [:new, :edit])
     resources("/resource-curriculum", ResourceCurriculumController, except: [:new, :edit])
     resources("/resource-chapter", ResourceChapterController, except: [:new, :edit])
     resources("/resource-topic", ResourceTopicController, except: [:new, :edit])

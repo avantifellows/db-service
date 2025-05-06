@@ -155,7 +155,7 @@ defmodule DbserviceWeb.TopicController do
   end
 
   defp create_new_topic(conn, params) do
-    with {:ok, %Topic{} = topic} <- Topics.create_topic(params) do
+    with {:ok, %Topic{} = topic} <- Topics.create_topic_with_curriculum(params) do
       conn
       |> put_status(:created)
       |> put_resp_header("location", Routes.topic_path(conn, :show, topic))
@@ -165,7 +165,7 @@ defmodule DbserviceWeb.TopicController do
 
   defp update_existing_topic(conn, existing_topic, params) do
     with {:ok, %Topic{} = topic} <-
-           Topics.update_topic(existing_topic, params) do
+           Topics.update_topic_with_curriculum(existing_topic, params) do
       conn
       |> put_status(:ok)
       |> render("show.json", topic: topic)
