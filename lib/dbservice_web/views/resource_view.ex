@@ -110,4 +110,16 @@ defmodule DbserviceWeb.ResourceView do
       lang_id: problem_lang.lang_id
     })
   end
+
+  def render("problem_lang.json", %{
+        resource: resource,
+        meta_data: meta_data,
+        lang_code: lang_code
+      }) do
+    base = render_one(resource, __MODULE__, "resource.json", as: :resource)
+
+    base
+    |> Map.put(:meta_data, meta_data)
+    |> Map.put(:lang_code, lang_code)
+  end
 end

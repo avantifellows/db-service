@@ -363,4 +363,47 @@ defmodule DbserviceWeb.ResourceController do
       render(conn, "problems.json", problems: problems)
     end
   end
+
+  swagger_path :get_problem do
+    get("/api/resource/problem/{problem_id}/{lang_code}")
+
+    parameters do
+      problem_id(:path, :integer, "The id of the problem resource", required: true)
+      lang_code(:path, :string, "The language code", required: true)
+    end
+
+    response(200, "OK", Schema.ref(:Resource))
+    response(404, "Not Found")
+  end
+
+  @doc """
+  Get a specific problem by resource ID and language code.
+
+  This endpoint returns problem data by joining the resource and problem_lang tables
+  based on the provided problem_id and lang_code parameters.
+  """
+  def get_problem(conn, %{"problem_id" => res_id, "lang_code" => lang_code}) do
+    query =
+      from p in ProblemLanguage,
+        join: r in Resource,
+        on: r.id == p.res_id,
+        join: l in Language,
+        on: l.id == p.lang_id,
+        where: p.res_id == ^res_id and l.code == ^lang_code,
+        preload: [resource: r, language: l]
+
+    case Repo.one(query) do
+      nil ->
+        conn
+        |> put_status(:not_found)
+        |> json(%{error: "Problem not found for given res_id and lang_code"})
+
+      problem_lang ->
+        render(conn, "problem_lang.json",
+          resource: problem_lang.resource,
+          meta_data: problem_lang.meta_data,
+          lang_code: problem_lang.language.code
+        )
+    end
+  end
 end

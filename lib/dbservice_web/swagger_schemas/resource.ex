@@ -11,7 +11,15 @@ defmodule DbserviceWeb.SwaggerSchema.Resource do
           description("A resource in the application")
 
           properties do
-            name(:string, "Resource name")
+            name(
+              Schema.array(:object),
+              "Multilingual names for the resource, each with a language code and value",
+              example: [
+                %{lang: "en", value: "1. 9C01 Introduction - Matter in our Surroundings"},
+                %{lang: "hi", value: "1. 9C01 परिचय - हमारे आस पास के पदार्थ"}
+              ]
+            )
+
             type(:string, "Resource type")
             type_params(:map, "Parameters of the resource type")
             subtype(:string, "Sub-type of a resource")
@@ -25,11 +33,12 @@ defmodule DbserviceWeb.SwaggerSchema.Resource do
           end
 
           example(%{
-            name: "1. 9C01 Introduction - हमारे आस पास के पदार्थ | Matter in our Surroundings",
+            name: [
+              %{lang: "en", value: "1. 9C01 Introduction - Matter in our Surroundings"},
+              %{lang: "hi", value: "1. 9C01 परिचय - हमारे आस पास के पदार्थ"}
+            ],
             type: "video",
-            type_params: %{
-              "duration" => "45 minutes"
-            },
+            type_params: %{"duration" => "45 minutes"},
             subtype: "lecture",
             source: "youtube",
             code: "RES_001",

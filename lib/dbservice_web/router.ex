@@ -81,6 +81,7 @@ defmodule DbserviceWeb.Router do
     resources("/problem-language", ProblemLanguageController, except: [:new, :edit])
     get("/resource/test/:id/problems", ResourceController, :test_problems)
     get("/problems", ResourceController, :fetch_problems)
+    get("/resource/problem/:problem_id/:lang_code", ResourceController, :get_problem)
 
     def swagger_info do
       source(["config/.env", "config/.env"])
