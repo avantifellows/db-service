@@ -114,12 +114,19 @@ defmodule DbserviceWeb.ResourceView do
   def render("problem_lang.json", %{
         resource: resource,
         meta_data: meta_data,
-        lang_code: lang_code
+        lang_code: lang_code,
+        resource_curriculum: rc
       }) do
     base = render_one(resource, __MODULE__, "resource.json", as: :resource)
 
     base
     |> Map.put(:meta_data, meta_data)
     |> Map.put(:lang_code, lang_code)
+    |> Map.merge(%{
+      curriculum_id: rc.curriculum_id,
+      grade_id: rc.grade_id,
+      subject_id: rc.subject_id,
+      difficulty_level: rc.difficulty_level
+    })
   end
 end

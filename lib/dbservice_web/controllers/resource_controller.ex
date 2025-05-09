@@ -365,11 +365,12 @@ defmodule DbserviceWeb.ResourceController do
   end
 
   swagger_path :get_problem do
-    get("/api/resource/problem/{problem_id}/{lang_code}")
+    get("/api/resource/problem/{problem_id}/{lang_code}/{curriculum_id}")
 
     parameters do
       problem_id(:path, :integer, "The id of the problem resource", required: true)
       lang_code(:path, :string, "The language code", required: true)
+      curriculum_id(:path, :integer, "The curriculum ID", required: true)
     end
 
     response(200, "OK", Schema.ref(:Resource))
@@ -377,12 +378,16 @@ defmodule DbserviceWeb.ResourceController do
   end
 
   @doc """
-  Get a specific problem by resource ID and language code.
+  Get a specific problem by resource ID, language code and curriculum ID.
 
   This endpoint returns problem data by joining the resource and problem_lang tables
-  based on the provided problem_id and lang_code parameters.
+  based on the provided problem_id, lang_code and curriculum_id parameters.
   """
-  def get_problem(conn, %{"problem_id" => res_id, "lang_code" => lang_code}) do
+  def get_problem(conn, %{
+        "problem_id" => res_id,
+        "lang_code" => lang_code,
+        "curriculum_id" => curriculum_id
+      }) do
     query =
       from p in ProblemLanguage,
         join: r in Resource,
@@ -390,20 +395,34 @@ defmodule DbserviceWeb.ResourceController do
         join: l in Language,
         on: l.id == p.lang_id,
         where: p.res_id == ^res_id and l.code == ^lang_code,
-        preload: [resource: r, language: l]
+        preload: [resource: {r, [:resource_curriculum]}, language: l]
 
     case Repo.one(query) do
       nil ->
         conn
         |> put_status(:not_found)
-        |> json(%{error: "Problem not found for given res_id and lang_code"})
+        |> json(%{error: "Problem not found for given inputs"})
 
       problem_lang ->
-        render(conn, "problem_lang.json",
-          resource: problem_lang.resource,
-          meta_data: problem_lang.meta_data,
-          lang_code: problem_lang.language.code
-        )
+        resource_curriculum =
+          Enum.find(problem_lang.resource.resource_curriculum, fn rc ->
+            rc.curriculum_id == String.to_integer(curriculum_id)
+          end)
+
+        case resource_curriculum do
+          nil ->
+            conn
+            |> put_status(:not_found)
+            |> json(%{error: "No resource found for given curriculum_id"})
+
+          rc ->
+            render(conn, "problem_lang.json",
+              resource: problem_lang.resource,
+              meta_data: problem_lang.meta_data,
+              lang_code: problem_lang.language.code,
+              resource_curriculum: rc
+            )
+        end
     end
   end
 end
