@@ -270,6 +270,13 @@ defmodule DbserviceWeb.ResourceController do
         "The code of the language to fetch problems in (e.g., 'en', 'hi')",
         required: true
       )
+
+      curriculumId(
+        :query,
+        :integer,
+        "The ID of the curriculum to get difficulty level",
+        required: true
+      )
     end
 
     response(200, "OK", Schema.array(:Resource))
@@ -278,13 +285,18 @@ defmodule DbserviceWeb.ResourceController do
   @doc """
   Returns all problems for a specific test in a specific language.
 
-  GET /api/resource/test/:id/problems?lang_code=en
+  GET /api/resource/test/:id/problems?lang_code=en&curriculum_id=1
   """
-  def test_problems(conn, %{"id" => test_id, "lang_code" => lang_code}) do
-    # Parse test ID to integer
+  def test_problems(conn, %{
+        "id" => test_id,
+        "lang_code" => lang_code,
+        "curriculum_id" => curriculum_id
+      }) do
+    # Parse test ID and curriculum ID to integer
     test_id = String.to_integer(test_id)
+    curriculum_id = String.to_integer(curriculum_id)
 
-    result = Resources.get_problems_by_test_and_language(test_id, lang_code)
+    result = Resources.get_problems_by_test_and_language(test_id, lang_code, curriculum_id)
 
     case result do
       {:error, :language_not_found} ->
@@ -301,6 +313,11 @@ defmodule DbserviceWeb.ResourceController do
         conn
         |> put_status(:bad_request)
         |> json(%{error: "The specified resource is not a test"})
+
+      {:error, :curriculum_not_found} ->
+        conn
+        |> put_status(:not_found)
+        |> json(%{error: "Curriculum not found"})
 
       problems ->
         conn

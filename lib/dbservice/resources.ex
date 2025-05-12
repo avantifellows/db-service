@@ -9,6 +9,7 @@ defmodule Dbservice.Resources do
   alias Dbservice.Resources.Resource
   alias Dbservice.Resources.ProblemLanguage
   alias Dbservice.Languages.Language
+  alias Dbservice.Resources.ResourceCurriculum
 
   @doc """
   Returns the list of resource.
@@ -37,11 +38,12 @@ defmodule Dbservice.Resources do
   ## Parameters
     - test_id: ID of the test resource
     - lang_code: Code of the language to fetch problems in (e.g., "en", "hi")
+    - curriculum_id: ID of the curriculum to get difficulty level
 
   ## Returns
-    - List of problem resources with their metadata from problem_lang table
+    - List of problem resources with their metadata from problem_lang table and difficulty_level from resource_curriculum
   """
-  def get_problems_by_test_and_language(test_id, lang_code) do
+  def get_problems_by_test_and_language(test_id, lang_code, curriculum_id) do
     # First, get the language ID from the code
     language =
       from(l in Language,
@@ -61,10 +63,32 @@ defmodule Dbservice.Resources do
           # Extract all problem IDs from the test resource's type_params
           problem_ids = extract_problem_ids_from_test(test_resource.type_params)
 
-          # Query for all problems with those IDs
+          # Query for all problems with those IDs, including resource_curriculum data
           problems =
             from(r in Resource,
-              where: r.id in ^problem_ids and r.type == "problem"
+              join: rc in ResourceCurriculum,
+              on: rc.resource_id == r.id,
+              where:
+                r.id in ^problem_ids and r.type == "problem" and
+                  rc.curriculum_id == ^curriculum_id,
+              select: %{
+                id: r.id,
+                name: r.name,
+                type: r.type,
+                type_params: r.type_params,
+                subtype: r.subtype,
+                source: r.source,
+                code: r.code,
+                purpose_ids: r.purpose_ids,
+                tag_ids: r.tag_ids,
+                skill_ids: r.skill_ids,
+                learning_objective_ids: r.learning_objective_ids,
+                teacher_id: r.teacher_id,
+                difficulty_level: rc.difficulty_level,
+                curriculum_id: rc.curriculum_id,
+                grade_id: rc.grade_id,
+                subject_id: rc.subject_id
+              }
             )
             |> Repo.all()
 

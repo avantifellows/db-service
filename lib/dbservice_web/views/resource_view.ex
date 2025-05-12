@@ -48,6 +48,20 @@ defmodule DbserviceWeb.ResourceView do
       chapter_id: chapter_id
     }
 
+    # Add curriculum data if it exists
+    base_map =
+      if Map.has_key?(resource, :difficulty_level) do
+        Map.merge(base_map, %{
+          difficulty_level: resource.difficulty_level,
+          curriculum_id: resource.curriculum_id,
+          grade_id: resource.grade_id,
+          subject_id: resource.subject_id
+        })
+      else
+        base_map
+      end
+
+    # Add meta_data if it exists
     if Map.has_key?(resource, :meta_data) do
       Map.put(base_map, :meta_data, resource.meta_data)
     else
