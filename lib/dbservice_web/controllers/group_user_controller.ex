@@ -255,12 +255,75 @@ defmodule DbserviceWeb.GroupUserController do
   end
 
   defp update_existing_group_user(conn, existing_group_user, params) do
+    group = Groups.get_group!(params["group_id"])
+
+    # Check if academic_year is provided in params and if the group type is school
+    if Map.has_key?(params, "academic_year") and group.type == "school" do
+      # If this is a school enrollment, handle previous academic year records
+      if group.type == "school" do
+        mark_previous_enrollments_as_inactive(
+          params["user_id"],
+          group.child_id,
+          params["academic_year"],
+          params["start_date"]
+        )
+      end
+
+      # Look for an existing EnrollmentRecord for the given user_id, group.child_id, and academic_year
+      enrollment_record =
+        from(er in EnrollmentRecord,
+          where:
+            er.user_id == ^params["user_id"] and
+              er.group_id == ^group.child_id and
+              er.group_type == ^group.type and
+              er.academic_year == ^params["academic_year"]
+        )
+        |> Repo.one()
+
+      # If no record exists, create a new one
+      if is_nil(enrollment_record) do
+        enrollment_record_params = %{
+          "group_id" => group.child_id,
+          "group_type" => group.type,
+          "user_id" => params["user_id"],
+          "academic_year" => params["academic_year"],
+          "start_date" => params["start_date"]
+        }
+
+        case EnrollmentRecords.create_enrollment_record(enrollment_record_params) do
+          {:ok, _} -> :ok
+          {:error, _} -> :error
+        end
+      end
+    end
+
+    # Proceed with updating the GroupUser
     with {:ok, %GroupUser{} = group_user} <-
            GroupUsers.update_group_user(existing_group_user, params) do
       conn
       |> put_status(:ok)
       |> render("show.json", group_user: group_user)
     end
+  end
+
+  # Helper function to mark previous school enrollments as inactive
+  defp mark_previous_enrollments_as_inactive(user_id, school_id, new_academic_year, end_date) do
+    # Find all enrollment records for this user at this school with different academic years
+    from(er in EnrollmentRecord,
+      where:
+        er.user_id == ^user_id and
+          er.group_id == ^school_id and
+          er.group_type == "school" and
+          er.academic_year != ^new_academic_year and
+          er.is_current == true
+    )
+    |> Repo.all()
+    |> Enum.each(fn record ->
+      EnrollmentRecords.update_enrollment_record(record, %{
+        "is_current" => false,
+        "end_date" => end_date
+      })
+    end)
   end
 
   def batch_process(conn, %{"data" => batch_data}) do
