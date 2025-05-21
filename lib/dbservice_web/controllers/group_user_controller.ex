@@ -488,6 +488,25 @@ defmodule DbserviceWeb.GroupUserController do
   end
 
   defp update_existing_group_user_from_batch(existing_group_user, params) do
+    group = Groups.get_group!(params["group_id"])
+
+    if Map.has_key?(params, "academic_year") and group.type == "school" do
+      update_school_enrollment(
+        params["user_id"],
+        group.child_id,
+        params["academic_year"],
+        params["start_date"]
+      )
+
+      handle_enrollment_record(
+        params["user_id"],
+        group.child_id,
+        group.type,
+        params["academic_year"],
+        params["start_date"]
+      )
+    end
+
     case GroupUsers.update_group_user(existing_group_user, params) do
       {:ok, group_user} -> {:ok, group_user}
       {:error, _changeset} -> {:error, "Failed to update group user. Some problem with changeset"}
