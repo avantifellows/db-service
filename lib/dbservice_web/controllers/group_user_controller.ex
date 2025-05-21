@@ -489,13 +489,14 @@ defmodule DbserviceWeb.GroupUserController do
 
   defp update_existing_group_user_from_batch(existing_group_user, params) do
     group = Groups.get_group!(params["group_id"])
+    today = Date.utc_today() |> Date.to_iso8601()
 
     if Map.has_key?(params, "academic_year") and group.type == "school" do
       update_school_enrollment(
         params["user_id"],
         group.child_id,
         params["academic_year"],
-        params["start_date"]
+        today
       )
 
       handle_enrollment_record(
@@ -503,7 +504,7 @@ defmodule DbserviceWeb.GroupUserController do
         group.child_id,
         group.type,
         params["academic_year"],
-        params["start_date"]
+        today
       )
     end
 
