@@ -206,7 +206,7 @@ defmodule DbserviceWeb.ResourceController do
       {:error, {:changeset_error, changeset}} ->
         conn
         |> put_status(:unprocessable_entity)
-        |> json(%{errors: DbserviceWeb.ErrorHelpers.errors_for_changeset(changeset)})
+        |> json(%{errors: DbserviceWeb.ChangesetView.translate_errors(changeset)})
 
       {:error, {:curriculum_error, reason}} ->
         conn
