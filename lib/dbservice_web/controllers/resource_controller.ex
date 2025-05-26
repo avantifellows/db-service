@@ -178,11 +178,40 @@ defmodule DbserviceWeb.ResourceController do
   end
 
   defp create_new_resource(conn, params) do
-    with {:ok, %Resource{} = resource} <- Resources.create_resource(params) do
-      conn
-      |> put_status(:created)
-      |> put_resp_header("location", Routes.resource_path(conn, :show, resource))
-      |> render("show.json", resource: resource)
+    result =
+      Repo.transaction(fn ->
+        with {:ok, %Resource{} = resource} <- Resources.create_resource(params),
+             :ok <-
+               Resources.create_resource_curriculums_for_resource(
+                 resource,
+                 params["curriculum_grades"]
+               ) do
+          resource
+        else
+          {:error, %Ecto.Changeset{} = changeset} ->
+            Repo.rollback({:changeset_error, changeset})
+
+          {:error, reason} ->
+            Repo.rollback({:curriculum_error, reason})
+        end
+      end)
+
+    case result do
+      {:ok, resource} ->
+        conn
+        |> put_status(:created)
+        |> put_resp_header("location", Routes.resource_path(conn, :show, resource))
+        |> render("show.json", resource: resource)
+
+      {:error, {:changeset_error, changeset}} ->
+        conn
+        |> put_status(:unprocessable_entity)
+        |> json(%{errors: DbserviceWeb.ErrorHelpers.errors_for_changeset(changeset)})
+
+      {:error, {:curriculum_error, reason}} ->
+        conn
+        |> put_status(:unprocessable_entity)
+        |> json(%{error: "Failed to create resource curriculum entries: #{inspect(reason)}"})
     end
   end
 

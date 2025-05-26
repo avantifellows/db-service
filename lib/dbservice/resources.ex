@@ -233,4 +233,51 @@ defmodule Dbservice.Resources do
   def change_resource(%Resource{} = resource, attrs \\ %{}) do
     Resource.changeset(resource, attrs)
   end
+
+  @doc """
+  Creates multiple `ResourceCurriculum` entries for a given resource based on the provided curriculum grades.
+
+  This function takes a resource and a list of curriculum grades, and attempts to create a `ResourceCurriculum` entry for each item in the list. Each entry links the resource to a specific curriculum and grade.
+
+  ## Parameters
+
+    - `resource`: The resource for which the curriculum entries are being created. This should be a `%Resource{}` struct that has been successfully created and contains an `id`.
+
+    - `curriculum_grades`: A list of maps, where each map contains:
+      - `"curriculum_id"`: The ID of the curriculum to associate with the resource.
+      - `"grade_id"`: The ID of the grade to associate with the resource.
+
+  ## Returns
+
+    - `:ok` if all `ResourceCurriculum` entries are created successfully.
+
+    - `{:error, reason}` if any of the entries fail to be created, where `reason` is the error returned by the `create_resource_curriculum` function.
+
+  ## Examples
+
+      iex> create_resource_curriculums_for_resource(resource, [%{"curriculum_id" => 1, "grade_id" => 1}, %{"curriculum_id" => 2, "grade_id" => 2}])
+      :ok
+
+      iex> create_resource_curriculums_for_resource(resource, [%{"curriculum_id" => 1, "grade_id" => 1}, %{"curriculum_id" => 2, "grade_id" => nil}])
+      {:error, changeset}
+  """
+  def create_resource_curriculums_for_resource(resource, curriculum_grades)
+      when is_list(curriculum_grades) do
+    Enum.reduce_while(curriculum_grades, :ok, fn %{
+                                                   "curriculum_id" => cur_id,
+                                                   "grade_id" => grade_id
+                                                 },
+                                                 _acc ->
+      case Dbservice.ResourceCurriculums.create_resource_curriculum(%{
+             resource_id: resource.id,
+             curriculum_id: cur_id,
+             grade_id: grade_id
+           }) do
+        {:ok, _} -> {:cont, :ok}
+        {:error, reason} -> {:halt, {:error, reason}}
+      end
+    end)
+  end
+
+  def create_resource_curriculums_for_resource(_resource, _curriculum_grades), do: :ok
 end
