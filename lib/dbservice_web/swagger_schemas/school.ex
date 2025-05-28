@@ -24,7 +24,7 @@ defmodule DbserviceWeb.SwaggerSchema.School do
             block_code(:string, "Block Code")
             block_name(:string, "Block Name")
             board(:string, "Board")
-            board_medium(:string, "Medium")
+            # board_medium(:string, "Medium")
             user_id(:integer, "User ID of a school")
           end
 
