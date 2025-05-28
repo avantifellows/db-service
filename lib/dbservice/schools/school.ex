@@ -22,7 +22,7 @@ defmodule Dbservice.Schools.School do
     field :block_code, :string
     field :block_name, :string
     field :board, :string
-    field :board_medium, :string
+    # field :board_medium, :string
 
     has_many :group, Group, foreign_key: :child_id, where: [type: "school"]
 
@@ -52,7 +52,7 @@ defmodule Dbservice.Schools.School do
       :block_code,
       :block_name,
       :board,
-      :board_medium,
+      # :board_medium,
       :user_id
     ])
     |> validate_required([

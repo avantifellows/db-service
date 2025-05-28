@@ -1,6 +1,8 @@
 defmodule DbserviceWeb.ResourceView do
   use DbserviceWeb, :view
   alias DbserviceWeb.ResourceView
+  alias DbserviceWeb.SourceView
+  alias Dbservice.Repo
 
   def render("index.json", %{resource: resource}) do
     render_many(resource, ResourceView, "resource.json")
@@ -11,6 +13,8 @@ defmodule DbserviceWeb.ResourceView do
   end
 
   def render("resource.json", %{resource: resource}) do
+    resource = Repo.preload(resource, :source)
+
     %{
       id: resource.id,
       name: resource.name,
@@ -25,7 +29,8 @@ defmodule DbserviceWeb.ResourceView do
       concept_id: resource.concept_id,
       learning_objective_id: resource.learning_objective_id,
       tag_id: resource.tag_id,
-      teacher_id: resource.teacher_id
+      teacher_id: resource.teacher_id,
+      source: render_one(resource.source, SourceView, "source.json")
     }
   end
 end
