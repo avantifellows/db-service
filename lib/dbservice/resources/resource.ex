@@ -11,7 +11,6 @@ defmodule Dbservice.Resources.Resource do
   alias Dbservice.Purposes.Purpose
   alias Dbservice.Concepts.Concept
   alias Dbservice.LearningObjectives.LearningObjective
-  alias Dbservice.Tags.Tag
   alias Dbservice.Users.Teacher
 
   schema "resource" do
@@ -19,6 +18,7 @@ defmodule Dbservice.Resources.Resource do
     field(:type, :string)
     field(:type_params, :map)
     field(:difficulty_level, :string)
+    field(:tag_ids, {:array, :integer})
 
     timestamps()
 
@@ -29,7 +29,6 @@ defmodule Dbservice.Resources.Resource do
     belongs_to(:purpose, Purpose)
     belongs_to(:concept, Concept)
     belongs_to(:learning_objective, LearningObjective)
-    belongs_to(:tag, Tag)
     belongs_to(:teacher, Teacher)
   end
 
@@ -48,7 +47,7 @@ defmodule Dbservice.Resources.Resource do
       :purpose_id,
       :concept_id,
       :learning_objective_id,
-      :tag_id,
+      :tag_ids,
       :teacher_id
     ])
   end
