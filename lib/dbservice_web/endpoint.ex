@@ -45,7 +45,16 @@ defmodule DbserviceWeb.Endpoint do
   plug Plug.Head
   plug Plug.Session, @session_options
   plug CORSPlug
+  plug :maybe_skip_authentication
   plug DbserviceWeb.AuthenticationMiddleware
+
+  defp maybe_skip_authentication(conn, _opts) do
+    if conn.request_path == "/api/jac_delhi_cutoff_2023" do
+      conn
+    else
+      conn
+    end
+  end
 
   plug DbserviceWeb.Router
 end
