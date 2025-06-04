@@ -50,7 +50,11 @@ defmodule DbserviceWeb.LearningObjectiveController do
       end)
 
     learning_objective = Repo.all(query)
-    json(conn, DbserviceWeb.LearningObjectiveJSON.index(%{learning_objective: learning_objective}))
+
+    json(
+      conn,
+      DbserviceWeb.LearningObjectiveJSON.index(%{learning_objective: learning_objective})
+    )
   end
 
   swagger_path :create do
@@ -72,9 +76,7 @@ defmodule DbserviceWeb.LearningObjectiveController do
         "location",
         ~p"/api/learning-objective/#{learning_objective}"
       )
-      |> json(
-        DbserviceWeb.LearningObjectiveJSON.show(%{learning_objective: learning_objective})
-      )
+      |> json(DbserviceWeb.LearningObjectiveJSON.show(%{learning_objective: learning_objective}))
     end
   end
 
@@ -114,7 +116,10 @@ defmodule DbserviceWeb.LearningObjectiveController do
 
     with {:ok, %LearningObjective{} = learning_objective} <-
            LearningObjectives.update_learning_objective(learning_objective, params) do
-      json(conn, DbserviceWeb.LearningObjectiveJSON.show(%{learning_objective: learning_objective}))
+      json(
+        conn,
+        DbserviceWeb.LearningObjectiveJSON.show(%{learning_objective: learning_objective})
+      )
     end
   end
 

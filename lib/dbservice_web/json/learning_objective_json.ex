@@ -1,5 +1,4 @@
 defmodule DbserviceWeb.LearningObjectiveJSON do
-
   def index(%{learning_objective: learning_objective}) do
     %{data: for(lo <- learning_objective, do: data(lo))}
   end

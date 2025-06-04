@@ -71,7 +71,13 @@ defmodule DbserviceWeb.StudentProfileController do
 
   def show(conn, %{"id" => id}) do
     student_profile = Profiles.get_student_profile!(id)
-    json(conn, DbserviceWeb.StudentProfileJSON.show_student_profile_with_user_profile(%{student_profile: student_profile}))
+
+    json(
+      conn,
+      DbserviceWeb.StudentProfileJSON.show_student_profile_with_user_profile(%{
+        student_profile: student_profile
+      })
+    )
   end
 
   swagger_path :update do
@@ -95,7 +101,12 @@ defmodule DbserviceWeb.StudentProfileController do
              user_profile,
              params
            ) do
-      json(conn, DbserviceWeb.StudentProfileJSON.show_student_profile_with_user_profile(%{student_profile: student_profile}))
+      json(
+        conn,
+        DbserviceWeb.StudentProfileJSON.show_student_profile_with_user_profile(%{
+          student_profile: student_profile
+        })
+      )
     end
   end
 
@@ -146,7 +157,11 @@ defmodule DbserviceWeb.StudentProfileController do
            Profiles.create_student_profile_with_user_profile(updated_params) do
       conn
       |> put_status(:created)
-      |> json(DbserviceWeb.StudentProfileJSON.show_student_profile_with_user_profile(%{student_profile: student_profile}))
+      |> json(
+        DbserviceWeb.StudentProfileJSON.show_student_profile_with_user_profile(%{
+          student_profile: student_profile
+        })
+      )
     end
   end
 end

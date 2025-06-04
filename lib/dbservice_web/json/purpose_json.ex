@@ -1,5 +1,4 @@
 defmodule DbserviceWeb.PurposeJSON do
-
   def index(%{purpose: purpose}) do
     %{data: for(p <- purpose, do: data(p))}
   end

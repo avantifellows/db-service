@@ -56,7 +56,11 @@ defmodule DbserviceWeb.StudentProfileJSON do
       tests_number_of_wrong_questions: student_profile.tests_number_of_wrong_questions,
       tests_number_of_skipped_questions: student_profile.tests_number_of_skipped_questions,
       user_profile_id: student_profile.user_profile_id,
-      user_profile: if(student_profile.user_profile, do: UserProfileJSON.data(student_profile.user_profile), else: nil)
+      user_profile:
+        if(student_profile.user_profile,
+          do: UserProfileJSON.data(student_profile.user_profile),
+          else: nil
+        )
     }
   end
 end

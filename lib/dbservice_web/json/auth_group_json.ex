@@ -1,5 +1,4 @@
 defmodule DbserviceWeb.AuthGroupJSON do
-
   def index(%{auth_group: auth_group}) do
     %{data: for(group <- auth_group, do: data(group))}
   end

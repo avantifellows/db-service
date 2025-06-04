@@ -63,8 +63,7 @@ defmodule Dbservice.MixProject do
       {:hackney, "~> 1.23.0"},
       {:google_api_sheets, "~> 0.35.0"},
       {:goth, "~> 1.4.5"},
-      {:phoenix_html, "~> 4.1"},
-
+      {:phoenix_html, "~> 4.1"}
     ]
   end
 

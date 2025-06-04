@@ -20,7 +20,11 @@ defmodule DbserviceWeb.SessionOccurrenceJSON do
       session_id: session_occurrence.session_id,
       inserted_at: session_occurrence.inserted_at,
       updated_at: session_occurrence.updated_at,
-      session: if(session_occurrence.session, do: SessionJSON.data(session_occurrence.session), else: nil)
+      session:
+        if(session_occurrence.session,
+          do: SessionJSON.data(session_occurrence.session),
+          else: nil
+        )
     }
   end
 

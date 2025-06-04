@@ -1,5 +1,4 @@
 defmodule DbserviceWeb.SchoolBatchJSON do
-
   def index(%{school_batch: school_batch}) do
     %{data: for(sb <- school_batch, do: data(sb))}
   end

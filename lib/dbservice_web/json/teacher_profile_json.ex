@@ -34,7 +34,11 @@ defmodule DbserviceWeb.TeacherProfileJSON do
       program_manager: teacher_profile.program_manager,
       avg_rating: teacher_profile.avg_rating,
       user_profile_id: teacher_profile.user_profile_id,
-      user_profile: if(teacher_profile.user_profile, do: UserProfileJSON.data(teacher_profile.user_profile), else: nil)
+      user_profile:
+        if(teacher_profile.user_profile,
+          do: UserProfileJSON.data(teacher_profile.user_profile),
+          else: nil
+        )
     }
   end
 end
