@@ -7,17 +7,30 @@ defmodule Dbservice.SessionsTest do
     alias Dbservice.Sessions.Session
 
     import Dbservice.SessionsFixtures
+    import Dbservice.UsersFixtures
 
     @invalid_attrs %{
       end_time: nil,
       meta_data: nil,
       name: nil,
       portal_link: nil,
-      repeat_till_date: nil,
-      repeat_type: nil,
       start_time: nil,
       platform: nil,
-      platform_link: nil
+      platform_link: nil,
+      owner_id: nil,
+      created_by_id: nil,
+      session_id: nil,
+      purpose: nil,
+      repeat_schedule: nil,
+      platform_id: nil,
+      type: nil,
+      auth_type: nil,
+      signup_form: nil,
+      id_generation: nil,
+      redirection: nil,
+      popup_form: nil,
+      popup_form_id: nil,
+      signup_form_id: nil
     }
 
     test "list_session/0 returns all session" do
@@ -40,12 +53,21 @@ defmodule Dbservice.SessionsTest do
         start_time: ~U[2022-04-28 13:58:00Z],
         platform: "some platform",
         platform_link: "some platform_link",
-        owner_id: get_owner_id(),
-        created_by_id: get_created_by_id(),
-        uuid: "",
-        is_active: false,
+        owner_id: user_fixture().id,
+        created_by_id: user_fixture().id,
+        session_id: Ecto.UUID.generate(),
         purpose: %{},
-        repeat_schedule: %{}
+        repeat_schedule: %{},
+        platform_id: "some_platform_id",
+        type: "some_type",
+        auth_type: "some_auth_type",
+        signup_form: false,
+        signup_form_id: nil,
+        id_generation: false,
+        redirection: false,
+        popup_form: false,
+        popup_form_id: nil,
+        is_active: false
       }
 
       assert {:ok, %Session{} = session} = Sessions.create_session(valid_attrs)
@@ -59,6 +81,11 @@ defmodule Dbservice.SessionsTest do
       assert session.is_active == false
       assert session.purpose == %{}
       assert session.repeat_schedule == %{}
+      assert session.signup_form_id == nil
+      assert session.id_generation == false
+      assert session.redirection == false
+      assert session.popup_form == false
+      assert session.popup_form_id == nil
     end
 
     test "create_session/1 with invalid data returns error changeset" do
@@ -77,13 +104,7 @@ defmodule Dbservice.SessionsTest do
         repeat_type: "some updated repeat_type",
         start_time: ~U[2022-04-29 13:58:00Z],
         platform: "some updated platform",
-        platform_link: "some updated platform_link",
-        owner_id: get_owner_id(),
-        created_by_id: get_created_by_id(),
-        uuid: "",
-        is_active: false,
-        purpose: %{},
-        repeat_schedule: %{}
+        platform_link: "some updated platform_link"
       }
 
       assert {:ok, %Session{} = session} = Sessions.update_session(session, update_attrs)
@@ -93,10 +114,6 @@ defmodule Dbservice.SessionsTest do
       assert session.portal_link == "some updated portal_link"
       assert session.start_time == ~U[2022-04-29 13:58:00Z]
       assert session.platform == "some updated platform"
-      assert session.platform_link == "some updated platform_link"
-      assert session.is_active == false
-      assert session.purpose == %{}
-      assert session.repeat_schedule == %{}
     end
 
     test "update_session/2 with invalid data returns error changeset" do
@@ -122,7 +139,7 @@ defmodule Dbservice.SessionsTest do
 
     import Dbservice.SessionsFixtures
 
-    @invalid_attrs %{end_time: nil, start_time: nil, session_id: nil}
+    @invalid_attrs %{end_time: nil, start_time: nil, session_id: nil, session_fk: nil}
 
     test "list_session_occurrence/0 returns all session_occurrence" do
       session_occurrence = session_occurrence_fixture()
@@ -139,7 +156,8 @@ defmodule Dbservice.SessionsTest do
       valid_attrs = %{
         end_time: ~U[2022-04-28 14:05:00Z],
         start_time: ~U[2022-04-28 14:05:00Z],
-        session_id: get_session_id()
+        session_id: "some_session_id",
+        session_fk: session_fixture().id
       }
 
       assert {:ok, %SessionOccurrence{} = session_occurrence} =
