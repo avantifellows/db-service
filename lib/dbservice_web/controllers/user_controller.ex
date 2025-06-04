@@ -64,7 +64,7 @@ defmodule DbserviceWeb.UserController do
       end)
 
     user = Repo.all(query)
-    render(conn, "index.json", user: user)
+    json(conn, DbserviceWeb.UserJSON.index(%{user: user}))
   end
 
   swagger_path :create do
@@ -99,7 +99,7 @@ defmodule DbserviceWeb.UserController do
 
   def show(conn, %{"id" => id}) do
     user = Users.get_user!(id)
-    render(conn, "show.json", user: user)
+    json(conn, DbserviceWeb.UserJSON.show(%{user: user}))
   end
 
   swagger_path :update do
@@ -117,7 +117,7 @@ defmodule DbserviceWeb.UserController do
     user = Users.get_user!(params["id"])
 
     with {:ok, %User{} = user} <- Users.update_user(user, params) do
-      render(conn, "show.json", user: user)
+      json(conn, DbserviceWeb.UserJSON.show(%{user: user}))
     end
   end
 
@@ -156,7 +156,7 @@ defmodule DbserviceWeb.UserController do
   def update_group(conn, %{"id" => user_id, "group_ids" => group_ids})
       when is_list(group_ids) do
     with {:ok, %User{} = user} <- Users.update_group(user_id, group_ids) do
-      render(conn, "show.json", user: user)
+      json(conn, DbserviceWeb.UserJSON.show(%{user: user}))
     end
   end
 
@@ -164,8 +164,8 @@ defmodule DbserviceWeb.UserController do
     with {:ok, %User{} = user} <- Users.create_user(params) do
       conn
       |> put_status(:created)
-      |> put_resp_header("location", Routes.user_path(conn, :show, user))
-      |> render("show.json", user: user)
+      |> put_resp_header("location", ~p"/api/user/#{user}")
+      |> json(DbserviceWeb.UserJSON.show(%{user: user}))
     end
   end
 
@@ -173,14 +173,14 @@ defmodule DbserviceWeb.UserController do
     with {:ok, %User{} = user} <- Users.update_user(existing_user, params) do
       conn
       |> put_status(:ok)
-      |> render("show.json", user: user)
+      |> json(DbserviceWeb.UserJSON.show(%{user: user}))
     end
   end
 
   def get_user_sessions(conn, %{"user_id" => user_id, "quiz" => quiz_flag}) do
     group_users = GroupUsers.get_group_user_by_user_id(user_id)
     sessions = Enum.flat_map(group_users, &fetch_group_user_sessions(&1, quiz_flag))
-    render(conn, "user_sessions.json", session: sessions)
+    json(conn, DbserviceWeb.UserJSON.user_sessions(%{session: sessions}))
   end
 
   def get_user_sessions(conn, %{"user_id" => user_id}) do

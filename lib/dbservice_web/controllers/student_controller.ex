@@ -16,7 +16,7 @@ defmodule DbserviceWeb.StudentController do
   alias Dbservice.Batches.Batch
   alias Dbservice.GroupUsers
   alias Dbservice.Grades.Grade
-  alias DbserviceWeb.EnrollmentRecordView
+  alias DbserviceWeb.EnrollmentRecordJSON
   alias Dbservice.Statuses
 
   action_fallback(DbserviceWeb.FallbackController)
@@ -88,7 +88,7 @@ defmodule DbserviceWeb.StudentController do
       end)
 
     student = Repo.all(query)
-    render(conn, "index.json", student: student)
+    render(conn, :index, student: student)
   end
 
   swagger_path :create do
@@ -125,7 +125,7 @@ defmodule DbserviceWeb.StudentController do
 
   def show(conn, %{"id" => id}) do
     student = Users.get_student!(id)
-    render(conn, "show.json", student: student)
+    render(conn, :show, student: student)
   end
 
   swagger_path :update do
@@ -146,7 +146,7 @@ defmodule DbserviceWeb.StudentController do
     with {:ok, %Student{} = student} <- Users.update_student_with_user(student, user, params) do
       conn
       |> put_status(:ok)
-      |> render("show.json", student: student)
+      |> render(:show, student: student)
     end
   end
 
@@ -175,7 +175,7 @@ defmodule DbserviceWeb.StudentController do
            Users.update_student_with_user(existing_student, user, params) do
       conn
       |> put_status(:ok)
-      |> render("show.json", student: student)
+      |> render(:show, student: student)
     end
   end
 
@@ -183,7 +183,7 @@ defmodule DbserviceWeb.StudentController do
     with {:ok, %Student{} = student} <- Users.create_student_with_user(params) do
       conn
       |> put_status(:created)
-      |> render("show.json", student: student)
+      |> render(:show, student: student)
     end
   end
 
@@ -253,7 +253,7 @@ defmodule DbserviceWeb.StudentController do
       # Update the student's status to 'dropout' using update_student/2
       with {:ok, %Student{} = updated_student} <-
              Users.update_student(student, %{"status" => "dropout"}) do
-        render(conn, "show.json", student: updated_student)
+        render(conn, :show, student: updated_student)
       end
     end
   end
@@ -321,7 +321,7 @@ defmodule DbserviceWeb.StudentController do
     # Update the student's status to "enrolled" and render the response
     with {:ok, %Student{} = updated_student} <-
            Users.update_student(student, %{"status" => "enrolled"}) do
-      render(conn, "show.json", student: updated_student)
+      render(conn, :show, student: updated_student)
     end
   end
 
@@ -778,7 +778,7 @@ defmodule DbserviceWeb.StudentController do
       record ->
         case EnrollmentRecords.update_enrollment_record(record, attrs) do
           {:ok, updated} ->
-            EnrollmentRecordView.render("enrollment_record.json", %{enrollment_record: updated})
+            EnrollmentRecordJSON.show(%{enrollment_record: updated})
 
           {:error, _changeset} ->
             %{error: "Failed to update enrollment record"}
@@ -798,7 +798,7 @@ defmodule DbserviceWeb.StudentController do
       record ->
         case EnrollmentRecords.update_enrollment_record(record, attrs) do
           {:ok, updated} ->
-            EnrollmentRecordView.render("enrollment_record.json", %{enrollment_record: updated})
+            EnrollmentRecordJSON.show(%{enrollment_record: updated})
 
           {:error, _changeset} ->
             %{error: "Failed to update status record"}
@@ -876,7 +876,7 @@ defmodule DbserviceWeb.StudentController do
 
     conn
     |> put_status(:ok)
-    |> render("batch_result.json", %{
+    |> render(:batch_result, %{
       message: "Batch processing completed",
       successful: successful,
       failed: failed,
@@ -967,7 +967,7 @@ defmodule DbserviceWeb.StudentController do
          {:ok, _enrollment_record} <- create_status_enrollment_record(student, status, params) do
       conn
       |> put_status(:ok)
-      |> render("show.json", student: updated_student)
+      |> render(:show, student: updated_student)
     else
       {:error, :status_not_found} ->
         conn

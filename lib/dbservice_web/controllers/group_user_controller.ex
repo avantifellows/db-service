@@ -50,7 +50,7 @@ defmodule DbserviceWeb.GroupUserController do
       end)
 
     group_user = Repo.all(query)
-    render(conn, "index.json", group_user: group_user)
+    render(conn, :index, group_user: group_user)
   end
 
   swagger_path :create do
@@ -85,7 +85,7 @@ defmodule DbserviceWeb.GroupUserController do
 
   def show(conn, %{"id" => id}) do
     group_user = GroupUsers.get_group_user!(id)
-    render(conn, "show.json", group_user: group_user)
+    render(conn, :show, group_user: group_user)
   end
 
   swagger_path :update do
@@ -104,7 +104,7 @@ defmodule DbserviceWeb.GroupUserController do
 
     with {:ok, %GroupUser{} = group_user} <-
            GroupUsers.update_group_user(group_user, params) do
-      render(conn, "show.json", group_user: group_user)
+      render(conn, :show, group_user: group_user)
     end
   end
 
@@ -205,7 +205,7 @@ defmodule DbserviceWeb.GroupUserController do
     end)
     |> case do
       {:ok, {updated_group_user, _updated_enrollment_record}} ->
-        render(conn, "show.json", group_user: updated_group_user)
+        render(conn, :show, group_user: updated_group_user)
 
       {:error, reason} ->
         {:error, reason}
@@ -248,8 +248,8 @@ defmodule DbserviceWeb.GroupUserController do
       with {:ok, %GroupUser{} = group_user} <- GroupUsers.create_group_user(params) do
         conn
         |> put_status(:created)
-        |> put_resp_header("location", Routes.group_user_path(conn, :show, group_user))
-        |> render("show.json", group_user: group_user)
+        |> put_resp_header("location", ~p"/api/group-user/#{group_user}")
+        |> render(:show, group_user: group_user)
       end
     end
   end
@@ -259,7 +259,7 @@ defmodule DbserviceWeb.GroupUserController do
            GroupUsers.update_group_user(existing_group_user, params) do
       conn
       |> put_status(:ok)
-      |> render("show.json", group_user: group_user)
+      |> render(:show, group_user: group_user)
     end
   end
 
@@ -280,7 +280,7 @@ defmodule DbserviceWeb.GroupUserController do
 
     conn
     |> put_status(:ok)
-    |> render("batch_result.json", %{
+    |> render(:batch_result, %{
       message: "Batch processing completed",
       successful: successful,
       failed: failed,

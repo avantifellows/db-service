@@ -60,7 +60,7 @@ defmodule DbserviceWeb.EnrollmentRecordController do
       end)
 
     enrollment_record = Repo.all(query)
-    render(conn, "index.json", enrollment_record: enrollment_record)
+    render(conn, :index, enrollment_record: enrollment_record)
   end
 
   swagger_path :create do
@@ -100,7 +100,7 @@ defmodule DbserviceWeb.EnrollmentRecordController do
 
   def show(conn, %{"id" => id}) do
     enrollment_record = EnrollmentRecords.get_enrollment_record!(id)
-    render(conn, "show.json", enrollment_record: enrollment_record)
+    render(conn, :show, enrollment_record: enrollment_record)
   end
 
   swagger_path :update do
@@ -119,7 +119,7 @@ defmodule DbserviceWeb.EnrollmentRecordController do
 
     with {:ok, %EnrollmentRecord{} = enrollment_record} <-
            EnrollmentRecords.update_enrollment_record(enrollment_record, params) do
-      render(conn, "show.json", enrollment_record: enrollment_record)
+      render(conn, :show, enrollment_record: enrollment_record)
     end
   end
 
@@ -149,9 +149,9 @@ defmodule DbserviceWeb.EnrollmentRecordController do
       |> put_status(:created)
       |> put_resp_header(
         "location",
-        Routes.enrollment_record_path(conn, :show, enrollment_record)
+        ~p"/api/enrollment-record/#{enrollment_record}"
       )
-      |> render("show.json", enrollment_record: enrollment_record)
+      |> render(:show, enrollment_record: enrollment_record)
     end
   end
 
@@ -160,7 +160,7 @@ defmodule DbserviceWeb.EnrollmentRecordController do
            EnrollmentRecords.update_enrollment_record(existing_enrollment_record, params) do
       conn
       |> put_status(:ok)
-      |> render("show.json", enrollment_record: enrollment_record)
+      |> render(:show, enrollment_record: enrollment_record)
     end
   end
 end
