@@ -31,13 +31,7 @@ config :dbservice, Dbservice.Mailer, adapter: Swoosh.Adapters.Local
 config :swoosh, :api_client, false
 
 # Configures Elixir's Logger
-config :logger,
-  backends: [:console, {LoggerFileBackend, :request_log}],
-  format: "$time $metadata[$level] $message\n",
-  metadata: [:request_id]
-
-config :logger, :request_log,
-  path: "logs/info.log",
+config :logger, :console,
   format: "$time $metadata[$level] $message\n",
   metadata: [:request_id]
 

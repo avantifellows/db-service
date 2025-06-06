@@ -172,11 +172,6 @@ defmodule DbserviceWeb.GroupSessionController do
         conn
         |> put_status(:not_found)
         |> json(%{error: message})
-
-      {:error, :bad_request, message} ->
-        conn
-        |> put_status(:bad_request)
-        |> json(%{error: message})
     end
   end
 

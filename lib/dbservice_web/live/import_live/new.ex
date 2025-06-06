@@ -4,11 +4,13 @@ defmodule DbserviceWeb.ImportLive.New do
 
   def mount(_params, _session, socket) do
     changeset = DataImport.change_import(%DataImport.Import{start_row: 2})
+    form = to_form(changeset)
     submission_token = generate_token()
 
     {:ok,
      assign(socket,
        changeset: changeset,
+       form: form,
        submitting: false,
        submitted: false,
        debounce_timer: nil,
@@ -26,7 +28,9 @@ defmodule DbserviceWeb.ImportLive.New do
       |> DataImport.Import.changeset(import_params)
       |> Map.put(:action, :validate)
 
-    {:noreply, assign(socket, changeset: changeset)}
+    form = to_form(changeset)
+
+    {:noreply, assign(socket, changeset: changeset, form: form)}
   end
 
   def handle_event("save", params, socket) do
@@ -114,7 +118,7 @@ defmodule DbserviceWeb.ImportLive.New do
         </div>
 
         <!-- Main content card with glass morphism -->
-        <div class="backdrop-blur-sm bg-white/90 dark:bg-gray-800/90 rounded-2xl shadow-lg border border-gray-100 dark:border-gray-700 overflow-hidden">
+        <div class="max-w-2xl mx-auto backdrop-blur-sm bg-white/90 dark:bg-gray-800/90 rounded-2xl shadow-lg border border-gray-100 dark:border-gray-700 overflow-hidden">
           <!-- Header section -->
           <div class="px-6 py-6 border-b border-gray-100 dark:border-gray-700">
             <h1 class="text-2xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-indigo-600 to-violet-600 dark:from-indigo-400 dark:to-violet-400">
@@ -127,44 +131,97 @@ defmodule DbserviceWeb.ImportLive.New do
 
           <!-- Form section -->
           <div class="px-6 py-6">
-            <.simple_form for={@changeset} phx-submit="save" phx-change="validate" class="space-y-6">
-            <!-- Added hidden field for submission token -->
-            <input type="hidden" name="import[submission_token]" value={@submission_token} />
+            <.form for={@form} phx-submit="save" phx-change="validate" class="space-y-6">
+              <!-- Added hidden field for submission token -->
+              <input type="hidden" name="import[submission_token]" value={@submission_token} />
+
               <!-- Type selection -->
-              <.input
-                field={@changeset[:type]}
-                type="select"
-                label="Import Type"
-                options={[{"Student", "student"}]}
-              />
+              <div class="space-y-2">
+                <label for="import_type" class="block text-sm font-medium text-gray-700 dark:text-gray-300">
+                  Import Type
+                </label>
+                <div class="mt-1">
+                  <select
+                    name={@form[:type].name}
+                    id={@form[:type].id || "import_type"}
+                    class="block w-full pl-3 pr-10 py-2 text-base border-gray-300 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm rounded-md dark:bg-gray-700 dark:border-gray-600 dark:text-white"
+                  >
+                    <option value="">Select import type</option>
+                    <option value="student" selected={@form[:type].value == "student"}>Student</option>
+                  </select>
+                </div>
+                <%= if @form[:type].errors != [] do %>
+                  <p class="mt-1 text-sm text-red-600 dark:text-red-400">
+                    <%= Enum.map(@form[:type].errors, &elem(&1, 0)) |> Enum.join(", ") %>
+                  </p>
+                <% end %>
+              </div>
 
               <!-- Google Sheet URL -->
-              <.input
-                field={@changeset[:sheet_url]}
-                type="text"
-                label="Google Sheet URL"
-                placeholder="https://docs.google.com/spreadsheets/d/..."
-              />
-              <p class="mt-1 text-xs text-gray-500 dark:text-gray-400">
-                Make sure the sheet has been shared with the service account and has the correct format
-              </p>
+              <div class="space-y-2">
+                <label for="import_sheet_url" class="block text-sm font-medium text-gray-700 dark:text-gray-300">
+                  Google Sheet URL
+                </label>
+                <div class="mt-1 relative rounded-md shadow-sm">
+                  <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 text-gray-400 dark:text-gray-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13.828 10.172a4 4 0 00-5.656 0l-4 4a4 4 0 105.656 5.656l1.102-1.101m-.758-4.899a4 4 0 005.656 0l4-4a4 4 0 00-5.656-5.656l-1.1 1.1" />
+                    </svg>
+                  </div>
+                  <input
+                    type="text"
+                    name={@form[:sheet_url].name}
+                    id={@form[:sheet_url].id || "import_sheet_url"}
+                    value={Phoenix.HTML.Form.normalize_value("text", @form[:sheet_url].value)}
+                    placeholder="https://docs.google.com/spreadsheets/d/..."
+                    class="block w-full pl-10 pr-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm dark:bg-gray-700 dark:border-gray-600 dark:text-white"
+                  />
+                </div>
+                <p class="mt-1 text-xs text-gray-500 dark:text-gray-400">
+                  Make sure the sheet has been shared with the service account and has the correct format
+                </p>
+                <%= if @form[:sheet_url].errors != [] do %>
+                  <p class="mt-1 text-sm text-red-600 dark:text-red-400">
+                    <%= Enum.map(@form[:sheet_url].errors, &elem(&1, 0)) |> Enum.join(", ") %>
+                  </p>
+                <% end %>
+              </div>
 
               <!-- Start Row -->
-              <.input
-                field={@changeset[:start_row]}
-                type="number"
-                label="Start Row Number"
-                min="1"
-                placeholder="2"
-              />
-              <p class="mt-1 text-xs text-gray-500 dark:text-gray-400">
-                Row number to start importing data from (e.g. 2 to skip header row)
-              </p>
+              <div class="space-y-2">
+                <label for="import_start_row" class="block text-sm font-medium text-gray-700 dark:text-gray-300">
+                  Start Row Number
+                </label>
+                <div class="mt-1 relative rounded-md shadow-sm">
+                  <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 text-gray-400 dark:text-gray-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 7h6m0 10v-3m-3 3h.01M9 17h.01M9 14h.01M12 14h.01M15 11h.01M12 11h.01M9 11h.01M7 21h10a2 2 0 002-2V5a2 2 0 00-2-2H7a2 2 0 00-2 2v14a2 2 0 002 2z" />
+                    </svg>
+                  </div>
+                  <input
+                    type="number"
+                    name={@form[:start_row].name}
+                    id={@form[:start_row].id || "import_start_row"}
+                    value={Phoenix.HTML.Form.normalize_value("number", @form[:start_row].value)}
+                    min="1"
+                    placeholder="2"
+                    class="block w-full pl-10 pr-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm dark:bg-gray-700 dark:border-gray-600 dark:text-white"
+                  />
+                </div>
+                <p class="mt-1 text-xs text-gray-500 dark:text-gray-400">
+                  Row number to start importing data from (e.g. 2 to skip header row)
+                </p>
+                <%= if @form[:start_row].errors != [] do %>
+                  <p class="mt-1 text-sm text-red-600 dark:text-red-400">
+                    <%= Enum.map(@form[:start_row].errors, &elem(&1, 0)) |> Enum.join(", ") %>
+                  </p>
+                <% end %>
+              </div>
 
               <!-- Submit button -->
-              <:actions>
+              <div class="pt-4">
                 <button type="submit"
-                  class={"w-full flex justify-center items-center py-2 px-4 border border-transparent rounded-md shadow-sm text-sm font-medium text-white #{if @submitting, do: "bg-indigo-400 cursor-not-allowed", else: "bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500"}"}
+                  class={"w-full flex justify-center items-center py-3 px-4 border border-transparent rounded-md shadow-sm text-sm font-medium text-white #{if @submitting, do: "bg-indigo-400 cursor-not-allowed", else: "bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500"}"}
                   disabled={@submitting}
                   phx-disable-with="Processing...">
                   <%= if @submitting do %>
@@ -176,8 +233,8 @@ defmodule DbserviceWeb.ImportLive.New do
                     Start Import
                   <% end %>
                 </button>
-              </:actions>
-            </.simple_form>
+              </div>
+            </.form>
           </div>
 
           <!-- Info section -->
