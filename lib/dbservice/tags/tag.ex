@@ -13,7 +13,6 @@ defmodule Dbservice.Tags.Tag do
   alias Dbservice.LearningObjectives.LearningObjective
   alias Dbservice.Purposes.Purpose
   alias Dbservice.Sources.Source
-  alias Dbservice.Resources.Resource
 
   schema "tag" do
     field(:name, :string)
@@ -30,7 +29,6 @@ defmodule Dbservice.Tags.Tag do
     has_one(:learning_objective, LearningObjective)
     has_one(:purpose, Purpose)
     has_one(:source, Source)
-    has_one(:resource, Resource)
   end
 
   @doc false
