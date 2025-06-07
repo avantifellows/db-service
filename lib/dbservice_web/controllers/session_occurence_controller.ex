@@ -74,7 +74,7 @@ defmodule DbserviceWeb.SessionOccurrenceController do
       end)
 
     session_occurrence = Repo.all(query)
-    render(conn, "index.json", session_occurrence: session_occurrence)
+    render(conn, :index, session_occurrence: session_occurrence)
   end
 
   swagger_path :create do
@@ -94,9 +94,9 @@ defmodule DbserviceWeb.SessionOccurrenceController do
       |> put_status(:created)
       |> put_resp_header(
         "location",
-        Routes.session_occurrence_path(conn, :show, session_occurrence)
+        ~p"/api/session-occurrence/#{session_occurrence}"
       )
-      |> render("show.json", session_occurrence: session_occurrence)
+      |> render(:show, session_occurrence: session_occurrence)
     end
   end
 
@@ -114,7 +114,7 @@ defmodule DbserviceWeb.SessionOccurrenceController do
 
   def show(conn, %{"id" => id}) do
     session_occurrence = Sessions.get_session_occurrence!(id)
-    render(conn, "show.json", session_occurrence: session_occurrence)
+    render(conn, :show, session_occurrence: session_occurrence)
   end
 
   swagger_path :update do
@@ -133,7 +133,7 @@ defmodule DbserviceWeb.SessionOccurrenceController do
 
     with {:ok, %SessionOccurrence{} = session_occurrence} <-
            Sessions.update_session_occurrence(session_occurrence, params) do
-      render(conn, "show.json", session_occurrence: session_occurrence)
+      render(conn, :show, session_occurrence: session_occurrence)
     end
   end
 

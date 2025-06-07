@@ -145,7 +145,7 @@ defmodule Dbservice.DataImport do
         {:error, reason} ->
           # Log the error but don't fail the import process
           require Logger
-          Logger.warn("Failed to delete import file #{path}: #{inspect(reason)}")
+          Logger.warning("Failed to delete import file #{path}: #{inspect(reason)}")
           {:error, "Failed to delete file: #{inspect(reason)}"}
       end
     else

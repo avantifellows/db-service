@@ -40,7 +40,7 @@ defmodule DbserviceWeb.SchoolController do
 
   def index(conn, %{"code" => code}) do
     school = Repo.all(from t in School, where: t.code == ^code, select: t, limit: 1)
-    render(conn, "index.json", school: school)
+    render(conn, :index, school: school)
   end
 
   def index(conn, params) do
@@ -60,7 +60,7 @@ defmodule DbserviceWeb.SchoolController do
       end)
 
     school = Repo.all(query)
-    render(conn, "index.json", school: school)
+    render(conn, :index, school: school)
   end
 
   swagger_path :create do
@@ -95,7 +95,7 @@ defmodule DbserviceWeb.SchoolController do
 
   def show(conn, %{"id" => id}) do
     school = Schools.get_school!(id)
-    render(conn, "show.json", school: school)
+    render(conn, :show, school: school)
   end
 
   swagger_path :update do
@@ -113,7 +113,7 @@ defmodule DbserviceWeb.SchoolController do
     school = Schools.get_school!(params["id"])
 
     with {:ok, %School{} = school} <- Schools.update_school(school, params) do
-      render(conn, "show.json", school: school)
+      render(conn, :show, school: school)
     end
   end
 
@@ -139,8 +139,8 @@ defmodule DbserviceWeb.SchoolController do
     with {:ok, %School{} = school} <- Schools.create_school(params) do
       conn
       |> put_status(:created)
-      |> put_resp_header("location", Routes.school_path(conn, :show, school))
-      |> render("show.json", school: school)
+      |> put_resp_header("location", ~p"/api/school/#{school}")
+      |> render(:show, school: school)
     end
   end
 
@@ -149,7 +149,7 @@ defmodule DbserviceWeb.SchoolController do
          {:ok, _} <- update_users_for_school(school.id) do
       conn
       |> put_status(:ok)
-      |> render("show.json", school: school)
+      |> render(:show, school: school)
     end
   end
 
@@ -167,7 +167,7 @@ defmodule DbserviceWeb.SchoolController do
     with {:ok, %School{} = school} <- Schools.create_school_with_user(params) do
       conn
       |> put_status(:created)
-      |> render("show.json", school: school)
+      |> render(:show, school: school)
     end
   end
 
@@ -187,7 +187,7 @@ defmodule DbserviceWeb.SchoolController do
          {:ok, _} <- update_users_for_school(school.id) do
       conn
       |> put_status(:ok)
-      |> render("show.json", school: school)
+      |> render(:show, school: school)
     end
   end
 

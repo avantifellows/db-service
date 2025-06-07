@@ -54,7 +54,7 @@ defmodule DbserviceWeb.UserProfileController do
       end)
 
     user_profile = Repo.all(query)
-    render(conn, "index.json", user_profile: user_profile)
+    json(conn, DbserviceWeb.UserProfileJSON.index(%{user_profile: user_profile}))
   end
 
   swagger_path :create do
@@ -71,8 +71,8 @@ defmodule DbserviceWeb.UserProfileController do
     with {:ok, %UserProfile{} = user_profile} <- Profiles.create_user_profile(params) do
       conn
       |> put_status(:created)
-      |> put_resp_header("location", Routes.user_path(conn, :show, user_profile))
-      |> render("show.json", user_profile: user_profile)
+      |> put_resp_header("location", ~p"/api/user-profile/#{user_profile}")
+      |> json(DbserviceWeb.UserProfileJSON.show(%{user_profile: user_profile}))
     end
   end
 
@@ -88,7 +88,7 @@ defmodule DbserviceWeb.UserProfileController do
 
   def show(conn, %{"id" => id}) do
     user_profile = Profiles.get_user_profile!(id)
-    render(conn, "show.json", user_profile: user_profile)
+    json(conn, DbserviceWeb.UserProfileJSON.show(%{user_profile: user_profile}))
   end
 
   swagger_path :update do
@@ -107,7 +107,7 @@ defmodule DbserviceWeb.UserProfileController do
 
     with {:ok, %UserProfile{} = user_profile} <-
            Profiles.update_user_profile(user_profile, params) do
-      render(conn, "show.json", user_profile: user_profile)
+      json(conn, DbserviceWeb.UserProfileJSON.show(%{user_profile: user_profile}))
     end
   end
 
