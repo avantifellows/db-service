@@ -8,7 +8,6 @@ defmodule Dbservice.DataImport.Import do
     field :filename, :string
     field :status, :string
     field :type, :string
-    field :sheet_url, :string
     field :total_rows, :integer
     field :processed_rows, :integer
     field :error_count, :integer, default: 0
@@ -25,7 +24,6 @@ defmodule Dbservice.DataImport.Import do
       :filename,
       :status,
       :type,
-      :sheet_url,
       :total_rows,
       :processed_rows,
       :error_count,
@@ -33,7 +31,6 @@ defmodule Dbservice.DataImport.Import do
       :start_row,
       :completed_at
     ])
-    |> validate_required([:type])
-    |> validate_inclusion(:type, ["student"])
+    |> validate_required([:filename, :status, :type])
   end
 end

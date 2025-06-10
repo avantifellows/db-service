@@ -3,7 +3,7 @@ defmodule DbserviceWeb.ImportLive.New do
   alias Dbservice.DataImport
 
   def mount(_params, _session, socket) do
-    changeset = DataImport.change_import(%DataImport.Import{start_row: 2})
+    changeset = DataImport.change_import(%DataImport.Import{start_row: 2, type: "student"})
     form = to_form(changeset)
     submission_token = generate_token()
 
@@ -118,7 +118,7 @@ defmodule DbserviceWeb.ImportLive.New do
         </div>
 
         <!-- Main content card with glass morphism -->
-        <div class="max-w-2xl mx-auto backdrop-blur-sm bg-white/90 dark:bg-gray-800/90 rounded-2xl shadow-lg border border-gray-100 dark:border-gray-700 overflow-hidden">
+        <div class="max-w-7xl mx-auto backdrop-blur-sm bg-white/90 dark:bg-gray-800/90 rounded-2xl shadow-lg border border-gray-100 dark:border-gray-700 overflow-hidden">
           <!-- Header section -->
           <div class="px-6 py-6 border-b border-gray-100 dark:border-gray-700">
             <h1 class="text-2xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-indigo-600 to-violet-600 dark:from-indigo-400 dark:to-violet-400">
