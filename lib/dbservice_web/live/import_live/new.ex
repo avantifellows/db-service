@@ -5,7 +5,6 @@ defmodule DbserviceWeb.ImportLive.New do
   def mount(_params, _session, socket) do
     changeset = DataImport.change_import(%DataImport.Import{start_row: 2, type: "student"})
     form = to_form(changeset)
-    submission_token = generate_token()
 
     {:ok,
      assign(socket,
@@ -13,13 +12,8 @@ defmodule DbserviceWeb.ImportLive.New do
        form: form,
        submitting: false,
        submitted: false,
-       debounce_timer: nil,
-       submission_token: submission_token
+       debounce_timer: nil
      )}
-  end
-
-  defp generate_token do
-    :crypto.strong_rand_bytes(16) |> Base.encode16(case: :lower)
   end
 
   def handle_event("validate", %{"import" => import_params}, socket) do
@@ -69,7 +63,6 @@ defmodule DbserviceWeb.ImportLive.New do
   end
 
   defp handle_save(%{"import" => import_params}, socket) do
-    # The import_params already contain the submission_token from the hidden field
     case DataImport.start_import(import_params) do
       {:ok, _import} ->
         {:noreply,
@@ -84,15 +77,12 @@ defmodule DbserviceWeb.ImportLive.New do
           |> Ecto.Changeset.add_error(:sheet_url, reason)
           |> Map.put(:action, :validate)
 
-        new_token = generate_token()
-
         {:noreply,
          assign(socket,
            changeset: changeset,
            submitting: false,
            submitted: false,
-           debounce_timer: nil,
-           submission_token: new_token
+           debounce_timer: nil
          )}
     end
   end
@@ -132,9 +122,6 @@ defmodule DbserviceWeb.ImportLive.New do
           <!-- Form section -->
           <div class="px-6 py-6">
             <.form for={@form} phx-submit="save" phx-change="validate" class="space-y-6">
-              <!-- Added hidden field for submission token -->
-              <input type="hidden" name="import[submission_token]" value={@submission_token} />
-
               <!-- Type selection -->
               <div class="space-y-2">
                 <label for="import_type" class="block text-sm font-medium text-gray-700 dark:text-gray-300">
