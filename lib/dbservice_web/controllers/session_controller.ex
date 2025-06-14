@@ -74,7 +74,7 @@ defmodule DbserviceWeb.SessionController do
       end)
 
     session = Repo.all(query)
-    render(conn, "index.json", session: session)
+    render(conn, :index, session: session)
   end
 
   defp apply_filter_based_on_schema(atom, key, value, acc) do
@@ -141,7 +141,7 @@ defmodule DbserviceWeb.SessionController do
 
   def show(conn, %{"id" => id}) do
     session = Sessions.get_session!(id)
-    render(conn, "show.json", session: session)
+    render(conn, :show, session: session)
   end
 
   swagger_path :update do
@@ -159,7 +159,7 @@ defmodule DbserviceWeb.SessionController do
     session = Sessions.get_session!(params["id"])
 
     with {:ok, %Session{} = session} <- Sessions.update_session(session, params) do
-      render(conn, "show.json", session: session)
+      render(conn, :show, session: session)
     end
   end
 
@@ -198,7 +198,7 @@ defmodule DbserviceWeb.SessionController do
   def update_groups(conn, %{"id" => session_id, "group_ids" => group_ids})
       when is_list(group_ids) do
     with {:ok, %Session{} = session} <- Sessions.update_groups(session_id, group_ids) do
-      render(conn, "show.json", session: session)
+      render(conn, :show, session: session)
     end
   end
 
@@ -206,8 +206,8 @@ defmodule DbserviceWeb.SessionController do
     with {:ok, %Session{} = session} <- Sessions.create_session(params) do
       conn
       |> put_status(:created)
-      |> put_resp_header("location", Routes.session_path(conn, :show, session))
-      |> render("show.json", session: session)
+      |> put_resp_header("location", ~p"/api/session/#{session}")
+      |> render(:show, session: session)
     end
   end
 
@@ -215,7 +215,7 @@ defmodule DbserviceWeb.SessionController do
     with {:ok, %Session{} = session} <- Sessions.update_session(existing_session, params) do
       conn
       |> put_status(:ok)
-      |> render("show.json", session: session)
+      |> render(:show, session: session)
     end
   end
 end

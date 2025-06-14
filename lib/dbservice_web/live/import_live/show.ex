@@ -8,28 +8,23 @@ defmodule DbserviceWeb.ImportLive.Show do
   def mount(%{"id" => id}, _session, socket) do
     import_record = DataImport.get_import!(id)
 
+    # Subscribe to import updates
     if connected?(socket) do
-      # Only set up the timer if the import is still in progress
-      if import_record.status in ["pending", "processing"] do
-        # Check status every 1 second
-        :timer.send_interval(1000, self(), :update_import_status)
-      end
+      Phoenix.PubSub.subscribe(Dbservice.PubSub, "imports")
     end
 
     {:ok, assign(socket, import: import_record)}
   end
 
   @impl true
-  def handle_info(:update_import_status, socket) do
-    import_record = DataImport.get_import!(socket.assigns.import.id)
-
-    # Stop the timer if import is complete or failed
-    if import_record.status in ["completed", "failed"] do
-      # The process is completed, we could stop the timer if we had stored its reference
-      # But Phoenix automatically cleans up when the LiveView process exits
+  def handle_info({:import_updated, import_id}, socket) do
+    # Only update if this is the import we're viewing
+    if socket.assigns.import.id == import_id do
+      import_record = DataImport.get_import!(import_id)
+      {:noreply, assign(socket, import: import_record)}
+    else
+      {:noreply, socket}
     end
-
-    {:noreply, assign(socket, import: import_record)}
   end
 
   defp parse_error_details(error_details) when is_list(error_details) do
@@ -84,13 +79,13 @@ defmodule DbserviceWeb.ImportLive.Show do
       <div class="max-w-7xl mx-auto px-4 py-10 sm:px-6 lg:px-8">
         <!-- Header with navigation -->
         <div class="mb-8 flex items-center">
-          <%= live_redirect to: Routes.live_path(@socket, DbserviceWeb.ImportLive.Index),
-              class: "group flex items-center text-sm font-medium text-gray-600 hover:text-indigo-600 dark:text-gray-400 dark:hover:text-indigo-400 transition-colors" do %>
+          <.link navigate={~p"/imports"}
+              class="group flex items-center text-sm font-medium text-gray-600 hover:text-indigo-600 dark:text-gray-400 dark:hover:text-indigo-400 transition-colors">
             <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 mr-2 transition-transform group-hover:-translate-x-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">
               <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 19l-7-7m0 0l7-7m-7 7h18" />
             </svg>
             Back to imports
-          <% end %>
+          </.link>
         </div>
 
         <!-- Main content card with glass morphism -->

@@ -47,7 +47,7 @@ defmodule DbserviceWeb.ExamController do
       end)
 
     exam = Repo.all(query)
-    render(conn, "index.json", exam: exam)
+    render(conn, :index, exam: exam)
   end
 
   swagger_path :create do
@@ -82,7 +82,7 @@ defmodule DbserviceWeb.ExamController do
 
   def show(conn, %{"id" => id}) do
     exam = Exams.get_exam!(id)
-    render(conn, "show.json", exam: exam)
+    render(conn, :show, exam: exam)
   end
 
   swagger_path :update do
@@ -100,7 +100,7 @@ defmodule DbserviceWeb.ExamController do
     exam = Exams.get_exam!(params["id"])
 
     with {:ok, %Exam{} = exam} <- Exams.update_exam(exam, params) do
-      render(conn, "show.json", exam: exam)
+      render(conn, :show, exam: exam)
     end
   end
 
@@ -126,8 +126,8 @@ defmodule DbserviceWeb.ExamController do
     with {:ok, %Exam{} = exam} <- Exams.create_exam(params) do
       conn
       |> put_status(:created)
-      |> put_resp_header("location", Routes.exam_path(conn, :show, exam))
-      |> render("show.json", exam: exam)
+      |> put_resp_header("location", ~p"/api/exam/#{exam}")
+      |> json(DbserviceWeb.ExamJSON.show(%{exam: exam}))
     end
   end
 
@@ -135,7 +135,7 @@ defmodule DbserviceWeb.ExamController do
     with {:ok, %Exam{} = exam} <- Exams.update_exam(existing_exam, params) do
       conn
       |> put_status(:ok)
-      |> render("show.json", exam: exam)
+      |> render(:show, exam: exam)
     end
   end
 end
