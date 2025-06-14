@@ -207,7 +207,8 @@ defmodule Dbservice.DataImport.ImportWorker do
     start_row = import_record.start_row || 2
 
     with {:ok, parsed_records} <- parse_batch_movement_csv_records(path, start_row),
-         {:ok, processed_records} <- process_parsed_batch_movement_records(parsed_records, import_record) do
+         {:ok, processed_records} <-
+           process_parsed_batch_movement_records(parsed_records, import_record) do
       finalize_import(import_record, processed_records)
     else
       {:error, reason} -> handle_import_error(import_record, reason)

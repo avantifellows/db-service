@@ -109,15 +109,21 @@ defmodule Dbservice.DataImport.BatchMovement do
         }
 
         case GroupUsers.create_group_user(create_attrs) do
-          {:ok, group_user} -> {:ok, group_user}
-          {:error, changeset} -> {:error, "Failed to create group user: #{inspect(changeset.errors)}"}
+          {:ok, group_user} ->
+            {:ok, group_user}
+
+          {:error, changeset} ->
+            {:error, "Failed to create group user: #{inspect(changeset.errors)}"}
         end
 
       existing_group_user ->
         # Update existing group user with new batch group
         case GroupUsers.update_group_user(existing_group_user, %{group_id: new_batch_group_id}) do
-          {:ok, group_user} -> {:ok, group_user}
-          {:error, changeset} -> {:error, "Failed to update group user: #{inspect(changeset.errors)}"}
+          {:ok, group_user} ->
+            {:ok, group_user}
+
+          {:error, changeset} ->
+            {:error, "Failed to update group user: #{inspect(changeset.errors)}"}
         end
     end
   end
