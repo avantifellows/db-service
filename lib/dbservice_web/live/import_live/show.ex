@@ -8,28 +8,23 @@ defmodule DbserviceWeb.ImportLive.Show do
   def mount(%{"id" => id}, _session, socket) do
     import_record = DataImport.get_import!(id)
 
+    # Subscribe to import updates
     if connected?(socket) do
-      # Only set up the timer if the import is still in progress
-      if import_record.status in ["pending", "processing"] do
-        # Check status every 1 second
-        :timer.send_interval(1000, self(), :update_import_status)
-      end
+      Phoenix.PubSub.subscribe(Dbservice.PubSub, "imports")
     end
 
     {:ok, assign(socket, import: import_record)}
   end
 
   @impl true
-  def handle_info(:update_import_status, socket) do
-    import_record = DataImport.get_import!(socket.assigns.import.id)
-
-    # Stop the timer if import is complete or failed
-    if import_record.status in ["completed", "failed"] do
-      # The process is completed, we could stop the timer if we had stored its reference
-      # But Phoenix automatically cleans up when the LiveView process exits
+  def handle_info({:import_updated, import_id}, socket) do
+    # Only update if this is the import we're viewing
+    if socket.assigns.import.id == import_id do
+      import_record = DataImport.get_import!(import_id)
+      {:noreply, assign(socket, import: import_record)}
+    else
+      {:noreply, socket}
     end
-
-    {:noreply, assign(socket, import: import_record)}
   end
 
   defp parse_error_details(error_details) when is_list(error_details) do

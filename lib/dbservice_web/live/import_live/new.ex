@@ -10,9 +10,7 @@ defmodule DbserviceWeb.ImportLive.New do
      assign(socket,
        changeset: changeset,
        form: form,
-       submitting: false,
-       submitted: false,
-       debounce_timer: nil
+       submitted: false
      )}
   end
 
@@ -28,35 +26,13 @@ defmodule DbserviceWeb.ImportLive.New do
   end
 
   def handle_event("save", params, socket) do
+    IO.inspect(params, label: "Received parameters in save event")
+
     # Return early if already submitting or submitted
-    if socket.assigns.submitting || socket.assigns.submitted do
-      {:noreply, socket}
-    else
-      # Cancel any existing timer
-      cancel_existing_timer(socket)
-
-      # Set submitting to true immediately to disable the button
-      socket = assign(socket, submitting: true)
-
-      # Create a debounce timer to delay the actual form submission
-      timer_ref = Process.send_after(self(), {:do_save, params}, 300)
-
-      {:noreply, assign(socket, debounce_timer: timer_ref)}
-    end
-  end
-
-  # Helper function to extract nested logic
-  defp cancel_existing_timer(socket) do
-    if socket.assigns.debounce_timer do
-      Process.cancel_timer(socket.assigns.debounce_timer)
-    end
-  end
-
-  def handle_info({:do_save, params}, socket) do
-    # Mark as submitted to prevent double-submission
     if socket.assigns.submitted do
       {:noreply, socket}
     else
+      # Set submitting to true and mark as submitted to prevent double-submission
       socket = assign(socket, submitted: true)
       handle_save(params, socket)
     end
@@ -80,16 +56,14 @@ defmodule DbserviceWeb.ImportLive.New do
         {:noreply,
          assign(socket,
            changeset: changeset,
-           submitting: false,
-           submitted: false,
-           debounce_timer: nil
+           submitted: false
          )}
     end
   end
 
   defp handle_save(_, socket) do
     IO.puts("Unexpected empty parameters received!")
-    {:noreply, assign(socket, submitting: false, submitted: false, debounce_timer: nil)}
+    {:noreply, assign(socket, submitted: false)}
   end
 
   def render(assigns) do
@@ -209,10 +183,10 @@ defmodule DbserviceWeb.ImportLive.New do
               <!-- Submit button -->
               <div class="pt-4">
                 <button type="submit"
-                  class={"w-full flex justify-center items-center py-3 px-4 border border-transparent rounded-md shadow-sm text-sm font-medium text-white #{if @submitting, do: "bg-indigo-400 cursor-not-allowed", else: "bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500"}"}
-                  disabled={@submitting}
+                  class={"w-full flex justify-center items-center py-3 px-4 border border-transparent rounded-md shadow-sm text-sm font-medium text-white #{if @submitted, do: "bg-indigo-400 cursor-not-allowed", else: "bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500"}"}
+                  disabled={@submitted}
                   phx-disable-with="Processing...">
-                  <%= if @submitting do %>
+                  <%= if @submitted do %>
                     <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 mr-2 text-white animate-spin" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                       <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
                     </svg>

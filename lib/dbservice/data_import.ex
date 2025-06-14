@@ -134,6 +134,9 @@ defmodule Dbservice.DataImport do
         completed_at: DateTime.utc_now()
       })
 
+    # Broadcast completion update
+    Phoenix.PubSub.broadcast(Dbservice.PubSub, "imports", {:import_updated, import_record.id})
+
     # Clean up the file
     cleanup_import_file(updated_import)
 
@@ -153,6 +156,9 @@ defmodule Dbservice.DataImport do
         error_details: [%{error: reason}],
         completed_at: DateTime.utc_now()
       })
+
+    # Broadcast failure update
+    Phoenix.PubSub.broadcast(Dbservice.PubSub, "imports", {:import_updated, import_record.id})
 
     # Clean up the file
     cleanup_import_file(updated_import)

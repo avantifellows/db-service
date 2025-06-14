@@ -89,6 +89,9 @@ defmodule Dbservice.DataImport.ImportWorker do
     # Update status to processing
     DataImport.update_import(import_record, %{status: "processing", total_rows: total_rows})
 
+    # Broadcast status update
+    Phoenix.PubSub.broadcast(Dbservice.PubSub, "imports", {:import_updated, import_record.id})
+
     # Process the file based on type
     case import_record.type do
       "student" -> process_student_import(import_record)
@@ -306,6 +309,9 @@ defmodule Dbservice.DataImport.ImportWorker do
       end
 
     DataImport.update_import(import_record, update_params)
+
+    # Broadcast progress update
+    Phoenix.PubSub.broadcast(Dbservice.PubSub, "imports", {:import_updated, import_record.id})
   end
 
   defp finalize_import(import_record, records) do
