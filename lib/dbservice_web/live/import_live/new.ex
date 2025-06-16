@@ -26,7 +26,6 @@ defmodule DbserviceWeb.ImportLive.New do
   end
 
   def handle_event("save", params, socket) do
-    IO.inspect(params, label: "Received parameters in save event")
 
     # Return early if already submitting or submitted
     if socket.assigns.submitted do
