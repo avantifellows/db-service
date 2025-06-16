@@ -10,10 +10,12 @@
   <meta name="csrf-token" content={get_csrf_token()}>
 </head>
 
+<body>
+  <!-- Flash messages using Phoenix components -->
+  <.flash_group flash={@flash} />
 
-  <body>
-    <main>
-      <%= @inner_content %>
-    </main>
-  </body>
+  <main>
+    <%= @inner_content %>
+  </main>
+</body>
 </html>

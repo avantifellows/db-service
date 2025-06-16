@@ -26,7 +26,6 @@ defmodule DbserviceWeb.ImportLive.New do
   end
 
   def handle_event("save", params, socket) do
-
     # Return early if already submitting or submitted
     if socket.assigns.submitted do
       {:noreply, socket}
