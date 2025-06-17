@@ -155,7 +155,7 @@ defmodule Dbservice.Profiles do
       iex> get_profile_by_student_id(abc)
       ** (Ecto.NoResultsError)
   """
-  def get_profile_by_student_id(student_id) do
+  def get_student_profile_by_student_id(student_id) do
     Repo.get_by(StudentProfile, student_id: student_id)
   end
 
