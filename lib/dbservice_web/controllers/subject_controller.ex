@@ -55,7 +55,7 @@ defmodule DbserviceWeb.SubjectController do
       end)
 
     subject = Repo.all(query)
-    json(conn, DbserviceWeb.SubjectJSON.index(%{subject: subject}))
+    render(conn, :index, subject: subject)
   end
 
   swagger_path :create do
@@ -90,7 +90,7 @@ defmodule DbserviceWeb.SubjectController do
 
   def show(conn, %{"id" => id}) do
     subject = Subjects.get_subject!(id)
-    json(conn, DbserviceWeb.SubjectJSON.show(%{subject: subject}))
+    render(conn, :show, subject: subject)
   end
 
   swagger_path :update do
@@ -108,7 +108,7 @@ defmodule DbserviceWeb.SubjectController do
     subject = Subjects.get_subject!(params["id"])
 
     with {:ok, %Subject{} = subject} <- Subjects.update_subject(subject, params) do
-      json(conn, DbserviceWeb.SubjectJSON.show(%{subject: subject}))
+      render(conn, :show, subject: subject)
     end
   end
 
@@ -135,7 +135,7 @@ defmodule DbserviceWeb.SubjectController do
       conn
       |> put_status(:created)
       |> put_resp_header("location", ~p"/api/subject/#{subject}")
-      |> json(DbserviceWeb.SubjectJSON.show(%{subject: subject}))
+      |> render(:show, subject: subject)
     end
   end
 
@@ -144,7 +144,7 @@ defmodule DbserviceWeb.SubjectController do
            Subjects.update_subject(existing_subject, params) do
       conn
       |> put_status(:ok)
-      |> json(DbserviceWeb.SubjectJSON.show(%{subject: subject}))
+      |> render(:show, subject: subject)
     end
   end
 end

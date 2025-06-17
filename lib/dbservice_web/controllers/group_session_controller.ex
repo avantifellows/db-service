@@ -158,20 +158,12 @@ defmodule DbserviceWeb.GroupSessionController do
          {:ok, auth_group} <- get_auth_group(batch.auth_group_id) do
       conn
       |> put_status(:ok)
-      |> json(%{
-        data: %{
-          id: auth_group.id,
-          name: auth_group.name,
-          input_schema: auth_group.input_schema,
-          locale: auth_group.locale,
-          locale_data: auth_group.locale_data
-        }
-      })
+      |> render(:auth_group, auth_group: auth_group)
     else
       {:error, :not_found, message} ->
         conn
         |> put_status(:not_found)
-        |> json(%{error: message})
+        |> render(:error, error: message)
     end
   end
 

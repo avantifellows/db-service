@@ -17,7 +17,6 @@ defmodule DbserviceWeb.ChangesetJSON do
     # Phoenix.HTML.Form.input_validations/2 for more examples
     # of error message formatting.
 
-      %{errors: translate_errors(changeset)}
-  
+    %{errors: translate_errors(changeset)}
   end
 end

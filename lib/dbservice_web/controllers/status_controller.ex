@@ -68,7 +68,7 @@ defmodule DbserviceWeb.StatusController do
       conn
       |> put_status(:created)
       |> put_resp_header("location", ~p"/api/status/#{status}")
-      |> json(DbserviceWeb.StatusJSON.show(%{status: status}))
+      |> render(:show, status: status)
     end
   end
 

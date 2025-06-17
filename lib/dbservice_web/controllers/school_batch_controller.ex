@@ -49,7 +49,7 @@ defmodule DbserviceWeb.SchoolBatchController do
       end)
 
     school_batch = Repo.all(query)
-    json(conn, DbserviceWeb.SchoolBatchJSON.index(%{school_batch: school_batch}))
+    render(conn, :index, school_batch: school_batch)
   end
 
   swagger_path :create do
@@ -87,7 +87,7 @@ defmodule DbserviceWeb.SchoolBatchController do
 
   def show(conn, %{"id" => id}) do
     school_batch = SchoolBatches.get_school_batch!(id)
-    json(conn, DbserviceWeb.SchoolBatchJSON.show(%{school_batch: school_batch}))
+    render(conn, :show, school_batch: school_batch)
   end
 
   swagger_path :update do
@@ -106,7 +106,7 @@ defmodule DbserviceWeb.SchoolBatchController do
 
     with {:ok, %SchoolBatch{} = school_batch} <-
            SchoolBatches.update_school_batch(school_batch, params) do
-      json(conn, DbserviceWeb.SchoolBatchJSON.show(%{school_batch: school_batch}))
+      render(conn, :show, school_batch: school_batch)
     end
   end
 
@@ -133,7 +133,7 @@ defmodule DbserviceWeb.SchoolBatchController do
       conn
       |> put_status(:created)
       |> put_resp_header("location", ~p"/api/school-batch/#{school_batch}")
-      |> json(DbserviceWeb.SchoolBatchJSON.show(%{school_batch: school_batch}))
+      |> render(:show, school_batch: school_batch)
     end
   end
 
@@ -142,7 +142,7 @@ defmodule DbserviceWeb.SchoolBatchController do
            SchoolBatches.update_school_batch(existing_school_batch, params) do
       conn
       |> put_status(:ok)
-      |> json(DbserviceWeb.SchoolBatchJSON.show(%{school_batch: school_batch}))
+      |> render(:show, school_batch: school_batch)
     end
   end
 end

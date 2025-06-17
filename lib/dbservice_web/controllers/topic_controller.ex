@@ -56,7 +56,7 @@ defmodule DbserviceWeb.TopicController do
       end)
 
     topic = Repo.all(query)
-    json(conn, DbserviceWeb.TopicJSON.index(%{topic: topic}))
+    render(conn, :index, topic: topic)
   end
 
   swagger_path :create do
@@ -91,7 +91,7 @@ defmodule DbserviceWeb.TopicController do
 
   def show(conn, %{"id" => id}) do
     topic = Topics.get_topic!(id)
-    json(conn, DbserviceWeb.TopicJSON.show(%{topic: topic}))
+    render(conn, :show, topic: topic)
   end
 
   swagger_path :update do
@@ -109,7 +109,7 @@ defmodule DbserviceWeb.TopicController do
     topic = Topics.get_topic!(params["id"])
 
     with {:ok, %Topic{} = topic} <- Topics.update_topic(topic, params) do
-      json(conn, DbserviceWeb.TopicJSON.show(%{topic: topic}))
+      render(conn, :show, topic: topic)
     end
   end
 
@@ -136,16 +136,15 @@ defmodule DbserviceWeb.TopicController do
       conn
       |> put_status(:created)
       |> put_resp_header("location", ~p"/api/topic/#{topic}")
-      |> json(DbserviceWeb.TopicJSON.show(%{topic: topic}))
+      |> render(:show, topic: topic)
     end
   end
 
   defp update_existing_topic(conn, existing_topic, params) do
-    with {:ok, %Topic{} = topic} <-
-           Topics.update_topic(existing_topic, params) do
+    with {:ok, %Topic{} = topic} <- Topics.update_topic(existing_topic, params) do
       conn
       |> put_status(:ok)
-      |> json(DbserviceWeb.TopicJSON.show(%{topic: topic}))
+      |> render(:show, topic: topic)
     end
   end
 end

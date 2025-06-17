@@ -130,7 +130,7 @@ defmodule DbserviceWeb.GradeController do
       conn
       |> put_status(:created)
       |> put_resp_header("location", ~p"/api/grade/#{grade}")
-      |> json(DbserviceWeb.GradeJSON.show(%{grade: grade}))
+      |> render(:show, grade: grade)
     end
   end
 

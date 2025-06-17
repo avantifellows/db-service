@@ -65,7 +65,7 @@ defmodule DbserviceWeb.FormSchemaController do
       conn
       |> put_status(:created)
       |> put_resp_header("location", ~p"/api/form-schema/#{form_schema}")
-      |> json(DbserviceWeb.FormSchemaJSON.show(%{form_schema: form_schema}))
+      |> render(:show, form_schema: form_schema)
     end
   end
 
@@ -98,7 +98,8 @@ defmodule DbserviceWeb.FormSchemaController do
   def update(conn, params) do
     form_schema = FormSchemas.get_form_schema!(params["id"])
 
-    with {:ok, %FormSchema{} = form_schema} <- FormSchemas.update_form_schema(form_schema, params) do
+    with {:ok, %FormSchema{} = form_schema} <-
+           FormSchemas.update_form_schema(form_schema, params) do
       render(conn, :show, form_schema: form_schema)
     end
   end

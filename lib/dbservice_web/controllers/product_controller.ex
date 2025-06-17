@@ -44,7 +44,7 @@ defmodule DbserviceWeb.ProductController do
       end)
 
     product = Repo.all(query)
-    json(conn, DbserviceWeb.ProductJSON.index(%{product: product}))
+    render(conn, :index, product: product)
   end
 
   swagger_path :create do
@@ -79,7 +79,7 @@ defmodule DbserviceWeb.ProductController do
 
   def show(conn, %{"id" => id}) do
     product = Products.get_product!(id)
-    json(conn, DbserviceWeb.ProductJSON.show(%{product: product}))
+    render(conn, :show, product: product)
   end
 
   swagger_path :update do
@@ -97,7 +97,7 @@ defmodule DbserviceWeb.ProductController do
     product = Products.get_product!(params["id"])
 
     with {:ok, %Product{} = product} <- Products.update_product(product, params) do
-      json(conn, DbserviceWeb.ProductJSON.show(%{product: product}))
+      render(conn, :show, product: product)
     end
   end
 
@@ -124,7 +124,7 @@ defmodule DbserviceWeb.ProductController do
       conn
       |> put_status(:created)
       |> put_resp_header("location", ~p"/api/product/#{product}")
-      |> json(DbserviceWeb.ProductJSON.show(%{product: product}))
+      |> render(:show, product: product)
     end
   end
 
@@ -132,7 +132,7 @@ defmodule DbserviceWeb.ProductController do
     with {:ok, %Product{} = product} <- Products.update_product(existing_product, params) do
       conn
       |> put_status(:ok)
-      |> json(DbserviceWeb.ProductJSON.show(%{product: product}))
+      |> render(:show, product: product)
     end
   end
 end

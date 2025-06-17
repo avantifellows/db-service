@@ -127,7 +127,7 @@ defmodule DbserviceWeb.ExamController do
       conn
       |> put_status(:created)
       |> put_resp_header("location", ~p"/api/exam/#{exam}")
-      |> json(DbserviceWeb.ExamJSON.show(%{exam: exam}))
+      |> render(:show, exam: exam)
     end
   end
 
