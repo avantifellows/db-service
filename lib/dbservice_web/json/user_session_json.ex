@@ -1,10 +1,10 @@
 defmodule DbserviceWeb.UserSessionJSON do
   def index(%{user_session: user_session}) do
-    %{data: for(us <- user_session, do: data(us))}
+    for(us <- user_session, do: data(us))
   end
 
   def show(%{user_session: user_session}) do
-    %{data: data(user_session)}
+    data(user_session)
   end
 
   def data(user_session) do

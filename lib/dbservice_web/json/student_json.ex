@@ -3,19 +3,19 @@ defmodule DbserviceWeb.StudentJSON do
   alias Dbservice.Repo
 
   def index(%{student: student}) do
-    %{data: for(s <- student, do: data(s))}
+    for(s <- student, do: data(s))
   end
 
   def show(%{student: student}) do
-    %{data: data(student)}
+    data(student)
   end
 
   def show_with_user(%{student: student}) do
-    %{data: for(s <- student, do: data(s))}
+    for(s <- student, do: data(s))
   end
 
   def show_student_user_with_compact_fields(%{student: student}) do
-    %{data: for(s <- student, do: student_user_with_compact_fields(s))}
+    for(s <- student, do: student_user_with_compact_fields(s))
   end
 
   def data(student) do

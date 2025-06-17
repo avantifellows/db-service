@@ -1,10 +1,10 @@
 defmodule DbserviceWeb.ProductJSON do
   def index(%{product: product}) do
-    %{data: for(p <- product, do: data(p))}
+    for(p <- product, do: data(p))
   end
 
   def show(%{product: product}) do
-    %{data: data(product)}
+    data(product)
   end
 
   def data(product) do

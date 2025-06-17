@@ -1,10 +1,10 @@
 defmodule DbserviceWeb.UserProfileJSON do
   def index(%{user_profile: user_profile}) do
-    %{data: for(up <- user_profile, do: data(up))}
+    for(up <- user_profile, do: data(up))
   end
 
   def show(%{user_profile: user_profile}) do
-    %{data: data(user_profile)}
+    data(user_profile)
   end
 
   def data(user_profile) do

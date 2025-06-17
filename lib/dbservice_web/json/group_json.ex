@@ -12,11 +12,11 @@ defmodule DbserviceWeb.GroupJSON do
   alias Dbservice.Grades.Grade
 
   def index(%{group: group}) do
-    %{data: for(g <- group, do: data(g))}
+    for(g <- group, do: data(g))
   end
 
   def show(%{group: group}) do
-    %{data: data(group)}
+    data(group)
   end
 
   def data(group) do

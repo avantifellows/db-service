@@ -1,10 +1,10 @@
 defmodule DbserviceWeb.GradeJSON do
   def index(%{grade: grade}) do
-    %{data: for(g <- grade, do: data(g))}
+    for(g <- grade, do: data(g))
   end
 
   def show(%{grade: grade}) do
-    %{data: data(grade)}
+    data(grade)
   end
 
   def data(grade) do

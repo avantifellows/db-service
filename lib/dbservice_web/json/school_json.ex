@@ -2,11 +2,11 @@ defmodule DbserviceWeb.SchoolJSON do
   alias DbserviceWeb.UserJSON
 
   def index(%{school: school}) do
-    %{data: for(s <- school, do: data(s))}
+    for(s <- school, do: data(s))
   end
 
   def show(%{school: school}) do
-    %{data: data(school)}
+    data(school)
   end
 
   def data(school) do

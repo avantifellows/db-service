@@ -1,10 +1,10 @@
 defmodule DbserviceWeb.TopicJSON do
   def index(%{topic: topic}) do
-    %{data: for(t <- topic, do: data(t))}
+    for(t <- topic, do: data(t))
   end
 
   def show(%{topic: topic}) do
-    %{data: data(topic)}
+    data(topic)
   end
 
   def data(topic) do

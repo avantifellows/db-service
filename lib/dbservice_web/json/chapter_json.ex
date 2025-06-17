@@ -1,10 +1,10 @@
 defmodule DbserviceWeb.ChapterJSON do
   def index(%{chapter: chapter}) do
-    %{data: for(c <- chapter, do: data(c))}
+    for(c <- chapter, do: data(c))
   end
 
   def show(%{chapter: chapter}) do
-    %{data: data(chapter)}
+    data(chapter)
   end
 
   defp data(chapter) do

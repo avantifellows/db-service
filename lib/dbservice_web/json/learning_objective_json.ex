@@ -1,10 +1,10 @@
 defmodule DbserviceWeb.LearningObjectiveJSON do
   def index(%{learning_objective: learning_objective}) do
-    %{data: for(lo <- learning_objective, do: data(lo))}
+    for(lo <- learning_objective, do: data(lo))
   end
 
   def show(%{learning_objective: learning_objective}) do
-    %{data: data(learning_objective)}
+    data(learning_objective)
   end
 
   def data(learning_objective) do

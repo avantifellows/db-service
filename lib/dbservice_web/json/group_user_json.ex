@@ -1,10 +1,10 @@
 defmodule DbserviceWeb.GroupUserJSON do
   def index(%{group_user: group_user}) do
-    %{data: for(gu <- group_user, do: data(gu))}
+    for(gu <- group_user, do: data(gu))
   end
 
   def show(%{group_user: group_user}) do
-    %{data: data(group_user)}
+    data(group_user)
   end
 
   def batch_result(%{

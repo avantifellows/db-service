@@ -1,10 +1,10 @@
 defmodule DbserviceWeb.GroupSessionJSON do
   def index(%{group_session: group_session}) do
-    %{data: for(gs <- group_session, do: data(gs))}
+    for(gs <- group_session, do: data(gs))
   end
 
   def show(%{group_session: group_session}) do
-    %{data: data(group_session)}
+    data(group_session)
   end
 
   defp data(group_session) do

@@ -1,10 +1,10 @@
 defmodule DbserviceWeb.AuthGroupJSON do
   def index(%{auth_group: auth_group}) do
-    %{data: for(group <- auth_group, do: data(group))}
+    for(group <- auth_group, do: data(group))
   end
 
   def show(%{auth_group: auth_group}) do
-    %{data: data(auth_group)}
+    data(auth_group)
   end
 
   def data(auth_group) do

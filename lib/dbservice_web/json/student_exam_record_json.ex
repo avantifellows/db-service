@@ -1,10 +1,10 @@
 defmodule DbserviceWeb.StudentExamRecordJSON do
   def index(%{student_exam_record: student_exam_record}) do
-    %{data: for(ser <- student_exam_record, do: data(ser))}
+    for(ser <- student_exam_record, do: data(ser))
   end
 
   def show(%{student_exam_record: student_exam_record}) do
-    %{data: data(student_exam_record)}
+    data(student_exam_record)
   end
 
   def data(student_exam_record) do

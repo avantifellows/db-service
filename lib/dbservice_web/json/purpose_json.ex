@@ -1,10 +1,10 @@
 defmodule DbserviceWeb.PurposeJSON do
   def index(%{purpose: purpose}) do
-    %{data: for(p <- purpose, do: data(p))}
+    for(p <- purpose, do: data(p))
   end
 
   def show(%{purpose: purpose}) do
-    %{data: data(purpose)}
+    data(purpose)
   end
 
   def data(purpose) do

@@ -1,10 +1,10 @@
 defmodule DbserviceWeb.SubjectJSON do
   def index(%{subject: subject}) do
-    %{data: for(s <- subject, do: data(s))}
+    for(s <- subject, do: data(s))
   end
 
   def show(%{subject: subject}) do
-    %{data: data(subject)}
+    data(subject)
   end
 
   def data(subject) do

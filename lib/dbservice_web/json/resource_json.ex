@@ -2,11 +2,11 @@ defmodule DbserviceWeb.ResourceJSON do
   alias DbserviceWeb.SourceJSON
 
   def index(%{resource: resource}) do
-    %{data: for(r <- resource, do: data(r))}
+    for(r <- resource, do: data(r))
   end
 
   def show(%{resource: resource}) do
-    %{data: data(resource)}
+    data(resource)
   end
 
   def data(resource) do

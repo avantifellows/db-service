@@ -1,10 +1,10 @@
 defmodule DbserviceWeb.ExamJSON do
   def index(%{exam: exam}) do
-    %{data: for(e <- exam, do: data(e))}
+    for(e <- exam, do: data(e))
   end
 
   def show(%{exam: exam}) do
-    %{data: data(exam)}
+    data(exam)
   end
 
   defp data(exam) do

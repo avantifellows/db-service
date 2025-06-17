@@ -1,10 +1,10 @@
 defmodule DbserviceWeb.ConceptJSON do
   def index(%{concept: concept}) do
-    %{data: for(c <- concept, do: data(c))}
+    for(c <- concept, do: data(c))
   end
 
   def show(%{concept: concept}) do
-    %{data: data(concept)}
+    data(concept)
   end
 
   defp data(concept) do
