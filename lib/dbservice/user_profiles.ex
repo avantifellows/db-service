@@ -314,7 +314,7 @@ defmodule Dbservice.Profiles do
       iex> get_profile_by_teacher_id(abc)
       ** (Ecto.NoResultsError)
   """
-  def get_profile_by_teacher_id(teacher_id) do
+  def get_teacher_profile_by_teacher_id(teacher_id) do
     Repo.get_by(TeacherProfile, teacher_id: teacher_id)
   end
 
