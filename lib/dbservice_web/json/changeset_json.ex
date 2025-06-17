@@ -16,8 +16,8 @@ defmodule DbserviceWeb.ChangesetJSON do
     # See Ecto.Changeset.traverse_errors/2 and
     # Phoenix.HTML.Form.input_validations/2 for more examples
     # of error message formatting.
-    %{
+
       %{errors: translate_errors(changeset)}
-    }
+  
   end
 end
