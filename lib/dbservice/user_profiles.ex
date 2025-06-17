@@ -46,7 +46,7 @@ defmodule Dbservice.Profiles do
       iex> get_profile_by_user_id(abc)
       ** (Ecto.NoResultsError)
   """
-  def get_profile_by_user_id(user_id) do
+  def get_user_profile_by_user_id(user_id) do
     Repo.get_by(UserProfile, user_id: user_id)
   end
 
