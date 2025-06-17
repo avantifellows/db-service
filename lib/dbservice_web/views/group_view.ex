@@ -1,4 +1,5 @@
 defmodule DbserviceWeb.GroupView do
+  alias DbserviceWeb.GradeView
   alias DbserviceWeb.SchoolView
   alias Dbservice.Schools.School
   use DbserviceWeb, :view
@@ -6,10 +7,12 @@ defmodule DbserviceWeb.GroupView do
   alias DbserviceWeb.AuthGroupView
   alias DbserviceWeb.ProgramView
   alias DbserviceWeb.BatchView
+  alias DbserviceWeb.GradeView
   alias Dbservice.Repo
   alias Dbservice.Groups.AuthGroup
   alias Dbservice.Batches.Batch
   alias Dbservice.Programs.Program
+  alias Dbservice.Grades.Grade
 
   def render("index.json", %{group: group}) do
     render_many(group, GroupView, "group.json")
@@ -55,6 +58,15 @@ defmodule DbserviceWeb.GroupView do
           id: group.id,
           type: group.type,
           child_id: render_one(school, SchoolView, "school.json")
+        }
+
+      "grade" ->
+        grade = Repo.get!(Grade, group.child_id)
+
+        %{
+          id: group.id,
+          type: group.type,
+          child_id: render_one(grade, GradeView, "grade.json")
         }
 
       _ ->

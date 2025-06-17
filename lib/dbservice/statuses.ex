@@ -4,7 +4,6 @@ defmodule Dbservice.Statuses do
   """
 
   import Ecto.Query, warn: false
-  alias Faker.Internet.StatusCode
   alias Dbservice.Repo
 
   alias Dbservice.Statuses.Status
@@ -29,7 +28,20 @@ defmodule Dbservice.Statuses do
       iex> get_status!(456)
       ** (Ecto.NoResultsError)
   """
-  def get_status!(id), do: Repo.get!(StatusCode, id)
+  def get_status!(id), do: Repo.get!(Status, id)
+
+  @doc """
+  Gets a status by title.
+  Raises `Ecto.NoResultsError` if the Status does not exist.
+  ## Examples
+      iex> get_status_by_title(abc)
+      %Status{}
+      iex> get_status_by_title(1234)
+      ** (Ecto.NoResultsError)
+  """
+  def get_status_by_title(title) do
+    Repo.get_by(Status, title: title)
+  end
 
   @doc """
   Creates a status.

@@ -66,7 +66,8 @@ defmodule Dbservice.GroupUsers do
       join: g in Group,
       on: gu.group_id == g.id,
       where: gu.user_id == ^user_id and g.type == ^type,
-      select: gu
+      select: gu,
+      preload: [:group]
     )
     |> Repo.all()
   end
@@ -82,6 +83,20 @@ defmodule Dbservice.GroupUsers do
   """
   def get_group_user_by_user_id(user_id) do
     from(g in GroupUser, where: g.user_id == ^user_id)
+    |> Repo.all()
+  end
+
+  @doc """
+  Gets a group-user by group ID.
+  Raises `Ecto.NoResultsError` if the GroupUser does not exist.
+  ## Examples
+      iex> get_group_user_by_group_id(1234)
+      %GroupUser{}
+      iex> get_group_user_by_group_id(abc)
+      ** (Ecto.NoResultsError)
+  """
+  def get_group_user_by_group_id(group_id) do
+    from(g in GroupUser, where: g.group_id == ^group_id)
     |> Repo.all()
   end
 

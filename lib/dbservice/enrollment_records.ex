@@ -39,6 +39,19 @@ defmodule Dbservice.EnrollmentRecords do
   def get_enrollment_record!(id), do: Repo.get!(EnrollmentRecord, id)
 
   @doc """
+  Gets a Enrollment Records by user ID.
+  Raises `Ecto.NoResultsError` if the Enrollment Records does not exist.
+  ## Examples
+      iex> get_enrollment_records_by_user_id(1234)
+      %Batch{}
+      iex> get_enrollment_records_by_user_id(abc)
+      ** (Ecto.NoResultsError)
+  """
+  def get_enrollment_records_by_user_id(user_id) do
+    Repo.all(from e in EnrollmentRecord, where: e.user_id == ^user_id)
+  end
+
+  @doc """
   Gets enrollment_record based on certain parameters.
 
   Raises `Ecto.NoResultsError` if the Enrollment record does not exist.
@@ -56,16 +69,48 @@ defmodule Dbservice.EnrollmentRecords do
         user_id,
         group_id,
         group_type,
-        grade_id,
         academic_year
       ) do
     Repo.get_by(EnrollmentRecord,
       user_id: user_id,
       group_id: group_id,
       group_type: group_type,
-      grade_id: grade_id,
       academic_year: academic_year
     )
+  end
+
+  @doc """
+  Retrieves the current grade ID for a given user.
+
+  The function fetches the most recent enrollment record where:
+  - The user is currently enrolled (`is_current == true`)
+  - The enrollment is of type "grade"
+  - Results are ordered by `inserted_at` in descending order to get the latest entry.
+
+  Returns `nil` if no enrollment record is found.
+
+  ## Examples
+
+      iex> get_current_grade_id(123)
+      9
+
+      iex> get_current_grade_id(456)
+      nil
+
+  """
+  def get_current_grade_id(user_id) do
+    current_enrollment =
+      from(e in EnrollmentRecord,
+        where: e.user_id == ^user_id and e.is_current == true and e.group_type == "grade",
+        order_by: [desc: e.inserted_at],
+        limit: 1
+      )
+      |> Repo.one()
+
+    case current_enrollment do
+      nil -> nil
+      enrollment -> enrollment.group_id
+    end
   end
 
   @doc """
@@ -142,5 +187,15 @@ defmodule Dbservice.EnrollmentRecords do
     query = from er in EnrollmentRecord, where: ^Util.build_conditions(params), select: er
 
     Repo.all(query)
+  end
+
+  @doc """
+  Fetches all enrollment records for a given user in a specific academic year.
+  """
+  def get_enrollment_records_by_user_and_academic_year(user_id, academic_year) do
+    from(e in EnrollmentRecord,
+      where: e.user_id == ^user_id and e.academic_year == ^academic_year
+    )
+    |> Repo.all()
   end
 end

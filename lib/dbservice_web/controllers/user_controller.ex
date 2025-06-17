@@ -221,11 +221,12 @@ defmodule DbserviceWeb.UserController do
         false
 
       session ->
-        if quiz_flag && session.meta_data["batch_id"] != "" do
-          session.meta_data["batch_id"] == class_batch_id and session.platform == "quiz"
-        else
-          true
-        end
+        session.is_active &&
+          if quiz_flag && session.meta_data["batch_id"] != "" do
+            session.meta_data["batch_id"] == class_batch_id and session.platform == "quiz"
+          else
+            true
+          end
     end
   end
 

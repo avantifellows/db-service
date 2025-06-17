@@ -10,6 +10,15 @@ defmodule DbserviceWeb.StudentExamRecordController do
 
   use PhoenixSwagger
 
+  alias DbserviceWeb.SwaggerSchema.StudentExamRecord, as: SwaggerStudentExamRecord
+
+  def swagger_definitions do
+    Map.merge(
+      SwaggerStudentExamRecord.student_exam_record(),
+      SwaggerStudentExamRecord.student_exam_records()
+    )
+  end
+
   swagger_path :index do
     get("/api/student-exam-record")
 
@@ -53,15 +62,15 @@ defmodule DbserviceWeb.StudentExamRecordController do
   end
 
   def create(conn, params) do
-    with {:ok, %StudentExamRecord{} = student_exam_record} <-
-           StudentExamRecords.create_student_exam_record(params) do
-      conn
-      |> put_status(:created)
-      |> put_resp_header(
-        "location",
-        Routes.student_exam_record_path(conn, :show, student_exam_record)
-      )
-      |> render("show.json", student_exam_record: student_exam_record)
+    case StudentExamRecords.get_student_exam_records_by_student_id_and_application_number(
+           params["student_id"],
+           params["application_number"]
+         ) do
+      nil ->
+        create_new_student_exam_record(conn, params)
+
+      existing_student_exam_record ->
+        update_existing_student_exam_record(conn, existing_student_exam_record, params)
     end
   end
 
@@ -116,6 +125,28 @@ defmodule DbserviceWeb.StudentExamRecordController do
     with {:ok, %StudentExamRecord{}} <-
            StudentExamRecords.delete_student_exam_record(student_exam_record) do
       send_resp(conn, :no_content, "")
+    end
+  end
+
+  defp create_new_student_exam_record(conn, params) do
+    with {:ok, %StudentExamRecord{} = student_exam_record} <-
+           StudentExamRecords.create_student_exam_record(params) do
+      conn
+      |> put_status(:created)
+      |> put_resp_header(
+        "location",
+        Routes.student_exam_record_path(conn, :show, student_exam_record)
+      )
+      |> render("show.json", student_exam_record: student_exam_record)
+    end
+  end
+
+  defp update_existing_student_exam_record(conn, existing_student_exam_record, params) do
+    with {:ok, %StudentExamRecord{} = student_exam_record} <-
+           StudentExamRecords.update_student_exam_record(existing_student_exam_record, params) do
+      conn
+      |> put_status(:ok)
+      |> render("show.json", student_exam_record: student_exam_record)
     end
   end
 end
