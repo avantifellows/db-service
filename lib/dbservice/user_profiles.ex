@@ -41,9 +41,9 @@ defmodule Dbservice.Profiles do
   Gets a user profile by user ID.
   Raises `Ecto.NoResultsError` if the UserProfile does not exist.
   ## Examples
-      iex> get_profile_by_user_id(1234)
+      iex> get_user_profile_by_user_id(1234)
       %UserProfile{}
-      iex> get_profile_by_user_id(abc)
+      iex> get_user_profile_by_user_id(abc)
       ** (Ecto.NoResultsError)
   """
   def get_user_profile_by_user_id(user_id) do
@@ -150,9 +150,9 @@ defmodule Dbservice.Profiles do
   Gets a student profile by student ID.
   Raises `Ecto.NoResultsError` if the StudentProfile does not exist.
   ## Examples
-      iex> get_profile_by_student_id(1234)
+      iex> get_student_profile_by_student_id(1234)
       %StudentProfile{}
-      iex> get_profile_by_student_id(abc)
+      iex> get_student_profile_by_student_id(abc)
       ** (Ecto.NoResultsError)
   """
   def get_student_profile_by_student_id(student_id) do
@@ -309,9 +309,9 @@ defmodule Dbservice.Profiles do
   Gets a teacher profile by teacher ID.
   Raises `Ecto.NoResultsError` if the TeacherProfile does not exist.
   ## Examples
-      iex> get_profile_by_teacher_id(1234)
+      iex> get_teacher_profile_by_teacher_id(1234)
       %TeacherProfile{}
-      iex> get_profile_by_teacher_id(abc)
+      iex> get_teacher_profile_by_teacher_id(abc)
       ** (Ecto.NoResultsError)
   """
   def get_teacher_profile_by_teacher_id(teacher_id) do

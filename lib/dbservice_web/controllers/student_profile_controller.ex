@@ -142,7 +142,7 @@ defmodule DbserviceWeb.StudentProfileController do
       |> Map.put_new("user_id", user_id)
       |> Map.put_new("student_fk", student_fk)
 
-    case Profiles.get_profile_by_student_id(updated_params["student_id"]) do
+    case Profiles.get_student_profile_by_student_id(updated_params["student_id"]) do
       nil ->
         create_new_profile(conn, updated_params)
 

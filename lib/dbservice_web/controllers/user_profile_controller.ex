@@ -68,7 +68,7 @@ defmodule DbserviceWeb.UserProfileController do
   end
 
   def create(conn, params) do
-    case Profiles.get_profile_by_user_id(params["user_id"]) do
+    case Profiles.get_user_profile_by_user_id(params["user_id"]) do
       nil ->
         create_new_profile(conn, params)
 

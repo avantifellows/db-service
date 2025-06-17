@@ -142,7 +142,7 @@ defmodule DbserviceWeb.TeacherProfileController do
       |> Map.put_new("user_id", user_id)
       |> Map.put_new("teacher_fk", teacher_fk)
 
-    case Profiles.get_profile_by_teacher_id(updated_params["teacher_id"]) do
+    case Profiles.get_teacher_profile_by_teacher_id(updated_params["teacher_id"]) do
       nil ->
         create_new_profile(conn, updated_params)
 
