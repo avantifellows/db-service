@@ -68,11 +68,12 @@ defmodule DbserviceWeb.UserProfileController do
   end
 
   def create(conn, params) do
-    with {:ok, %UserProfile{} = user_profile} <- Profiles.create_user_profile(params) do
-      conn
-      |> put_status(:created)
-      |> put_resp_header("location", Routes.user_path(conn, :show, user_profile))
-      |> render("show.json", user_profile: user_profile)
+    case Profiles.get_user_profile_by_user_id(params["user_id"]) do
+      nil ->
+        create_new_profile(conn, params)
+
+      existing_profile ->
+        update_existing_profile(conn, existing_profile, params)
     end
   end
 
@@ -126,6 +127,24 @@ defmodule DbserviceWeb.UserProfileController do
 
     with {:ok, %UserProfile{}} <- Profiles.delete_user_profile(user_profile) do
       send_resp(conn, :no_content, "")
+    end
+  end
+
+  defp create_new_profile(conn, params) do
+    with {:ok, %UserProfile{} = user_profile} <- Profiles.create_user_profile(params) do
+      conn
+      |> put_status(:created)
+      |> put_resp_header("location", Routes.user_profile_path(conn, :show, user_profile))
+      |> render("show.json", user_profile: user_profile)
+    end
+  end
+
+  defp update_existing_profile(conn, existing_profile, params) do
+    with {:ok, %UserProfile{} = user_profile} <-
+           Profiles.update_user_profile(existing_profile, params) do
+      conn
+      |> put_status(:ok)
+      |> render("show.json", user_profile: user_profile)
     end
   end
 end
