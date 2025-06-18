@@ -1,13 +1,13 @@
 defmodule DbserviceWeb.EnrollmentRecordJSON do
   def index(%{enrollment_record: enrollment_record}) do
-    for(e <- enrollment_record, do: data(e))
+    for(e <- enrollment_record, do: render(e))
   end
 
   def show(%{enrollment_record: enrollment_record}) do
-    data(enrollment_record)
+    render(enrollment_record)
   end
 
-  defp data(enrollment_record) do
+  defp render(enrollment_record) do
     %{
       id: enrollment_record.id,
       academic_year: enrollment_record.academic_year,

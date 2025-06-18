@@ -1,13 +1,13 @@
 defmodule DbserviceWeb.FormSchemaJSON do
   def index(%{form_schema: form_schema}) do
-    for(schema <- form_schema, do: data(schema))
+    for(schema <- form_schema, do: render(schema))
   end
 
   def show(%{form_schema: form_schema}) do
-    data(form_schema)
+    render(form_schema)
   end
 
-  defp data(form_schema) do
+  defp render(form_schema) do
     %{
       id: form_schema.id,
       name: form_schema.name,

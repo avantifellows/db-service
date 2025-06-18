@@ -1,13 +1,13 @@
 defmodule DbserviceWeb.ExamJSON do
   def index(%{exam: exam}) do
-    for(e <- exam, do: data(e))
+    for(e <- exam, do: render(e))
   end
 
   def show(%{exam: exam}) do
-    data(exam)
+    render(exam)
   end
 
-  defp data(exam) do
+  defp render(exam) do
     %{
       id: exam.id,
       name: exam.name,

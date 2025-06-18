@@ -1,10 +1,10 @@
 defmodule DbserviceWeb.GroupUserJSON do
   def index(%{group_user: group_user}) do
-    for(gu <- group_user, do: data(gu))
+    for(gu <- group_user, do: render(gu))
   end
 
   def show(%{group_user: group_user}) do
-    data(group_user)
+    render(group_user)
   end
 
   def batch_result(%{
@@ -20,7 +20,7 @@ defmodule DbserviceWeb.GroupUserJSON do
       results:
         Enum.map(results, fn
           {:ok, group_user} ->
-            %{status: :ok, group_user: data(group_user)}
+            %{status: :ok, group_user: render(group_user)}
 
           {:error, changeset} ->
             %{status: :error, errors: changeset}
@@ -28,7 +28,7 @@ defmodule DbserviceWeb.GroupUserJSON do
     }
   end
 
-  defp data(group_user) do
+  defp render(group_user) do
     %{
       id: group_user.id,
       group_id: group_user.group_id,

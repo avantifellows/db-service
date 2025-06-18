@@ -2,18 +2,18 @@ defmodule DbserviceWeb.UserJSON do
   alias DbserviceWeb.SessionJSON
 
   def index(%{user: user}) do
-    for(u <- user, do: data(u))
+    for(u <- user, do: render(u))
   end
 
   def show(%{user: user}) do
-    data(user)
+    render(user)
   end
 
   def show_user_with_compact_fields(%{user: user}) do
     for(u <- user, do: user_with_compact_fields(u))
   end
 
-  def data(user) do
+  def render(user) do
     %{
       id: user.id,
       first_name: user.first_name,
@@ -53,6 +53,6 @@ defmodule DbserviceWeb.UserJSON do
   end
 
   def user_sessions(%{session: session}) do
-    for(s <- session, do: SessionJSON.data(s))
+    for(s <- session, do: SessionJSON.render(s))
   end
 end

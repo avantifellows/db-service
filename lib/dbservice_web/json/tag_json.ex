@@ -1,13 +1,13 @@
 defmodule DbserviceWeb.TagJSON do
   def index(%{tag: tag}) do
-    for(t <- tag, do: data(t))
+    for(t <- tag, do: render(t))
   end
 
   def show(%{tag: tag}) do
-    data(tag)
+    render(tag)
   end
 
-  def data(tag) do
+  def render(tag) do
     %{
       id: tag.id,
       name: tag.name,

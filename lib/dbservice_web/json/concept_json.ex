@@ -1,13 +1,13 @@
 defmodule DbserviceWeb.ConceptJSON do
   def index(%{concept: concept}) do
-    for(c <- concept, do: data(c))
+    for(c <- concept, do: render(c))
   end
 
   def show(%{concept: concept}) do
-    data(concept)
+    render(concept)
   end
 
-  defp data(concept) do
+  defp render(concept) do
     %{
       id: concept.id,
       name: concept.name,

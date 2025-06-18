@@ -2,14 +2,14 @@ defmodule DbserviceWeb.ResourceJSON do
   alias DbserviceWeb.SourceJSON
 
   def index(%{resource: resource}) do
-    for(r <- resource, do: data(r))
+    for(r <- resource, do: render(r))
   end
 
   def show(%{resource: resource}) do
-    data(resource)
+    render(resource)
   end
 
-  def data(resource) do
+  def render(resource) do
     resource = Dbservice.Repo.preload(resource, :source)
 
     %{
@@ -27,7 +27,7 @@ defmodule DbserviceWeb.ResourceJSON do
       learning_objective_id: resource.learning_objective_id,
       tag_ids: resource.tag_ids,
       teacher_id: resource.teacher_id,
-      source: if(resource.source, do: SourceJSON.data(resource.source), else: nil)
+      source: if(resource.source, do: SourceJSON.render(resource.source), else: nil)
     }
   end
 end

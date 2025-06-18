@@ -2,14 +2,14 @@ defmodule DbserviceWeb.SchoolJSON do
   alias DbserviceWeb.UserJSON
 
   def index(%{school: school}) do
-    for(s <- school, do: data(s))
+    for(s <- school, do: render(s))
   end
 
   def show(%{school: school}) do
-    data(school)
+    render(school)
   end
 
-  def data(school) do
+  def render(school) do
     %{
       id: school.id,
       code: school.code,
@@ -26,7 +26,7 @@ defmodule DbserviceWeb.SchoolJSON do
       block_name: school.block_name,
       board: school.board,
       user_id: school.user_id,
-      user: if(school.user, do: UserJSON.data(school.user), else: nil)
+      user: if(school.user, do: UserJSON.render(school.user), else: nil)
     }
   end
 end

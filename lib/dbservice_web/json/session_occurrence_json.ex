@@ -2,14 +2,14 @@ defmodule DbserviceWeb.SessionOccurrenceJSON do
   alias DbserviceWeb.SessionJSON
 
   def index(%{session_occurrence: session_occurrence}) do
-    for(so <- session_occurrence, do: data(so))
+    for(so <- session_occurrence, do: render(so))
   end
 
   def show(%{session_occurrence: session_occurrence}) do
-    data(session_occurrence)
+    render(session_occurrence)
   end
 
-  def data(session_occurrence) do
+  def render(session_occurrence) do
     session_occurrence = session_occurrence |> Dbservice.Repo.preload(:session)
 
     %{
@@ -22,7 +22,7 @@ defmodule DbserviceWeb.SessionOccurrenceJSON do
       updated_at: session_occurrence.updated_at,
       session:
         if(session_occurrence.session,
-          do: SessionJSON.data(session_occurrence.session),
+          do: SessionJSON.render(session_occurrence.session),
           else: nil
         )
     }
@@ -37,7 +37,7 @@ defmodule DbserviceWeb.SessionOccurrenceJSON do
       end_time: session_occurrence.end_time,
       session_fk: session_occurrence.session_fk,
       session_id: session_occurrence.session_id,
-      users: for(u <- session_occurrence.users, do: DbserviceWeb.UserJSON.data(u))
+      users: for(u <- session_occurrence.users, do: DbserviceWeb.UserJSON.render(u))
     }
   end
 end

@@ -1,13 +1,13 @@
 defmodule DbserviceWeb.CurriculumJSON do
   def index(%{curriculum: curriculum}) do
-    for(c <- curriculum, do: data(c))
+    for(c <- curriculum, do: render(c))
   end
 
   def show(%{curriculum: curriculum}) do
-    data(curriculum)
+    render(curriculum)
   end
 
-  defp data(curriculum) do
+  defp render(curriculum) do
     %{
       id: curriculum.id,
       name: curriculum.name,

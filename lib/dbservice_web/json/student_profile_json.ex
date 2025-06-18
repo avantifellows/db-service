@@ -2,18 +2,18 @@ defmodule DbserviceWeb.StudentProfileJSON do
   alias DbserviceWeb.UserProfileJSON
 
   def index(%{student_profile: student_profile}) do
-    for(sp <- student_profile, do: data(sp))
+    for(sp <- student_profile, do: render(sp))
   end
 
   def show(%{student_profile: student_profile}) do
-    data(student_profile)
+    render(student_profile)
   end
 
   def show_student_profile_with_user_profile(%{student_profile: student_profile}) do
     student_profile_with_user_profile(student_profile)
   end
 
-  def data(student_profile) do
+  def render(student_profile) do
     %{
       id: student_profile.id,
       student_id: student_profile.student_id,
@@ -35,7 +35,7 @@ defmodule DbserviceWeb.StudentProfileJSON do
       user_profile_id: student_profile.user_profile_id,
       user_profile:
         if(student_profile.user_profile,
-          do: UserProfileJSON.data(student_profile.user_profile),
+          do: UserProfileJSON.render(student_profile.user_profile),
           else: nil
         )
     }
@@ -63,7 +63,7 @@ defmodule DbserviceWeb.StudentProfileJSON do
       user_profile_id: student_profile.user_profile_id,
       user_profile:
         if(student_profile.user_profile,
-          do: UserProfileJSON.data(student_profile.user_profile),
+          do: UserProfileJSON.render(student_profile.user_profile),
           else: nil
         )
     }

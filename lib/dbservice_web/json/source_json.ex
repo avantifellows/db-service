@@ -1,13 +1,13 @@
 defmodule DbserviceWeb.SourceJSON do
   def index(%{source: source}) do
-    for(s <- source, do: data(s))
+    for(s <- source, do: render(s))
   end
 
   def show(%{source: source}) do
-    data(source)
+    render(source)
   end
 
-  def data(source) do
+  def render(source) do
     %{
       id: source.id,
       name: source.name,

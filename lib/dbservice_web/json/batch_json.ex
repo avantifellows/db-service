@@ -1,13 +1,13 @@
 defmodule DbserviceWeb.BatchJSON do
   def index(%{batch: batch}) do
-    for(b <- batch, do: data(b))
+    for(b <- batch, do: render(b))
   end
 
   def show(%{batch: batch}) do
-    data(batch)
+    render(batch)
   end
 
-  def data(batch) do
+  def render(batch) do
     %{
       id: batch.id,
       name: batch.name,

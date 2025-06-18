@@ -12,14 +12,14 @@ defmodule DbserviceWeb.GroupJSON do
   alias Dbservice.Grades.Grade
 
   def index(%{group: group}) do
-    for(g <- group, do: data(g))
+    for(g <- group, do: render(g))
   end
 
   def show(%{group: group}) do
-    data(group)
+    render(group)
   end
 
-  def data(group) do
+  def render(group) do
     case group.type do
       "auth-group" ->
         auth_group = Repo.get!(AuthGroup, group.child_id)
@@ -27,7 +27,7 @@ defmodule DbserviceWeb.GroupJSON do
         %{
           id: group.id,
           type: group.type,
-          child_id: AuthGroupJSON.data(auth_group)
+          child_id: AuthGroupJSON.render(auth_group)
         }
 
       "program" ->
@@ -36,7 +36,7 @@ defmodule DbserviceWeb.GroupJSON do
         %{
           id: group.id,
           type: group.type,
-          child_id: ProgramJSON.data(program)
+          child_id: ProgramJSON.render(program)
         }
 
       "batch" ->
@@ -45,7 +45,7 @@ defmodule DbserviceWeb.GroupJSON do
         %{
           id: group.id,
           type: group.type,
-          child_id: BatchJSON.data(batch)
+          child_id: BatchJSON.render(batch)
         }
 
       "school" ->
@@ -54,7 +54,7 @@ defmodule DbserviceWeb.GroupJSON do
         %{
           id: group.id,
           type: group.type,
-          child_id: SchoolJSON.data(school)
+          child_id: SchoolJSON.render(school)
         }
 
       "grade" ->
@@ -63,7 +63,7 @@ defmodule DbserviceWeb.GroupJSON do
         %{
           id: group.id,
           type: group.type,
-          child_id: GradeJSON.data(grade)
+          child_id: GradeJSON.render(grade)
         }
 
       _ ->

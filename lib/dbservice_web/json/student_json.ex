@@ -3,22 +3,22 @@ defmodule DbserviceWeb.StudentJSON do
   alias Dbservice.Repo
 
   def index(%{student: student}) do
-    for(s <- student, do: data(s))
+    for(s <- student, do: render(s))
   end
 
   def show(%{student: student}) do
-    data(student)
+    render(student)
   end
 
   def show_with_user(%{student: student}) do
-    for(s <- student, do: data(s))
+    for(s <- student, do: render(s))
   end
 
   def show_student_user_with_compact_fields(%{student: student}) do
     for(s <- student, do: student_user_with_compact_fields(s))
   end
 
-  def data(student) do
+  def render(student) do
     student = Repo.preload(student, :user)
 
     %{
@@ -61,7 +61,7 @@ defmodule DbserviceWeb.StudentJSON do
       percentage_in_grade_10_english: student.percentage_in_grade_10_english,
       grade_10_marksheet: student.grade_10_marksheet,
       photo: student.photo,
-      user: if(student.user, do: UserJSON.data(student.user), else: nil),
+      user: if(student.user, do: UserJSON.render(student.user), else: nil),
       status: student.status,
       board_stream: student.board_stream,
       planned_competitive_exams: student.planned_competitive_exams,
@@ -92,7 +92,7 @@ defmodule DbserviceWeb.StudentJSON do
       results:
         Enum.map(results, fn
           {:ok, student} ->
-            %{status: :ok, student: data(student)}
+            %{status: :ok, student: render(student)}
 
           {:error, changeset} ->
             %{status: :error, errors: changeset}

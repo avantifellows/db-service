@@ -1,13 +1,13 @@
 defmodule DbserviceWeb.SessionScheduleJSON do
   def index(%{session_schedule: session_schedule}) do
-    for(ss <- session_schedule, do: data(ss))
+    for(ss <- session_schedule, do: render(ss))
   end
 
   def show(%{session_schedule: session_schedule}) do
-    data(session_schedule)
+    render(session_schedule)
   end
 
-  def data(session_schedule) do
+  def render(session_schedule) do
     %{
       id: session_schedule.id,
       day_of_week: session_schedule.day_of_week,

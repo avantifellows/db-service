@@ -1,13 +1,13 @@
 defmodule DbserviceWeb.ProgramJSON do
   def index(%{program: program}) do
-    for(p <- program, do: data(p))
+    for(p <- program, do: render(p))
   end
 
   def show(%{program: program}) do
-    data(program)
+    render(program)
   end
 
-  def data(program) do
+  def render(program) do
     %{
       id: program.id,
       name: program.name,

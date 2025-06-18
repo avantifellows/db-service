@@ -1,13 +1,13 @@
 defmodule DbserviceWeb.ChapterJSON do
   def index(%{chapter: chapter}) do
-    for(c <- chapter, do: data(c))
+    for(c <- chapter, do: render(c))
   end
 
   def show(%{chapter: chapter}) do
-    data(chapter)
+    render(chapter)
   end
 
-  defp data(chapter) do
+  defp render(chapter) do
     %{
       id: chapter.id,
       name: chapter.name,

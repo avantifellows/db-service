@@ -2,18 +2,18 @@ defmodule DbserviceWeb.TeacherJSON do
   alias DbserviceWeb.UserJSON
 
   def index(%{teacher: teacher}) do
-    for(t <- teacher, do: data(t))
+    for(t <- teacher, do: render(t))
   end
 
   def show(%{teacher: teacher}) do
-    data(teacher)
+    render(teacher)
   end
 
   def show_teacher_with_user(%{teacher: teacher}) do
     teacher_with_user(teacher)
   end
 
-  def data(teacher) do
+  def render(teacher) do
     %{
       id: teacher.id,
       designation: teacher.designation,
@@ -36,7 +36,7 @@ defmodule DbserviceWeb.TeacherJSON do
       program_manager_id: teacher.program_manager_id,
       school_id: teacher.school_id,
       user_id: teacher.user_id,
-      user: if(teacher.user, do: UserJSON.data(teacher.user), else: nil)
+      user: if(teacher.user, do: UserJSON.render(teacher.user), else: nil)
     }
   end
 end
