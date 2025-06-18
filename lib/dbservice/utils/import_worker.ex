@@ -201,8 +201,6 @@ defmodule Dbservice.DataImport.ImportWorker do
     end
   end
 
-  
-
   defp parse_csv_records(path, start_row) do
     try do
       records =
@@ -377,6 +375,4 @@ defmodule Dbservice.DataImport.ImportWorker do
         end
     end
   end
-
-
 end
