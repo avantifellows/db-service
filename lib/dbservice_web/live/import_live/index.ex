@@ -8,15 +8,12 @@ defmodule DbserviceWeb.ImportLive.Index do
   def mount(_params, _session, socket) do
     imports = DataImport.list_imports()
 
-    timer_ref =
-      if connected?(socket) && Enum.any?(imports, &(&1.status in ["pending", "processing"])) do
-        {:ok, timer} = :timer.send_interval(1000, self(), :update_imports)
-        timer
-      else
-        nil
-      end
+    # Subscribe to import updates
+    if connected?(socket) do
+      Phoenix.PubSub.subscribe(Dbservice.PubSub, "imports")
+    end
 
-    {:ok, assign(socket, imports: imports, timer_ref: timer_ref)}
+    {:ok, assign(socket, imports: imports)}
   end
 
   @impl true
@@ -30,24 +27,10 @@ defmodule DbserviceWeb.ImportLive.Index do
   end
 
   @impl true
-  def handle_info(:update_imports, socket) do
+  def handle_info({:import_updated, _import_id}, socket) do
+    # Refresh the imports list when any import is updated
     imports = DataImport.list_imports()
-
-    # Check if we should continue updating or cancel the timer
-    current_timer_ref = socket.assigns.timer_ref
-
-    {new_timer_ref} =
-      if not Enum.any?(imports, &(&1.status in ["pending", "processing"])) && current_timer_ref do
-        # No more processing imports, cancel the timer
-        :timer.cancel(current_timer_ref)
-        {nil}
-      else
-        {current_timer_ref}
-      end
-
-    socket = clear_flash(socket)
-
-    {:noreply, assign(socket, imports: imports, timer_ref: new_timer_ref)}
+    {:noreply, assign(socket, imports: imports)}
   end
 
   defp apply_action(socket, :index, _params) do
@@ -62,17 +45,6 @@ defmodule DbserviceWeb.ImportLive.Index do
   def render(assigns) do
     ~H"""
     <div class="min-h-screen bg-gradient-to-br from-gray-50 to-gray-100 dark:from-gray-900 dark:to-gray-800">
-      <%= if live_flash(@flash, :info) do %>
-        <div id="flash-info" class="fixed top-6 left-1/2 transform -translate-x-1/2 z-50" phx-hook="AutoDismiss">
-          <div class="bg-emerald-600 backdrop-blur-sm border border-emerald-400/30 text-white px-6 py-3 rounded-xl shadow-lg text-sm flex items-center space-x-3 animate-fade-in-down">
-            <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 text-emerald-300" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4" />
-            </svg>
-            <span class="font-medium"><%= live_flash(@flash, :info) %></span>
-          </div>
-        </div>
-      <% end %>
-
       <div class="max-w-7xl mx-auto px-3 py-6 sm:px-6 sm:py-10 lg:px-8">
         <!-- Header with glass morphism effect -->
         <div class="mb-6 sm:mb-10 backdrop-blur-sm bg-white/80 dark:bg-gray-800/80 rounded-xl sm:rounded-2xl p-4 sm:p-6 shadow-lg border border-gray-100 dark:border-gray-700">
@@ -81,14 +53,14 @@ defmodule DbserviceWeb.ImportLive.Index do
               DATA IMPORTS
             </h1>
 
-            <%= live_redirect to: Routes.live_path(@socket, DbserviceWeb.ImportLive.New),
-                class: "w-full sm:w-auto group relative flex items-center justify-center px-4 sm:px-6 py-2 sm:py-3 overflow-hidden rounded-xl bg-gradient-to-r from-indigo-600 to-violet-600 text-white font-medium transition-all duration-300 hover:scale-105 hover:shadow-lg" do %>
+            <.link navigate={~p"/imports/new"}
+                class="w-full sm:w-auto group relative flex items-center justify-center px-4 sm:px-6 py-2 sm:py-3 overflow-hidden rounded-xl bg-gradient-to-r from-indigo-600 to-violet-600 text-white font-medium transition-all duration-300 hover:scale-105 hover:shadow-lg">
               <span class="absolute inset-0 bg-white/10 opacity-0 transition-opacity group-hover:opacity-100"></span>
               <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4" />
               </svg>
               New Import
-            <% end %>
+            </.link>
           </div>
         </div>
 
@@ -178,14 +150,14 @@ defmodule DbserviceWeb.ImportLive.Index do
                         <%= format_date(import.inserted_at) %> at <%= format_time(import.inserted_at) %>
                       </div>
                       <div>
-                        <%= live_redirect to: Routes.live_path(@socket, DbserviceWeb.ImportLive.Show, import.id),
-                            class: "inline-flex items-center justify-center p-2 rounded-lg text-indigo-600 hover:text-indigo-800 hover:bg-indigo-100 dark:text-indigo-400 dark:hover:text-indigo-300 dark:hover:bg-indigo-900/30 transition-colors" do %>
+                        <.link navigate={~p"/imports/#{import.id}"}
+                            class="inline-flex items-center justify-center p-2 rounded-lg text-indigo-600 hover:text-indigo-800 hover:bg-indigo-100 dark:text-indigo-400 dark:hover:text-indigo-300 dark:hover:bg-indigo-900/30 transition-colors">
                           <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
                             <path d="M10 12a2 2 0 100-4 2 2 0 000 4z" />
                             <path fill-rule="evenodd" d="M.458 10C1.732 5.943 5.522 3 10 3s8.268 2.943 9.542 7c-1.274 4.057-5.064 7-9.542 7S1.732 14.057.458 10zM14 10a4 4 0 11-8 0 4 4 0 018 0z" clip-rule="evenodd" />
                           </svg>
                           <span class="sr-only">View</span>
-                        <% end %>
+                        </.link>
                       </div>
                     </div>
                   </div>
@@ -250,14 +222,14 @@ defmodule DbserviceWeb.ImportLive.Index do
                       </td>
                       <td class="px-4 sm:px-6 py-3 sm:py-4 whitespace-nowrap text-sm">
                         <div class="flex space-x-2">
-                          <%= live_redirect to: Routes.live_path(@socket, DbserviceWeb.ImportLive.Show, import.id),
-                              class: "inline-flex items-center justify-center p-2 rounded-lg text-indigo-600 hover:text-indigo-800 hover:bg-indigo-100 dark:text-indigo-400 dark:hover:text-indigo-300 dark:hover:bg-indigo-900/30 transition-colors" do %>
+                          <.link navigate={~p"/imports/#{import.id}"}
+                              class="inline-flex items-center justify-center p-2 rounded-lg text-indigo-600 hover:text-indigo-800 hover:bg-indigo-100 dark:text-indigo-400 dark:hover:text-indigo-300 dark:hover:bg-indigo-900/30 transition-colors">
                             <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
                               <path d="M10 12a2 2 0 100-4 2 2 0 000 4z" />
                               <path fill-rule="evenodd" d="M.458 10C1.732 5.943 5.522 3 10 3s8.268 2.943 9.542 7c-1.274 4.057-5.064 7-9.542 7S1.732 14.057.458 10zM14 10a4 4 0 11-8 0 4 4 0 018 0z" clip-rule="evenodd" />
                             </svg>
                             <span class="sr-only">View</span>
-                          <% end %>
+                          </.link>
                         </div>
                       </td>
                     </tr>

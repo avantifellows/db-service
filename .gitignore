@@ -36,3 +36,6 @@ mix.lock
 
 # Ignore uploades folder
 /priv/static/uploads
+
+# Ignore ElixirLS files
+.elixir_ls
