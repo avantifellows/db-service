@@ -23,7 +23,7 @@ jobs:
         options: --health-cmd pg_isready --health-interval 10s --health-timeout 5s --health-retries 5
 
     steps:
-      - uses: actions/checkout@v2
+      - uses: actions/checkout@v4
       - uses: erlef/setup-elixir@v1
         with:
           otp-version: ${{ matrix.otp }}
@@ -31,9 +31,9 @@ jobs:
           experimental-otp: true
 
       - name: Setup Node
-        uses: actions/setup-node@v1
+        uses: actions/setup-node@v4
         with:
-          node-version: 13.8.0
+          node-version: 18
 
       - uses: actions/cache@v4
         id: deps-cache
@@ -59,6 +59,7 @@ jobs:
             ${{ runner.os }}-yarn-
       - name: Install deps
         run: |
+          mix deps.clean --all
           mix deps.get
           (cd assets && yarn)
       - name: Check formatting
