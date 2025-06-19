@@ -60,7 +60,7 @@ defmodule Dbservice.MixProject do
       {:tailwind, "~> 0.3.1", runtime: Mix.env() == :dev},
       {:phoenix_live_view, "~> 1.0.10"},
       {:esbuild, "~> 0.9", runtime: Mix.env() == :dev},
-      {:hackney, "~> 1.23.0"},
+      {:hackney, "~> 1.24.1"},
       {:google_api_sheets, "~> 0.35.0"},
       {:goth, "~> 1.4.5"},
       {:phoenix_html, "~> 4.1"}
