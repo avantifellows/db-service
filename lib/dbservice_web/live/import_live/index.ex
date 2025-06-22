@@ -34,37 +34,7 @@ defmodule DbserviceWeb.ImportLive.Index do
     # Check if this import just failed and show a notification
     updated_import = Enum.find(imports, &(&1.id == import_id))
 
-    socket =
-      case updated_import do
-        %{status: "failed"} = import ->
-          # Extract the first error message for the toast
-          error_message =
-            case import.error_details do
-              [%{"error" => error} | _] when is_binary(error) ->
-                String.slice(error, 0, 100) <> if String.length(error) > 100, do: "...", else: ""
-
-              [%{error: error} | _] ->
-                error_str = inspect(error)
-
-                String.slice(error_str, 0, 100) <>
-                  if String.length(error_str) > 100, do: "...", else: ""
-
-              _ ->
-                "Import failed with unknown error"
-            end
-
-          put_flash(socket, :error, "Import ##{import.id} failed: #{error_message}")
-
-        %{status: "completed"} = import ->
-          put_flash(
-            socket,
-            :info,
-            "Import ##{import.id} completed successfully! Processed #{import.processed_rows} records."
-          )
-
-        _ ->
-          socket
-      end
+    socket = handle_import_notification(socket, updated_import)
 
     {:noreply, assign(socket, imports: imports)}
   end
@@ -386,5 +356,43 @@ defmodule DbserviceWeb.ImportLive.Index do
       <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
     </svg>
     """)
+  end
+
+  # Helper function to handle import notifications and reduce nesting
+  defp handle_import_notification(socket, %{status: "failed"} = import) do
+    error_message = extract_error_message(import.error_details)
+    put_flash(socket, :error, "Import ##{import.id} failed: #{error_message}")
+  end
+
+  defp handle_import_notification(socket, %{status: "completed"} = import) do
+    put_flash(
+      socket,
+      :info,
+      "Import ##{import.id} completed successfully! Processed #{import.processed_rows} records."
+    )
+  end
+
+  defp handle_import_notification(socket, _import), do: socket
+
+  # Helper function to extract error message from error_details
+  defp extract_error_message([%{"error" => error} | _]) when is_binary(error) do
+    truncate_message(error)
+  end
+
+  defp extract_error_message([%{error: error} | _]) do
+    error
+    |> inspect()
+    |> truncate_message()
+  end
+
+  defp extract_error_message(_), do: "Import failed with unknown error"
+
+  # Helper function to truncate long messages
+  defp truncate_message(message) when is_binary(message) do
+    if String.length(message) > 100 do
+      String.slice(message, 0, 100) <> "..."
+    else
+      message
+    end
   end
 end
