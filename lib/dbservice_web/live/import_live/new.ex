@@ -42,7 +42,7 @@ defmodule DbserviceWeb.ImportLive.New do
       {:ok, _import} ->
         {:noreply,
          socket
-         |> put_flash(:info, "Import submitted successfully!")
+         |> put_flash(:info, "Import queued successfully! Processing will begin shortly. Check the imports page for progress updates.")
          |> push_navigate(to: ~p"/imports")}
 
       {:error, reason} when is_binary(reason) ->
@@ -56,13 +56,35 @@ defmodule DbserviceWeb.ImportLive.New do
          assign(socket,
            changeset: changeset,
            submitted: false
-         )}
+         )
+         |> put_flash(:error, "Import failed: #{reason}")}
+
+      {:error, %Ecto.Changeset{} = changeset} ->
+        {:noreply,
+         assign(socket,
+           changeset: Map.put(changeset, :action, :validate),
+           submitted: false
+         )
+         |> put_flash(:error, "Please fix the validation errors and try again.")}
+
+      {:error, reason} ->
+        error_message =
+          case reason do
+            %{message: msg} -> msg
+            _ -> "An unexpected error occurred. Please try again."
+          end
+
+        {:noreply,
+         assign(socket, submitted: false)
+         |> put_flash(:error, "Import failed: #{error_message}")}
     end
   end
 
   defp handle_save(_, socket) do
     IO.puts("Unexpected empty parameters received!")
-    {:noreply, assign(socket, submitted: false)}
+    {:noreply,
+     assign(socket, submitted: false)
+     |> put_flash(:error, "Invalid form submission. Please try again.")}
   end
 
   def render(assigns) do
