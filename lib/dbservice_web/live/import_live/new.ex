@@ -42,7 +42,10 @@ defmodule DbserviceWeb.ImportLive.New do
       {:ok, _import} ->
         {:noreply,
          socket
-         |> put_flash(:info, "Import queued successfully! Processing will begin shortly. Check the imports page for progress updates.")
+         |> put_flash(
+           :info,
+           "Import queued successfully! Processing will begin shortly. Check the imports page for progress updates."
+         )
          |> push_navigate(to: ~p"/imports")}
 
       {:error, reason} ->
