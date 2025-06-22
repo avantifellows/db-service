@@ -10,7 +10,8 @@ defmodule DbserviceWeb.ImportLive.New do
      assign(socket,
        changeset: changeset,
        form: form,
-       submitted: false
+       submitted: false,
+       page_title: "New Import"
      )}
   end
 
