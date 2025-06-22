@@ -42,7 +42,10 @@ defmodule DbserviceWeb.ImportLive.New do
       {:ok, _import} ->
         {:noreply,
          socket
-         |> put_flash(:info, "Import queued successfully! Processing will begin shortly. Check the imports page for progress updates.")
+         |> put_flash(
+           :info,
+           "Import queued successfully! Processing will begin shortly. Check the imports page for progress updates."
+         )
          |> push_navigate(to: ~p"/imports")}
 
       {:error, reason} when is_binary(reason) ->
@@ -82,6 +85,7 @@ defmodule DbserviceWeb.ImportLive.New do
 
   defp handle_save(_, socket) do
     IO.puts("Unexpected empty parameters received!")
+
     {:noreply,
      assign(socket, submitted: false)
      |> put_flash(:error, "Invalid form submission. Please try again.")}

@@ -38,20 +38,29 @@ defmodule DbserviceWeb.ImportLive.Index do
       case updated_import do
         %{status: "failed"} = import ->
           # Extract the first error message for the toast
-          error_message = case import.error_details do
-            [%{"error" => error} | _] when is_binary(error) ->
-              String.slice(error, 0, 100) <> if String.length(error) > 100, do: "...", else: ""
-            [%{error: error} | _] ->
-              error_str = inspect(error)
-              String.slice(error_str, 0, 100) <> if String.length(error_str) > 100, do: "...", else: ""
-            _ ->
-              "Import failed with unknown error"
-          end
+          error_message =
+            case import.error_details do
+              [%{"error" => error} | _] when is_binary(error) ->
+                String.slice(error, 0, 100) <> if String.length(error) > 100, do: "...", else: ""
+
+              [%{error: error} | _] ->
+                error_str = inspect(error)
+
+                String.slice(error_str, 0, 100) <>
+                  if String.length(error_str) > 100, do: "...", else: ""
+
+              _ ->
+                "Import failed with unknown error"
+            end
 
           put_flash(socket, :error, "Import ##{import.id} failed: #{error_message}")
 
         %{status: "completed"} = import ->
-          put_flash(socket, :info, "Import ##{import.id} completed successfully! Processed #{import.processed_rows} records.")
+          put_flash(
+            socket,
+            :info,
+            "Import ##{import.id} completed successfully! Processed #{import.processed_rows} records."
+          )
 
         _ ->
           socket
