@@ -28,7 +28,9 @@ defmodule DbserviceWeb.AuthenticationMiddleware do
     if api_key == ["Bearer " <> env!("BEARER_TOKEN", :string!)] ||
          contains_swagger_request?(referer, request_path) ||
          contains_phoneix_livedashboard?(referer, request_path) ||
-         contains_imports_path?(request_path) do
+         contains_imports_path?(request_path) ||
+         contains_assets_path?(request_path) ||
+         contains_favicon_path?(request_path) do
       conn
     else
       conn
@@ -47,5 +49,13 @@ defmodule DbserviceWeb.AuthenticationMiddleware do
 
   defp contains_imports_path?(request_path) do
     String.contains?(request_path, "/imports")
+  end
+
+  defp contains_assets_path?(request_path) do
+    String.contains?(request_path, "/assets")
+  end
+
+  defp contains_favicon_path?(request_path) do
+    String.contains?(request_path, "/favicon.ico")
   end
 end

@@ -81,6 +81,7 @@ defmodule Dbservice.MixProject do
       test: ["ecto.create --quiet", "ecto.migrate --quiet", "test"],
       "assets.deploy": [
         "tailwind dbservice --minify",
+        "esbuild default --minify",
         "phx.digest"
       ]
     ]
