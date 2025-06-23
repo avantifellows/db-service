@@ -34,8 +34,8 @@ mix.lock
 # Ignore node_modules
 /assets/node_modules
 
-# Ignore uploades folder
-/priv/static/uploads
+# Static asset builds
+priv/static
 
 # Ignore ElixirLS files
 .elixir_ls
