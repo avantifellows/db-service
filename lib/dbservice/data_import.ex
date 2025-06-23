@@ -7,12 +7,6 @@ defmodule Dbservice.DataImport do
   alias Dbservice.Repo
   alias Dbservice.DataImport.Import
   alias Dbservice.DataImport.ImportWorker
-  @ets_table :import_submission_tokens
-
-  # Initialize ETS table when the module starts
-  def init_token_tracker do
-    :ets.new(@ets_table, [:set, :public, :named_table])
-  end
 
   @doc """
   Returns the list of Import.
@@ -71,61 +65,32 @@ defmodule Dbservice.DataImport do
   def start_import(%{
         "sheet_url" => url,
         "type" => type,
-        "start_row" => start_row,
-        "submission_token" => token
+        "start_row" => start_row
       })
       when url != "" do
-    case check_token(token) do
-      :not_processed ->
-        # Mark token as processed
-        mark_token_processed(token)
+    start_row = String.to_integer(start_row)
 
-        # Existing implementation
-        start_row = String.to_integer(start_row)
+    case download_google_sheet(url) do
+      {:ok, filename} ->
+        {:ok, import_record} =
+          create_import(%{
+            filename: filename,
+            status: "pending",
+            type: type,
+            total_rows: 0,
+            processed_rows: 0,
+            start_row: start_row
+          })
 
-        case download_google_sheet(url) do
-          {:ok, filename} ->
-            {:ok, import_record} =
-              create_import(%{
-                filename: filename,
-                status: "pending",
-                type: type,
-                total_rows: 0,
-                processed_rows: 0,
-                start_row: start_row
-              })
+        %{id: import_record.id}
+        |> ImportWorker.new()
+        |> Oban.insert()
 
-            %{id: import_record.id}
-            |> ImportWorker.new()
-            |> Oban.insert()
+        {:ok, import_record}
 
-            {:ok, import_record}
-
-          {:error, reason} ->
-            # If download fails, unmark the token so it can be retried
-            unmark_token(token)
-            {:error, "Failed to download sheet: #{reason}"}
-        end
-
-      :already_processed ->
-        {:error, "This form has already been submitted"}
+      {:error, reason} ->
+        {:error, "Failed to download sheet: #{reason}"}
     end
-  end
-
-  # Token management functions
-  defp check_token(token) do
-    case :ets.lookup(@ets_table, token) do
-      [] -> :not_processed
-      _ -> :already_processed
-    end
-  end
-
-  defp mark_token_processed(token) do
-    :ets.insert(@ets_table, {token, true})
-  end
-
-  defp unmark_token(token) do
-    :ets.delete(@ets_table, token)
   end
 
   @doc """
@@ -145,7 +110,7 @@ defmodule Dbservice.DataImport do
         {:error, reason} ->
           # Log the error but don't fail the import process
           require Logger
-          Logger.warn("Failed to delete import file #{path}: #{inspect(reason)}")
+          Logger.warning("Failed to delete import file #{path}: #{inspect(reason)}")
           {:error, "Failed to delete file: #{inspect(reason)}"}
       end
     else
@@ -169,6 +134,9 @@ defmodule Dbservice.DataImport do
         completed_at: DateTime.utc_now()
       })
 
+    # Broadcast completion update
+    Phoenix.PubSub.broadcast(Dbservice.PubSub, "imports", {:import_updated, import_record.id})
+
     # Clean up the file
     cleanup_import_file(updated_import)
 
@@ -188,6 +156,9 @@ defmodule Dbservice.DataImport do
         error_details: [%{error: reason}],
         completed_at: DateTime.utc_now()
       })
+
+    # Broadcast failure update
+    Phoenix.PubSub.broadcast(Dbservice.PubSub, "imports", {:import_updated, import_record.id})
 
     # Clean up the file
     cleanup_import_file(updated_import)

@@ -56,7 +56,7 @@ defmodule DbserviceWeb.TeacherProfileController do
       end)
 
     teacher_profile = Repo.all(query) |> Repo.preload([:user_profile])
-    render(conn, "index.json", teacher_profile: teacher_profile)
+    render(conn, :index, teacher_profile: teacher_profile)
   end
 
   swagger_path :show do
@@ -71,7 +71,12 @@ defmodule DbserviceWeb.TeacherProfileController do
 
   def show(conn, %{"id" => id}) do
     teacher_profile = Profiles.get_teacher_profile!(id)
-    render(conn, "show.json", teacher_profile: teacher_profile)
+
+    render(
+      conn,
+      :show_teacher_profile_with_user_profile,
+      teacher_profile: teacher_profile
+    )
   end
 
   swagger_path :update do
@@ -95,7 +100,11 @@ defmodule DbserviceWeb.TeacherProfileController do
              user_profile,
              params
            ) do
-      render(conn, "show.json", teacher_profile: teacher_profile)
+      render(
+        conn,
+        :show_teacher_profile_with_user_profile,
+        teacher_profile: teacher_profile
+      )
     end
   end
 
@@ -146,7 +155,10 @@ defmodule DbserviceWeb.TeacherProfileController do
            Profiles.create_teacher_profile_with_user_profile(updated_params) do
       conn
       |> put_status(:created)
-      |> render("show.json", teacher_profile: teacher_profile)
+      |> render(
+        :show_teacher_profile_with_user_profile,
+        teacher_profile: teacher_profile
+      )
     end
   end
 end

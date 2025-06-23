@@ -52,7 +52,7 @@ defmodule DbserviceWeb.CurriculumController do
       end)
 
     curriculum = Repo.all(query)
-    render(conn, "index.json", curriculum: curriculum)
+    render(conn, :index, curriculum: curriculum)
   end
 
   swagger_path :create do
@@ -87,7 +87,7 @@ defmodule DbserviceWeb.CurriculumController do
 
   def show(conn, %{"id" => id}) do
     curriculum = Curriculums.get_curriculum!(id)
-    render(conn, "show.json", curriculum: curriculum)
+    render(conn, :show, curriculum: curriculum)
   end
 
   swagger_path :update do
@@ -105,7 +105,7 @@ defmodule DbserviceWeb.CurriculumController do
     curriculum = Curriculums.get_curriculum!(params["id"])
 
     with {:ok, %Curriculum{} = curriculum} <- Curriculums.update_curriculum(curriculum, params) do
-      render(conn, "show.json", curriculum: curriculum)
+      render(conn, :show, curriculum: curriculum)
     end
   end
 
@@ -131,8 +131,8 @@ defmodule DbserviceWeb.CurriculumController do
     with {:ok, %Curriculum{} = curriculum} <- Curriculums.create_curriculum(params) do
       conn
       |> put_status(:created)
-      |> put_resp_header("location", Routes.curriculum_path(conn, :show, curriculum))
-      |> render("show.json", curriculum: curriculum)
+      |> put_resp_header("location", ~p"/api/curriculum/#{curriculum}")
+      |> render(:show, curriculum: curriculum)
     end
   end
 
@@ -141,7 +141,7 @@ defmodule DbserviceWeb.CurriculumController do
            Curriculums.update_curriculum(existing_curriculum, params) do
       conn
       |> put_status(:ok)
-      |> render("show.json", curriculum: curriculum)
+      |> render(:show, curriculum: curriculum)
     end
   end
 end

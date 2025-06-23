@@ -1,34 +1,21 @@
 const Hooks = {
-  AutoDismiss: {
+  HideFlash: {
     mounted() {
-      // Fade in: slight delay for animation
-      this.el.style.transition = "opacity 0.3s ease, transform 0.3s ease";
-      this.el.style.opacity = "0";
-      this.el.style.transform = "translateY(-10px)";
-
       setTimeout(() => {
-        this.el.style.opacity = "1";
-        this.el.style.transform = "translateY(0)";
-      }, 10);
-
-      // Auto fade out after 3 seconds
-      setTimeout(() => {
-        this.fadeOut();
+        if (this.el) {
+          console.log("Auto-hiding flash message");
+          // Add fade out animation
+          this.el.style.transition = 'opacity 0.5s ease-out';
+          this.el.style.opacity = '0';
+          
+          // Remove the element after animation completes
+          setTimeout(() => {
+            if (this.el && this.el.parentNode) {
+              this.el.parentNode.removeChild(this.el);
+            }
+          }, 500);
+        }
       }, 3000);
-
-      // Optional: allow external "close" event
-      this.handleEvent("close", () => {
-        this.fadeOut();
-      });
-    },
-
-    fadeOut() {
-      this.el.style.transition = "opacity 0.3s ease, transform 0.3s ease";
-      this.el.style.opacity = "0";
-      this.el.style.transform = "translateY(-10px)";
-      setTimeout(() => {
-        this.el.remove();
-      }, 300); // Give time for transition to complete
     }
   }
 };

@@ -50,7 +50,7 @@ defmodule DbserviceWeb.StatusController do
       end)
 
     status = Repo.all(query)
-    render(conn, "index.json", status: status)
+    render(conn, :index, status: status)
   end
 
   swagger_path :create do
@@ -67,8 +67,8 @@ defmodule DbserviceWeb.StatusController do
     with {:ok, %Status{} = status} <- Statuses.create_status(params) do
       conn
       |> put_status(:created)
-      |> put_resp_header("location", Routes.status_path(conn, :show, status))
-      |> render("show.json", status: status)
+      |> put_resp_header("location", ~p"/api/status/#{status}")
+      |> render(:show, status: status)
     end
   end
 
@@ -85,7 +85,7 @@ defmodule DbserviceWeb.StatusController do
   @spec show(Plug.Conn.t(), map()) :: Plug.Conn.t()
   def show(conn, %{"id" => id}) do
     status = Statuses.get_status!(id)
-    render(conn, "show.json", status: status)
+    render(conn, :show, status: status)
   end
 
   swagger_path :update do
@@ -103,7 +103,7 @@ defmodule DbserviceWeb.StatusController do
     status = Statuses.get_status!(params["id"])
 
     with {:ok, %Status{} = status} <- Statuses.update_status(status, params) do
-      render(conn, "show.json", status: status)
+      render(conn, :show, status: status)
     end
   end
 

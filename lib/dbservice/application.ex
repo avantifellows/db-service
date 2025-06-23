@@ -9,7 +9,6 @@ defmodule Dbservice.Application do
 
   @impl true
   def start(_type, _args) do
-    Dbservice.DataImport.init_token_tracker()
     source(["config/.env"])
 
     # Read and decode the JSON file

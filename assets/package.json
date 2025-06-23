@@ -1,6 +1,7 @@
 {
   "scripts": {
-    "deploy": "cd .. && rm -f _build/esbuild* && mix assets.deploy"
+    "deploy": "cd .. && rm -f _build/esbuild* && mix assets.deploy",
+    "test": "echo \"No tests yet\""
   },
   "dependencies": {
     "phoenix": "^1.6.6",
