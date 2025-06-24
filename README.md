@@ -1,6 +1,6 @@
 # Dbservice
 
-A Phoenix-based database service application with Google Sheets integration and comprehensive API documentation.
+A Phoenix-based database service application with LiveView UI for data imports and comprehensive API documentation.
 
 ## Quick Start
 

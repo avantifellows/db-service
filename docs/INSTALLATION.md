@@ -99,8 +99,13 @@ That's it! Tailwind CSS is now ready to use in your Phoenix application.
 
 ## Asset Management
 
-### Production Asset Compilation
-To compile and optimize assets for production, run:
+This project uses Tailwind CSS and esbuild for asset compilation. Asset management applies to both development and production environments.
+
+### Automatic Asset Compilation
+During development, assets are automatically compiled when you start the Phoenix server with `mix phx.server`.
+
+### Manual Asset Compilation
+You can manually compile and optimize assets for both development and production environments by running:
 
 ```bash
 mix assets.deploy
@@ -110,6 +115,7 @@ This command performs the following operations:
 1. **`tailwind dbservice --minify`** - Compiles and minifies Tailwind CSS
 2. **`esbuild default --minify`** - Compiles and minifies JavaScript with esbuild
 3. **`phx.digest`** - Generates digested asset files with fingerprints for cache busting
+
 
 ## Environment Configuration
 
