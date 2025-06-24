@@ -97,6 +97,19 @@ mix tailwind.install
 
 That's it! Tailwind CSS is now ready to use in your Phoenix application.
 
+## Asset Management
+
+### Production Asset Compilation
+To compile and optimize assets for production, run:
+
+```bash
+mix assets.deploy
+```
+
+This command performs the following operations:
+1. **`tailwind dbservice --minify`** - Compiles and minifies Tailwind CSS
+2. **`esbuild default --minify`** - Compiles and minifies JavaScript with esbuild
+3. **`phx.digest`** - Generates digested asset files with fingerprints for cache busting
 
 ## Environment Configuration
 
@@ -105,18 +118,18 @@ This application requires specific environment variables to be configured for pr
 ### Setup Environment Variables
 
 1. **Copy the example environment file:**
-   ```bash
-   cp config/.env.example .env
-   ```
+  ```bash
+  cp config/.env.example config/.env
+  ```
 
-2. **Configure the required variables in your `.env` file:**
-   ```bash
-   BEARER_TOKEN="your_bearer_token"
-   PATH_TO_CREDENTIALS="/full/path/to/your/service-account.json"
-   ```
+2. **Configure the required variables in your `config/.env` file:**
+  ```bash
+  BEARER_TOKEN="your_bearer_token"
+  PATH_TO_CREDENTIALS="/full/path/to/your/service-account.json"
+  ```
 
-   - `BEARER_TOKEN` is used for API authentication
-   - `PATH_TO_CREDENTIALS` should point to the absolute path of your Google Cloud service account JSON file
+  - `BEARER_TOKEN` is used for API authentication.
+  - `PATH_TO_CREDENTIALS` should point to the absolute path of your Google Cloud service account JSON file.
 
 ### Google Cloud Service Account Setup
 
@@ -132,6 +145,26 @@ For features that interact with Google services (like importing data from Google
    - Give it Viewer access (read-only permissions are sufficient)
 
 This configuration allows the application to authenticate with Google Cloud Platform and access shared Google Sheets for data import operations.
+
+## Adding Data to Local Database
+
+For **internal developers (employees)**, you can sync your local database with the production or staging database by running:
+
+```bash
+sh ./fetch-data.sh
+```
+
+This script pulls data from the production/staging environment into your local setup.
+
+**Note:** Access to staging/production credentials is restricted to authorized personnel within the organization. Please contact the repository maintainers if you're an employee and require access.
+
+For external contributors, please use the seed data to populate your local database:
+
+```bash
+mix run priv/repo/seeds.exs
+```
+
+This ensures you have the necessary data to develop and test the application locally without needing access to production data.
 
 
 ## Editor Support
@@ -156,4 +189,5 @@ For enhanced development experience with Elixir, consider installing [`ElixirLS:
 |      any        |     1.15.5      |        Yes        |  Broken formatter [#975](https://github.com/elixir-lsp/elixir-ls/issues/975) |
 |      27         |    1.17 - 1.18  |        Yes        |                            None                            |
 |      28         |      1.18.4     |        Yes        |                            None                            |
+
 
