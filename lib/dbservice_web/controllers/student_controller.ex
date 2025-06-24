@@ -33,10 +33,7 @@ defmodule DbserviceWeb.StudentController do
           SwaggerSchemaStudent.student(),
           SwaggerSchemaStudent.students()
         ),
-        Map.merge(
-          SwaggerSchemaStudent.student_registration(),
-          SwaggerSchemaStudent.student_with_user()
-        )
+        SwaggerSchemaStudent.student_with_user()
       ),
       Map.merge(
         Map.merge(

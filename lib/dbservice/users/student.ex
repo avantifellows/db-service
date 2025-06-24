@@ -52,6 +52,7 @@ defmodule Dbservice.Users.Student do
     field(:status, :string)
     field(:board_stream, :string)
     field(:school_medium, :string)
+    field(:apaar_id, :string)
 
     belongs_to(:user, User)
     has_one(:student_profile, StudentProfile)
@@ -106,7 +107,8 @@ defmodule Dbservice.Users.Student do
       :planned_competitive_exams,
       :status,
       :board_stream,
-      :school_medium
+      :school_medium,
+      :apaar_id
     ])
     |> validate_required([:user_id])
   end

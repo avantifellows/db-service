@@ -151,14 +151,37 @@ defmodule DbserviceWeb.StudentProfileController do
       |> Map.put_new("user_id", user_id)
       |> Map.put_new("student_fk", student_fk)
 
+    case Profiles.get_student_profile_by_student_id(updated_params["student_id"]) do
+      nil ->
+        create_new_profile(conn, updated_params)
+
+      existing_profile ->
+        update_existing_profile(conn, existing_profile, updated_params)
+    end
+  end
+
+  defp create_new_profile(conn, params) do
     with {:ok, %StudentProfile{} = student_profile} <-
-           Profiles.create_student_profile_with_user_profile(updated_params) do
+           Profiles.create_student_profile_with_user_profile(params) do
       conn
       |> put_status(:created)
-      |> render(
-        :show_student_profile_with_user_profile,
-        student_profile: student_profile
-      )
+      |> put_resp_header("location", ~p"/api/student-profile/#{student_profile}")
+      |> render(:show, student_profile: student_profile)
+    end
+  end
+
+  defp update_existing_profile(conn, existing_profile, params) do
+    user_profile = Profiles.get_user_profile!(existing_profile.user_profile_id)
+
+    with {:ok, %StudentProfile{} = student_profile} <-
+           Profiles.update_student_profile_with_user_profile(
+             existing_profile,
+             user_profile,
+             params
+           ) do
+      conn
+      |> put_status(:ok)
+      |> render(:show, student_profile: student_profile)
     end
   end
 end
