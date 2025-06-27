@@ -37,5 +37,8 @@ mix.lock
 # Static asset builds
 priv/static
 
+# Keep favicon.ico
+!priv/static/favicon.ico
+
 # Ignore ElixirLS files
 .elixir_ls
