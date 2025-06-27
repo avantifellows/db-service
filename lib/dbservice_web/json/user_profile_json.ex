@@ -11,9 +11,6 @@ defmodule DbserviceWeb.UserProfileJSON do
     %{
       id: user_profile.id,
       user_id: user_profile.user_id,
-      current_grade: user_profile.current_grade,
-      current_program: user_profile.current_program,
-      current_batch: user_profile.current_batch,
       logged_in_atleast_once: user_profile.logged_in_atleast_once,
       latest_session_accessed: user_profile.latest_session_accessed
     }
