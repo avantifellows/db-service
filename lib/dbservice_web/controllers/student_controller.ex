@@ -13,7 +13,6 @@ defmodule DbserviceWeb.StudentController do
   alias Dbservice.EnrollmentRecords.EnrollmentRecord
   alias Dbservice.Statuses.Status
   alias Dbservice.Groups.Group
-  alias Dbservice.Batches.Batch
   alias Dbservice.GroupUsers
   alias Dbservice.Grades.Grade
   alias DbserviceWeb.EnrollmentRecordJSON
@@ -827,6 +826,11 @@ defmodule DbserviceWeb.StudentController do
 
     # Return the schema as a JSON response
     json(conn, %{"fields" => combined_fields})
+  end
+
+  defp get_fields(module) do
+    module.__schema__(:fields)
+    |> Enum.map(&Atom.to_string/1)
   end
 
   swagger_path :update_student_status do
