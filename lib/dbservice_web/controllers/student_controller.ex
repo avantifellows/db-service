@@ -268,7 +268,9 @@ defmodule DbserviceWeb.StudentController do
     start_date = params["start_date"]
 
     # Get batch information and enrolled status information
-    {batch_group_id, batch_id, batch_group_type} = BatchEnrollmentService.get_batch_info(params["batch_id"])
+    {batch_group_id, batch_id, batch_group_type} =
+      BatchEnrollmentService.get_batch_info(params["batch_id"])
+
     {status_id, status_group_type} = BatchEnrollmentService.get_enrolled_status_info()
 
     academic_year = params["academic_year"]
@@ -341,7 +343,8 @@ defmodule DbserviceWeb.StudentController do
 
   # Update grade in group_user
   defp update_group_user_grade(user_id, grade_group_id, group_users) do
-    grade_group_user = Enum.find(group_users, &BatchEnrollmentService.group_user_by_type?(&1, "grade"))
+    grade_group_user =
+      Enum.find(group_users, &BatchEnrollmentService.group_user_by_type?(&1, "grade"))
 
     if grade_group_user do
       GroupUsers.update_group_user(grade_group_user, %{group_id: grade_group_id})

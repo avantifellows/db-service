@@ -382,7 +382,8 @@ defmodule Dbservice.DataImport.ImportWorker do
     start_row = import_record.start_row || 2
 
     with {:ok, parsed_records} <- parse_batch_movement_csv_records(path, start_row),
-         {:ok, processed_records} <- process_parsed_batch_movement_records(parsed_records, import_record) do
+         {:ok, processed_records} <-
+           process_parsed_batch_movement_records(parsed_records, import_record) do
       finalize_import(import_record, processed_records)
     else
       {:error, reason} -> handle_import_error(import_record, reason)
@@ -416,6 +417,7 @@ defmodule Dbservice.DataImport.ImportWorker do
         {:error, "Unexpected error parsing CSV: #{inspect(error)}"}
     end
   end
+
   defp extract_batch_movement_fields(record) do
     # Extract and normalize the required fields for batch movement
     %{
@@ -425,6 +427,7 @@ defmodule Dbservice.DataImport.ImportWorker do
       "academic_year" => Map.get(record, "academic_year") || ""
     }
   end
+
   defp process_parsed_batch_movement_records(records, import_record) do
     Enum.reduce_while(records, {:ok, []}, fn {record, index}, {:ok, processed_records} ->
       case process_single_batch_movement_record(record, index, import_record) do
@@ -443,26 +446,25 @@ defmodule Dbservice.DataImport.ImportWorker do
     end
   end
 
-defp process_single_batch_movement_record(record, index, import_record) do
-  try do
-    case process_batch_movement_record(record) do
-      {:ok, _} = result ->
-        update_import_progress(import_record, index, :success)
-        result
+  defp process_single_batch_movement_record(record, index, import_record) do
+    try do
+      case process_batch_movement_record(record) do
+        {:ok, _} = result ->
+          update_import_progress(import_record, index, :success)
+          result
 
-      {:error, reason} = error ->
-        update_import_progress(import_record, index, :error, reason)
-        error
+        {:error, reason} = error ->
+          update_import_progress(import_record, index, :error, reason)
+          error
+      end
+    rescue
+      e ->
+        update_import_progress(import_record, index, :exception, e)
+        {:error, Exception.message(e)}
     end
-  rescue
-    e ->
-      update_import_progress(import_record, index, :exception, e)
-      {:error, Exception.message(e)}
   end
-end
 
-defp process_batch_movement_record(record) do
-  DataImport.BatchMovement.process_batch_movement(record)
-end
-
+  defp process_batch_movement_record(record) do
+    DataImport.BatchMovement.process_batch_movement(record)
+  end
 end
