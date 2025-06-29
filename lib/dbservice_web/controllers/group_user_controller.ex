@@ -242,14 +242,72 @@ defmodule DbserviceWeb.GroupUserController do
   end
 
   defp update_existing_group_user(conn, existing_group_user, params) do
-    case EnrollmentService.update_existing_group_user(existing_group_user, params) do
-      {:ok, group_user} ->
-        conn
-        |> put_status(:ok)
-        |> render(:show, group_user: group_user)
+    group = Groups.get_group!(params["group_id"])
 
-      error ->
-        error
+    if Map.has_key?(params, "academic_year") and group.type == "school" do
+      update_school_enrollment(
+        params["user_id"],
+        group.child_id,
+        params["academic_year"],
+        params["start_date"]
+      )
+
+      handle_enrollment_record(
+        params["user_id"],
+        group.child_id,
+        group.type,
+        params["academic_year"],
+        params["start_date"]
+      )
+    end
+
+    with {:ok, %GroupUser{} = group_user} <-
+           GroupUsers.update_group_user(existing_group_user, params) do
+      conn
+      |> put_status(:ok)
+      |> render("show.json", group_user: group_user)
+    end
+  end
+
+  defp update_school_enrollment(user_id, school_id, new_academic_year, end_date) do
+    from(er in EnrollmentRecord,
+      where:
+        er.user_id == ^user_id and
+          er.group_id == ^school_id and
+          er.group_type == "school" and
+          er.academic_year != ^new_academic_year and
+          er.is_current == true
+    )
+    |> Repo.all()
+    |> Enum.each(fn record ->
+      EnrollmentRecords.update_enrollment_record(record, %{
+        "is_current" => false,
+        "end_date" => end_date
+      })
+    end)
+  end
+
+  defp handle_enrollment_record(user_id, group_id, group_type, academic_year, start_date) do
+    enrollment_record =
+      from(er in EnrollmentRecord,
+        where:
+          er.user_id == ^user_id and
+            er.group_id == ^group_id and
+            er.group_type == ^group_type and
+            er.academic_year == ^academic_year
+      )
+      |> Repo.one()
+
+    if is_nil(enrollment_record) do
+      enrollment_record_params = %{
+        "group_id" => group_id,
+        "group_type" => group_type,
+        "user_id" => user_id,
+        "academic_year" => academic_year,
+        "start_date" => start_date
+      }
+
+      EnrollmentRecords.create_enrollment_record(enrollment_record_params)
     end
   end
 
@@ -276,5 +334,178 @@ defmodule DbserviceWeb.GroupUserController do
       failed: failed,
       results: results
     })
+  end
+
+  defp process_group_user(group_user_data) do
+    case group_user_data["enrollment_type"] do
+      "school" ->
+        handle_school_enrollment(group_user_data)
+
+      "batch" ->
+        handle_batch_enrollment(group_user_data)
+
+      "auth_group" ->
+        handle_group_user(group_user_data)
+
+      "grade" ->
+        handle_grade_enrollment(group_user_data)
+
+      _ ->
+        {:error, "Unknown enrollment type"}
+    end
+  end
+
+  defp handle_school_enrollment(group_user_data) do
+    case get_school_group_id(group_user_data["school_code"]) do
+      {:error, error_msg} ->
+        {:error, error_msg}
+
+      school_group_id ->
+        group_user_data
+        |> Map.put("group_id", school_group_id)
+        |> handle_group_user()
+    end
+  end
+
+  defp handle_batch_enrollment(group_user_data) do
+    case get_batch_group_id(group_user_data["batch_id"]) do
+      {:error, error_msg} ->
+        {:error, error_msg}
+
+      batch_group_id ->
+        group_user_data
+        |> Map.put("group_id", batch_group_id)
+        |> handle_group_user()
+    end
+  end
+
+  defp handle_grade_enrollment(group_user_data) do
+    case get_grade_group_id(group_user_data["grade_id"]) do
+      {:error, error_msg} ->
+        {:error, error_msg}
+
+      grade_group_id ->
+        group_user_data
+        |> Map.put("group_id", grade_group_id)
+        |> handle_group_user()
+    end
+  end
+
+  defp handle_group_user(group_user_data) do
+    case GroupUsers.get_group_user_by_user_id_and_group_id(
+           group_user_data["user_id"],
+           group_user_data["group_id"]
+         ) do
+      nil ->
+        create_new_group_user_from_batch(group_user_data)
+
+      existing_group_user ->
+        update_existing_group_user_from_batch(existing_group_user, group_user_data)
+    end
+  end
+
+  defp get_school_group_id(school_code) do
+    case Schools.get_school_by_code(school_code) do
+      nil ->
+        {:error, "School not found"}
+
+      school ->
+        case Groups.get_group_by_child_id_and_type(school.id, "school") do
+          nil ->
+            {:error, "School group not found"}
+
+          group ->
+            group.id
+        end
+    end
+  end
+
+  defp get_batch_group_id(batch_id) do
+    case Batches.get_batch_by_batch_id(batch_id) do
+      nil ->
+        {:error, "Batch not found"}
+
+      batch ->
+        case Groups.get_group_by_child_id_and_type(batch.id, "batch") do
+          nil ->
+            {:error, "Batch group not found"}
+
+          group ->
+            group.id
+        end
+    end
+  end
+
+  defp get_grade_group_id(grade_id) do
+    case Grades.get_grade!(grade_id) do
+      nil ->
+        {:error, "Grade not found"}
+
+      grade ->
+        case Groups.get_group_by_child_id_and_type(grade.id, "grade") do
+          nil ->
+            {:error, "Grade group not found"}
+
+          group ->
+            group.id
+        end
+    end
+  end
+
+  defp create_new_group_user_from_batch(params) do
+    group = Groups.get_group!(params["group_id"])
+
+    academic_year = resolve_academic_year(group.type, params)
+
+    enrollment_record = %{
+      "group_id" => group.child_id,
+      "group_type" => group.type,
+      "user_id" => params["user_id"],
+      "academic_year" => academic_year,
+      "start_date" => params["start_date"]
+    }
+
+    with {:ok, %EnrollmentRecord{} = _} <-
+           EnrollmentRecords.create_enrollment_record(enrollment_record),
+         {:ok, %GroupUser{} = group_user} <- GroupUsers.create_group_user(params) do
+      {:ok, group_user}
+    else
+      {:error, _changeset} -> {:error, "Failed to create group user. Some problem with changeset"}
+    end
+  end
+
+  defp update_existing_group_user_from_batch(existing_group_user, params) do
+    group = Groups.get_group!(params["group_id"])
+    today = Date.utc_today() |> Date.to_iso8601()
+
+    if Map.has_key?(params, "academic_year") and group.type == "school" do
+      update_school_enrollment(
+        params["user_id"],
+        group.child_id,
+        params["academic_year"],
+        today
+      )
+
+      handle_enrollment_record(
+        params["user_id"],
+        group.child_id,
+        group.type,
+        params["academic_year"],
+        today
+      )
+    end
+
+    case GroupUsers.update_group_user(existing_group_user, params) do
+      {:ok, group_user} -> {:ok, group_user}
+      {:error, _changeset} -> {:error, "Failed to update group user. Some problem with changeset"}
+    end
+  end
+
+  defp resolve_academic_year(group_type, params) do
+    if group_type == "auth_group" do
+      nil
+    else
+      params["academic_year"]
+    end
   end
 end

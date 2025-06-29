@@ -202,7 +202,8 @@ defmodule Dbservice.DataImport.ImportWorker do
     end
   end
 
-  defp parse_csv_records(path, start_row) do
+  # Generic CSV parsing function that accepts a field extraction function
+  defp parse_csv_records_with_extractor(path, start_row, field_extractor_fn) do
     try do
       records =
         path
@@ -216,8 +217,7 @@ defmodule Dbservice.DataImport.ImportWorker do
         )
         |> Stream.with_index(1)
         |> Stream.filter(fn {_record, index} -> index >= start_row - 1 end)
-        |> Stream.map(fn {record, index} -> {extract_fields(record), index} end)
-        |> Stream.map(fn {record, index} -> {map_fields(record), index} end)
+        |> Stream.map(fn {record, index} -> {field_extractor_fn.(record), index} end)
         |> Enum.to_list()
 
       {:ok, records}
@@ -228,6 +228,14 @@ defmodule Dbservice.DataImport.ImportWorker do
       error ->
         {:error, "Unexpected error parsing CSV: #{inspect(error)}"}
     end
+  end
+
+  defp parse_csv_records(path, start_row) do
+    parse_csv_records_with_extractor(path, start_row, fn record ->
+      record
+      |> extract_fields()
+      |> map_fields()
+    end)
   end
 
   defp process_parsed_records(records, import_record) do
@@ -392,30 +400,7 @@ defmodule Dbservice.DataImport.ImportWorker do
 
   # Batch movement specific functions
   defp parse_batch_movement_csv_records(path, start_row) do
-    try do
-      records =
-        path
-        |> File.stream!()
-        |> CSV.decode!(
-          separator: ?,,
-          escape_character: ?",
-          headers: true,
-          validate_row_length: false,
-          escape_max_lines: 2
-        )
-        |> Stream.with_index(1)
-        |> Stream.filter(fn {_record, index} -> index >= start_row - 1 end)
-        |> Stream.map(fn {record, index} -> {extract_batch_movement_fields(record), index} end)
-        |> Enum.to_list()
-
-      {:ok, records}
-    rescue
-      _e in CSV.StrayEscapeCharacterError ->
-        {:error, "CSV parsing failed: Stray escape character. Check file formatting."}
-
-      error ->
-        {:error, "Unexpected error parsing CSV: #{inspect(error)}"}
-    end
+    parse_csv_records_with_extractor(path, start_row, &extract_batch_movement_fields/1)
   end
 
   defp extract_batch_movement_fields(record) do
