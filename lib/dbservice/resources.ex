@@ -288,4 +288,36 @@ defmodule Dbservice.Resources do
   end
 
   def create_resource_curriculums_for_resource(_resource, _curriculum_grades), do: :ok
+
+  @doc """
+  Generates the next available resource code in the format P{7digitcode} (e.g., P0000001).
+  """
+  def generate_next_resource_code do
+    # Get the max code from the resource table that matches the pattern
+    query =
+      from(r in Resource,
+        where: like(r.code, "P%"),
+        select: r.code,
+        order_by: [desc: r.code],
+        limit: 1
+      )
+
+    case Repo.one(query) do
+      nil ->
+        "P0000001"
+
+      max_code ->
+        # Extract the numeric part and increment
+        <<"P", num::binary>> = max_code
+
+        next_num =
+          num
+          |> String.to_integer()
+          |> Kernel.+(1)
+          |> Integer.to_string()
+          |> String.pad_leading(7, "0")
+
+        "P" <> next_num
+    end
+  end
 end

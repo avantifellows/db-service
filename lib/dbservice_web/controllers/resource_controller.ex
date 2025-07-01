@@ -11,6 +11,7 @@ defmodule DbserviceWeb.ResourceController do
   alias Dbservice.Utils.Util
   alias Dbservice.Languages.Language
   alias Dbservice.Resources.ProblemLanguage
+  alias Dbservice.Tags
 
   action_fallback(DbserviceWeb.FallbackController)
 
@@ -208,12 +209,80 @@ defmodule DbserviceWeb.ResourceController do
   defp create_new_resource(conn, params) do
     result =
       Repo.transaction(fn ->
+        # 1. Generate and add unique code
+        code = Resources.generate_next_resource_code()
+        params = Map.put(params, "code", code)
+
+        # 2. Resolve tag_ids (names to IDs, create if not exist)
+        tag_ids =
+          (params["tags"] || [])
+          |> Enum.map(fn tag ->
+            cond do
+              is_integer(tag) ->
+                tag
+
+              is_binary(tag) ->
+                case Tags.get_tag_by_name(tag) do
+                  nil ->
+                    {:ok, new_tag} = Tags.create_tag(%{"name" => tag})
+                    new_tag.id
+
+                  tag_struct ->
+                    tag_struct.id
+                end
+
+              true ->
+                tag
+            end
+          end)
+
+        params = Map.put(params, "tag_ids", tag_ids)
+
+        # 3. Create the resource
         with {:ok, %Resource{} = resource} <- Resources.create_resource(params),
              :ok <-
                Resources.create_resource_curriculums_for_resource(
                  resource,
                  params["curriculum_grades"]
                ) do
+          # 4. Insert into problem_lang if lang_code is present
+          if lang_code = params["lang_code"] do
+            language = Repo.get_by(Language, code: lang_code)
+
+            if language do
+              Dbservice.ProblemLanguages.create_problem_language(%{
+                res_id: resource.id,
+                lang_id: language.id
+              })
+            end
+          end
+
+          # 5. Insert into resource_chapter if chapter_id is present
+          if chapter_id = params["chapter_id"] do
+            Dbservice.ResourceChapters.create_resource_chapter(%{
+              resource_id: resource.id,
+              chapter_id: chapter_id
+            })
+          end
+
+          # 6. Insert into resource_topic if topic_id is present
+          if topic_id = params["topic_id"] do
+            Dbservice.ResourceTopics.create_resource_topic(%{
+              resource_id: resource.id,
+              topic_id: topic_id
+            })
+          end
+
+          # 7. Insert into resource_concept for each concept_id in concept_ids
+          if concept_ids = params["concept_ids"] do
+            Enum.each(concept_ids, fn concept_id ->
+              Dbservice.ResourceConcepts.create_resource_concept(%{
+                resource_id: resource.id,
+                concept_id: concept_id
+              })
+            end)
+          end
+
           resource
         else
           {:error, %Ecto.Changeset{} = changeset} ->
