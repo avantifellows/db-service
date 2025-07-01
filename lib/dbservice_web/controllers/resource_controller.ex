@@ -357,7 +357,7 @@ defmodule DbserviceWeb.ResourceController do
 
   @doc """
   Returns all problems for a specific test in a specific language.
-  
+
   GET /api/resource/test/:id/problems?lang_code=en&curriculum_id=1
   """
   def test_problems(conn, %{
@@ -469,7 +469,7 @@ defmodule DbserviceWeb.ResourceController do
 
   @doc """
   Get a specific problem by resource ID, language code and curriculum ID.
-  
+
   This endpoint returns problem data by joining the resource and problem_lang tables
   based on the provided problem_id, lang_code and curriculum_id parameters.
   """
