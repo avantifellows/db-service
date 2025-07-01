@@ -254,26 +254,23 @@ defmodule DbserviceWeb.ResourceController do
   end
 
   defp resolve_tag_ids(tags) do
-    Enum.map(tags, fn tag ->
-      cond do
-        is_integer(tag) ->
-          tag
-
-        is_binary(tag) ->
-          case Tags.get_tag_by_name(tag) do
-            nil ->
-              {:ok, new_tag} = Tags.create_tag(%{"name" => tag})
-              new_tag.id
-
-            tag_struct ->
-              tag_struct.id
-          end
-
-        true ->
-          tag
-      end
-    end)
+    Enum.map(tags, &resolve_tag_id/1)
   end
+
+  defp resolve_tag_id(tag) when is_integer(tag), do: tag
+
+  defp resolve_tag_id(tag) when is_binary(tag) do
+    case Tags.get_tag_by_name(tag) do
+      nil ->
+        {:ok, new_tag} = Tags.create_tag(%{"name" => tag})
+        new_tag.id
+
+      tag_struct ->
+        tag_struct.id
+    end
+  end
+
+  defp resolve_tag_id(tag), do: tag
 
   defp insert_problem_language(resource, %{"lang_code" => lang_code})
        when not is_nil(lang_code) do
