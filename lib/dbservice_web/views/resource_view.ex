@@ -11,19 +11,17 @@ defmodule DbserviceWeb.ResourceView do
 
   def render("index.json", %{resource: resources}) do
     Enum.map(resources, fn resource ->
-      cond do
-        Map.has_key?(resource, :type) and resource.type == "problem" ->
-          render("problem.json",
-            problem: %{
-              resource: resource,
-              resource_topic: %{},
-              resource_curriculum: %{},
-              problem_lang: %{}
-            }
-          )
-
-        true ->
-          render_one(resource, ResourceView, "resource.json")
+      if Map.has_key?(resource, :type) and resource.type == "problem" do
+        render("problem.json",
+          problem: %{
+            resource: resource,
+            resource_topic: %{},
+            resource_curriculum: %{},
+            problem_lang: %{}
+          }
+        )
+      else
+        render_one(resource, ResourceView, "resource.json")
       end
     end)
   end
