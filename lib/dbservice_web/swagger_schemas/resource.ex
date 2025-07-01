@@ -38,7 +38,7 @@ defmodule DbserviceWeb.SwaggerSchema.Resource do
               %{lang: "hi", value: "1. 9C01 परिचय - हमारे आस पास के पदार्थ"}
             ],
             type: "video",
-            type_params: %{"duration" => "45 minutes"},
+            type_params: %{"src_link" => "https://youtube.com/test_video"},
             subtype: "lecture",
             source: "youtube",
             code: "RES_001",

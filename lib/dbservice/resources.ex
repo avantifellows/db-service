@@ -185,6 +185,14 @@ defmodule Dbservice.Resources do
   end
 
   @doc """
+  Gets a resource by code.
+  Returns nil if not found.
+  """
+  def get_resource_by_code(code) do
+    Repo.get_by(Resource, code: code)
+  end
+
+  @doc """
   Creates a resource.
   ## Examples
       iex> create_resource(%{field: value})

@@ -117,12 +117,34 @@ defmodule DbserviceWeb.ResourceController do
   end
 
   def create(conn, params) do
-    case Resources.get_resource_by_type_and_type_params(params["type"], params["type_params"]) do
-      nil ->
+    type = params["type"]
+    type_params = params["type_params"] || %{}
+
+    case type do
+      "test" ->
+        code = params["code"]
+
+        case Resources.get_resource_by_code(code) do
+          nil -> create_new_resource(conn, params)
+          existing_resource -> update_existing_resource(conn, existing_resource, params)
+        end
+
+      "video" ->
+        link = type_params["src_link"]
+
+        case Resources.get_resource_by_type_and_type_params("video", %{"src_link" => link}) do
+          nil -> create_new_resource(conn, params)
+          existing_resource -> update_existing_resource(conn, existing_resource, params)
+        end
+
+      "problem" ->
         create_new_resource(conn, params)
 
-      existing_resource ->
-        update_existing_resource(conn, existing_resource, params)
+      _ ->
+        case Resources.get_resource_by_type_and_type_params(type, type_params) do
+          nil -> create_new_resource(conn, params)
+          existing_resource -> update_existing_resource(conn, existing_resource, params)
+        end
     end
   end
 
