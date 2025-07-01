@@ -121,30 +121,35 @@ defmodule DbserviceWeb.ResourceController do
     type_params = params["type_params"] || %{}
 
     case type do
-      "test" ->
-        code = params["code"]
+      "test" -> handle_test_resource(conn, params)
+      "video" -> handle_video_resource(conn, params, type_params)
+      "problem" -> create_new_resource(conn, params)
+      _ -> handle_default_resource(conn, params, type, type_params)
+    end
+  end
 
-        case Resources.get_resource_by_code(code) do
-          nil -> create_new_resource(conn, params)
-          existing_resource -> update_existing_resource(conn, existing_resource, params)
-        end
+  defp handle_test_resource(conn, params) do
+    code = params["code"]
 
-      "video" ->
-        link = type_params["src_link"]
+    case Resources.get_resource_by_code(code) do
+      nil -> create_new_resource(conn, params)
+      existing_resource -> update_existing_resource(conn, existing_resource, params)
+    end
+  end
 
-        case Resources.get_resource_by_type_and_type_params("video", %{"src_link" => link}) do
-          nil -> create_new_resource(conn, params)
-          existing_resource -> update_existing_resource(conn, existing_resource, params)
-        end
+  defp handle_video_resource(conn, params, type_params) do
+    link = type_params["src_link"]
 
-      "problem" ->
-        create_new_resource(conn, params)
+    case Resources.get_resource_by_type_and_type_params("video", %{"src_link" => link}) do
+      nil -> create_new_resource(conn, params)
+      existing_resource -> update_existing_resource(conn, existing_resource, params)
+    end
+  end
 
-      _ ->
-        case Resources.get_resource_by_type_and_type_params(type, type_params) do
-          nil -> create_new_resource(conn, params)
-          existing_resource -> update_existing_resource(conn, existing_resource, params)
-        end
+  defp handle_default_resource(conn, params, type, type_params) do
+    case Resources.get_resource_by_type_and_type_params(type, type_params) do
+      nil -> create_new_resource(conn, params)
+      existing_resource -> update_existing_resource(conn, existing_resource, params)
     end
   end
 
@@ -352,7 +357,7 @@ defmodule DbserviceWeb.ResourceController do
 
   @doc """
   Returns all problems for a specific test in a specific language.
-
+  
   GET /api/resource/test/:id/problems?lang_code=en&curriculum_id=1
   """
   def test_problems(conn, %{
@@ -464,7 +469,7 @@ defmodule DbserviceWeb.ResourceController do
 
   @doc """
   Get a specific problem by resource ID, language code and curriculum ID.
-
+  
   This endpoint returns problem data by joining the resource and problem_lang tables
   based on the provided problem_id, lang_code and curriculum_id parameters.
   """
