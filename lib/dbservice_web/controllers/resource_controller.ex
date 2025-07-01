@@ -209,79 +209,20 @@ defmodule DbserviceWeb.ResourceController do
   defp create_new_resource(conn, params) do
     result =
       Repo.transaction(fn ->
-        # 1. Generate and add unique code
         code = Resources.generate_next_resource_code()
         params = Map.put(params, "code", code)
+        params = Map.put(params, "tag_ids", resolve_tag_ids(params["tags"] || []))
 
-        # 2. Resolve tag_ids (names to IDs, create if not exist)
-        tag_ids =
-          (params["tags"] || [])
-          |> Enum.map(fn tag ->
-            cond do
-              is_integer(tag) ->
-                tag
-
-              is_binary(tag) ->
-                case Tags.get_tag_by_name(tag) do
-                  nil ->
-                    {:ok, new_tag} = Tags.create_tag(%{"name" => tag})
-                    new_tag.id
-
-                  tag_struct ->
-                    tag_struct.id
-                end
-
-              true ->
-                tag
-            end
-          end)
-
-        params = Map.put(params, "tag_ids", tag_ids)
-
-        # 3. Create the resource
         with {:ok, %Resource{} = resource} <- Resources.create_resource(params),
              :ok <-
                Resources.create_resource_curriculums_for_resource(
                  resource,
                  params["curriculum_grades"]
                ) do
-          # 4. Insert into problem_lang if lang_code is present
-          if lang_code = params["lang_code"] do
-            language = Repo.get_by(Language, code: lang_code)
-
-            if language do
-              Dbservice.ProblemLanguages.create_problem_language(%{
-                res_id: resource.id,
-                lang_id: language.id
-              })
-            end
-          end
-
-          # 5. Insert into resource_chapter if chapter_id is present
-          if chapter_id = params["chapter_id"] do
-            Dbservice.ResourceChapters.create_resource_chapter(%{
-              resource_id: resource.id,
-              chapter_id: chapter_id
-            })
-          end
-
-          # 6. Insert into resource_topic if topic_id is present
-          if topic_id = params["topic_id"] do
-            Dbservice.ResourceTopics.create_resource_topic(%{
-              resource_id: resource.id,
-              topic_id: topic_id
-            })
-          end
-
-          # 7. Insert into resource_concept for each concept_id in concept_ids
-          if concept_ids = params["concept_ids"] do
-            Enum.each(concept_ids, fn concept_id ->
-              Dbservice.ResourceConcepts.create_resource_concept(%{
-                resource_id: resource.id,
-                concept_id: concept_id
-              })
-            end)
-          end
+          insert_problem_language(resource, params)
+          insert_resource_chapter(resource, params)
+          insert_resource_topic(resource, params)
+          insert_resource_concepts(resource, params)
 
           resource
         else
@@ -311,6 +252,71 @@ defmodule DbserviceWeb.ResourceController do
         |> json(%{error: "Failed to create resource curriculum entries: #{inspect(reason)}"})
     end
   end
+
+  defp resolve_tag_ids(tags) do
+    Enum.map(tags, fn tag ->
+      cond do
+        is_integer(tag) ->
+          tag
+
+        is_binary(tag) ->
+          case Tags.get_tag_by_name(tag) do
+            nil ->
+              {:ok, new_tag} = Tags.create_tag(%{"name" => tag})
+              new_tag.id
+
+            tag_struct ->
+              tag_struct.id
+          end
+
+        true ->
+          tag
+      end
+    end)
+  end
+
+  defp insert_problem_language(resource, %{"lang_code" => lang_code})
+       when not is_nil(lang_code) do
+    if language = Repo.get_by(Language, code: lang_code) do
+      Dbservice.ProblemLanguages.create_problem_language(%{
+        res_id: resource.id,
+        lang_id: language.id
+      })
+    end
+  end
+
+  defp insert_problem_language(_, _), do: :ok
+
+  defp insert_resource_chapter(resource, %{"chapter_id" => chapter_id})
+       when not is_nil(chapter_id) do
+    Dbservice.ResourceChapters.create_resource_chapter(%{
+      resource_id: resource.id,
+      chapter_id: chapter_id
+    })
+  end
+
+  defp insert_resource_chapter(_, _), do: :ok
+
+  defp insert_resource_topic(resource, %{"topic_id" => topic_id}) when not is_nil(topic_id) do
+    Dbservice.ResourceTopics.create_resource_topic(%{
+      resource_id: resource.id,
+      topic_id: topic_id
+    })
+  end
+
+  defp insert_resource_topic(_, _), do: :ok
+
+  defp insert_resource_concepts(resource, %{"concept_ids" => concept_ids})
+       when is_list(concept_ids) do
+    Enum.each(concept_ids, fn concept_id ->
+      Dbservice.ResourceConcepts.create_resource_concept(%{
+        resource_id: resource.id,
+        concept_id: concept_id
+      })
+    end)
+  end
+
+  defp insert_resource_concepts(_, _), do: :ok
 
   defp update_existing_resource(conn, existing_resource, params) do
     merged_params = merge_tag_ids(existing_resource, params)
@@ -426,7 +432,7 @@ defmodule DbserviceWeb.ResourceController do
 
   @doc """
   Returns all problems for a specific test in a specific language.
-
+  
   GET /api/resource/test/:id/problems?lang_code=en&curriculum_id=1
   """
   def test_problems(conn, %{
@@ -538,7 +544,7 @@ defmodule DbserviceWeb.ResourceController do
 
   @doc """
   Get a specific problem by resource ID, language code and curriculum ID.
-
+  
   This endpoint returns problem data by joining the resource and problem_lang tables
   based on the provided problem_id, lang_code and curriculum_id parameters.
   """
