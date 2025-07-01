@@ -33,10 +33,7 @@ defmodule DbserviceWeb.StudentController do
           SwaggerSchemaStudent.student(),
           SwaggerSchemaStudent.students()
         ),
-        Map.merge(
-          SwaggerSchemaStudent.student_registration(),
-          SwaggerSchemaStudent.student_with_user()
-        )
+        SwaggerSchemaStudent.student_with_user()
       ),
       Map.merge(
         Map.merge(
@@ -735,44 +732,74 @@ defmodule DbserviceWeb.StudentController do
   end
 
   def update_user_enrollment_records(conn, params) do
-    student = Users.get_student_by_student_id(params["student_id"])
-    user_id = student.user_id
-    academic_year = params["academic_year"]
+    with student when not is_nil(student) <-
+           Users.get_student_by_student_id(params["student_id"]),
+         user_id <- student.user_id,
+         group_id <- params["group_id"],
+         group_type <- params["group_type"] do
+      update_attrs = Map.drop(params, ["student_id", "group_id", "group_type"])
 
-    # Remove non-updateable fields from params
-    updateable_params = Map.drop(params, ["student_id", "academic_year"])
+      enrollment_response = update_enrollment_record(user_id, group_id, group_type, update_attrs)
 
-    # Fetch all enrollment records for the user in the given academic year
-    enrollment_records =
-      EnrollmentRecords.get_enrollment_records_by_user_and_academic_year(user_id, academic_year)
-
-    # Update each record with the provided params
-    updated_records =
-      Enum.map(enrollment_records, fn record ->
-        case EnrollmentRecords.update_enrollment_record(record, updateable_params) do
-          {:ok, updated_record} ->
-            EnrollmentRecordView.render("enrollment_record.json", %{
-              enrollment_record: updated_record
-            })
-
-          {:error, _changeset} ->
-            %{error: "Failed to update record"}
+      status_response =
+        if group_type == "batch" do
+          update_status_record(user_id, update_attrs)
+        else
+          nil
         end
-      end)
 
-    case updated_records do
-      [] ->
+      conn
+      |> put_status(:ok)
+      |> json(%{
+        message: "Enrollment records updated.",
+        updated_record: enrollment_response,
+        updated_status_record: status_response
+      })
+    else
+      nil ->
         conn
         |> put_status(:not_found)
-        |> json(%{message: "No records found for the given user and academic year."})
+        |> json(%{message: "Student not found"})
+    end
+  end
 
-      _ ->
-        conn
-        |> put_status(:ok)
-        |> json(%{
-          message: "Enrollment records updated successfully.",
-          updated_records: updated_records
-        })
+  defp update_enrollment_record(user_id, group_id, group_type, attrs) do
+    case Repo.get_by(EnrollmentRecord,
+           user_id: user_id,
+           group_id: group_id,
+           group_type: group_type
+         ) do
+      nil ->
+        %{error: "Enrollment record not found for given group_type and group_id"}
+
+      record ->
+        case EnrollmentRecords.update_enrollment_record(record, attrs) do
+          {:ok, updated} ->
+            EnrollmentRecordView.render("enrollment_record.json", %{enrollment_record: updated})
+
+          {:error, _changeset} ->
+            %{error: "Failed to update enrollment record"}
+        end
+    end
+  end
+
+  defp update_status_record(user_id, attrs) do
+    case Repo.get_by(EnrollmentRecord,
+           user_id: user_id,
+           group_type: "status",
+           is_current: true
+         ) do
+      nil ->
+        %{error: "Status record not found"}
+
+      record ->
+        case EnrollmentRecords.update_enrollment_record(record, attrs) do
+          {:ok, updated} ->
+            EnrollmentRecordView.render("enrollment_record.json", %{enrollment_record: updated})
+
+          {:error, _changeset} ->
+            %{error: "Failed to update status record"}
+        end
     end
   end
 

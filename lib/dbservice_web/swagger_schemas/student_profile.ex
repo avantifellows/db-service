@@ -168,9 +168,6 @@ defmodule DbserviceWeb.SwaggerSchema.StudentProfile do
               "Total Number of skipped questions in tests"
             )
 
-            current_grade(:string, "Current Grade")
-            current_program(:string, "Current Program")
-            current_batch(:string, "Current Batch")
             logged_in_atleast_once(:boolean, "Has user logged in atleast once?")
             latest_session_accessed(:string, "Name of the latest session accessed")
           end
@@ -217,9 +214,6 @@ defmodule DbserviceWeb.SwaggerSchema.StudentProfile do
             tests_number_of_correct_questions: 75,
             tests_number_of_wrong_questions: 10,
             tests_number_of_skipped_questions: 15,
-            current_grade: "11",
-            current_program: "Science",
-            current_batch: "Batch A",
             logged_in_atleast_once: true,
             latest_session_accessed: "LiveClass_10"
           })
@@ -335,9 +329,6 @@ defmodule DbserviceWeb.SwaggerSchema.StudentProfile do
             student_fk: 1,
             user_profile: %{
               user_id: 1,
-              current_grade: "11",
-              current_program: "Science",
-              current_batch: "Batch A",
               logged_in_atleast_once: true,
               latest_session_accessed: "LiveClass_10"
             }

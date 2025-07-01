@@ -12,18 +12,12 @@ defmodule DbserviceWeb.SwaggerSchema.UserProfile do
 
           properties do
             user_id(:integer, "Corresponding user ID of the user")
-            current_grade(:string, "Current Grade")
-            current_program(:string, "Current Program")
-            current_batch(:string, "Current Batch")
             logged_in_atleast_once(:boolean, "Has user logged in atleast once?")
             latest_session_accessed(:string, "Name of the latest session accessed")
           end
 
           example(%{
             user_id: 10,
-            current_grade: "11",
-            current_program: "HaryanaStudents",
-            current_batch: "Photon",
             logged_in_atleast_once: true,
             latest_session_accessed: "LiveClass_10"
           })

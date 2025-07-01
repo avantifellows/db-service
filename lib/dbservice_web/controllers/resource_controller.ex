@@ -216,12 +216,28 @@ defmodule DbserviceWeb.ResourceController do
   end
 
   defp update_existing_resource(conn, existing_resource, params) do
+    merged_params = merge_tag_ids(existing_resource, params)
+
     with {:ok, %Resource{} = resource} <-
-           Resources.update_resource(existing_resource, params) do
+           Resources.update_resource(existing_resource, merged_params) do
       conn
       |> put_status(:ok)
       |> render("show.json", resource: resource)
     end
+  end
+
+  defp merge_tag_ids(existing_resource, params) do
+    existing_tags = existing_resource.tag_ids || []
+    new_tags = Map.get(params, "tag_ids", [])
+
+    # Ensure unique tags, cast to integers if necessary
+    merged_tags =
+      (existing_tags ++ new_tags)
+      # Normalize to integers
+      |> Enum.map(&String.to_integer(to_string(&1)))
+      |> Enum.uniq()
+
+    Map.put(params, "tag_ids", merged_tags)
   end
 
   def curriculum_resources(conn, params) do

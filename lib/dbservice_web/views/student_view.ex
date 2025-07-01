@@ -67,7 +67,8 @@ defmodule DbserviceWeb.StudentView do
       status: student.status,
       board_stream: student.board_stream,
       planned_competitive_exams: student.planned_competitive_exams,
-      school_medium: student.school_medium
+      school_medium: student.school_medium,
+      apaar_id: student.apaar_id
     }
   end
 
@@ -77,7 +78,8 @@ defmodule DbserviceWeb.StudentView do
       student_id: student.student_id,
       category: student.category,
       stream: student.stream,
-      user: render_one(student.user, UserView, "user_with_compact_fields.json")
+      user: render_one(student.user, UserView, "user_with_compact_fields.json"),
+      apaar_id: student.apaar_id
     }
   end
 
