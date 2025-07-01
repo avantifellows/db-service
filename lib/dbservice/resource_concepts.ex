@@ -91,4 +91,15 @@ defmodule Dbservice.ResourceConcepts do
   def change_resource(%ResourceConcept{} = resource_concept, attrs \\ %{}) do
     ResourceConcept.changeset(resource_concept, attrs)
   end
+
+  @doc """
+  Gets all resource_concepts for a given resource_id.
+  ## Examples
+      iex> get_resource_concepts_by_resource_id(123)
+      [%ResourceConcept{}, ...]
+  """
+  def get_resource_concepts_by_resource_id(resource_id) do
+    from(rc in ResourceConcept, where: rc.resource_id == ^resource_id)
+    |> Repo.all()
+  end
 end

@@ -23,6 +23,7 @@ defmodule DbserviceWeb.ResourceController do
       SwaggerSchemaResource.resource(),
       SwaggerSchemaResource.resources()
     )
+    |> Map.merge(SwaggerSchemaResource.problem_resource())
   end
 
   swagger_path :index do
@@ -324,7 +325,7 @@ defmodule DbserviceWeb.ResourceController do
       )
     end
 
-    response(200, "OK", Schema.array(:Resource))
+    response(200, "OK", Schema.ref(:ProblemResource))
   end
 
   @doc """
@@ -382,7 +383,7 @@ defmodule DbserviceWeb.ResourceController do
       lang_code(:query, :string, "Language code", required: true)
     end
 
-    response(200, "OK", Schema.ref(:Resource))
+    response(200, "OK", Schema.ref(:ProblemResource))
   end
 
   def fetch_problems(conn, %{
@@ -435,7 +436,7 @@ defmodule DbserviceWeb.ResourceController do
       curriculum_id(:path, :integer, "The curriculum ID", required: true)
     end
 
-    response(200, "OK", Schema.ref(:Resource))
+    response(200, "OK", Schema.ref(:ProblemResource))
     response(404, "Not Found")
   end
 

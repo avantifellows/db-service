@@ -98,22 +98,6 @@ defmodule Dbservice.Repo.Migrations.ModifyResourceTable do
       remove :purpose_id
     end
 
-    # 6. Change tag_id to tag_ids array
-    alter table(:resource) do
-      add :tag_ids, {:array, :bigint}
-    end
-
-    # Migrate existing tag_id data to tag_ids array
-    execute """
-    UPDATE resource
-    SET tag_ids = ARRAY[tag_id]
-    WHERE tag_id IS NOT NULL
-    """
-
-    alter table(:resource) do
-      remove :tag_id
-    end
-
     # 7. Add skill_ids column
     alter table(:resource) do
       add :skill_ids, {:array, :bigint}
