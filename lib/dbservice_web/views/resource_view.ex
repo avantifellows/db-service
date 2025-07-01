@@ -144,8 +144,7 @@ defmodule DbserviceWeb.ResourceView do
       })
 
     # Fetch concept information
-    resource_concepts =
-      ResourceConcepts.get_resource_concepts_by_resource_id(resource.id)
+    resource_concepts = ResourceConcepts.get_resource_concepts_by_resource_id(resource.id)
 
     concepts =
       Enum.map(resource_concepts, fn rc ->
@@ -165,8 +164,7 @@ defmodule DbserviceWeb.ResourceView do
     base = render_one(resource, __MODULE__, "resource.json", as: :resource)
 
     # Fetch concept information
-    resource_concepts =
-      ResourceConcepts.get_resource_concepts_by_resource_id(resource.id)
+    resource_concepts = ResourceConcepts.get_resource_concepts_by_resource_id(resource.id)
 
     concepts =
       Enum.map(resource_concepts, fn rc ->
