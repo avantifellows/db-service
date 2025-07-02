@@ -130,12 +130,7 @@ defmodule DbserviceWeb.ResourceController do
   end
 
   defp handle_test_resource(conn, params) do
-    code = params["code"]
-
-    case Resources.get_resource_by_code(code) do
-      nil -> create_new_resource(conn, params)
-      existing_resource -> update_existing_resource(conn, existing_resource, params)
-    end
+    create_new_resource(conn, params)
   end
 
   defp handle_video_resource(conn, params, type_params) do
@@ -209,8 +204,16 @@ defmodule DbserviceWeb.ResourceController do
   defp create_new_resource(conn, params) do
     result =
       Repo.transaction(fn ->
-        code = Resources.generate_next_resource_code()
-        params = Map.put(params, "code", code)
+        params =
+          case params["type"] do
+            "test" ->
+              code = Resources.generate_next_resource_code()
+              Map.put(params, "code", code)
+
+            _ ->
+              params
+          end
+
         params = Map.put(params, "tag_ids", resolve_tag_ids(params["tags"] || []))
 
         with {:ok, %Resource{} = resource} <- Resources.create_resource(params),
@@ -272,12 +275,13 @@ defmodule DbserviceWeb.ResourceController do
 
   defp resolve_tag_id(tag), do: tag
 
-  defp insert_problem_language(resource, %{"lang_code" => lang_code})
+  defp insert_problem_language(resource, %{"lang_code" => lang_code} = params)
        when not is_nil(lang_code) do
     if language = Repo.get_by(Language, code: lang_code) do
       Dbservice.ProblemLanguages.create_problem_language(%{
         res_id: resource.id,
-        lang_id: language.id
+        lang_id: language.id,
+        meta_data: Map.get(params, "meta_data")
       })
     end
   end
