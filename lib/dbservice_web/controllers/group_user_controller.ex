@@ -261,11 +261,14 @@ defmodule DbserviceWeb.GroupUserController do
       )
     end
 
-    with {:ok, %GroupUser{} = group_user} <-
-           GroupUsers.update_group_user(existing_group_user, params) do
-      conn
-      |> put_status(:ok)
-      |> render("show.json", group_user: group_user)
+    case EnrollmentService.update_existing_group_user(existing_group_user, params) do
+      {:ok, group_user} ->
+        conn
+        |> put_status(:ok)
+        |> render(:show, group_user: group_user)
+
+      error ->
+        error
     end
   end
 
