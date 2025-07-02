@@ -482,4 +482,16 @@ defmodule Dbservice.Users do
     )
     |> Repo.all()
   end
+
+  @doc """
+  Gets a student by id and group.
+  """
+  def get_student_by_id_and_group(id, group) do
+    if group == "EnableStudents" do
+      Repo.one(from s in Student, where: s.apaar_id == ^id) ||
+        Repo.one(from s in Student, where: s.student_id == ^id)
+    else
+      Repo.one(from s in Student, where: s.student_id == ^id)
+    end
+  end
 end

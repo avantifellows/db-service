@@ -69,8 +69,9 @@ defmodule DbserviceWeb.StudentController do
 
   def index(conn, params) do
     if Map.has_key?(params, "id") and Map.has_key?(params, "group") do
-      student = get_student_by_id(params["id"], params["group"])
-      render(conn, "index.json", student: (student && [student]) || [])
+      student = Users.get_student_by_id_and_group(params["id"], params["group"])
+      students = if student, do: [student], else: []
+      render(conn, "index.json", student: students)
     else
       query =
         from(m in Student,
@@ -1050,17 +1051,5 @@ defmodule DbserviceWeb.StudentController do
     |> Repo.update_all([])
 
     {:ok, :updated}
-  end
-
-  def get_student_by_id(id, group) do
-    student =
-      if group == "EnableStudents" do
-        Repo.one(from s in Student, where: s.apaar_id == ^id) ||
-          Repo.one(from s in Student, where: s.student_id == ^id)
-      else
-        Repo.one(from s in Student, where: s.student_id == ^id)
-      end
-
-    student
   end
 end
