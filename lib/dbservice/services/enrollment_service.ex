@@ -196,7 +196,6 @@ defmodule Dbservice.Services.EnrollmentService do
   Updates previous enrollment records for a user in a school when the academic year changes.
   """
   def update_school_enrollment(user_id, school_id, new_academic_year, end_date) do
-
     from(er in EnrollmentRecord,
       where:
         er.user_id == ^user_id and
