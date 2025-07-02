@@ -3,9 +3,27 @@ defmodule DbserviceWeb.Router do
   use PhoenixSwagger
 
   import Dotenvy
+  import Phoenix.LiveView.Router
 
   pipeline :api do
     plug(:accepts, ["json"])
+  end
+
+  pipeline :browser do
+    plug :accepts, ["html"]
+    plug(:fetch_session)
+    plug(:fetch_live_flash)
+    plug(:put_root_layout, {DbserviceWeb.Layouts, :root})
+    plug(:protect_from_forgery)
+    plug(:put_secure_browser_headers)
+  end
+
+  scope "/", DbserviceWeb do
+    pipe_through :browser
+
+    live "/imports", ImportLive.Index
+    live "/imports/new", ImportLive.New
+    live "/imports/:id", ImportLive.Show
   end
 
   scope "/api", DbserviceWeb do

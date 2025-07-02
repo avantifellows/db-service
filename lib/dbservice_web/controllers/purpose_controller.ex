@@ -50,7 +50,7 @@ defmodule DbserviceWeb.PurposeController do
       end)
 
     purpose = Repo.all(query)
-    render(conn, "index.json", purpose: purpose)
+    render(conn, :index, purpose: purpose)
   end
 
   swagger_path :create do
@@ -85,7 +85,7 @@ defmodule DbserviceWeb.PurposeController do
 
   def show(conn, %{"id" => id}) do
     purpose = Purposes.get_purpose!(id)
-    render(conn, "show.json", purpose: purpose)
+    render(conn, :show, purpose: purpose)
   end
 
   swagger_path :update do
@@ -103,7 +103,7 @@ defmodule DbserviceWeb.PurposeController do
     purpose = Purposes.get_purpose!(params["id"])
 
     with {:ok, %Purpose{} = purpose} <- Purposes.update_purpose(purpose, params) do
-      render(conn, "show.json", purpose: purpose)
+      render(conn, :show, purpose: purpose)
     end
   end
 
@@ -129,8 +129,8 @@ defmodule DbserviceWeb.PurposeController do
     with {:ok, %Purpose{} = purpose} <- Purposes.create_purpose(params) do
       conn
       |> put_status(:created)
-      |> put_resp_header("location", Routes.purpose_path(conn, :show, purpose))
-      |> render("show.json", purpose: purpose)
+      |> put_resp_header("location", ~p"/api/purpose/#{purpose}")
+      |> render(:show, purpose: purpose)
     end
   end
 
@@ -139,7 +139,7 @@ defmodule DbserviceWeb.PurposeController do
            Purposes.update_purpose(existing_purpose, params) do
       conn
       |> put_status(:ok)
-      |> render("show.json", purpose: purpose)
+      |> render(:show, purpose: purpose)
     end
   end
 end

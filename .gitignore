@@ -30,3 +30,15 @@ dbservice-*.tar
 
 # Ignore mix.lock file
 mix.lock
+
+# Ignore node_modules
+/assets/node_modules
+
+# Static asset builds
+priv/static
+
+# Keep favicon.ico
+!priv/static/favicon.ico
+
+# Ignore ElixirLS files
+.elixir_ls

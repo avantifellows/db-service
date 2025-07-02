@@ -50,7 +50,7 @@ defmodule DbserviceWeb.AuthGroupController do
       end)
 
     auth_group = Repo.all(query)
-    render(conn, "index.json", auth_group: auth_group)
+    render(conn, :index, auth_group: auth_group)
   end
 
   swagger_path :create do
@@ -85,7 +85,7 @@ defmodule DbserviceWeb.AuthGroupController do
 
   def show(conn, %{"id" => id}) do
     auth_group = AuthGroups.get_auth_group!(id)
-    render(conn, "show.json", auth_group: auth_group)
+    render(conn, :show, auth_group: auth_group)
   end
 
   swagger_path :update do
@@ -103,7 +103,7 @@ defmodule DbserviceWeb.AuthGroupController do
     auth_group = AuthGroups.get_auth_group!(params["id"])
 
     with {:ok, %AuthGroup{} = auth_group} <- AuthGroups.update_auth_group(auth_group, params) do
-      render(conn, "show.json", auth_group: auth_group)
+      render(conn, :show, auth_group: auth_group)
     end
   end
 
@@ -129,8 +129,8 @@ defmodule DbserviceWeb.AuthGroupController do
     with {:ok, %AuthGroup{} = auth_group} <- AuthGroups.create_auth_group(params) do
       conn
       |> put_status(:created)
-      |> put_resp_header("location", Routes.auth_group_path(conn, :show, auth_group))
-      |> render("show.json", auth_group: auth_group)
+      |> put_resp_header("location", ~p"/api/auth-group/#{auth_group}")
+      |> render(:show, auth_group: auth_group)
     end
   end
 
@@ -140,7 +140,7 @@ defmodule DbserviceWeb.AuthGroupController do
          {:ok, _} <- update_users_for_auth_group(auth_group.id) do
       conn
       |> put_status(:ok)
-      |> render("show.json", auth_group: auth_group)
+      |> render(:show, auth_group: auth_group)
     end
   end
 

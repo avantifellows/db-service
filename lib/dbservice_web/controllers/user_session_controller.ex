@@ -55,7 +55,7 @@ defmodule DbserviceWeb.UserSessionController do
       end)
 
     user_session = Repo.all(query)
-    render(conn, "index.json", user_session: user_session)
+    render(conn, :index, user_session: user_session)
   end
 
   swagger_path :create do
@@ -75,9 +75,9 @@ defmodule DbserviceWeb.UserSessionController do
       |> put_status(:created)
       |> put_resp_header(
         "location",
-        Routes.user_session_path(conn, :show, user_session)
+        ~p"/api/user-session/#{user_session}"
       )
-      |> render("show.json", user_session: user_session)
+      |> render(:show, user_session: user_session)
     end
   end
 
@@ -93,7 +93,7 @@ defmodule DbserviceWeb.UserSessionController do
 
   def show(conn, %{"id" => id}) do
     user_session = Sessions.get_user_session!(id)
-    render(conn, "show.json", user_session: user_session)
+    render(conn, :show, user_session: user_session)
   end
 
   swagger_path :update do
@@ -112,7 +112,7 @@ defmodule DbserviceWeb.UserSessionController do
 
     with {:ok, %UserSession{} = user_session} <-
            Sessions.update_user_session(user_session, params) do
-      render(conn, "show.json", user_session: user_session)
+      render(conn, :show, user_session: user_session)
     end
   end
 
