@@ -242,14 +242,30 @@ defmodule DbserviceWeb.GroupUserController do
   end
 
   defp update_existing_group_user(conn, existing_group_user, params) do
-    case EnrollmentService.update_existing_group_user(existing_group_user, params) do
-      {:ok, group_user} ->
-        conn
-        |> put_status(:ok)
-        |> render(:show, group_user: group_user)
+    group = Groups.get_group!(params["group_id"])
 
-      error ->
-        error
+    if Map.has_key?(params, "academic_year") and group.type == "school" do
+      EnrollmentService.update_school_enrollment(
+        params["user_id"],
+        group.child_id,
+        params["academic_year"],
+        params["start_date"]
+      )
+
+      EnrollmentService.handle_enrollment_record(
+        params["user_id"],
+        group.child_id,
+        group.type,
+        params["academic_year"],
+        params["start_date"]
+      )
+    end
+
+    with {:ok, %GroupUser{} = group_user} <-
+           GroupUsers.update_group_user(existing_group_user, params) do
+      conn
+      |> put_status(:ok)
+      |> render("show.json", group_user: group_user)
     end
   end
 

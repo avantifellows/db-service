@@ -63,6 +63,7 @@ defmodule Dbservice.Users.User do
     ])
     |> validate_format(:phone, ~r{\A\d*\z})
     |> validate_date_of_birth
+    |> validate_gender(:gender)
   end
 
   def changeset_update_groups(user, groups) do
