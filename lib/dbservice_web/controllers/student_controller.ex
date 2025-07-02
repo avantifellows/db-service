@@ -67,31 +67,31 @@ defmodule DbserviceWeb.StudentController do
     response(200, "OK", Schema.ref(:Students))
   end
 
+  def index(conn, %{"id" => id, "group" => group} = _params) do
+    student = Users.get_student_by_id_and_group(id, group)
+    students = if student, do: [student], else: []
+    render(conn, "index.json", student: students)
+  end
+
   def index(conn, params) do
-    if Map.has_key?(params, "id") and Map.has_key?(params, "group") do
-      student = Users.get_student_by_id_and_group(params["id"], params["group"])
-      students = if student, do: [student], else: []
-      render(conn, "index.json", student: students)
-    else
-      query =
-        from(m in Student,
-          order_by: [asc: m.id],
-          offset: ^params["offset"],
-          limit: ^params["limit"]
-        )
+    query =
+      from(m in Student,
+        order_by: [asc: m.id],
+        offset: ^params["offset"],
+        limit: ^params["limit"]
+      )
 
-      query =
-        Enum.reduce(params, query, fn {key, value}, acc ->
-          case String.to_existing_atom(key) do
-            :offset -> acc
-            :limit -> acc
-            atom -> from(u in acc, where: field(u, ^atom) == ^value)
-          end
-        end)
+    query =
+      Enum.reduce(params, query, fn {key, value}, acc ->
+        case String.to_existing_atom(key) do
+          :offset -> acc
+          :limit -> acc
+          atom -> from(u in acc, where: field(u, ^atom) == ^value)
+        end
+      end)
 
-      student = Repo.all(query)
-      render(conn, "index.json", student: student)
-    end
+    student = Repo.all(query)
+    render(conn, "index.json", student: student)
   end
 
   swagger_path :create do
