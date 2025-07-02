@@ -96,6 +96,7 @@ defmodule Dbservice.Repo.Migrations.ModifyResourceTable do
 
     alter table(:resource) do
       remove :purpose_id
+      remove :concept_id
     end
 
     # 7. Add skill_ids column
@@ -180,6 +181,7 @@ defmodule Dbservice.Repo.Migrations.ModifyResourceTable do
       add :purpose_id, references(:purpose)
       add :tag_id, references(:tag)
       add :learning_objective_id, references(:learning_objective)
+      add :concept_id, references(:concept)
     end
   end
 end
