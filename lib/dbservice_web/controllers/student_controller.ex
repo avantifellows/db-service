@@ -1054,13 +1054,13 @@ defmodule DbserviceWeb.StudentController do
 
   def get_student_by_id(id, group) do
     student =
-      cond do
-        group == "EnableStudents" ->
-          Repo.one(from s in Student, where: s.apaar_id == ^id) ||
-            Repo.one(from s in Student, where: s.student_id == ^id)
-
-        true ->
+      if group == "EnableStudents" do
+        Repo.one(from s in Student, where: s.apaar_id == ^id) ||
           Repo.one(from s in Student, where: s.student_id == ^id)
+      else
+        Repo.one(from s in Student, where: s.student_id == ^id)
       end
+
+    student
   end
 end
