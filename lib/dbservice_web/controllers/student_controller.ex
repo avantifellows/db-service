@@ -68,24 +68,29 @@ defmodule DbserviceWeb.StudentController do
   end
 
   def index(conn, params) do
-    query =
-      from(m in Student,
-        order_by: [asc: m.id],
-        offset: ^params["offset"],
-        limit: ^params["limit"]
-      )
+    if Map.has_key?(params, "id") and Map.has_key?(params, "group") do
+      student = get_student_by_id(params["id"], params["group"])
+      render(conn, "index.json", student: (student && [student]) || [])
+    else
+      query =
+        from(m in Student,
+          order_by: [asc: m.id],
+          offset: ^params["offset"],
+          limit: ^params["limit"]
+        )
 
-    query =
-      Enum.reduce(params, query, fn {key, value}, acc ->
-        case String.to_existing_atom(key) do
-          :offset -> acc
-          :limit -> acc
-          atom -> from(u in acc, where: field(u, ^atom) == ^value)
-        end
-      end)
+      query =
+        Enum.reduce(params, query, fn {key, value}, acc ->
+          case String.to_existing_atom(key) do
+            :offset -> acc
+            :limit -> acc
+            atom -> from(u in acc, where: field(u, ^atom) == ^value)
+          end
+        end)
 
-    student = Repo.all(query)
-    render(conn, "index.json", student: student)
+      student = Repo.all(query)
+      render(conn, "index.json", student: student)
+    end
   end
 
   swagger_path :create do
@@ -1047,7 +1052,7 @@ defmodule DbserviceWeb.StudentController do
     {:ok, :updated}
   end
 
-  def get_student_by_id(conn, %{"id" => id, "group" => group}) do
+  def get_student_by_id(id, group) do
     student =
       cond do
         group == "EnableStudents" ->
@@ -1057,11 +1062,5 @@ defmodule DbserviceWeb.StudentController do
         true ->
           Repo.one(from s in Student, where: s.student_id == ^id)
       end
-
-    if student do
-      render(conn, "show.json", student: student)
-    else
-      render(conn, "show.json", student: nil)
-    end
   end
 end

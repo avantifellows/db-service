@@ -69,7 +69,6 @@ defmodule DbserviceWeb.Router do
     delete("/cleanup-student/:student_id", UserSessionController, :cleanup_student)
     delete("/remove-batch/:student_id/:batch_id", UserSessionController, :remove_batch_mapping)
     post("/student/:student_id/status", StudentController, :update_student_status)
-    get("/student-by-id", StudentController, :get_student_by_id)
 
     def swagger_info do
       source(["config/.env", "config/.env"])
