@@ -1046,4 +1046,22 @@ defmodule DbserviceWeb.StudentController do
 
     {:ok, :updated}
   end
+
+  def get_student_by_id(conn, %{"id" => id, "group" => group}) do
+    student =
+      cond do
+        group == "EnableStudents" ->
+          Repo.one(from s in Student, where: s.apaar_id == ^id) ||
+            Repo.one(from s in Student, where: s.student_id == ^id)
+
+        true ->
+          Repo.one(from s in Student, where: s.student_id == ^id)
+      end
+
+    if student do
+      render(conn, "show.json", student: student)
+    else
+      render(conn, "show.json", student: nil)
+    end
+  end
 end
