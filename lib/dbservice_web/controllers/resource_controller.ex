@@ -141,7 +141,7 @@ defmodule DbserviceWeb.ResourceController do
   defp handle_video_resource(conn, params, type_params) do
     link = type_params["src_link"]
 
-    case Resources.get_resource_by_type_and_type_params("video", %{"src_link" => link}) do
+    case Resources.get_resource_by_type_and_src_link("video", link) do
       nil -> create_new_resource(conn, params)
       existing_resource -> update_existing_resource(conn, existing_resource, params)
     end
@@ -209,36 +209,36 @@ defmodule DbserviceWeb.ResourceController do
   defp create_new_resource(conn, params) do
     result =
       Repo.transaction(fn ->
-        params =
-          case params["type"] do
-            "problem" ->
-              code = Resources.generate_next_resource_code()
-              Map.put(params, "code", code)
-
-            _ ->
-              params
-          end
-
         params = Map.put(params, "tag_ids", resolve_tag_ids(params["tags"] || []))
 
-        with {:ok, %Resource{} = resource} <- Resources.create_resource(params),
-             :ok <-
-               Resources.create_resource_curriculums_for_resource(
-                 resource,
-                 params["curriculum_grades"]
-               ) do
-          insert_problem_language(resource, params)
-          insert_resource_chapter(resource, params)
-          insert_resource_topic(resource, params)
-          insert_resource_concepts(resource, params)
+        with {:ok, %Resource{} = resource} <- Resources.create_resource(params) do
+          resource =
+            if resource.type == "problem" do
+              code = Resources.generate_next_resource_code(resource.id)
+              {:ok, updated_resource} = Resources.update_resource(resource, %{code: code})
+              updated_resource
+            else
+              resource
+            end
 
-          resource
+          with :ok <-
+                 Resources.create_resource_curriculums_for_resource(
+                   resource,
+                   params["curriculum_grades"]
+                 ) do
+            insert_problem_language(resource, params)
+            insert_resource_chapter(resource, params)
+            insert_resource_topic(resource, params)
+            insert_resource_concepts(resource, params)
+
+            resource
+          else
+            {:error, reason} ->
+              Repo.rollback({:curriculum_error, reason})
+          end
         else
           {:error, %Ecto.Changeset{} = changeset} ->
             Repo.rollback({:changeset_error, changeset})
-
-          {:error, reason} ->
-            Repo.rollback({:curriculum_error, reason})
         end
       end)
 

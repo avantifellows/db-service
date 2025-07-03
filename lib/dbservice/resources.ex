@@ -164,6 +164,19 @@ defmodule Dbservice.Resources do
   end
 
   @doc """
+  Gets a resource by type and src_link from type_params.
+  Returns nil if not found.
+  """
+  def get_resource_by_type_and_src_link(type, src_link) do
+    query =
+      from(r in Resource,
+        where: r.type == ^type and fragment("?->>'src_link' = ?", r.type_params, ^src_link)
+      )
+
+    Repo.one(query)
+  end
+
+  @doc """
   Gets a resource by code.
   Returns nil if not found.
   """
@@ -269,34 +282,9 @@ defmodule Dbservice.Resources do
   def create_resource_curriculums_for_resource(_resource, _curriculum_grades), do: :ok
 
   @doc """
-  Generates the next available resource code in the format P{7digitcode} (e.g., P0000001).
+  Generates a resource code in the format P{7digitcode} (e.g., P0000024) using the resource's ID.
   """
-  def generate_next_resource_code do
-    # Get the max code from the resource table that matches the pattern
-    query =
-      from(r in Resource,
-        where: like(r.code, "P%"),
-        select: r.code,
-        order_by: [desc: r.code],
-        limit: 1
-      )
-
-    case Repo.one(query) do
-      nil ->
-        "P0000001"
-
-      max_code ->
-        # Extract the numeric part and increment
-        <<"P", num::binary>> = max_code
-
-        next_num =
-          num
-          |> String.to_integer()
-          |> Kernel.+(1)
-          |> Integer.to_string()
-          |> String.pad_leading(7, "0")
-
-        "P" <> next_num
-    end
+  def generate_next_resource_code(id) when is_integer(id) do
+    "P" <> String.pad_leading(Integer.to_string(id), 7, "0")
   end
 end
