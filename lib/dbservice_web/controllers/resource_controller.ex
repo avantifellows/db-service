@@ -235,7 +235,7 @@ defmodule DbserviceWeb.ResourceController do
   defp handle_resource_creation_and_association(params) do
     case Resources.create_resource(params) do
       {:ok, %Resource{} = resource} ->
-        resource = maybe_update_problem_code(resource)
+        resource = update_code_if_problem(resource)
         handle_curriculum_and_related_inserts(resource, params)
 
       {:error, %Ecto.Changeset{} = changeset} ->
@@ -243,7 +243,7 @@ defmodule DbserviceWeb.ResourceController do
     end
   end
 
-  defp maybe_update_problem_code(resource) do
+  defp update_code_if_problem(resource) do
     if resource.type == "problem" do
       code = Resources.generate_next_resource_code(resource.id)
       {:ok, updated_resource} = Resources.update_resource(resource, %{code: code})
