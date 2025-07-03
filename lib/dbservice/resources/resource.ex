@@ -8,6 +8,7 @@ defmodule Dbservice.Resources.Resource do
   alias Dbservice.Chapters.Chapter
   alias Dbservice.Topics.Topic
   alias Dbservice.Resources.ResourceCurriculum
+  alias Dbservice.Resources.ProblemLanguage
 
   schema "resource" do
     field(:name, {:array, :map})
@@ -27,6 +28,7 @@ defmodule Dbservice.Resources.Resource do
     many_to_many(:topic, Topic, join_through: "resource_topic", on_replace: :delete)
     belongs_to(:teacher, Teacher)
     has_many(:resource_curriculum, ResourceCurriculum)
+    has_many(:problem_language, ProblemLanguage, foreign_key: :res_id)
   end
 
   @doc false

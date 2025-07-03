@@ -44,12 +44,9 @@ defmodule Dbservice.Resources do
     - List of problem resources with their metadata from problem_lang table and difficulty_level from resource_curriculum
   """
   def get_problems_by_test_and_language(test_id, lang_code, curriculum_id) do
-    # First, get the language ID from the code
+    # Get the language by code
     language =
-      from(l in Language,
-        where: l.code == ^lang_code,
-        select: l
-      )
+      from(l in Language, where: l.code == ^lang_code, select: l)
       |> Repo.one()
 
     case language do
@@ -57,52 +54,34 @@ defmodule Dbservice.Resources do
         {:error, :language_not_found}
 
       %Language{id: lang_id} ->
-        # Get the test resource to extract problem IDs
         with %Resource{} = test_resource <- Repo.get(Resource, test_id),
              true <- test_resource.type == "test" do
-          # Extract all problem IDs from the test resource's type_params
           problem_ids = extract_problem_ids_from_test(test_resource.type_params)
 
           # Query for all problems with those IDs, including resource_curriculum data
           problems =
             from(r in Resource,
-              join: rc in ResourceCurriculum,
-              on: rc.resource_id == r.id,
-              where:
-                r.id in ^problem_ids and r.type == "problem" and
-                  rc.curriculum_id == ^curriculum_id,
-              select: %{
-                id: r.id,
-                name: r.name,
-                type: r.type,
-                type_params: r.type_params,
-                subtype: r.subtype,
-                source: r.source,
-                code: r.code,
-                purpose_ids: r.purpose_ids,
-                tag_ids: r.tag_ids,
-                skill_ids: r.skill_ids,
-                learning_objective_ids: r.learning_objective_ids,
-                teacher_id: r.teacher_id,
-                difficulty_level: rc.difficulty_level,
-                curriculum_id: rc.curriculum_id,
-                grade_id: rc.grade_id,
-                subject_id: rc.subject_id
-              }
+              where: r.id in ^problem_ids and r.type == "problem",
+              preload: [
+                resource_curriculum:
+                  ^from(rc in ResourceCurriculum, where: rc.curriculum_id == ^curriculum_id),
+                problem_language: ^from(pl in ProblemLanguage, where: pl.lang_id == ^lang_id)
+              ]
             )
             |> Repo.all()
 
-          # For each problem, fetch and merge the language metadata
-          Enum.map(problems, fn problem ->
-            meta_data =
-              from(pl in ProblemLanguage,
-                where: pl.res_id == ^problem.id and pl.lang_id == ^lang_id,
-                select: pl.meta_data
-              )
-              |> Repo.one()
+          Enum.map(problems, fn resource ->
+            # Get the correct resource_curriculum and problem_language for this curriculum/lang
+            resource_curriculum =
+              Enum.find(resource.resource_curriculum, &(&1.curriculum_id == curriculum_id))
 
-            # Add the meta_data field to the problem
-            Map.put(problem, :meta_data, meta_data)
+            problem_lang = Enum.find(resource.problem_language, &(&1.lang_id == lang_id))
+
+            %{
+              resource: resource,
+              resource_curriculum: resource_curriculum || %{},
+              problem_lang: problem_lang || %{}
+            }
           end)
         else
           nil -> {:error, :test_not_found}

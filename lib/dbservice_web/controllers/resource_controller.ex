@@ -337,7 +337,7 @@ defmodule DbserviceWeb.ResourceController do
 
   defp merge_tag_ids(existing_resource, params) do
     existing_tags = existing_resource.tag_ids || []
-    new_tags = Map.get(params, "tag_ids", [])
+    new_tags = Map.get(params, "tag_ids") || []
 
     # Ensure unique tags, cast to integers if necessary
     merged_tags =
