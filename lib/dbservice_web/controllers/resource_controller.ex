@@ -211,32 +211,33 @@ defmodule DbserviceWeb.ResourceController do
       Repo.transaction(fn ->
         params = Map.put(params, "tag_ids", resolve_tag_ids(params["tags"] || []))
 
-        with {:ok, %Resource{} = resource} <- Resources.create_resource(params) do
-          resource =
-            if resource.type == "problem" do
-              code = Resources.generate_next_resource_code(resource.id)
-              {:ok, updated_resource} = Resources.update_resource(resource, %{code: code})
-              updated_resource
-            else
-              resource
-            end
+        case Resources.create_resource(params) do
+          {:ok, %Resource{} = resource} ->
+            resource =
+              if resource.type == "problem" do
+                code = Resources.generate_next_resource_code(resource.id)
+                {:ok, updated_resource} = Resources.update_resource(resource, %{code: code})
+                updated_resource
+              else
+                resource
+              end
 
-          with :ok <-
-                 Resources.create_resource_curriculums_for_resource(
+            case Resources.create_resource_curriculums_for_resource(
                    resource,
                    params["curriculum_grades"]
                  ) do
-            insert_problem_language(resource, params)
-            insert_resource_chapter(resource, params)
-            insert_resource_topic(resource, params)
-            insert_resource_concepts(resource, params)
+              :ok ->
+                insert_problem_language(resource, params)
+                insert_resource_chapter(resource, params)
+                insert_resource_topic(resource, params)
+                insert_resource_concepts(resource, params)
 
-            resource
-          else
-            {:error, reason} ->
-              Repo.rollback({:curriculum_error, reason})
-          end
-        else
+                resource
+
+              {:error, reason} ->
+                Repo.rollback({:curriculum_error, reason})
+            end
+
           {:error, %Ecto.Changeset{} = changeset} ->
             Repo.rollback({:changeset_error, changeset})
         end
