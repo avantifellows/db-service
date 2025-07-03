@@ -210,37 +210,7 @@ defmodule DbserviceWeb.ResourceController do
     result =
       Repo.transaction(fn ->
         params = Map.put(params, "tag_ids", resolve_tag_ids(params["tags"] || []))
-
-        case Resources.create_resource(params) do
-          {:ok, %Resource{} = resource} ->
-            resource =
-              if resource.type == "problem" do
-                code = Resources.generate_next_resource_code(resource.id)
-                {:ok, updated_resource} = Resources.update_resource(resource, %{code: code})
-                updated_resource
-              else
-                resource
-              end
-
-            case Resources.create_resource_curriculums_for_resource(
-                   resource,
-                   params["curriculum_grades"]
-                 ) do
-              :ok ->
-                insert_problem_language(resource, params)
-                insert_resource_chapter(resource, params)
-                insert_resource_topic(resource, params)
-                insert_resource_concepts(resource, params)
-
-                resource
-
-              {:error, reason} ->
-                Repo.rollback({:curriculum_error, reason})
-            end
-
-          {:error, %Ecto.Changeset{} = changeset} ->
-            Repo.rollback({:changeset_error, changeset})
-        end
+        handle_resource_creation_and_association(params)
       end)
 
     case result do
@@ -259,6 +229,41 @@ defmodule DbserviceWeb.ResourceController do
         conn
         |> put_status(:unprocessable_entity)
         |> json(%{error: "Failed to create resource curriculum entries: #{inspect(reason)}"})
+    end
+  end
+
+  defp handle_resource_creation_and_association(params) do
+    case Resources.create_resource(params) do
+      {:ok, %Resource{} = resource} ->
+        resource = maybe_update_problem_code(resource)
+        handle_curriculum_and_related_inserts(resource, params)
+
+      {:error, %Ecto.Changeset{} = changeset} ->
+        Repo.rollback({:changeset_error, changeset})
+    end
+  end
+
+  defp maybe_update_problem_code(resource) do
+    if resource.type == "problem" do
+      code = Resources.generate_next_resource_code(resource.id)
+      {:ok, updated_resource} = Resources.update_resource(resource, %{code: code})
+      updated_resource
+    else
+      resource
+    end
+  end
+
+  defp handle_curriculum_and_related_inserts(resource, params) do
+    case Resources.create_resource_curriculums_for_resource(resource, params["curriculum_grades"]) do
+      :ok ->
+        insert_problem_language(resource, params)
+        insert_resource_chapter(resource, params)
+        insert_resource_topic(resource, params)
+        insert_resource_concepts(resource, params)
+        resource
+
+      {:error, reason} ->
+        Repo.rollback({:curriculum_error, reason})
     end
   end
 
