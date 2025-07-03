@@ -130,7 +130,12 @@ defmodule DbserviceWeb.ResourceController do
   end
 
   defp handle_test_resource(conn, params) do
-    create_new_resource(conn, params)
+    code = params["code"]
+
+    case Resources.get_resource_by_code(code) do
+      nil -> create_new_resource(conn, params)
+      existing_resource -> update_existing_resource(conn, existing_resource, params)
+    end
   end
 
   defp handle_video_resource(conn, params, type_params) do
@@ -206,7 +211,7 @@ defmodule DbserviceWeb.ResourceController do
       Repo.transaction(fn ->
         params =
           case params["type"] do
-            "test" ->
+            "problem" ->
               code = Resources.generate_next_resource_code()
               Map.put(params, "code", code)
 
