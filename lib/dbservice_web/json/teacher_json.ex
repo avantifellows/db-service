@@ -27,6 +27,7 @@ defmodule DbserviceWeb.TeacherJSON do
   end
 
   def teacher_with_user(teacher) do
+    teacher = Dbservice.Repo.preload(teacher, :user)
     %{
       id: teacher.id,
       designation: teacher.designation,

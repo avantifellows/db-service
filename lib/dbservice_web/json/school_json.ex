@@ -10,6 +10,7 @@ defmodule DbserviceWeb.SchoolJSON do
   end
 
   def render(school) do
+    school = Dbservice.Repo.preload(school, :user)
     %{
       id: school.id,
       code: school.code,
