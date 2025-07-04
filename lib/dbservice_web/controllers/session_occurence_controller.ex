@@ -68,6 +68,14 @@ defmodule DbserviceWeb.SessionOccurrenceController do
           :session_ids ->
             from(u in acc, where: u.session_id in ^session_ids)
 
+          :session_id ->
+            # When querying by session_id, only return currently active occurrences
+            now = NaiveDateTime.utc_now()
+            from(u in acc, 
+              where: u.session_id == ^value and 
+                     u.start_time <= ^now and 
+                     u.end_time >= ^now)
+
           atom ->
             from(u in acc, where: field(u, ^atom) == ^value)
         end
