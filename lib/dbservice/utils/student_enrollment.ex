@@ -64,11 +64,11 @@ defmodule Dbservice.DataImport.StudentEnrollment do
 
   defp create_batch_enrollment(_, _params), do: {:ok, "No batch enrollment needed"}
 
-  defp create_grade_enrollment(user_id, %{"grade" => grade} = params) do
+  defp create_grade_enrollment(user_id, %{"grade_id" => grade_id} = params) do
     enrollment_data = %{
       "user_id" => user_id,
       "enrollment_type" => "grade",
-      "grade_id" => grade,
+      "grade_id" => grade_id,
       "academic_year" => params["academic_year"],
       "start_date" => params["start_date"]
     }
