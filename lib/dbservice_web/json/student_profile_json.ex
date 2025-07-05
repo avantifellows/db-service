@@ -15,6 +15,7 @@ defmodule DbserviceWeb.StudentProfileJSON do
 
   def render(student_profile) do
     student_profile = Dbservice.Repo.preload(student_profile, :user_profile)
+
     %{
       id: student_profile.id,
       student_id: student_profile.student_id,
@@ -44,6 +45,7 @@ defmodule DbserviceWeb.StudentProfileJSON do
 
   def student_profile_with_user_profile(student_profile) do
     student_profile = Dbservice.Repo.preload(student_profile, :user_profile)
+
     %{
       id: student_profile.id,
       student_id: student_profile.student_id,
