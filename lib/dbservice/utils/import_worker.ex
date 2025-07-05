@@ -122,6 +122,8 @@ defmodule Dbservice.DataImport.ImportWorker do
       case Map.get(acc, field) do
         "TRUE" -> Map.put(acc, field, true)
         "FALSE" -> Map.put(acc, field, false)
+        "Yes" -> Map.put(acc, field, true)
+        "No" -> Map.put(acc, field, false)
         _ -> acc
       end
     end)
