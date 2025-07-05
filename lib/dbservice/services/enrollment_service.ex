@@ -5,6 +5,7 @@ defmodule Dbservice.Services.EnrollmentService do
   across different parts of the application.
   """
 
+  import Ecto.Query
   alias Dbservice.Groups
   alias Dbservice.GroupUsers
   alias Dbservice.AuthGroups
@@ -14,6 +15,7 @@ defmodule Dbservice.Services.EnrollmentService do
   alias Dbservice.EnrollmentRecords
   alias Dbservice.Groups.GroupUser
   alias Dbservice.EnrollmentRecords.EnrollmentRecord
+  alias Dbservice.Repo
 
   @doc """
   Creates or updates a group user enrollment based on the enrollment type.
@@ -89,6 +91,25 @@ defmodule Dbservice.Services.EnrollmentService do
   Updates an existing group user.
   """
   def update_existing_group_user(existing_group_user, params) do
+    group = Groups.get_group!(params["group_id"])
+
+    if Map.has_key?(params, "academic_year") and group.type == "school" do
+      update_school_enrollment(
+        params["user_id"],
+        group.child_id,
+        params["academic_year"],
+        params["start_date"]
+      )
+
+      handle_enrollment_record(
+        params["user_id"],
+        group.child_id,
+        group.type,
+        params["academic_year"],
+        params["start_date"]
+      )
+    end
+
     case GroupUsers.update_group_user(existing_group_user, params) do
       {:ok, group_user} -> {:ok, group_user}
       {:error, _changeset} -> {:error, "Failed to update group user"}
@@ -168,6 +189,56 @@ defmodule Dbservice.Services.EnrollmentService do
       nil
     else
       params["academic_year"]
+    end
+  end
+
+  @doc """
+  Updates previous enrollment records for a user in a school when the academic year changes.
+  """
+  def update_school_enrollment(user_id, school_id, new_academic_year, end_date) do
+    from(er in EnrollmentRecord,
+      where:
+        er.user_id == ^user_id and
+          er.group_id == ^school_id and
+          er.group_type == "school" and
+          er.academic_year != ^new_academic_year and
+          er.is_current == true
+    )
+    |> Repo.all()
+    |> Enum.each(fn record ->
+      EnrollmentRecords.update_enrollment_record(record, %{
+        "is_current" => false,
+        "end_date" => end_date
+      })
+    end)
+  end
+
+  @doc """
+  Ensures an enrollment record exists for the given user, group, type, and academic year. Creates one if not present.
+  """
+  def handle_enrollment_record(user_id, group_id, group_type, academic_year, start_date) do
+    import Ecto.Query
+
+    enrollment_record =
+      from(er in EnrollmentRecord,
+        where:
+          er.user_id == ^user_id and
+            er.group_id == ^group_id and
+            er.group_type == ^group_type and
+            er.academic_year == ^academic_year
+      )
+      |> Repo.one()
+
+    if is_nil(enrollment_record) do
+      enrollment_record_params = %{
+        "group_id" => group_id,
+        "group_type" => group_type,
+        "user_id" => user_id,
+        "academic_year" => academic_year,
+        "start_date" => start_date
+      }
+
+      EnrollmentRecords.create_enrollment_record(enrollment_record_params)
     end
   end
 end

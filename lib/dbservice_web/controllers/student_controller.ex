@@ -67,6 +67,12 @@ defmodule DbserviceWeb.StudentController do
     response(200, "OK", Schema.ref(:Students))
   end
 
+  def index(conn, %{"id" => id, "group" => group} = _params) do
+    student = Users.get_student_by_id_and_group(id, group)
+    students = if student, do: [student], else: []
+    render(conn, "index.json", student: students)
+  end
+
   def index(conn, params) do
     query =
       from(m in Student,
