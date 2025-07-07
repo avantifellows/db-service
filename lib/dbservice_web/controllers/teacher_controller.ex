@@ -57,7 +57,7 @@ defmodule DbserviceWeb.TeacherController do
       end)
 
     teacher = Repo.all(query) |> Repo.preload([:user]) |> Repo.preload([:subject])
-    render(conn, "index.json", teacher: teacher)
+    render(conn, :index, teacher: teacher)
   end
 
   swagger_path :create do
@@ -94,14 +94,14 @@ defmodule DbserviceWeb.TeacherController do
 
   def show(conn, %{"id" => id}) do
     teacher = Users.get_teacher!(id)
-    render(conn, "show.json", teacher: teacher)
+    render(conn, :show, teacher: teacher)
   end
 
   def update(conn, params) do
     teacher = Users.get_teacher!(params["id"])
 
     with {:ok, %Teacher{} = teacher} <- update_existing_teacher_with_user(conn, teacher, params) do
-      render(conn, "show.json", teacher: teacher)
+      render(conn, :show, teacher: teacher)
     end
   end
 
@@ -141,7 +141,7 @@ defmodule DbserviceWeb.TeacherController do
     with {:ok, %Teacher{} = teacher} <- Users.update_teacher_with_user(teacher, user, params) do
       conn
       |> put_status(:ok)
-      |> render("show.json", teacher: teacher)
+      |> render(:show, teacher: teacher)
     end
   end
 
@@ -149,7 +149,7 @@ defmodule DbserviceWeb.TeacherController do
     with {:ok, %Teacher{} = teacher} <- Users.create_teacher_with_user(params) do
       conn
       |> put_status(:created)
-      |> render("show.json", teacher: teacher)
+      |> render(:show, teacher: teacher)
     end
   end
 
@@ -160,7 +160,7 @@ defmodule DbserviceWeb.TeacherController do
            Users.update_teacher_with_user(existing_teacher, user, params) do
       conn
       |> put_status(:ok)
-      |> render("show.json", teacher: teacher)
+      |> render(:show, teacher: teacher)
     end
   end
 end

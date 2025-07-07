@@ -56,7 +56,7 @@ defmodule DbserviceWeb.StudentProfileController do
       end)
 
     student_profile = Repo.all(query) |> Repo.preload([:user_profile])
-    render(conn, "index.json", student_profile: student_profile)
+    render(conn, :index, student_profile: student_profile)
   end
 
   swagger_path :show do
@@ -71,7 +71,12 @@ defmodule DbserviceWeb.StudentProfileController do
 
   def show(conn, %{"id" => id}) do
     student_profile = Profiles.get_student_profile!(id)
-    render(conn, "show.json", student_profile: student_profile)
+
+    render(
+      conn,
+      :show_student_profile_with_user_profile,
+      student_profile: student_profile
+    )
   end
 
   swagger_path :update do
@@ -95,7 +100,11 @@ defmodule DbserviceWeb.StudentProfileController do
              user_profile,
              params
            ) do
-      render(conn, "show.json", student_profile: student_profile)
+      render(
+        conn,
+        :show_student_profile_with_user_profile,
+        student_profile: student_profile
+      )
     end
   end
 
@@ -156,8 +165,8 @@ defmodule DbserviceWeb.StudentProfileController do
            Profiles.create_student_profile_with_user_profile(params) do
       conn
       |> put_status(:created)
-      |> put_resp_header("location", Routes.student_profile_path(conn, :show, student_profile))
-      |> render("show.json", student_profile: student_profile)
+      |> put_resp_header("location", ~p"/api/student-profile/#{student_profile}")
+      |> render(:show, student_profile: student_profile)
     end
   end
 
@@ -172,7 +181,7 @@ defmodule DbserviceWeb.StudentProfileController do
            ) do
       conn
       |> put_status(:ok)
-      |> render("show.json", student_profile: student_profile)
+      |> render(:show, student_profile: student_profile)
     end
   end
 end

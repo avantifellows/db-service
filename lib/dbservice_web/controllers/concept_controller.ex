@@ -50,7 +50,7 @@ defmodule DbserviceWeb.ConceptController do
       end)
 
     concept = Repo.all(query)
-    render(conn, "index.json", concept: concept)
+    render(conn, :index, concept: concept)
   end
 
   swagger_path :create do
@@ -67,8 +67,8 @@ defmodule DbserviceWeb.ConceptController do
     with {:ok, %Concept{} = concept} <- Concepts.create_concept(params) do
       conn
       |> put_status(:created)
-      |> put_resp_header("location", Routes.concept_path(conn, :show, concept))
-      |> render("show.json", concept: concept)
+      |> put_resp_header("location", ~p"/api/concept/#{concept}")
+      |> render(:show, concept: concept)
     end
   end
 
@@ -84,7 +84,7 @@ defmodule DbserviceWeb.ConceptController do
 
   def show(conn, %{"id" => id}) do
     concept = Concepts.get_concept!(id)
-    render(conn, "show.json", concept: concept)
+    render(conn, :show, concept: concept)
   end
 
   swagger_path :update do
@@ -102,7 +102,7 @@ defmodule DbserviceWeb.ConceptController do
     concept = Concepts.get_concept!(params["id"])
 
     with {:ok, %Concept{} = concept} <- Concepts.update_concept(concept, params) do
-      render(conn, "show.json", concept: concept)
+      render(conn, :show, concept: concept)
     end
   end
 

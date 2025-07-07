@@ -49,7 +49,7 @@ defmodule DbserviceWeb.ProgramController do
       end)
 
     program = Repo.all(query)
-    render(conn, "index.json", program: program)
+    render(conn, :index, program: program)
   end
 
   swagger_path :create do
@@ -84,7 +84,7 @@ defmodule DbserviceWeb.ProgramController do
 
   def show(conn, %{"id" => id}) do
     program = Programs.get_program!(id)
-    render(conn, "show.json", program: program)
+    render(conn, :show, program: program)
   end
 
   swagger_path :update do
@@ -102,7 +102,7 @@ defmodule DbserviceWeb.ProgramController do
     program = Programs.get_program!(params["id"])
 
     with {:ok, %Program{} = program} <- Programs.update_program(program, params) do
-      render(conn, "show.json", program: program)
+      render(conn, :show, program: program)
     end
   end
 
@@ -128,8 +128,8 @@ defmodule DbserviceWeb.ProgramController do
     with {:ok, %Program{} = program} <- Programs.create_program(params) do
       conn
       |> put_status(:created)
-      |> put_resp_header("location", Routes.program_path(conn, :show, program))
-      |> render("show.json", program: program)
+      |> put_resp_header("location", ~p"/api/program/#{program}")
+      |> render(:show, program: program)
     end
   end
 
@@ -137,7 +137,7 @@ defmodule DbserviceWeb.ProgramController do
     with {:ok, %Program{} = program} <- Programs.update_program(existing_program, params) do
       conn
       |> put_status(:ok)
-      |> render("show.json", program: program)
+      |> render(:show, program: program)
     end
   end
 end
