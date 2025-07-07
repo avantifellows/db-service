@@ -303,7 +303,11 @@ defmodule Dbservice.Resources do
   end
 
   defp update_resource_associations(resource, params) do
-    # Update all relevant ResourceCurriculums
+    update_resource_curriculums(resource, params)
+    update_problem_language(resource, params)
+  end
+
+  defp update_resource_curriculums(resource, params) do
     Enum.each(List.wrap(params["curriculum_grades"] || []), fn cg ->
       rc =
         Dbservice.ResourceCurriculums.get_resource_curriculum_by_resource_id_and_curriculum_id(
@@ -313,20 +317,20 @@ defmodule Dbservice.Resources do
 
       if rc, do: Dbservice.ResourceCurriculums.update_resource_curriculum(rc, params)
     end)
+  end
 
-    # Update ProblemLanguage if lang_code is present
-    if params["lang_code"] do
-      lang_id = get_lang_id(params["lang_code"])
+  defp update_problem_language(resource, params) do
+    lang = Dbservice.Languages.get_language_by_code(params["lang_code"])
+    lang_id = lang && lang.id
 
-      if lang_id do
-        pl =
-          Dbservice.ProblemLanguages.get_problem_language_by_problem_id_and_language_id(
-            resource.id,
-            lang_id
-          )
+    if lang_id do
+      pl =
+        Dbservice.ProblemLanguages.get_problem_language_by_problem_id_and_language_id(
+          resource.id,
+          lang_id
+        )
 
-        if pl, do: Dbservice.ProblemLanguages.update_problem_language(pl, params)
-      end
+      if pl, do: Dbservice.ProblemLanguages.update_problem_language(pl, params)
     end
   end
 
@@ -348,11 +352,4 @@ defmodule Dbservice.Resources do
   end
 
   def resolve_tag_id(tag), do: tag
-
-  defp get_lang_id(lang_code) do
-    case Dbservice.Repo.get_by(Dbservice.Languages.Language, code: lang_code) do
-      nil -> nil
-      lang -> lang.id
-    end
-  end
 end

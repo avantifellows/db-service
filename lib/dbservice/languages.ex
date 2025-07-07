@@ -45,6 +45,19 @@ defmodule Dbservice.Languages do
   end
 
   @doc """
+  Gets a Language by code.
+  Raises `Ecto.NoResultsError` if the Language does not exist.
+  ## Examples
+      iex> get_language_by_code(JEE)
+      %Language{}
+      iex> get_language_by_code(123)
+      ** (Ecto.NoResultsError)
+  """
+  def get_language_by_code(code) do
+    Repo.get_by(Language, code: code)
+  end
+
+  @doc """
   Creates a Language.
   ## Examples
       iex> create_language(%{field: value})
