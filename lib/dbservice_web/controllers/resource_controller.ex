@@ -11,7 +11,6 @@ defmodule DbserviceWeb.ResourceController do
   alias Dbservice.Utils.Util
   alias Dbservice.Languages.Language
   alias Dbservice.Resources.ProblemLanguage
-  alias Dbservice.Tags
 
   action_fallback(DbserviceWeb.FallbackController)
 
