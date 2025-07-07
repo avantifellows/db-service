@@ -10,7 +10,7 @@ defmodule Dbservice.TestRules do
 
   @doc """
   Returns the list of test rules.
-  
+
   ## Examples
       iex> list_test_rules()
       [%TestRule{}, ...]
@@ -21,9 +21,9 @@ defmodule Dbservice.TestRules do
 
   @doc """
   Gets a single test rule.
-  
+
   Raises `Ecto.NoResultsError` if the TestRule does not exist.
-  
+
   ## Examples
       iex> get_test_rule!(123)
       %TestRule{}
@@ -34,7 +34,7 @@ defmodule Dbservice.TestRules do
 
   @doc """
   Creates a test rule.
-  
+
   ## Examples
       iex> create_test_rule(%{field: value})
       {:ok, %TestRule{}}
@@ -49,7 +49,7 @@ defmodule Dbservice.TestRules do
 
   @doc """
   Updates a test rule.
-  
+
   ## Examples
       iex> update_test_rule(test_rule, %{field: new_value})
       {:ok, %TestRule{}}
@@ -64,7 +64,7 @@ defmodule Dbservice.TestRules do
 
   @doc """
   Deletes a test rule.
-  
+
   ## Examples
       iex> delete_test_rule(test_rule)
       {:ok, %TestRule{}}
