@@ -34,30 +34,18 @@ defmodule DbserviceWeb.TestRuleController do
 
   def index(conn, params) do
     query =
-      from(m in TestRule,
-        order_by: [asc: m.id],
-        offset: ^Map.get(params, "offset", 0),
-        limit: ^Map.get(params, "limit", 50)
+      from(tr in TestRule,
+        order_by: [asc: tr.id],
+        offset: ^params["offset"],
+        limit: ^params["limit"]
       )
 
     query =
       Enum.reduce(params, query, fn {key, value}, acc ->
-        case key do
-          "offset" ->
-            acc
-
-          "limit" ->
-            acc
-
-          _ ->
-            if Map.has_key?(
-                 TestRule.__schema__(:fields) |> Enum.into(%{}, &{Atom.to_string(&1), &1}),
-                 key
-               ) do
-              from(u in acc, where: field(u, ^String.to_existing_atom(key)) == ^value)
-            else
-              acc
-            end
+        case String.to_existing_atom(key) do
+          :offset -> acc
+          :limit -> acc
+          atom -> from(u in acc, where: field(u, ^atom) == ^value)
         end
       end)
 
