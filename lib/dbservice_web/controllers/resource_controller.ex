@@ -254,7 +254,7 @@ defmodule DbserviceWeb.ResourceController do
   end
 
   defp handle_curriculum_and_related_inserts(resource, params) do
-    case Resources.create_resource_curriculums_for_resource(resource, params["curriculum_grades"]) do
+    case Resources.create_resource_curriculums_for_resource(resource, params) do
       :ok ->
         insert_problem_language(resource, params)
         insert_resource_chapter(resource, params)
