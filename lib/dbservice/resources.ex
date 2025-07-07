@@ -278,4 +278,81 @@ defmodule Dbservice.Resources do
   def generate_next_resource_code(id) when is_integer(id) do
     "P" <> String.pad_leading(Integer.to_string(id), 7, "0")
   end
+
+  def update_resource_and_associations(resource, params) do
+    # Handle tags: resolve tag names to IDs if present
+    params =
+      if Map.has_key?(params, "tags") do
+        Map.put(params, "tag_ids", resolve_tag_ids(params["tags"]))
+      else
+        params
+      end
+
+    # Update the resource itself
+    result = update_resource(resource, params)
+
+    # If update successful, handle associations
+    case result do
+      {:ok, resource} ->
+        update_resource_associations(resource, params)
+        {:ok, resource}
+
+      error ->
+        error
+    end
+  end
+
+  defp update_resource_associations(resource, params) do
+    # Update all relevant ResourceCurriculums
+    Enum.each(List.wrap(params["curriculum_grades"] || []), fn cg ->
+      rc =
+        Dbservice.ResourceCurriculums.get_resource_curriculum_by_resource_id_and_curriculum_id(
+          resource.id,
+          cg["curriculum_id"]
+        )
+
+      if rc, do: Dbservice.ResourceCurriculums.update_resource_curriculum(rc, params)
+    end)
+
+    # Update ProblemLanguage if lang_code is present
+    if params["lang_code"] do
+      lang_id = get_lang_id(params["lang_code"])
+
+      if lang_id do
+        pl =
+          Dbservice.ProblemLanguages.get_problem_language_by_problem_id_and_language_id(
+            resource.id,
+            lang_id
+          )
+
+        if pl, do: Dbservice.ProblemLanguages.update_problem_language(pl, params)
+      end
+    end
+  end
+
+  def resolve_tag_ids(tags) do
+    Enum.map(tags, &resolve_tag_id/1)
+  end
+
+  def resolve_tag_id(tag) when is_integer(tag), do: tag
+
+  def resolve_tag_id(tag) when is_binary(tag) do
+    case Dbservice.Tags.get_tag_by_name(tag) do
+      nil ->
+        {:ok, new_tag} = Dbservice.Tags.create_tag(%{"name" => tag})
+        new_tag.id
+
+      tag_struct ->
+        tag_struct.id
+    end
+  end
+
+  def resolve_tag_id(tag), do: tag
+
+  defp get_lang_id(lang_code) do
+    case Dbservice.Repo.get_by(Dbservice.Languages.Language, code: lang_code) do
+      nil -> nil
+      lang -> lang.id
+    end
+  end
 end

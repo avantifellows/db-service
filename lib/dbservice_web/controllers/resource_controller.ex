@@ -183,7 +183,8 @@ defmodule DbserviceWeb.ResourceController do
   def update(conn, params) do
     resource = Resources.get_resource!(params["id"])
 
-    with {:ok, %Resource{} = resource} <- Resources.update_resource(resource, params) do
+    with {:ok, %Resource{} = resource} <-
+           Resources.update_resource_and_associations(resource, params) do
       render(conn, "show.json", resource: resource)
     end
   end
@@ -209,7 +210,9 @@ defmodule DbserviceWeb.ResourceController do
   defp create_new_resource(conn, params) do
     result =
       Repo.transaction(fn ->
-        params = Map.put(params, "tag_ids", resolve_tag_ids(params["tags"] || []))
+        params =
+          Map.put(params, "tag_ids", Dbservice.Resources.resolve_tag_ids(params["tags"] || []))
+
         handle_resource_creation_and_association(params)
       end)
 
@@ -266,25 +269,6 @@ defmodule DbserviceWeb.ResourceController do
         Repo.rollback({:curriculum_error, reason})
     end
   end
-
-  defp resolve_tag_ids(tags) do
-    Enum.map(tags, &resolve_tag_id/1)
-  end
-
-  defp resolve_tag_id(tag) when is_integer(tag), do: tag
-
-  defp resolve_tag_id(tag) when is_binary(tag) do
-    case Tags.get_tag_by_name(tag) do
-      nil ->
-        {:ok, new_tag} = Tags.create_tag(%{"name" => tag})
-        new_tag.id
-
-      tag_struct ->
-        tag_struct.id
-    end
-  end
-
-  defp resolve_tag_id(tag), do: tag
 
   defp insert_problem_language(resource, %{"lang_code" => lang_code} = params)
        when not is_nil(lang_code) do
