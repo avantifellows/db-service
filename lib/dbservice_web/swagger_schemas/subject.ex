@@ -11,14 +11,26 @@ defmodule DbserviceWeb.SwaggerSchema.Subject do
           description("A subject in the application")
 
           properties do
-            name(:string, "Subject name")
+            name(
+              Schema.array(:object),
+              "Multilingual subject names, each with a language code and value",
+              example: [
+                %{lang: "en", value: "Physics"},
+                %{lang: "hi", value: "भौतिकी"}
+              ]
+            )
+
             code(:string, "Subject Code")
-            tag_id(:integer, "Tag id associated with the subject")
+            parent_id(:integer, "Parent subject ID")
           end
 
           example(%{
-            name: "Physics",
-            code: "P11"
+            name: [
+              %{lang: "en", value: "Physics"},
+              %{lang: "hi", value: "भौतिकी"}
+            ],
+            code: "P11",
+            parent_id: 1
           })
         end
     }

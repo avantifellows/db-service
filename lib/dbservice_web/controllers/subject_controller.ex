@@ -48,9 +48,25 @@ defmodule DbserviceWeb.SubjectController do
     query =
       Enum.reduce(params, query, fn {key, value}, acc ->
         case String.to_existing_atom(key) do
-          :offset -> acc
-          :limit -> acc
-          atom -> from(u in acc, where: field(u, ^atom) == ^value)
+          :offset ->
+            acc
+
+          :limit ->
+            acc
+
+          :name ->
+            # Search for subject value in the array of maps
+            from(u in acc,
+              where:
+                fragment(
+                  "EXISTS (SELECT 1 FROM JSONB_ARRAY_ELEMENTS(?) obj WHERE obj->>'subject' = ?)",
+                  u.name,
+                  ^value
+                )
+            )
+
+          atom ->
+            from(u in acc, where: field(u, ^atom) == ^value)
         end
       end)
 
