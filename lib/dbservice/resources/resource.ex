@@ -21,6 +21,7 @@ defmodule Dbservice.Resources.Resource do
     field(:tag_ids, {:array, :integer})
     field(:skill_ids, {:array, :integer})
     field(:learning_objective_ids, {:array, :integer})
+    field(:cms_status, :string)
 
     timestamps()
 
@@ -45,7 +46,8 @@ defmodule Dbservice.Resources.Resource do
       :tag_ids,
       :skill_ids,
       :learning_objective_ids,
-      :teacher_id
+      :teacher_id,
+      :cms_status
     ])
     |> validate_required([:type, :type_params])
   end

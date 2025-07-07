@@ -55,7 +55,8 @@ defmodule DbserviceWeb.ResourceView do
       learning_objective_ids: resource.learning_objective_ids,
       teacher_id: resource.teacher_id,
       topic_id: topic_id,
-      chapter_id: chapter_id
+      chapter_id: chapter_id,
+      cms_status: resource.cms_status
     }
 
     # Add curriculum data if it exists
@@ -116,7 +117,8 @@ defmodule DbserviceWeb.ResourceView do
       learning_objective_ids: resource.learning_objective_ids,
       teacher_id: resource.teacher_id,
       topic_id: topic_id,
-      chapter_id: chapter_id
+      chapter_id: chapter_id,
+      cms_status: resource.cms_status
     }
 
     # Add curriculum data
