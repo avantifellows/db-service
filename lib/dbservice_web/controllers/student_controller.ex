@@ -302,7 +302,8 @@ defmodule DbserviceWeb.StudentController do
 
     # Only handle grade if it's provided in the params
     if Map.has_key?(params, "grade") do
-      {grade_group_id, grade_id, grade_group_type} = BatchEnrollmentService.get_grade_info(params["grade"])
+      {grade_group_id, grade_id, grade_group_type} =
+        BatchEnrollmentService.get_grade_info(params["grade"])
 
       # Check if grade has changed
       if BatchEnrollmentService.grade_changed?(user_id, grade_id) do
