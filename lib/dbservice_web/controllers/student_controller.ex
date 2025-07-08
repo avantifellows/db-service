@@ -334,54 +334,6 @@ defmodule DbserviceWeb.StudentController do
     end
   end
 
-  # Handle grade change by creating a new grade entry in ER
-  defp handle_grade_change(user_id, grade_id, start_date, academic_year, grade_group_type) do
-    # First mark all current grade entries as not current
-    BatchEnrollmentService.update_existing_enrollments(user_id, "grade", start_date)
-
-    # Create new grade enrollment record
-    EnrollmentRecords.create_enrollment_record(%{
-      user_id: user_id,
-      is_current: true,
-      start_date: start_date,
-      group_id: grade_id,
-      group_type: grade_group_type,
-      academic_year: academic_year
-    })
-  end
-
-  # Update grade in group_user
-  defp update_group_user_grade(user_id, grade_group_id, group_users) do
-    grade_group_user =
-      Enum.find(group_users, &BatchEnrollmentService.group_user_by_type?(&1, "grade"))
-
-    if grade_group_user do
-      GroupUsers.update_group_user(grade_group_user, %{group_id: grade_group_id})
-    else
-      # Create a new grade group user if one doesn't exist
-      GroupUsers.create_group_user(%{
-        user_id: user_id,
-        group_id: grade_group_id
-      })
-    end
-  end
-
-  # Update grade in student table
-  defp update_student_grade(student, grade_id) do
-    Users.update_student(student, %{"grade_id" => grade_id})
-  end
-
-  # Fetches grade information based on the grade number
-  defp get_grade_info(grade) do
-    from(gr in Grade,
-      join: g in Group,
-      on: g.child_id == gr.id and g.type == "grade",
-      where: gr.number == ^grade,
-      select: {g.id, g.child_id, g.type}
-    )
-    |> Repo.one()
-  end
-
   swagger_path :create_student_id do
     post("/api/student/generate-id")
 
