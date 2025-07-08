@@ -9,6 +9,7 @@ defmodule Dbservice.DataImport.BatchMovement do
   3. Updating group_user records to reflect the new batch
   4. Creating new enrollment records for the new batch (isCurrent=true)
   5. Updating old batch enrollment records (isCurrent=false)
+  6. Handling grade movement if grade is provided
   """
 
   alias Dbservice.Users
@@ -50,6 +51,34 @@ defmodule Dbservice.DataImport.BatchMovement do
         academic_year,
         start_date
       )
+    end
+
+    # Handle grade movement if grade is provided
+    if Map.has_key?(record, "grade") && record["grade"] != "" do
+      case BatchEnrollmentService.get_grade_info(record["grade"]) do
+        {grade_group_id, grade_id, grade_group_type} ->
+          # Check if grade has changed
+          if BatchEnrollmentService.grade_changed?(user_id, grade_id) do
+            # Handle grade enrollment
+            BatchEnrollmentService.handle_grade_enrollment(
+              user_id,
+              grade_id,
+              grade_group_type,
+              academic_year,
+              start_date
+            )
+
+            # Update grade in group_user
+            BatchEnrollmentService.update_grade_user(user_id, grade_group_id, group_users)
+
+            # Update grade in student table
+            BatchEnrollmentService.update_student_grade(student, grade_id)
+          end
+
+        nil ->
+          # Grade not found, but continue with batch movement
+          :ok
+      end
     end
 
     # Always update the batch group user

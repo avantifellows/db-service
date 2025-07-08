@@ -302,21 +302,24 @@ defmodule DbserviceWeb.StudentController do
 
     # Only handle grade if it's provided in the params
     if Map.has_key?(params, "grade") do
-      {grade_group_id, grade_id, grade_group_type} = get_grade_info(params["grade"])
+      {grade_group_id, grade_id, grade_group_type} = BatchEnrollmentService.get_grade_info(params["grade"])
 
-      # Fetch current grade from database to compare
-      current_grade = EnrollmentRecords.get_current_grade_id(user_id)
-      grade_changed = current_grade != grade_id
-
-      # If grade has changed, create a new grade entry in ER
-      if grade_changed do
-        handle_grade_change(user_id, grade_id, start_date, academic_year, grade_group_type)
+      # Check if grade has changed
+      if BatchEnrollmentService.grade_changed?(user_id, grade_id) do
+        # Handle grade enrollment
+        BatchEnrollmentService.handle_grade_enrollment(
+          user_id,
+          grade_id,
+          grade_group_type,
+          academic_year,
+          start_date
+        )
 
         # Update grade in group_user
-        update_group_user_grade(user_id, grade_group_id, group_users)
+        BatchEnrollmentService.update_grade_user(user_id, grade_group_id, group_users)
 
         # Update grade in student table
-        update_student_grade(student, grade_id)
+        BatchEnrollmentService.update_student_grade(student, grade_id)
       end
     end
 

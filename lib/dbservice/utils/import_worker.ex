@@ -411,7 +411,8 @@ defmodule Dbservice.DataImport.ImportWorker do
       "student_id" => Map.get(record, "student_id") || "",
       "batch_id" => Map.get(record, "batch_id") || "",
       "start_date" => Map.get(record, "start_date") || "",
-      "academic_year" => Map.get(record, "academic_year") || ""
+      "academic_year" => Map.get(record, "academic_year") || "",
+      "grade" => Map.get(record, "grade") || ""
     }
   end
 

@@ -13,6 +13,8 @@ defmodule Dbservice.Services.BatchEnrollmentService do
   alias Dbservice.Batches.Batch
   alias Dbservice.Groups.Group
   alias Dbservice.Statuses.Status
+  alias Dbservice.Grades.Grade
+  alias Dbservice.Users
 
   @doc """
   Fetches batch information based on the batch ID.
@@ -91,6 +93,38 @@ defmodule Dbservice.Services.BatchEnrollmentService do
   end
 
   @doc """
+  Fetches grade information based on the grade number.
+  Returns {grade_group_id, grade_id, grade_group_type}
+  """
+  def get_grade_info(grade_number) do
+    from(gr in Grade,
+      join: g in Group,
+      on: g.child_id == gr.id and g.type == "grade",
+      where: gr.number == ^grade_number,
+      select: {g.id, g.child_id, g.type}
+    )
+    |> Repo.one()
+  end
+
+  @doc """
+  Handles grade enrollment process
+  """
+  def handle_grade_enrollment(user_id, grade_id, grade_group_type, academic_year, start_date) do
+    new_grade_enrollment_attrs = %{
+      user_id: user_id,
+      is_current: true,
+      start_date: start_date,
+      group_id: grade_id,
+      group_type: grade_group_type,
+      academic_year: academic_year
+    }
+
+    # Update existing grade enrollments to mark them as not current
+    update_existing_enrollments(user_id, "grade", start_date)
+    EnrollmentRecords.create_enrollment_record(new_grade_enrollment_attrs)
+  end
+
+  @doc """
   Updates existing enrollments to mark them as not current
   """
   def update_existing_enrollments(user_id, group_type, start_date) do
@@ -114,6 +148,39 @@ defmodule Dbservice.Services.BatchEnrollmentService do
       # Create a new group user record
       GroupUsers.create_group_user(%{user_id: user_id, group_id: group_id})
     end
+  end
+
+  @doc """
+  Updates grade in group_user table
+  """
+  def update_grade_user(user_id, grade_group_id, group_users) do
+    grade_group_user = Enum.find(group_users, &group_user_by_type?(&1, "grade"))
+
+    if grade_group_user do
+      # Update existing grade group user with the new group ID
+      GroupUsers.update_group_user(grade_group_user, %{group_id: grade_group_id})
+    else
+      # Create a new grade group user if one doesn't exist
+      GroupUsers.create_group_user(%{
+        user_id: user_id,
+        group_id: grade_group_id
+      })
+    end
+  end
+
+  @doc """
+  Updates grade in student table
+  """
+  def update_student_grade(student, grade_id) do
+    Users.update_student(student, %{"grade_id" => grade_id})
+  end
+
+  @doc """
+  Checks if grade has changed by comparing current grade with new grade
+  """
+  def grade_changed?(user_id, new_grade_id) do
+    current_grade = EnrollmentRecords.get_current_grade_id(user_id)
+    current_grade != new_grade_id
   end
 
   @doc """
