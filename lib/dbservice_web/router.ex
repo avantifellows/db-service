@@ -63,6 +63,7 @@ defmodule DbserviceWeb.Router do
     patch("/update-user-enrollment-records", StudentController, :update_user_enrollment_records)
     post("/student/batch-process", StudentController, :batch_process)
     post("/group-user/batch-process", GroupUserController, :batch_process)
+    resources("/college", CollegeController)
 
     # Some students were incorrectly marked as "dropouts" in our system. This endpoint was introduced to reverse this mistake by removing the dropout status from both the enrollment records and the student table
     patch("/student/remove-dropout-status/:student_id", StudentController, :remove_dropout_status)
