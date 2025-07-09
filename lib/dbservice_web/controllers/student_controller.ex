@@ -14,7 +14,6 @@ defmodule DbserviceWeb.StudentController do
   alias Dbservice.Statuses.Status
   alias Dbservice.Groups.Group
   alias Dbservice.GroupUsers
-  alias Dbservice.Grades.Grade
   alias DbserviceWeb.EnrollmentRecordJSON
   alias Dbservice.Statuses
   alias Dbservice.Services.BatchEnrollmentService
