@@ -18,8 +18,10 @@ defmodule Dbservice.DataImport.BatchMovement do
 
   def process_batch_movement(record) do
     with {:ok, student} <- get_student(record["student_id"]),
-         {batch_group_id, batch_id, batch_group_type} <- BatchEnrollmentService.get_batch_info(record["batch_id"]),
-         {:ok, _} <- handle_batch_movement(student, {batch_group_id, batch_id, batch_group_type}, record) do
+         {batch_group_id, batch_id, batch_group_type} <-
+           BatchEnrollmentService.get_batch_info(record["batch_id"]),
+         {:ok, _} <-
+           handle_batch_movement(student, {batch_group_id, batch_id, batch_group_type}, record) do
       {:ok, "Batch movement processed successfully"}
     else
       {:error, reason} -> {:error, reason}
@@ -61,7 +63,6 @@ defmodule Dbservice.DataImport.BatchMovement do
         academic_year,
         start_date
       )
-
     end
 
     # Handle grade movement if grade is provided
