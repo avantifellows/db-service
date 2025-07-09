@@ -43,10 +43,37 @@ defmodule Dbservice.DataImport.BatchMovement do
     # Get group users for the student
     group_users = GroupUsers.get_group_user_by_user_id(user_id)
 
-    {status_id, status_group_type} = BatchEnrollmentService.get_enrolled_status_info()
+    # Handle batch and status enrollment
+    handle_batch_and_status_enrollment(
+      user_id,
+      batch_id,
+      batch_group_type,
+      academic_year,
+      start_date
+    )
 
-    # Check if the student is already enrolled in the specified batch
-    unless BatchEnrollmentService.existing_batch_enrollment?(user_id, batch_id) do
+    # Handle grade movement if provided
+    handle_grade_movement(student, record, user_id, academic_year, start_date, group_users)
+
+    # Always update the batch group user
+    BatchEnrollmentService.update_batch_user(user_id, batch_group_id, group_users)
+
+    {:ok, "Batch movement completed"}
+  end
+
+  defp handle_batch_and_status_enrollment(
+         user_id,
+         batch_id,
+         batch_group_type,
+         academic_year,
+         start_date
+       ) do
+    return_if_already_enrolled =
+      BatchEnrollmentService.existing_batch_enrollment?(user_id, batch_id)
+
+    if return_if_already_enrolled do
+      :already_enrolled
+    else
       # Handle the batch enrollment process
       BatchEnrollmentService.handle_batch_enrollment(
         user_id,
@@ -56,6 +83,9 @@ defmodule Dbservice.DataImport.BatchMovement do
         start_date
       )
 
+      # Handle the status enrollment process
+      {status_id, status_group_type} = BatchEnrollmentService.get_enrolled_status_info()
+
       BatchEnrollmentService.handle_status_enrollment(
         user_id,
         status_id,
@@ -64,38 +94,71 @@ defmodule Dbservice.DataImport.BatchMovement do
         start_date
       )
     end
+  end
 
-    # Handle grade movement if grade is provided
-    if Map.has_key?(record, "grade") && record["grade"] != "" do
-      case BatchEnrollmentService.get_grade_info(record["grade"]) do
-        {grade_group_id, grade_id, grade_group_type} ->
-          # Check if grade has changed
-          if BatchEnrollmentService.grade_changed?(user_id, grade_id) do
-            # Handle grade enrollment
-            BatchEnrollmentService.handle_grade_enrollment(
-              user_id,
-              grade_id,
-              grade_group_type,
-              academic_year,
-              start_date
-            )
+  defp handle_grade_movement(student, record, user_id, academic_year, start_date, group_users) do
+    has_grade = Map.has_key?(record, "grade") && record["grade"] != ""
 
-            # Update grade in group_user
-            BatchEnrollmentService.update_grade_user(user_id, grade_group_id, group_users)
-
-            # Update grade in student table
-            BatchEnrollmentService.update_student_grade(student, grade_id)
-          end
-
-        nil ->
-          # Grade not found, but continue with batch movement
-          :ok
-      end
+    if has_grade do
+      process_grade_change(
+        student,
+        record["grade"],
+        user_id,
+        academic_year,
+        start_date,
+        group_users
+      )
+    else
+      :no_grade_change
     end
+  end
 
-    # Always update the batch group user
-    BatchEnrollmentService.update_batch_user(user_id, batch_group_id, group_users)
+  defp process_grade_change(student, grade, user_id, academic_year, start_date, group_users) do
+    case BatchEnrollmentService.get_grade_info(grade) do
+      {grade_group_id, grade_id, grade_group_type} ->
+        handle_grade_enrollment_if_changed(
+          student,
+          user_id,
+          grade_id,
+          grade_group_id,
+          grade_group_type,
+          academic_year,
+          start_date,
+          group_users
+        )
 
-    {:ok, "Batch movement completed"}
+      nil ->
+        :grade_not_found
+    end
+  end
+
+  defp handle_grade_enrollment_if_changed(
+         student,
+         user_id,
+         grade_id,
+         grade_group_id,
+         grade_group_type,
+         academic_year,
+         start_date,
+         group_users
+       ) do
+    if BatchEnrollmentService.grade_changed?(user_id, grade_id) do
+      # Handle grade enrollment
+      BatchEnrollmentService.handle_grade_enrollment(
+        user_id,
+        grade_id,
+        grade_group_type,
+        academic_year,
+        start_date
+      )
+
+      # Update grade in group_user
+      BatchEnrollmentService.update_grade_user(user_id, grade_group_id, group_users)
+
+      # Update grade in student table
+      BatchEnrollmentService.update_student_grade(student, grade_id)
+    else
+      :grade_unchanged
+    end
   end
 end
