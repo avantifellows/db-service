@@ -196,19 +196,21 @@ defmodule Dbservice.DataImport.ImportWorker do
     path = Path.join(["priv", "static", "uploads", import_record.filename])
     start_row = import_record.start_row || 2
 
-    with {:ok, parsed_records} <- parse_csv_records(path, start_row) do
-      try do
-        validate_sheet_type!(import_record, parsed_records)
+    case parse_csv_records(path, start_row) do
+      {:ok, parsed_records} ->
+        try do
+          validate_sheet_type!(import_record, parsed_records)
 
-        case process_parsed_records(parsed_records, import_record) do
-          {:ok, processed_records} -> finalize_import(import_record, processed_records)
-          {:error, reason} -> handle_import_error(import_record, reason)
+          case process_parsed_records(parsed_records, import_record) do
+            {:ok, processed_records} -> finalize_import(import_record, processed_records)
+            {:error, reason} -> handle_import_error(import_record, reason)
+          end
+        rescue
+          e -> handle_import_error(import_record, Exception.message(e))
         end
-      rescue
-        e -> handle_import_error(import_record, Exception.message(e))
-      end
-    else
-      {:error, reason} -> handle_import_error(import_record, reason)
+
+      {:error, reason} ->
+        handle_import_error(import_record, reason)
     end
   end
 
@@ -399,19 +401,21 @@ defmodule Dbservice.DataImport.ImportWorker do
     path = Path.join(["priv", "static", "uploads", import_record.filename])
     start_row = import_record.start_row || 2
 
-    with {:ok, parsed_records} <- parse_batch_movement_csv_records(path, start_row) do
-      try do
-        validate_sheet_type!(import_record, parsed_records)
+    case parse_batch_movement_csv_records(path, start_row) do
+      {:ok, parsed_records} ->
+        try do
+          validate_sheet_type!(import_record, parsed_records)
 
-        case process_parsed_batch_movement_records(parsed_records, import_record) do
-          {:ok, processed_records} -> finalize_import(import_record, processed_records)
-          {:error, reason} -> handle_import_error(import_record, reason)
+          case process_parsed_batch_movement_records(parsed_records, import_record) do
+            {:ok, processed_records} -> finalize_import(import_record, processed_records)
+            {:error, reason} -> handle_import_error(import_record, reason)
+          end
+        rescue
+          e -> handle_import_error(import_record, Exception.message(e))
         end
-      rescue
-        e -> handle_import_error(import_record, Exception.message(e))
-      end
-    else
-      {:error, reason} -> handle_import_error(import_record, reason)
+
+      {:error, reason} ->
+        handle_import_error(import_record, reason)
     end
   end
 
