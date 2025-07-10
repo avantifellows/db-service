@@ -37,7 +37,7 @@ defmodule DbserviceWeb.SwaggerSchema.Exam do
     %{
       Exams:
         swagger_schema do
-          title("Exam")
+          title("Exams")
           description("All the exams")
           type(:array)
           items(Schema.ref(:Exam))
