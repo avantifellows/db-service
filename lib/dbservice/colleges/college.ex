@@ -53,7 +53,3 @@ defmodule Dbservice.Colleges.College do
     |> validate_required([:college_id, :name])
   end
 end
-
-defimpl Phoenix.Param, for: Dbservice.Colleges.College do
-  def to_param(%{id: id}), do: to_string(id)
-end
