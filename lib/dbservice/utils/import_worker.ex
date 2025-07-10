@@ -196,9 +196,17 @@ defmodule Dbservice.DataImport.ImportWorker do
     path = Path.join(["priv", "static", "uploads", import_record.filename])
     start_row = import_record.start_row || 2
 
-    with {:ok, parsed_records} <- parse_csv_records(path, start_row),
-         {:ok, processed_records} <- process_parsed_records(parsed_records, import_record) do
-      finalize_import(import_record, processed_records)
+    with {:ok, parsed_records} <- parse_csv_records(path, start_row) do
+      try do
+        validate_sheet_type!(import_record, parsed_records)
+
+        case process_parsed_records(parsed_records, import_record) do
+          {:ok, processed_records} -> finalize_import(import_record, processed_records)
+          {:error, reason} -> handle_import_error(import_record, reason)
+        end
+      rescue
+        e -> handle_import_error(import_record, Exception.message(e))
+      end
     else
       {:error, reason} -> handle_import_error(import_record, reason)
     end
@@ -391,10 +399,17 @@ defmodule Dbservice.DataImport.ImportWorker do
     path = Path.join(["priv", "static", "uploads", import_record.filename])
     start_row = import_record.start_row || 2
 
-    with {:ok, parsed_records} <- parse_batch_movement_csv_records(path, start_row),
-         {:ok, processed_records} <-
-           process_parsed_batch_movement_records(parsed_records, import_record) do
-      finalize_import(import_record, processed_records)
+    with {:ok, parsed_records} <- parse_batch_movement_csv_records(path, start_row) do
+      try do
+        validate_sheet_type!(import_record, parsed_records)
+
+        case process_parsed_batch_movement_records(parsed_records, import_record) do
+          {:ok, processed_records} -> finalize_import(import_record, processed_records)
+          {:error, reason} -> handle_import_error(import_record, reason)
+        end
+      rescue
+        e -> handle_import_error(import_record, Exception.message(e))
+      end
     else
       {:error, reason} -> handle_import_error(import_record, reason)
     end
@@ -423,9 +438,8 @@ defmodule Dbservice.DataImport.ImportWorker do
           {:cont, {:ok, [result | processed_records]}}
 
         {:error, reason} ->
-          # Continue processing other records even if one fails
-          update_import_progress(import_record, index, :error, reason)
-          {:cont, {:ok, processed_records}}
+          # Halt the entire import process if any row fails
+          {:halt, {:error, "Error processing row #{index}: #{reason}"}}
       end
     end)
     |> case do
@@ -454,5 +468,32 @@ defmodule Dbservice.DataImport.ImportWorker do
 
   defp process_batch_movement_record(record) do
     DataImport.BatchMovement.process_batch_movement(record)
+  end
+
+  defp validate_sheet_type!(import_record, parsed_records) do
+    # Define required headers for each type
+    student_headers = ["student_id", "first_name", "last_name"]
+    batch_headers = ["student_id", "batch_id", "start_date", "academic_year"]
+
+    headers =
+      case parsed_records do
+        [{record, _} | _] -> Map.keys(record)
+        _ -> []
+      end
+
+    case import_record.type do
+      "student" ->
+        unless Enum.all?(student_headers, &(&1 in headers)) do
+          raise "Sheet does not match student import format. Required columns: #{Enum.join(student_headers, ", ")}"
+        end
+
+      "batch_movement" ->
+        unless Enum.all?(batch_headers, &(&1 in headers)) do
+          raise "Sheet does not match batch movement import format. Required columns: #{Enum.join(batch_headers, ", ")}"
+        end
+
+      _ ->
+        :ok
+    end
   end
 end
