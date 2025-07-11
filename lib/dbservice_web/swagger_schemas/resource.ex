@@ -23,6 +23,8 @@ defmodule DbserviceWeb.SwaggerSchema.Resource do
             learning_objective_id(:integer, "Learning objective id associated with the resource")
             tag_id(:integer, "Tag id associated with the resource")
             teacher_id(:integer, "Teacher id associated with the resource")
+            exam_ids(:array, "Exam ids associated with the resource")
+            show_in_gurukul(:boolean, "Show in gurukul")
           end
 
           example(%{
@@ -39,7 +41,9 @@ defmodule DbserviceWeb.SwaggerSchema.Resource do
             concept_id: 1,
             learning_objective_id: 1,
             tag_id: 5,
-            teacher_id: 1
+            teacher_id: 1,
+            exam_ids: [1, 2, 3],
+            show_in_gurukul: true
           })
         end
     }
