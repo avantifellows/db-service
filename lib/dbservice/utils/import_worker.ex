@@ -95,6 +95,7 @@ defmodule Dbservice.DataImport.ImportWorker do
     # Process the file based on type
     case import_record.type do
       "student" -> process_student_import(import_record)
+      "batch_movement" -> process_batch_movement_import(import_record)
       _ -> {:error, "Unsupported import type"}
     end
   end
@@ -195,15 +196,26 @@ defmodule Dbservice.DataImport.ImportWorker do
     path = Path.join(["priv", "static", "uploads", import_record.filename])
     start_row = import_record.start_row || 2
 
-    with {:ok, parsed_records} <- parse_csv_records(path, start_row),
-         {:ok, processed_records} <- process_parsed_records(parsed_records, import_record) do
-      finalize_import(import_record, processed_records)
-    else
-      {:error, reason} -> handle_import_error(import_record, reason)
+    case parse_csv_records(path, start_row) do
+      {:ok, parsed_records} ->
+        try do
+          validate_sheet_type!(import_record, parsed_records)
+
+          case process_parsed_records(parsed_records, import_record) do
+            {:ok, processed_records} -> finalize_import(import_record, processed_records)
+            {:error, reason} -> handle_import_error(import_record, reason)
+          end
+        rescue
+          e -> handle_import_error(import_record, Exception.message(e))
+        end
+
+      {:error, reason} ->
+        handle_import_error(import_record, reason)
     end
   end
 
-  defp parse_csv_records(path, start_row) do
+  # Generic CSV parsing function that accepts a field extraction function
+  defp parse_csv_records_with_extractor(path, start_row, field_extractor_fn) do
     try do
       records =
         path
@@ -217,8 +229,7 @@ defmodule Dbservice.DataImport.ImportWorker do
         )
         |> Stream.with_index(1)
         |> Stream.filter(fn {_record, index} -> index >= start_row - 1 end)
-        |> Stream.map(fn {record, index} -> {extract_fields(record), index} end)
-        |> Stream.map(fn {record, index} -> {map_fields(record), index} end)
+        |> Stream.map(fn {record, index} -> {field_extractor_fn.(record), index} end)
         |> Enum.to_list()
 
       {:ok, records}
@@ -229,6 +240,14 @@ defmodule Dbservice.DataImport.ImportWorker do
       error ->
         {:error, "Unexpected error parsing CSV: #{inspect(error)}"}
     end
+  end
+
+  defp parse_csv_records(path, start_row) do
+    parse_csv_records_with_extractor(path, start_row, fn record ->
+      record
+      |> extract_fields()
+      |> map_fields()
+    end)
   end
 
   defp process_parsed_records(records, import_record) do
@@ -375,6 +394,110 @@ defmodule Dbservice.DataImport.ImportWorker do
         else
           {:error, _} = error -> error
         end
+    end
+  end
+
+  defp process_batch_movement_import(import_record) do
+    path = Path.join(["priv", "static", "uploads", import_record.filename])
+    start_row = import_record.start_row || 2
+
+    case parse_batch_movement_csv_records(path, start_row) do
+      {:ok, parsed_records} ->
+        try do
+          validate_sheet_type!(import_record, parsed_records)
+
+          case process_parsed_batch_movement_records(parsed_records, import_record) do
+            {:ok, processed_records} -> finalize_import(import_record, processed_records)
+            {:error, reason} -> handle_import_error(import_record, reason)
+          end
+        rescue
+          e -> handle_import_error(import_record, Exception.message(e))
+        end
+
+      {:error, reason} ->
+        handle_import_error(import_record, reason)
+    end
+  end
+
+  # Batch movement specific functions
+  defp parse_batch_movement_csv_records(path, start_row) do
+    parse_csv_records_with_extractor(path, start_row, &extract_batch_movement_fields/1)
+  end
+
+  defp extract_batch_movement_fields(record) do
+    # Extract and normalize the required fields for batch movement
+    %{
+      "student_id" => Map.get(record, "student_id") || "",
+      "batch_id" => Map.get(record, "batch_id") || "",
+      "start_date" => Map.get(record, "start_date") || "",
+      "academic_year" => Map.get(record, "academic_year") || "",
+      "grade" => Map.get(record, "grade") || ""
+    }
+  end
+
+  defp process_parsed_batch_movement_records(records, import_record) do
+    Enum.reduce_while(records, {:ok, []}, fn {record, index}, {:ok, processed_records} ->
+      case process_single_batch_movement_record(record, index, import_record) do
+        {:ok, result} ->
+          {:cont, {:ok, [result | processed_records]}}
+
+        {:error, reason} ->
+          # Halt the entire import process if any row fails
+          {:halt, {:error, "Error processing row #{index}: #{reason}"}}
+      end
+    end)
+    |> case do
+      {:ok, processed_records} -> {:ok, Enum.reverse(processed_records)}
+      error -> error
+    end
+  end
+
+  defp process_single_batch_movement_record(record, index, import_record) do
+    try do
+      case process_batch_movement_record(record) do
+        {:ok, _} = result ->
+          update_import_progress(import_record, index, :success)
+          result
+
+        {:error, reason} = error ->
+          update_import_progress(import_record, index, :error, reason)
+          error
+      end
+    rescue
+      e ->
+        update_import_progress(import_record, index, :exception, e)
+        {:error, Exception.message(e)}
+    end
+  end
+
+  defp process_batch_movement_record(record) do
+    DataImport.BatchMovement.process_batch_movement(record)
+  end
+
+  defp validate_sheet_type!(import_record, parsed_records) do
+    # Define required headers for each type
+    student_headers = ["student_id", "first_name", "last_name"]
+    batch_headers = ["student_id", "batch_id", "start_date", "academic_year"]
+
+    headers =
+      case parsed_records do
+        [{record, _} | _] -> Map.keys(record)
+        _ -> []
+      end
+
+    case import_record.type do
+      "student" ->
+        unless Enum.all?(student_headers, &(&1 in headers)) do
+          raise "Sheet does not match student import format. Required columns: #{Enum.join(student_headers, ", ")}"
+        end
+
+      "batch_movement" ->
+        unless Enum.all?(batch_headers, &(&1 in headers)) do
+          raise "Sheet does not match batch movement import format. Required columns: #{Enum.join(batch_headers, ", ")}"
+        end
+
+      _ ->
+        :ok
     end
   end
 end
