@@ -296,12 +296,10 @@ defmodule Dbservice.DataImport do
     missing_headers = @student_headers -- normalized_headers
     extra_headers = normalized_headers -- @student_headers
 
-    cond do
-      length(missing_headers) > 0 or length(extra_headers) > 0 ->
-        {:error, "Invalid format for student sheet"}
-
-      true ->
-        :ok
+    if length(missing_headers) > 0 or length(extra_headers) > 0 do
+      {:error, "Invalid format for student sheet"}
+    else
+      :ok
     end
   end
 
@@ -313,12 +311,10 @@ defmodule Dbservice.DataImport do
     missing_required = @batch_required_headers -- normalized_headers
     extra_headers = normalized_headers -- @batch_headers
 
-    cond do
-      length(missing_required) > 0 or length(extra_headers) > 0 ->
-        {:error, "Invalid format for batch sheet"}
-
-      true ->
-        :ok
+    if length(missing_required) > 0 or length(extra_headers) > 0 do
+      {:error, "Invalid format for batch sheet"}
+    else
+      :ok
     end
   end
 
