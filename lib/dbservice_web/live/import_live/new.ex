@@ -27,6 +27,9 @@ defmodule DbserviceWeb.ImportLive.New do
   end
 
   def handle_event("save", params, socket) do
+    # Clear any existing flash messages first
+    socket = clear_flash(socket)
+
     # Return early if already submitting or submitted
     if socket.assigns.submitted do
       {:noreply, socket}
@@ -55,11 +58,12 @@ defmodule DbserviceWeb.ImportLive.New do
           |> Ecto.Changeset.add_error(:sheet_url, reason)
           |> Map.put(:action, :validate)
 
+        form = to_form(changeset)
+
         {:noreply,
-         assign(socket,
-           changeset: changeset,
-           submitted: false
-         )
+         socket
+         |> assign(changeset: changeset, form: form, submitted: false)
+         |> clear_flash()
          |> put_flash(:error, "Import failed: #{reason}")}
     end
   end
@@ -68,7 +72,9 @@ defmodule DbserviceWeb.ImportLive.New do
     IO.puts("Unexpected empty parameters received!")
 
     {:noreply,
-     assign(socket, submitted: false)
+     socket
+     |> assign(submitted: false)
+     |> clear_flash()
      |> put_flash(:error, "Invalid form submission. Please try again.")}
   end
 
@@ -113,9 +119,9 @@ defmodule DbserviceWeb.ImportLive.New do
                     id={@form[:type].id || "import_type"}
                     class="block w-full pl-3 pr-10 py-2 text-base border-gray-300 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm rounded-md dark:bg-gray-700 dark:border-gray-600 dark:text-white"
                   >
-                    <option value="">Select import type</option>
+                    <option disabled value="">Select import type</option>
                     <option value="student" selected={@form[:type].value == "student"}>Student</option>
-                    <option value="batch_movement" selected={@form[:type].value == "batch_movement"}>Batch</option>
+                    <option value="batch_movement" selected={@form[:type].value == "batch_movement"}>Batch Movement</option>
 
                   </select>
                 </div>

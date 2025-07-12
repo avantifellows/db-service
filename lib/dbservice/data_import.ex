@@ -71,6 +71,67 @@ defmodule Dbservice.DataImport do
     "Added on"
   ]
 
+  # Required headers for student sheet (excluding optional ones)
+  @student_required_headers [
+    "addition_date",
+    "auth_group",
+    "academic_year",
+    "grade",
+    "batch_id",
+    "school_code",
+    "school_name",
+    "start_date",
+    "student_id",
+    "user_first_name",
+    "user_last_name",
+    "user_gender",
+    "user_date_of_birth",
+    "student_category",
+    "student_stream",
+    "user_email",
+    "user_phone",
+    "user_whatsapp_phone",
+    "user_address",
+    "user_state",
+    "user_district",
+    "user_pincode",
+    "user_city",
+    "student_father_name",
+    "student_father_phone",
+    "student_mother_name",
+    "student_mother_phone",
+    "student_physically_handicapped",
+    "student_family_income",
+    "student_father_profession",
+    "student_father_education_level",
+    "student_mother_profession",
+    "student_mother_education_level",
+    "student_time_of_device_availability",
+    "student_has_internet_access",
+    "student_primary_smartphone_owner",
+    "student_primary_smartphone_owner_profession",
+    "student_guardian_name",
+    "student_guardian_relation",
+    "student_guardian_phone",
+    "student_guardian_education_level",
+    "student_guardian_profession",
+    "student_has_category_certificate",
+    "student_annual_family_income",
+    "student_monthly_family_income",
+    "student_number_of_smartphones",
+    "student_family_type",
+    "student_number_of_four_wheelers",
+    "student_number_of_two_wheelers",
+    "student_has_air_conditioner",
+    "student_goes_for_tuition_or_other_coaching",
+    "student_know_about_avanti",
+    "student_percentage_in_grade_10_science",
+    "student_percentage_in_grade_10_math",
+    "student_percentage_in_grade_10_english",
+    "student_board_stream",
+    "student_school_medium"
+  ]
+
   # Expected headers for batch sheet (grade is optional)
   @batch_headers [
     "student_id",
@@ -86,6 +147,13 @@ defmodule Dbservice.DataImport do
     "start_date",
     "academic_year"
   ]
+
+  @doc """
+  Returns a human-readable name for the import type.
+  """
+  def format_type_name("student"), do: "Student"
+  def format_type_name("batch_movement"), do: "Batch Movement"
+  def format_type_name(type), do: String.capitalize(type)
 
   @doc """
   Returns the list of Import.
@@ -293,10 +361,11 @@ defmodule Dbservice.DataImport do
     normalized_headers = Enum.reject(headers, &(&1 == ""))
 
     # Check if all required student headers are present
-    missing_headers = @student_headers -- normalized_headers
+    missing_required = @student_required_headers -- normalized_headers
+    # Check for extra headers (allow optional fields)
     extra_headers = normalized_headers -- @student_headers
 
-    if length(missing_headers) > 0 or length(extra_headers) > 0 do
+    if length(missing_required) > 0 or length(extra_headers) > 0 do
       {:error, "Invalid format for student sheet"}
     else
       :ok
