@@ -8,6 +8,85 @@ defmodule Dbservice.DataImport do
   alias Dbservice.DataImport.Import
   alias Dbservice.DataImport.ImportWorker
 
+  # Expected headers for student sheet
+  @student_headers [
+    "addition_date",
+    "auth_group",
+    "academic_year",
+    "grade",
+    "batch_id",
+    "school_code",
+    "school_name",
+    "start_date",
+    "student_id",
+    "user_first_name",
+    "user_last_name",
+    "user_gender",
+    "user_date_of_birth",
+    "student_category",
+    "student_stream",
+    "user_email",
+    "user_phone",
+    "user_whatsapp_phone",
+    "user_address",
+    "user_state",
+    "user_district",
+    "user_pincode",
+    "user_city",
+    "student_father_name",
+    "student_father_phone",
+    "student_mother_name",
+    "student_mother_phone",
+    "student_physically_handicapped",
+    "student_family_income",
+    "student_father_profession",
+    "student_father_education_level",
+    "student_mother_profession",
+    "student_mother_education_level",
+    "student_time_of_device_availability",
+    "student_has_internet_access",
+    "student_primary_smartphone_owner",
+    "student_primary_smartphone_owner_profession",
+    "student_guardian_name",
+    "student_guardian_relation",
+    "student_guardian_phone",
+    "student_guardian_education_level",
+    "student_guardian_profession",
+    "student_has_category_certificate",
+    "student_annual_family_income",
+    "student_monthly_family_income",
+    "student_number_of_smartphones",
+    "student_family_type",
+    "student_number_of_four_wheelers",
+    "student_number_of_two_wheelers",
+    "student_has_air_conditioner",
+    "student_goes_for_tuition_or_other_coaching",
+    "student_know_about_avanti",
+    "student_percentage_in_grade_10_science",
+    "student_percentage_in_grade_10_math",
+    "student_percentage_in_grade_10_english",
+    "student_board_stream",
+    "student_school_medium",
+    "Added by",
+    "Added on"
+  ]
+
+  # Expected headers for batch sheet (grade is optional)
+  @batch_headers [
+    "student_id",
+    "grade",
+    "batch_id",
+    "start_date",
+    "academic_year"
+  ]
+
+  @batch_required_headers [
+    "student_id",
+    "batch_id",
+    "start_date",
+    "academic_year"
+  ]
+
   @doc """
   Returns the list of Import.
   ## Examples
@@ -72,21 +151,32 @@ defmodule Dbservice.DataImport do
 
     case download_google_sheet(url) do
       {:ok, filename} ->
-        {:ok, import_record} =
-          create_import(%{
-            filename: filename,
-            status: "pending",
-            type: type,
-            total_rows: 0,
-            processed_rows: 0,
-            start_row: start_row
-          })
+        # Validate CSV format before creating import record
+        case validate_csv_format(filename, type) do
+          :ok ->
+            {:ok, import_record} =
+              create_import(%{
+                filename: filename,
+                status: "pending",
+                type: type,
+                total_rows: 0,
+                processed_rows: 0,
+                start_row: start_row
+              })
 
-        %{id: import_record.id}
-        |> ImportWorker.new()
-        |> Oban.insert()
+            %{id: import_record.id}
+            |> ImportWorker.new()
+            |> Oban.insert()
 
-        {:ok, import_record}
+            {:ok, import_record}
+
+          {:error, reason} ->
+            # Clean up the downloaded file if validation fails
+            # Create a temporary import record structure for cleanup
+            temp_import = %Import{filename: filename}
+            cleanup_import_file(temp_import)
+            {:error, reason}
+        end
 
       {:error, reason} ->
         {:error, "Failed to download sheet: #{reason}"}
@@ -164,6 +254,76 @@ defmodule Dbservice.DataImport do
     cleanup_import_file(updated_import)
 
     {:ok, updated_import}
+  end
+
+  @doc """
+  Validates the CSV file format based on the import type.
+  Checks if the headers match the expected format for student or batch sheets.
+  """
+  def validate_csv_format(filename, type) do
+    path = Path.join(["priv", "static", "uploads", filename])
+
+    case File.read(path) do
+      {:ok, content} ->
+        # Parse the first line to get headers
+        case String.split(content, "\n", parts: 2) do
+          [header_line | _] ->
+            headers =
+              header_line
+              |> String.trim()
+              |> String.split(",")
+              |> Enum.map(&String.trim/1)
+              |> Enum.map(&String.replace(&1, "\"", ""))
+              |> Enum.map(&String.trim/1)
+
+            validate_headers(headers, type)
+
+          [] ->
+            {:error, "CSV file is empty"}
+        end
+
+      {:error, reason} ->
+        {:error, "Failed to read CSV file: #{inspect(reason)}"}
+    end
+  end
+
+  # Private function to validate headers based on type
+  defp validate_headers(headers, "student") do
+    # Remove empty headers and normalize
+    normalized_headers = Enum.reject(headers, &(&1 == ""))
+
+    # Check if all required student headers are present
+    missing_headers = @student_headers -- normalized_headers
+    extra_headers = normalized_headers -- @student_headers
+
+    cond do
+      length(missing_headers) > 0 or length(extra_headers) > 0 ->
+        {:error, "Invalid format for student sheet"}
+
+      true ->
+        :ok
+    end
+  end
+
+  defp validate_headers(headers, "batch_movement") do
+    # Remove empty headers and normalize
+    normalized_headers = Enum.reject(headers, &(&1 == ""))
+
+    # Check if all required batch headers are present (grade is optional)
+    missing_required = @batch_required_headers -- normalized_headers
+    extra_headers = normalized_headers -- @batch_headers
+
+    cond do
+      length(missing_required) > 0 or length(extra_headers) > 0 ->
+        {:error, "Invalid format for batch sheet"}
+
+      true ->
+        :ok
+    end
+  end
+
+  defp validate_headers(_headers, type) do
+    {:error, "Unsupported import type: #{type}"}
   end
 
   defp download_google_sheet(url) do
