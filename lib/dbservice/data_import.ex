@@ -357,38 +357,32 @@ defmodule Dbservice.DataImport do
 
   # Private function to validate headers based on type
   defp validate_headers(headers, "student") do
-    # Remove empty headers and normalize
-    normalized_headers = Enum.reject(headers, &(&1 == ""))
-
-    # Check if all required student headers are present
-    missing_required = @student_required_headers -- normalized_headers
-    # Check for extra headers (allow optional fields)
-    extra_headers = normalized_headers -- @student_headers
-
-    if length(missing_required) > 0 or length(extra_headers) > 0 do
-      {:error, "Invalid format for student sheet"}
-    else
-      :ok
-    end
+    validate_headers_against_schema(headers, @student_required_headers, @student_headers, "student sheet")
   end
 
   defp validate_headers(headers, "batch_movement") do
-    # Remove empty headers and normalize
-    normalized_headers = Enum.reject(headers, &(&1 == ""))
-
-    # Check if all required batch headers are present (grade is optional)
-    missing_required = @batch_required_headers -- normalized_headers
-    extra_headers = normalized_headers -- @batch_headers
-
-    if length(missing_required) > 0 or length(extra_headers) > 0 do
-      {:error, "Invalid format for batch sheet"}
-    else
-      :ok
-    end
+    validate_headers_against_schema(headers, @batch_required_headers, @batch_headers, "batch sheet")
   end
 
   defp validate_headers(_headers, type) do
     {:error, "Unsupported import type: #{type}"}
+  end
+
+  # Shared helper function for header validation
+  defp validate_headers_against_schema(headers, required_headers, all_headers, sheet_type) do
+    # Remove empty headers and normalize
+    normalized_headers = Enum.reject(headers, &(&1 == ""))
+
+    # Check if all required headers are present
+    missing_required = required_headers -- normalized_headers
+    # Check for extra headers (allow optional fields)
+    extra_headers = normalized_headers -- all_headers
+
+    if length(missing_required) > 0 or length(extra_headers) > 0 do
+      {:error, "Invalid format for #{sheet_type}"}
+    else
+      :ok
+    end
   end
 
   defp download_google_sheet(url) do
