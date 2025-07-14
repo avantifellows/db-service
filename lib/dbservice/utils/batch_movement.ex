@@ -24,8 +24,11 @@ defmodule Dbservice.DataImport.BatchMovement do
            handle_batch_movement(student, {batch_group_id, batch_id, batch_group_type}, record) do
       {:ok, "Batch movement processed successfully"}
     else
-      {:error, :student_not_found} -> {:error, "Student not found with ID: #{record["student_id"]}"}
-      {:error, reason} -> {:error, reason}
+      {:error, :student_not_found} ->
+        {:error, "Student not found with ID: #{record["student_id"]}"}
+
+      {:error, reason} ->
+        {:error, reason}
     end
   end
 
@@ -62,7 +65,7 @@ defmodule Dbservice.DataImport.BatchMovement do
          academic_year,
          start_date
        ) do
-     is_already_enrolled =
+    is_already_enrolled =
       BatchEnrollmentService.existing_batch_enrollment?(user_id, batch_id)
 
     if is_already_enrolled do

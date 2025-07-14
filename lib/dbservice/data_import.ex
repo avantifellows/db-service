@@ -357,11 +357,21 @@ defmodule Dbservice.DataImport do
 
   # Private function to validate headers based on type
   defp validate_headers(headers, "student") do
-    validate_headers_against_schema(headers, @student_required_headers, @student_headers, "student sheet")
+    validate_headers_against_schema(
+      headers,
+      @student_required_headers,
+      @student_headers,
+      "student sheet"
+    )
   end
 
   defp validate_headers(headers, "batch_movement") do
-    validate_headers_against_schema(headers, @batch_required_headers, @batch_headers, "batch sheet")
+    validate_headers_against_schema(
+      headers,
+      @batch_required_headers,
+      @batch_headers,
+      "batch sheet"
+    )
   end
 
   defp validate_headers(_headers, type) do

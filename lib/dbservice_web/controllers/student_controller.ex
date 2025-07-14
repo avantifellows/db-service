@@ -857,8 +857,6 @@ defmodule DbserviceWeb.StudentController do
     end
   end
 
-
-
   # Helper function to update student status
   defp update_student_status_field(student, status) do
     Users.update_student(student, %{status: Atom.to_string(status.title)})
