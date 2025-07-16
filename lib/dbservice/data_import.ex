@@ -7,6 +7,14 @@ defmodule Dbservice.DataImport do
   alias Dbservice.Repo
   alias Dbservice.DataImport.Import
   alias Dbservice.DataImport.ImportWorker
+  alias Dbservice.Constants.Mappings
+
+  @doc """
+  Returns a human-readable name for the import type.
+  """
+  def format_type_name("student"), do: "Student"
+  def format_type_name("batch_movement"), do: "Batch Movement"
+  def format_type_name(type), do: String.capitalize(type)
 
   @doc """
   Returns the list of Import.
@@ -72,21 +80,32 @@ defmodule Dbservice.DataImport do
 
     case download_google_sheet(url) do
       {:ok, filename} ->
-        {:ok, import_record} =
-          create_import(%{
-            filename: filename,
-            status: "pending",
-            type: type,
-            total_rows: 0,
-            processed_rows: 0,
-            start_row: start_row
-          })
+        # Validate CSV format before creating import record
+        case validate_csv_format(filename, type) do
+          :ok ->
+            {:ok, import_record} =
+              create_import(%{
+                filename: filename,
+                status: "pending",
+                type: type,
+                total_rows: 0,
+                processed_rows: 0,
+                start_row: start_row
+              })
 
-        %{id: import_record.id}
-        |> ImportWorker.new()
-        |> Oban.insert()
+            %{id: import_record.id}
+            |> ImportWorker.new()
+            |> Oban.insert()
 
-        {:ok, import_record}
+            {:ok, import_record}
+
+          {:error, reason} ->
+            # Clean up the downloaded file if validation fails
+            # Create a temporary import record structure for cleanup
+            temp_import = %Import{filename: filename}
+            cleanup_import_file(temp_import)
+            {:error, reason}
+        end
 
       {:error, reason} ->
         {:error, "Failed to download sheet: #{reason}"}
@@ -164,6 +183,67 @@ defmodule Dbservice.DataImport do
     cleanup_import_file(updated_import)
 
     {:ok, updated_import}
+  end
+
+  @doc """
+  Validates the CSV file format based on the import type.
+  Checks if the headers match the expected format for student or batch sheets.
+  """
+  def validate_csv_format(filename, type) do
+    path = Path.join(["priv", "static", "uploads", filename])
+
+    case File.read(path) do
+      {:ok, content} ->
+        # Parse the first line to get headers
+        case String.split(content, "\n", parts: 2) do
+          [header_line | _] ->
+            headers =
+              header_line
+              |> String.trim()
+              |> String.split(",")
+              |> Enum.map(&String.trim/1)
+              |> Enum.map(&String.replace(&1, "\"", ""))
+              |> Enum.map(&String.trim/1)
+
+            validate_headers(headers, type)
+
+          [] ->
+            {:error, "CSV file is empty"}
+        end
+
+      {:error, reason} ->
+        {:error, "Failed to read CSV file: #{inspect(reason)}"}
+    end
+  end
+
+  # Private function to validate headers based on type
+  defp validate_headers(headers, type) do
+    required_headers = Mappings.get_required_headers(type)
+    all_headers = Mappings.get_all_headers(type)
+
+    validate_headers_against_schema(
+      headers,
+      required_headers,
+      all_headers,
+      format_type_name(type) <> " sheet"
+    )
+  end
+
+  # Shared helper function for header validation
+  defp validate_headers_against_schema(headers, required_headers, all_headers, sheet_type) do
+    # Remove empty headers and normalize
+    normalized_headers = Enum.reject(headers, &(&1 == ""))
+
+    # Check if all required headers are present
+    missing_required = required_headers -- normalized_headers
+    # Check for extra headers (allow optional fields)
+    extra_headers = normalized_headers -- all_headers
+
+    if length(missing_required) > 0 or length(extra_headers) > 0 do
+      {:error, "Invalid format for #{sheet_type}"}
+    else
+      :ok
+    end
   end
 
   defp download_google_sheet(url) do

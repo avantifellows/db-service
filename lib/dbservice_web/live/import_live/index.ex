@@ -136,7 +136,7 @@ defmodule DbserviceWeb.ImportLive.Index do
                     <div class="flex justify-between items-start mb-2">
                       <div class="flex items-center">
                         <%= get_type_icon(import.type) %>
-                        <span class="ml-2 font-medium text-gray-900 dark:text-white"><%= import.type %></span>
+                        <span class="ml-2 font-medium text-gray-900 dark:text-white"><%= DataImport.format_type_name(import.type) %></span>
                       </div>
                       <%= get_status_badge(import.status) %>
                     </div>
@@ -203,7 +203,7 @@ defmodule DbserviceWeb.ImportLive.Index do
                     <td class="px-4 sm:px-6 py-3 sm:py-4 whitespace-nowrap text-sm font-medium text-gray-900 dark:text-white">
                     <div class="flex items-center">
                           <%= get_type_icon(import.type) %>
-                          <span class="ml-2"><%= import.type %></span>
+                          <span class="ml-2"><%= DataImport.format_type_name(import.type) %></span>
                         </div>
                       </td>
                       <td class="px-4 sm:px-6 py-3 sm:py-4 whitespace-nowrap text-sm">
