@@ -811,7 +811,7 @@ defmodule DbserviceWeb.StudentController do
 
   def update_student_status(conn, params) do
     with {:ok, status} <- get_status_by_title(params["status"]),
-         {:ok, student} <- Users.get_student_by_student_id_with_error(params["student_id"]),
+         {:ok, student} <- get_student_with_error(params["student_id"]),
          :ok <- check_existing_status(student, status.title),
          {:ok, %Student{} = updated_student} <- update_student_status_field(student, status),
          {:ok, _enrollment_record} <- create_status_enrollment_record(student, status, params) do
@@ -890,5 +890,13 @@ defmodule DbserviceWeb.StudentController do
     |> Repo.update_all([])
 
     {:ok, :updated}
+  end
+
+  # Helper function to get student with error handling
+  defp get_student_with_error(student_id) do
+    case Users.get_student_by_student_id(student_id) do
+      nil -> {:error, :student_not_found}
+      student -> {:ok, student}
+    end
   end
 end

@@ -178,23 +178,6 @@ defmodule Dbservice.Users do
   end
 
   @doc """
-  Gets a student by student ID with error handling.
-  Returns {:ok, student} if found, {:error, :student_not_found} if not found.
-
-  ## Examples
-      iex> get_student_by_student_id_with_error(1234)
-      {:ok, %Student{}}
-      iex> get_student_by_student_id_with_error("nonexistent")
-      {:error, :student_not_found}
-  """
-  def get_student_by_student_id_with_error(student_id) do
-    case get_student_by_student_id(student_id) do
-      nil -> {:error, :student_not_found}
-      student -> {:ok, student}
-    end
-  end
-
-  @doc """
   Creates a student.
 
   ## Examples

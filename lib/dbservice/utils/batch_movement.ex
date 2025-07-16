@@ -17,7 +17,7 @@ defmodule Dbservice.DataImport.BatchMovement do
   alias Dbservice.Services.BatchEnrollmentService
 
   def process_batch_movement(record) do
-    with {:ok, student} <- Users.get_student_by_student_id_with_error(record["student_id"]),
+    with {:ok, student} <- get_student_with_error(record["student_id"]),
          {batch_group_id, batch_id, batch_group_type} <-
            BatchEnrollmentService.get_batch_info(record["batch_id"]),
          {:ok, _} <-
@@ -29,6 +29,14 @@ defmodule Dbservice.DataImport.BatchMovement do
 
       {:error, reason} ->
         {:error, reason}
+    end
+  end
+
+  # Helper function to get student with error handling
+  defp get_student_with_error(student_id) do
+    case Users.get_student_by_student_id(student_id) do
+      nil -> {:error, :student_not_found}
+      student -> {:ok, student}
     end
   end
 

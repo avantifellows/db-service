@@ -7,146 +7,7 @@ defmodule Dbservice.DataImport do
   alias Dbservice.Repo
   alias Dbservice.DataImport.Import
   alias Dbservice.DataImport.ImportWorker
-
-  # Expected headers for student sheet
-  @student_headers [
-    "addition_date",
-    "auth_group",
-    "academic_year",
-    "grade",
-    "batch_id",
-    "school_code",
-    "school_name",
-    "start_date",
-    "student_id",
-    "user_first_name",
-    "user_last_name",
-    "user_gender",
-    "user_date_of_birth",
-    "student_category",
-    "student_stream",
-    "user_email",
-    "user_phone",
-    "user_whatsapp_phone",
-    "user_address",
-    "user_state",
-    "user_district",
-    "user_pincode",
-    "user_city",
-    "student_father_name",
-    "student_father_phone",
-    "student_mother_name",
-    "student_mother_phone",
-    "student_physically_handicapped",
-    "student_family_income",
-    "student_father_profession",
-    "student_father_education_level",
-    "student_mother_profession",
-    "student_mother_education_level",
-    "student_time_of_device_availability",
-    "student_has_internet_access",
-    "student_primary_smartphone_owner",
-    "student_primary_smartphone_owner_profession",
-    "student_guardian_name",
-    "student_guardian_relation",
-    "student_guardian_phone",
-    "student_guardian_education_level",
-    "student_guardian_profession",
-    "student_has_category_certificate",
-    "student_annual_family_income",
-    "student_monthly_family_income",
-    "student_number_of_smartphones",
-    "student_family_type",
-    "student_number_of_four_wheelers",
-    "student_number_of_two_wheelers",
-    "student_has_air_conditioner",
-    "student_goes_for_tuition_or_other_coaching",
-    "student_know_about_avanti",
-    "student_percentage_in_grade_10_science",
-    "student_percentage_in_grade_10_math",
-    "student_percentage_in_grade_10_english",
-    "student_board_stream",
-    "student_school_medium",
-    "Added by",
-    "Added on"
-  ]
-
-  # Required headers for student sheet (excluding optional ones)
-  @student_required_headers [
-    "addition_date",
-    "auth_group",
-    "academic_year",
-    "grade",
-    "batch_id",
-    "school_code",
-    "school_name",
-    "start_date",
-    "student_id",
-    "user_first_name",
-    "user_last_name",
-    "user_gender",
-    "user_date_of_birth",
-    "student_category",
-    "student_stream",
-    "user_email",
-    "user_phone",
-    "user_whatsapp_phone",
-    "user_address",
-    "user_state",
-    "user_district",
-    "user_pincode",
-    "user_city",
-    "student_father_name",
-    "student_father_phone",
-    "student_mother_name",
-    "student_mother_phone",
-    "student_physically_handicapped",
-    "student_family_income",
-    "student_father_profession",
-    "student_father_education_level",
-    "student_mother_profession",
-    "student_mother_education_level",
-    "student_time_of_device_availability",
-    "student_has_internet_access",
-    "student_primary_smartphone_owner",
-    "student_primary_smartphone_owner_profession",
-    "student_guardian_name",
-    "student_guardian_relation",
-    "student_guardian_phone",
-    "student_guardian_education_level",
-    "student_guardian_profession",
-    "student_has_category_certificate",
-    "student_annual_family_income",
-    "student_monthly_family_income",
-    "student_number_of_smartphones",
-    "student_family_type",
-    "student_number_of_four_wheelers",
-    "student_number_of_two_wheelers",
-    "student_has_air_conditioner",
-    "student_goes_for_tuition_or_other_coaching",
-    "student_know_about_avanti",
-    "student_percentage_in_grade_10_science",
-    "student_percentage_in_grade_10_math",
-    "student_percentage_in_grade_10_english",
-    "student_board_stream",
-    "student_school_medium"
-  ]
-
-  # Expected headers for batch sheet (grade is optional)
-  @batch_headers [
-    "student_id",
-    "grade",
-    "batch_id",
-    "start_date",
-    "academic_year"
-  ]
-
-  @batch_required_headers [
-    "student_id",
-    "batch_id",
-    "start_date",
-    "academic_year"
-  ]
+  alias Dbservice.Constants.Mappings
 
   @doc """
   Returns a human-readable name for the import type.
@@ -356,26 +217,16 @@ defmodule Dbservice.DataImport do
   end
 
   # Private function to validate headers based on type
-  defp validate_headers(headers, "student") do
+  defp validate_headers(headers, type) do
+    required_headers = Mappings.get_required_headers(type)
+    all_headers = Mappings.get_all_headers(type)
+
     validate_headers_against_schema(
       headers,
-      @student_required_headers,
-      @student_headers,
-      "student sheet"
+      required_headers,
+      all_headers,
+      format_type_name(type) <> " sheet"
     )
-  end
-
-  defp validate_headers(headers, "batch_movement") do
-    validate_headers_against_schema(
-      headers,
-      @batch_required_headers,
-      @batch_headers,
-      "batch sheet"
-    )
-  end
-
-  defp validate_headers(_headers, type) do
-    {:error, "Unsupported import type: #{type}"}
   end
 
   # Shared helper function for header validation

@@ -12,74 +12,9 @@ defmodule Dbservice.DataImport.ImportWorker do
   use Oban.Worker, queue: :imports, max_attempts: 3
 
   alias Dbservice.DataImport
+  alias Dbservice.Constants.Mappings
   alias Dbservice.Users
   alias Dbservice.Grades
-
-  # Field mapping from sheet columns to database fields
-  @field_mapping %{
-    "student_father_name" => "father_name",
-    "student_father_phone" => "father_phone",
-    "student_mother_name" => "mother_name",
-    "student_mother_phone" => "mother_phone",
-    "student_category" => "category",
-    "student_stream" => "stream",
-    "student_family_income" => "family_income",
-    "student_father_profession" => "father_profession",
-    "student_father_education_level" => "father_education_level",
-    "student_mother_profession" => "mother_profession",
-    "student_mother_education_level" => "mother_education_level",
-    "student_time_of_device_availability" => "time_of_device_availability",
-    "student_has_internet_access" => "has_internet_access",
-    "student_primary_smartphone_owner" => "primary_smartphone_owner",
-    "student_primary_smartphone_owner_profession" => "primary_smartphone_owner_profession",
-    "student_guardian_name" => "guardian_name",
-    "student_guardian_relation" => "guardian_relation",
-    "student_guardian_phone" => "guardian_phone",
-    "student_guardian_education_level" => "guardian_education_level",
-    "student_guardian_profession" => "guardian_profession",
-    "student_annual_family_income" => "annual_family_income",
-    "student_monthly_family_income" => "monthly_family_income",
-    "student_number_of_smartphones" => "number_of_smartphones",
-    "student_family_type" => "family_type",
-    "student_number_of_four_wheelers" => "number_of_four_wheelers",
-    "student_number_of_two_wheelers" => "number_of_two_wheelers",
-    "student_goes_for_tuition_or_other_coaching" => "goes_for_tuition_or_other_coaching",
-    "student_know_about_avanti" => "know_about_avanti",
-    "student_percentage_in_grade_10_science" => "percentage_in_grade_10_science",
-    "student_percentage_in_grade_10_math" => "percentage_in_grade_10_math",
-    "student_percentage_in_grade_10_english" => "percentage_in_grade_10_english",
-    # User fields
-    "user_first_name" => "first_name",
-    "user_last_name" => "last_name",
-    "user_email" => "email",
-    "user_phone" => "phone",
-    "user_whatsapp_phone" => "whatsapp_phone",
-    "user_gender" => "gender",
-    "user_date_of_birth" => "date_of_birth",
-    "user_address" => "address",
-    "user_city" => "city",
-    "user_district" => "district",
-    "user_state" => "state",
-    "user_pincode" => "pincode",
-    # Boolean fields
-    "student_physically_handicapped" => "physically_handicapped",
-    "student_has_category_certificate" => "has_category_certificate",
-    "student_has_air_conditioner" => "has_air_conditioner",
-    # Additional fields that stay the same
-    "student_id" => "student_id",
-    "academic_year" => "academic_year",
-    "start_date" => "start_date",
-    "grade" => "grade",
-    "school_code" => "school_code",
-    "batch_id" => "batch_id",
-    "auth_group" => "auth_group"
-  }
-
-  @bool_fields [
-    "physically_handicapped",
-    "has_category_certificate",
-    "has_air_conditioner"
-  ]
 
   @impl Oban.Worker
   def perform(%Oban.Job{args: %{"id" => import_id}}) do
@@ -100,16 +35,18 @@ defmodule Dbservice.DataImport.ImportWorker do
     end
   end
 
-  # New function to map sheet column names to database field names
-  defp map_fields(record) do
+  # Updated function to map sheet column names to database field names using Mappings
+  defp map_fields(record, import_type) do
     record
-    |> map_string_fields()
-    |> map_boolean_fields()
+    |> map_string_fields(import_type)
+    |> map_boolean_fields(import_type)
     |> add_grade_id()
   end
 
-  defp map_string_fields(record) do
-    Enum.reduce(@field_mapping, %{}, fn {sheet_column, db_field}, acc ->
+  defp map_string_fields(record, import_type) do
+    field_mapping = Mappings.get_field_mapping(import_type)
+
+    Enum.reduce(field_mapping, %{}, fn {sheet_column, db_field}, acc ->
       case Map.get(record, sheet_column) do
         nil -> acc
         value -> Map.put(acc, db_field, value)
@@ -117,8 +54,10 @@ defmodule Dbservice.DataImport.ImportWorker do
     end)
   end
 
-  defp map_boolean_fields(record) do
-    Enum.reduce(@bool_fields, record, fn field, acc ->
+  defp map_boolean_fields(record, import_type) do
+    bool_fields = Mappings.get_boolean_fields(import_type)
+
+    Enum.reduce(bool_fields, record, fn field, acc ->
       case Map.get(acc, field) do
         "TRUE" -> Map.put(acc, field, true)
         "FALSE" -> Map.put(acc, field, false)
@@ -196,11 +135,9 @@ defmodule Dbservice.DataImport.ImportWorker do
     path = Path.join(["priv", "static", "uploads", import_record.filename])
     start_row = import_record.start_row || 2
 
-    case parse_csv_records(path, start_row) do
+    case parse_csv_records(path, start_row, import_record.type) do
       {:ok, parsed_records} ->
         try do
-          validate_sheet_type!(import_record, parsed_records)
-
           case process_parsed_records(parsed_records, import_record) do
             {:ok, processed_records} -> finalize_import(import_record, processed_records)
             {:error, reason} -> handle_import_error(import_record, reason)
@@ -242,11 +179,11 @@ defmodule Dbservice.DataImport.ImportWorker do
     end
   end
 
-  defp parse_csv_records(path, start_row) do
+  defp parse_csv_records(path, start_row, import_type) do
     parse_csv_records_with_extractor(path, start_row, fn record ->
       record
       |> extract_fields()
-      |> map_fields()
+      |> map_fields(import_type)
     end)
   end
 
@@ -401,11 +338,9 @@ defmodule Dbservice.DataImport.ImportWorker do
     path = Path.join(["priv", "static", "uploads", import_record.filename])
     start_row = import_record.start_row || 2
 
-    case parse_batch_movement_csv_records(path, start_row) do
+    case parse_batch_movement_csv_records(path, start_row, import_record.type) do
       {:ok, parsed_records} ->
         try do
-          validate_sheet_type!(import_record, parsed_records)
-
           case process_parsed_batch_movement_records(parsed_records, import_record) do
             {:ok, processed_records} -> finalize_import(import_record, processed_records)
             {:error, reason} -> handle_import_error(import_record, reason)
@@ -419,20 +354,22 @@ defmodule Dbservice.DataImport.ImportWorker do
     end
   end
 
-  # Batch movement specific functions
-  defp parse_batch_movement_csv_records(path, start_row) do
-    parse_csv_records_with_extractor(path, start_row, &extract_batch_movement_fields/1)
+  # Batch movement specific functions updated to use Mappings
+  defp parse_batch_movement_csv_records(path, start_row, import_type) do
+    parse_csv_records_with_extractor(path, start_row, fn record ->
+      record
+      |> extract_batch_movement_fields(import_type)
+    end)
   end
 
-  defp extract_batch_movement_fields(record) do
-    # Extract and normalize the required fields for batch movement
-    %{
-      "student_id" => Map.get(record, "student_id") || "",
-      "batch_id" => Map.get(record, "batch_id") || "",
-      "start_date" => Map.get(record, "start_date") || "",
-      "academic_year" => Map.get(record, "academic_year") || "",
-      "grade" => Map.get(record, "grade") || ""
-    }
+  defp extract_batch_movement_fields(record, import_type) do
+    field_mapping = Mappings.get_field_mapping(import_type)
+
+    # Extract and normalize the required fields for batch movement using Mappings
+    field_mapping
+    |> Enum.reduce(%{}, fn {sheet_col, db_field}, acc ->
+      Map.put(acc, db_field, Map.get(record, sheet_col) || "")
+    end)
   end
 
   defp process_parsed_batch_movement_records(records, import_record) do
@@ -472,32 +409,5 @@ defmodule Dbservice.DataImport.ImportWorker do
 
   defp process_batch_movement_record(record) do
     DataImport.BatchMovement.process_batch_movement(record)
-  end
-
-  defp validate_sheet_type!(import_record, parsed_records) do
-    # Define required headers for each type
-    student_headers = ["student_id", "first_name", "last_name"]
-    batch_headers = ["student_id", "batch_id", "start_date", "academic_year"]
-
-    headers =
-      case parsed_records do
-        [{record, _} | _] -> Map.keys(record)
-        _ -> []
-      end
-
-    case import_record.type do
-      "student" ->
-        unless Enum.all?(student_headers, &(&1 in headers)) do
-          raise "Sheet does not match student import format. Required columns: #{Enum.join(student_headers, ", ")}"
-        end
-
-      "batch_movement" ->
-        unless Enum.all?(batch_headers, &(&1 in headers)) do
-          raise "Sheet does not match batch movement import format. Required columns: #{Enum.join(batch_headers, ", ")}"
-        end
-
-      _ ->
-        :ok
-    end
   end
 end
