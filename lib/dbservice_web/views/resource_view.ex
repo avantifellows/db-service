@@ -36,7 +36,6 @@ defmodule DbserviceWeb.ResourceView do
       teacher_id: resource.teacher_id,
       exam_ids: resource.exam_ids,
       exam_details: exam_details,
-      show_in_gurukul: resource.show_in_gurukul,
       source: render_one(resource.source, SourceView, "source.json")
     }
   end

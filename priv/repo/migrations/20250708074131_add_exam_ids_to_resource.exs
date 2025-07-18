@@ -4,7 +4,6 @@ defmodule Dbservice.Repo.Migrations.AddExamIdsToResource do
   def change do
     alter table(:resource) do
       add :exam_ids, {:array, :bigint}
-      add :show_in_gurukul, :boolean, default: false
     end
 
     # Data migration: Copy exam_ids from tag_ids by matching tag name to exam name
