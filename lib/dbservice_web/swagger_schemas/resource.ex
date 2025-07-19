@@ -13,6 +13,8 @@ defmodule DbserviceWeb.SwaggerSchema.Resource do
           properties do
             name(:string, "Resource name")
             type(:string, "Resource type")
+            subtype(:string, "Resource subtype")
+            code(:string, "Resource code")
             type_params(:map, "Parameters of the resource type")
             difficulty_level(:string, "Difficulty level of a resource")
             curriculum_id(:integer, "Curriculum id associated with the resource")
@@ -29,6 +31,8 @@ defmodule DbserviceWeb.SwaggerSchema.Resource do
           example(%{
             name: "1. 9C01 Introduction - हमारे आस पास के पदार्थ | Matter in our Surroundings",
             type: "video",
+            subtype: "lecture",
+            code: "RSC-001",
             type_params: %{
               "duration" => "45 minutes"
             },

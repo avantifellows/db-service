@@ -23,6 +23,8 @@ defmodule DbserviceWeb.ResourceView do
       id: resource.id,
       name: resource.name,
       type: resource.type,
+      subtype: resource.subtype,
+      code: resource.code,
       type_params: resource.type_params,
       difficulty_level: resource.difficulty_level,
       curriculum_id: resource.curriculum_id,

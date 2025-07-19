@@ -20,6 +20,8 @@ defmodule Dbservice.Resources.Resource do
     field(:difficulty_level, :string)
     field(:tag_ids, {:array, :integer})
     field(:exam_ids, {:array, :integer})
+    field(:subtype, :string)
+    field(:code, :string)
 
     timestamps()
 
@@ -50,7 +52,9 @@ defmodule Dbservice.Resources.Resource do
       :learning_objective_id,
       :tag_ids,
       :teacher_id,
-      :exam_ids
+      :exam_ids,
+      :subtype,
+      :code
     ])
   end
 end
