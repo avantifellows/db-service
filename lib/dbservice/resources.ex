@@ -58,29 +58,27 @@ defmodule Dbservice.Resources do
              true <- test_resource.type == "test" do
           problem_ids = extract_problem_ids_from_test(test_resource.type_params)
 
-          # Query for all problems with those IDs, including resource_curriculum data
+          # Query for all problems with those IDs, including ALL resource_curriculum data
           problems =
             from(r in Resource,
               where: r.id in ^problem_ids and r.type == "problem",
               preload: [
-                resource_curriculum:
-                  ^from(rc in ResourceCurriculum, where: rc.curriculum_id == ^curriculum_id),
+                # preload all curriculum mappings
+                :resource_curriculum,
                 problem_language: ^from(pl in ProblemLanguage, where: pl.lang_id == ^lang_id)
               ]
             )
             |> Repo.all()
 
           Enum.map(problems, fn resource ->
-            # Get the correct resource_curriculum and problem_language for this curriculum/lang
-            resource_curriculum =
-              Enum.find(resource.resource_curriculum, &(&1.curriculum_id == curriculum_id))
-
             problem_lang = Enum.find(resource.problem_language, &(&1.lang_id == lang_id))
 
             %{
               resource: resource,
-              resource_curriculum: resource_curriculum || %{},
-              problem_lang: problem_lang || %{}
+              # always a list
+              resource_curriculums: resource.resource_curriculum,
+              problem_lang: problem_lang || %{},
+              requested_curriculum_id: curriculum_id
             }
           end)
         else

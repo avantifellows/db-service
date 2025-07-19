@@ -88,7 +88,8 @@ defmodule DbserviceWeb.ResourceView do
     # First get the base resource
     resource = problem.resource
     resource_topic = Map.get(problem, :resource_topic, %{})
-    resource_curriculum = Map.get(problem, :resource_curriculum, %{})
+    resource_curriculums = Map.get(problem, :resource_curriculums, [])
+    requested_curriculum_id = Map.get(problem, :requested_curriculum_id)
     problem_lang = Map.get(problem, :problem_lang, %{})
 
     # Get the base resource data using your existing pattern
@@ -121,13 +122,17 @@ defmodule DbserviceWeb.ResourceView do
       cms_status: resource.cms_status
     }
 
-    # Add curriculum data
+    # Find the curriculum mapping for the requested curriculum_id, or fallback to the first one
+    curriculum =
+      Enum.find(resource_curriculums, fn rc -> rc.curriculum_id == requested_curriculum_id end) ||
+        List.first(resource_curriculums) || %{}
+
     resource_with_curriculum =
       Map.merge(base_map, %{
-        curriculum_id: Map.get(resource_curriculum, :curriculum_id, nil),
-        difficulty_level: Map.get(resource_curriculum, :difficulty_level, nil),
-        grade_id: Map.get(resource_curriculum, :grade_id, nil),
-        subject_id: Map.get(resource_curriculum, :subject_id, nil)
+        curriculum_id: Map.get(curriculum, :curriculum_id, nil),
+        difficulty_level: Map.get(curriculum, :difficulty_level, nil),
+        grade_id: Map.get(curriculum, :grade_id, nil),
+        subject_id: Map.get(curriculum, :subject_id, nil)
       })
 
     # Add problem language data
