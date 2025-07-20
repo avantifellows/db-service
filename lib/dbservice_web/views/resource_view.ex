@@ -15,10 +15,16 @@ defmodule DbserviceWeb.ResourceView do
   def render("resource.json", %{resource: resource}) do
     resource = Repo.preload(resource, :source)
 
+    exam_details =
+      Dbservice.Exams.get_exams_by_ids(resource.exam_ids)
+      |> render_many(DbserviceWeb.ExamView, "exam.json")
+
     %{
       id: resource.id,
       name: resource.name,
       type: resource.type,
+      subtype: resource.subtype,
+      code: resource.code,
       type_params: resource.type_params,
       difficulty_level: resource.difficulty_level,
       curriculum_id: resource.curriculum_id,
@@ -30,6 +36,8 @@ defmodule DbserviceWeb.ResourceView do
       learning_objective_id: resource.learning_objective_id,
       tag_ids: resource.tag_ids,
       teacher_id: resource.teacher_id,
+      exam_ids: resource.exam_ids,
+      exam_details: exam_details,
       source: render_one(resource.source, SourceView, "source.json")
     }
   end
