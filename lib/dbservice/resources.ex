@@ -9,7 +9,6 @@ defmodule Dbservice.Resources do
   alias Dbservice.Resources.Resource
   alias Dbservice.Resources.ProblemLanguage
   alias Dbservice.Languages.Language
-  alias Dbservice.Resources.ResourceCurriculum
 
   @doc """
   Returns the list of resource.
