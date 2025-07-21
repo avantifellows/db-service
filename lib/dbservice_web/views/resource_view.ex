@@ -32,9 +32,10 @@ defmodule DbserviceWeb.ResourceView do
           select: rt.topic_id,
           limit: 1
       )
-      exam_details =
-        Dbservice.Exams.get_exams_by_ids(resource.exam_ids)
-        |> render_many(DbserviceWeb.ExamView, "exam.json")
+
+    exam_details =
+      Dbservice.Exams.get_exams_by_ids(resource.exam_ids)
+      |> render_many(DbserviceWeb.ExamView, "exam.json")
 
     chapter_id =
       Repo.one(
@@ -45,7 +46,6 @@ defmodule DbserviceWeb.ResourceView do
       )
 
     base_map = %{
-
       id: resource.id,
       name: resource.name,
       type: resource.type,
@@ -62,7 +62,7 @@ defmodule DbserviceWeb.ResourceView do
       chapter_id: chapter_id,
       cms_status: resource.cms_status,
       exam_ids: resource.exam_ids,
-      exam_details: exam_details,
+      exam_details: exam_details
     }
 
     # Add curriculum data if it exists
