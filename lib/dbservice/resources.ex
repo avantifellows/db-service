@@ -302,7 +302,10 @@ defmodule Dbservice.Resources do
 
   defp update_resource_associations(resource, params) do
     update_resource_curriculums(resource, params)
-    update_problem_language(resource, params)
+
+    if resource.type == "problem" do
+      update_problem_language(resource, params)
+    end
   end
 
   defp update_resource_curriculums(resource, params) do

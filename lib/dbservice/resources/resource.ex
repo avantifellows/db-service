@@ -19,6 +19,7 @@ defmodule Dbservice.Resources.Resource do
     field(:code, :string)
     field(:purpose_ids, {:array, :integer})
     field(:tag_ids, {:array, :integer})
+    field(:exam_ids, {:array, :integer})
     field(:skill_ids, {:array, :integer})
     field(:learning_objective_ids, {:array, :integer})
     field(:cms_status, :string)
@@ -47,6 +48,7 @@ defmodule Dbservice.Resources.Resource do
       :skill_ids,
       :learning_objective_ids,
       :teacher_id,
+      :exam_ids,
       :cms_status
     ])
     |> validate_required([:type, :type_params])

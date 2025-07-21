@@ -25,11 +25,6 @@ defmodule Dbservice.Repo.Migrations.ModifyResourceTable do
 
     rename table(:resource), :name_jsonb, to: :name
 
-    # 2. Add subtype column
-    alter table(:resource) do
-      add :subtype, :string
-    end
-
     # 3. Handle source data migration
     alter table(:resource) do
       add :source, :string
@@ -69,18 +64,6 @@ defmodule Dbservice.Repo.Migrations.ModifyResourceTable do
     alter table(:resource) do
       remove :source_id
     end
-
-    # 4. Add code column and populate it
-    alter table(:resource) do
-      add :code, :string
-    end
-
-    # Update code based on first letter of type and ID
-    execute """
-    UPDATE resource
-    SET code = UPPER(LEFT(type, 1)) || id::text
-    WHERE type IS NOT NULL
-    """
 
     # 5. Change purpose_id to purpose_ids array
     alter table(:resource) do
@@ -166,10 +149,8 @@ defmodule Dbservice.Repo.Migrations.ModifyResourceTable do
 
     # Remove new columns
     alter table(:resource) do
-      remove :subtype
       remove :source
       remove :type
-      remove :code
       remove :purpose_ids
       remove :tag_ids
       remove :skill_ids

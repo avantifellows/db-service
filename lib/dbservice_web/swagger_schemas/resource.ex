@@ -21,6 +21,8 @@ defmodule DbserviceWeb.SwaggerSchema.Resource do
             )
 
             type(:string, "Resource type")
+            subtype(:string, "Resource subtype")
+            code(:string, "Resource code")
             type_params(:map, "Parameters of the resource type")
             subtype(:string, "Sub-type of a resource")
             source(:string, "Source of a resource")
@@ -30,6 +32,7 @@ defmodule DbserviceWeb.SwaggerSchema.Resource do
             tag_ids(:array, "Tag ids associated with the resource")
             skill_ids(:array, "Skill ids associated with the resource")
             teacher_id(:integer, "Teacher id associated with the resource")
+            exam_ids(:array, "Exam ids associated with the resource")
           end
 
           example(%{
@@ -38,15 +41,16 @@ defmodule DbserviceWeb.SwaggerSchema.Resource do
               %{lang: "hi", value: "1. 9C01 परिचय - हमारे आस पास के पदार्थ"}
             ],
             type: "video",
-            type_params: %{"src_link" => "https://youtube.com/test_video"},
             subtype: "lecture",
+            code: "RSC-001",
+            type_params: %{"src_link" => "https://youtube.com/test_video"},
             source: "youtube",
-            code: "RES_001",
             purpose_ids: [1, 2, 3],
             learning_objective_ids: [4, 5, 6],
             tag_ids: [5, 7, 9],
             skill_ids: [1, 3, 7],
-            teacher_id: 1
+            teacher_id: 1,
+            exam_ids: [1, 2, 3]
           })
         end
     }
