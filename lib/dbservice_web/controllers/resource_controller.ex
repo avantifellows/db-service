@@ -513,7 +513,8 @@ defmodule DbserviceWeb.ResourceController do
           select: %{
             resource: r,
             resource_topic: rt,
-            resource_curriculum: rc,
+            resource_curriculums: [rc],
+            requested_curriculum_id: ^curriculum_id,
             problem_lang: pl
           }
         )
