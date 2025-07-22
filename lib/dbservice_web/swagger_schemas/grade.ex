@@ -12,12 +12,10 @@ defmodule DbserviceWeb.SwaggerSchema.Grade do
 
           properties do
             number(:integer, "Grade in school")
-            tag_id(:integer, "Tag id associated with the grade")
           end
 
           example(%{
-            number: 12,
-            tag_id: 1
+            number: 12
           })
         end
     }
