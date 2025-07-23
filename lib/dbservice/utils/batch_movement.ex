@@ -25,7 +25,11 @@ defmodule Dbservice.DataImport.BatchMovement do
         with {batch_group_id, batch_id, batch_group_type} <-
                BatchEnrollmentService.get_batch_info(record["batch_id"]),
              {:ok, _} <-
-               handle_batch_movement(student, {batch_group_id, batch_id, batch_group_type}, record) do
+               handle_batch_movement(
+                 student,
+                 {batch_group_id, batch_id, batch_group_type},
+                 record
+               ) do
           {:ok, "Batch movement processed successfully"}
         else
           {:error, reason} ->
