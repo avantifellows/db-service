@@ -12,10 +12,16 @@ defmodule DbserviceWeb.ResourceJSON do
   def render(resource) do
     resource = Dbservice.Repo.preload(resource, :source)
 
+    exam_details =
+      Dbservice.Exams.get_exams_by_ids(resource.exam_ids)
+      |> Enum.map(&DbserviceWeb.ExamJSON.render/1)
+
     %{
       id: resource.id,
       name: resource.name,
       type: resource.type,
+      subtype: resource.subtype,
+      code: resource.code,
       type_params: resource.type_params,
       difficulty_level: resource.difficulty_level,
       curriculum_id: resource.curriculum_id,
@@ -27,6 +33,8 @@ defmodule DbserviceWeb.ResourceJSON do
       learning_objective_id: resource.learning_objective_id,
       tag_ids: resource.tag_ids,
       teacher_id: resource.teacher_id,
+      exam_ids: resource.exam_ids,
+      exam_details: exam_details,
       source: if(resource.source, do: SourceJSON.render(resource.source), else: nil)
     }
   end

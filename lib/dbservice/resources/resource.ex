@@ -19,6 +19,9 @@ defmodule Dbservice.Resources.Resource do
     field(:type_params, :map)
     field(:difficulty_level, :string)
     field(:tag_ids, {:array, :integer})
+    field(:exam_ids, {:array, :integer})
+    field(:subtype, :string)
+    field(:code, :string)
 
     timestamps()
 
@@ -48,7 +51,10 @@ defmodule Dbservice.Resources.Resource do
       :concept_id,
       :learning_objective_id,
       :tag_ids,
-      :teacher_id
+      :teacher_id,
+      :exam_ids,
+      :subtype,
+      :code
     ])
   end
 end

@@ -7,10 +7,13 @@ defmodule DbserviceWeb.ExamJSON do
     render(exam)
   end
 
-  defp render(exam) do
+  def render(exam) do
     %{
       id: exam.id,
       name: exam.name,
+      exam_id: exam.exam_id,
+      cutoff_id: exam.cutoff_id,
+      conducting_body: exam.conducting_body,
       registration_deadline: exam.registration_deadline,
       date: exam.date,
       cutoff: exam.cutoff
