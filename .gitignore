@@ -25,6 +25,9 @@ dbservice-*.tar
 # Ignore .env
 /config/.env
 
+# Ignore ETL flow key
+/config/etl-flow-key.json
+
 # Ignore log file
 /logs/info.log
 
