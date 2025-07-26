@@ -160,9 +160,17 @@ defmodule Dbservice.DataImport.ImportWorker do
   defp process_parsed_records(records, import_record, record_processor_fn, halt_on_error?) do
     initial_acc = {:ok, []}
 
-    result = Enum.reduce_while(records, initial_acc, fn {record, index}, {:ok, processed_records} ->
-      handle_record_processing(record, index, import_record, record_processor_fn, halt_on_error?, processed_records)
-    end)
+    result =
+      Enum.reduce_while(records, initial_acc, fn {record, index}, {:ok, processed_records} ->
+        handle_record_processing(
+          record,
+          index,
+          import_record,
+          record_processor_fn,
+          halt_on_error?,
+          processed_records
+        )
+      end)
 
     case result do
       {:ok, processed_records} -> {:ok, Enum.reverse(processed_records)}
@@ -171,7 +179,14 @@ defmodule Dbservice.DataImport.ImportWorker do
   end
 
   # Helper function to handle individual record processing within the reduce_while loop
-  defp handle_record_processing(record, index, import_record, record_processor_fn, halt_on_error?, processed_records) do
+  defp handle_record_processing(
+         record,
+         index,
+         import_record,
+         record_processor_fn,
+         halt_on_error?,
+         processed_records
+       ) do
     case process_single_record(record, index, import_record, record_processor_fn) do
       {:ok, result} ->
         {:cont, {:ok, [result | processed_records]}}
