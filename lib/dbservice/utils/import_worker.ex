@@ -158,25 +158,38 @@ defmodule Dbservice.DataImport.ImportWorker do
 
   # Generic record processing with configurable error handling
   defp process_parsed_records(records, import_record, record_processor_fn, halt_on_error?) do
-    Enum.reduce_while(records, {:ok, []}, fn {record, index}, {:ok, processed_records} ->
-      case process_single_record(record, index, import_record, record_processor_fn) do
-        {:ok, result} ->
-          {:cont, {:ok, [result | processed_records]}}
+    initial_acc = {:ok, []}
 
-        {:error, reason} ->
-          if halt_on_error? do
-            # Halt the entire import process if any row fails
-            {:halt, {:error, "Error processing row #{index}: #{reason}"}}
-          else
-            # Continue processing other records even if one fails
-            update_import_progress(import_record, index, :error, reason)
-            {:cont, {:ok, processed_records}}
-          end
-      end
+    result = Enum.reduce_while(records, initial_acc, fn {record, index}, {:ok, processed_records} ->
+      handle_record_processing(record, index, import_record, record_processor_fn, halt_on_error?, processed_records)
     end)
-    |> case do
+
+    case result do
       {:ok, processed_records} -> {:ok, Enum.reverse(processed_records)}
       error -> error
+    end
+  end
+
+  # Helper function to handle individual record processing within the reduce_while loop
+  defp handle_record_processing(record, index, import_record, record_processor_fn, halt_on_error?, processed_records) do
+    case process_single_record(record, index, import_record, record_processor_fn) do
+      {:ok, result} ->
+        {:cont, {:ok, [result | processed_records]}}
+
+      {:error, reason} ->
+        handle_record_error(index, reason, halt_on_error?, import_record, processed_records)
+    end
+  end
+
+  # Helper function to handle errors during record processing
+  defp handle_record_error(index, reason, halt_on_error?, import_record, processed_records) do
+    if halt_on_error? do
+      # Halt the entire import process if any row fails
+      {:halt, {:error, "Error processing row #{index}: #{reason}"}}
+    else
+      # Continue processing other records even if one fails
+      update_import_progress(import_record, index, :error, reason)
+      {:cont, {:ok, processed_records}}
     end
   end
 
