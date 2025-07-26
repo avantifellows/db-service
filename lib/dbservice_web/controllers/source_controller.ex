@@ -55,7 +55,7 @@ defmodule DbserviceWeb.SourceController do
       end)
 
     source = Repo.all(query)
-    render(conn, "index.json", source: source)
+    render(conn, :index, source: source)
   end
 
   swagger_path :create do
@@ -90,7 +90,7 @@ defmodule DbserviceWeb.SourceController do
 
   def show(conn, %{"id" => id}) do
     source = Sources.get_source!(id)
-    render(conn, "show.json", source: source)
+    render(conn, :show, source: source)
   end
 
   swagger_path :update do
@@ -108,7 +108,7 @@ defmodule DbserviceWeb.SourceController do
     source = Sources.get_source!(params["id"])
 
     with {:ok, %Source{} = source} <- Sources.update_source(source, params) do
-      render(conn, "show.json", source: source)
+      render(conn, :show, source: source)
     end
   end
 
@@ -134,8 +134,8 @@ defmodule DbserviceWeb.SourceController do
     with {:ok, %Source{} = source} <- Sources.create_source(params) do
       conn
       |> put_status(:created)
-      |> put_resp_header("location", Routes.source_path(conn, :show, source))
-      |> render("show.json", source: source)
+      |> put_resp_header("location", ~p"/api/source/#{source}")
+      |> render(:show, source: source)
     end
   end
 
@@ -144,7 +144,7 @@ defmodule DbserviceWeb.SourceController do
            Sources.update_source(existing_source, params) do
       conn
       |> put_status(:ok)
-      |> render("show.json", source: source)
+      |> render(:show, source: source)
     end
   end
 end
