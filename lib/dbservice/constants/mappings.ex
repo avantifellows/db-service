@@ -17,26 +17,66 @@ defmodule Dbservice.Constants.Mappings do
       optional: ["student_update"],
       type: :string
     },
-    "user_email" => %{db_field: "email", required: ["student"], optional: ["student_update"], type: :string},
-    "user_phone" => %{db_field: "phone", required: ["student"], optional: ["student_update"], type: :string},
+    "user_email" => %{
+      db_field: "email",
+      required: ["student"],
+      optional: ["student_update"],
+      type: :string
+    },
+    "user_phone" => %{
+      db_field: "phone",
+      required: ["student"],
+      optional: ["student_update"],
+      type: :string
+    },
     "user_whatsapp_phone" => %{
       db_field: "whatsapp_phone",
       required: ["student"],
       optional: ["student_update"],
       type: :string
     },
-    "user_gender" => %{db_field: "gender", required: ["student"], optional: ["student_update"], type: :string},
+    "user_gender" => %{
+      db_field: "gender",
+      required: ["student"],
+      optional: ["student_update"],
+      type: :string
+    },
     "user_date_of_birth" => %{
       db_field: "date_of_birth",
       required: ["student"],
       optional: ["student_update"],
       type: :date
     },
-    "user_address" => %{db_field: "address", required: ["student"], optional: ["student_update"], type: :string},
-    "user_city" => %{db_field: "city", required: ["student"], optional: ["student_update"], type: :string},
-    "user_district" => %{db_field: "district", required: ["student"], optional: ["student_update"], type: :string},
-    "user_state" => %{db_field: "state", required: ["student"], optional: ["student_update"], type: :string},
-    "user_pincode" => %{db_field: "pincode", required: ["student"], optional: ["student_update"], type: :string},
+    "user_address" => %{
+      db_field: "address",
+      required: ["student"],
+      optional: ["student_update"],
+      type: :string
+    },
+    "user_city" => %{
+      db_field: "city",
+      required: ["student"],
+      optional: ["student_update"],
+      type: :string
+    },
+    "user_district" => %{
+      db_field: "district",
+      required: ["student"],
+      optional: ["student_update"],
+      type: :string
+    },
+    "user_state" => %{
+      db_field: "state",
+      required: ["student"],
+      optional: ["student_update"],
+      type: :string
+    },
+    "user_pincode" => %{
+      db_field: "pincode",
+      required: ["student"],
+      optional: ["student_update"],
+      type: :string
+    },
 
     # Student fields
     "student_id" => %{
@@ -75,7 +115,12 @@ defmodule Dbservice.Constants.Mappings do
       optional: ["student_update"],
       type: :string
     },
-    "student_stream" => %{db_field: "stream", required: ["student"], optional: ["student_update"], type: :string},
+    "student_stream" => %{
+      db_field: "stream",
+      required: ["student"],
+      optional: ["student_update"],
+      type: :string
+    },
     "student_family_income" => %{
       db_field: "family_income",
       required: ["student"],

@@ -45,7 +45,12 @@ defmodule Dbservice.DataImport.ImportWorker do
     case parse_csv_records(path, start_row, import_record.type) do
       {:ok, parsed_records} ->
         try do
-          case process_parsed_records(parsed_records, import_record, record_processor_fn, halt_on_error?) do
+          case process_parsed_records(
+                 parsed_records,
+                 import_record,
+                 record_processor_fn,
+                 halt_on_error?
+               ) do
             {:ok, processed_records} -> finalize_import(import_record, processed_records)
             {:error, reason} -> handle_import_error(import_record, reason)
           end
@@ -83,7 +88,8 @@ defmodule Dbservice.DataImport.ImportWorker do
     |> Enum.reduce(%{}, fn {sheet_col, db_field}, acc ->
       case Map.get(record, sheet_col) do
         nil -> acc
-        "" -> acc  # Skip empty values instead of defaulting to ""
+        # Skip empty values instead of defaulting to ""
+        "" -> acc
         value -> Map.put(acc, db_field, value)
       end
     end)

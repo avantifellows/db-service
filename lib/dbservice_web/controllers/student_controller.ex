@@ -145,7 +145,8 @@ defmodule DbserviceWeb.StudentController do
   def update(conn, params) do
     student = Users.get_student!(params["id"])
 
-    with {:ok, %Student{} = student} <- StudentUpdateService.update_student_with_user_data(student, params) do
+    with {:ok, %Student{} = student} <-
+           StudentUpdateService.update_student_with_user_data(student, params) do
       conn
       |> put_status(:ok)
       |> render(:show, student: student)
