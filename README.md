@@ -1,17 +1,33 @@
 # Dbservice
 
-### Installation
-To set up this project, visit the [installation steps](./docs/INSTALLATION.md).
+A Phoenix-based database service application with LiveView UI for data imports and comprehensive API documentation.
 
-### Deployment
-Visit our [deployment guideline](./docs/DEPLOYMENT.md) for setting up this repository on a production environment.
+## Quick Start
 
-### Contributing
-- [REST API documentation with Phoenix Swagger](./docs/SWAGGER.md)
+To set up this project locally, visit the [installation steps](./docs/INSTALLATION.md).
 
-## Learn more
-  * Official website: https://www.phoenixframework.org/
-  * Guides: https://hexdocs.pm/phoenix/overview.html
-  * Docs: https://hexdocs.pm/phoenix
-  * Forum: https://elixirforum.com/c/phoenix-forum
-  * Source: https://github.com/phoenixframework/phoenix
+## Development
+
+### Running the Application
+```bash
+mix phx.server
+```
+
+Visit [`localhost:4000`](http://localhost:4000) to access the application.
+
+### API Documentation
+Access the Swagger documentation at: `http://localhost:4000/docs/swagger/index.html`
+
+## Documentation
+
+- **[Installation Guide](./docs/INSTALLATION.md)** - Complete setup instructions
+- **[Deployment Guide](./docs/DEPLOYMENT.md)** - Production deployment guidelines  
+- **[API Documentation](./docs/SWAGGER.md)** - REST API documentation with Phoenix Swagger
+
+## Learn More
+
+- **Phoenix Framework**: https://www.phoenixframework.org/
+- **Guides**: https://hexdocs.pm/phoenix/overview.html
+- **Documentation**: https://hexdocs.pm/phoenix
+- **Community Forum**: https://elixirforum.com/c/phoenix-forum
+- **Source Code**: https://github.com/phoenixframework/phoenix

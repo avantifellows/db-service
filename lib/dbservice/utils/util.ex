@@ -183,4 +183,36 @@ defmodule Dbservice.Utils.Util do
 
   defp normalize_value(invalid, field_type, _valid_values),
     do: {:error, "#{field_type} must be a string, got: #{inspect(invalid)}"}
+
+  def to_ist(datetime) do
+    ist_offset = 5 * 60 * 60 + 30 * 60
+    DateTime.add(datetime, ist_offset, :second)
+  end
+
+  # Helper function to ensure we have a DateTime
+  def naive_to_datetime(%NaiveDateTime{} = naive) do
+    # Convert NaiveDateTime to UTC DateTime
+    {:ok, datetime} = DateTime.from_naive(naive, "Etc/UTC")
+    datetime
+  end
+
+  def naive_to_datetime(%DateTime{} = datetime), do: datetime
+
+  def process_credentials(credentials) do
+    private_key = credentials["private_key"]
+
+    # Ensured private key has proper line breaks if they got mangled
+    fixed_private_key =
+      if is_binary(private_key) && !String.contains?(private_key, "\n") do
+        private_key
+        |> String.replace("-----BEGIN PRIVATE KEY-----", "-----BEGIN PRIVATE KEY-----\n")
+        |> String.replace("-----END PRIVATE KEY-----", "\n-----END PRIVATE KEY-----")
+        |> String.replace(~r/([A-Za-z0-9+\/=]{64})/, "\\1\n")
+      else
+        private_key
+      end
+
+    # Return updated credentials
+    Map.put(credentials, "private_key", fixed_private_key)
+  end
 end

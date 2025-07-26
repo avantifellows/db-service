@@ -59,7 +59,7 @@ defmodule DbserviceWeb.GroupController do
       end)
 
     group = Repo.all(query)
-    render(conn, "index.json", group: group)
+    render(conn, :index, group: group)
   end
 
   swagger_path :create do
@@ -76,8 +76,8 @@ defmodule DbserviceWeb.GroupController do
     with {:ok, %Group{} = group} <- Groups.create_group(params) do
       conn
       |> put_status(:created)
-      |> put_resp_header("location", Routes.group_path(conn, :show, group))
-      |> render("show.json", group: group)
+      |> put_resp_header("location", ~p"/api/group/#{group}")
+      |> render(:show, group: group)
     end
   end
 
@@ -93,7 +93,7 @@ defmodule DbserviceWeb.GroupController do
 
   def show(conn, %{"id" => id}) do
     group = Groups.get_group!(id)
-    render(conn, "show.json", group: group)
+    render(conn, :show, group: group)
   end
 
   swagger_path :update do
@@ -111,7 +111,7 @@ defmodule DbserviceWeb.GroupController do
     group = Groups.get_group!(params["id"])
 
     with {:ok, %Group{} = group} <- Groups.update_group(group, params) do
-      render(conn, "show.json", group: group)
+      render(conn, :show, group: group)
     end
   end
 
@@ -139,7 +139,9 @@ defmodule DbserviceWeb.GroupController do
     parameters do
       groupId(:path, :integer, "The id of the group record", required: true)
 
-      body(:body, Schema.ref(:UserIds), "List of user ids to update for the group", required: true)
+      body(:body, Schema.ref(:UserIds), "List of user ids to update for the group",
+        required: true
+      )
     end
 
     response(200, "OK", Schema.ref(:GroupUsers))
@@ -148,7 +150,7 @@ defmodule DbserviceWeb.GroupController do
   def update_users(conn, %{"id" => group_id, "user_ids" => user_ids})
       when is_list(user_ids) do
     with {:ok, %Group{} = group} <- Groups.update_users(group_id, user_ids) do
-      render(conn, "show.json", group: group)
+      render(conn, :show, group: group)
     end
   end
 
@@ -169,7 +171,7 @@ defmodule DbserviceWeb.GroupController do
   def update_sessions(conn, %{"id" => group_id, "session_ids" => session_ids})
       when is_list(session_ids) do
     with {:ok, %Group{} = group} <- Groups.update_sessions(group_id, session_ids) do
-      render(conn, "show.json", group: group)
+      render(conn, :show, group: group)
     end
   end
 end

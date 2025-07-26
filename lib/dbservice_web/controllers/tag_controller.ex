@@ -51,7 +51,7 @@ defmodule DbserviceWeb.TagController do
       end)
 
     tag = Repo.all(query)
-    render(conn, "index.json", tag: tag)
+    render(conn, :index, tag: tag)
   end
 
   swagger_path :create do
@@ -68,8 +68,8 @@ defmodule DbserviceWeb.TagController do
     with {:ok, %Tag{} = tag} <- Tags.create_tag(params) do
       conn
       |> put_status(:created)
-      |> put_resp_header("location", Routes.tag_path(conn, :show, tag))
-      |> render("show.json", tag: tag)
+      |> put_resp_header("location", ~p"/api/tag/#{tag}")
+      |> render(:show, tag: tag)
     end
   end
 
@@ -85,7 +85,7 @@ defmodule DbserviceWeb.TagController do
 
   def show(conn, %{"id" => id}) do
     tag = Tags.get_tag!(id)
-    render(conn, "show.json", tag: tag)
+    render(conn, :show, tag: tag)
   end
 
   swagger_path :update do
@@ -103,7 +103,7 @@ defmodule DbserviceWeb.TagController do
     tag = Tags.get_tag!(params["id"])
 
     with {:ok, %Tag{} = tag} <- Tags.update_tag(tag, params) do
-      render(conn, "show.json", tag: tag)
+      render(conn, :show, tag: tag)
     end
   end
 

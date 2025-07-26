@@ -55,7 +55,7 @@ defmodule DbserviceWeb.ChapterController do
       end)
 
     chapter = Repo.all(query)
-    render(conn, "index.json", chapter: chapter)
+    render(conn, :index, chapter: chapter)
   end
 
   swagger_path :create do
@@ -90,7 +90,7 @@ defmodule DbserviceWeb.ChapterController do
 
   def show(conn, %{"id" => id}) do
     chapter = Chapters.get_chapter!(id)
-    render(conn, "show.json", chapter: chapter)
+    render(conn, :show, chapter: chapter)
   end
 
   swagger_path :update do
@@ -108,7 +108,7 @@ defmodule DbserviceWeb.ChapterController do
     chapter = Chapters.get_chapter!(params["id"])
 
     with {:ok, %Chapter{} = chapter} <- Chapters.update_chapter(chapter, params) do
-      render(conn, "show.json", chapter: chapter)
+      render(conn, :show, chapter: chapter)
     end
   end
 
@@ -134,8 +134,8 @@ defmodule DbserviceWeb.ChapterController do
     with {:ok, %Chapter{} = chapter} <- Chapters.create_chapter(params) do
       conn
       |> put_status(:created)
-      |> put_resp_header("location", Routes.chapter_path(conn, :show, chapter))
-      |> render("show.json", chapter: chapter)
+      |> put_resp_header("location", ~p"/api/chapter/#{chapter}")
+      |> render(:show, chapter: chapter)
     end
   end
 
@@ -144,7 +144,7 @@ defmodule DbserviceWeb.ChapterController do
            Chapters.update_chapter(existing_chapter, params) do
       conn
       |> put_status(:ok)
-      |> render("show.json", chapter: chapter)
+      |> render(:show, chapter: chapter)
     end
   end
 end

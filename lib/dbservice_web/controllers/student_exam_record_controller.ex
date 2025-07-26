@@ -48,7 +48,8 @@ defmodule DbserviceWeb.StudentExamRecordController do
       end)
 
     student_exam_record = Repo.all(query)
-    render(conn, "index.json", student_exam_record: student_exam_record)
+
+    render(conn, :index, student_exam_record: student_exam_record)
   end
 
   swagger_path :create do
@@ -86,7 +87,8 @@ defmodule DbserviceWeb.StudentExamRecordController do
 
   def show(conn, %{"id" => id}) do
     student_exam_record = StudentExamRecords.get_student_exam_record!(id)
-    render(conn, "show.json", student_exam_record: student_exam_record)
+
+    render(conn, :show, student_exam_record: student_exam_record)
   end
 
   swagger_path :update do
@@ -105,7 +107,7 @@ defmodule DbserviceWeb.StudentExamRecordController do
 
     with {:ok, %StudentExamRecord{} = student_exam_record} <-
            StudentExamRecords.update_student_exam_record(student_exam_record, params) do
-      render(conn, "show.json", student_exam_record: student_exam_record)
+      render(conn, :show, student_exam_record: student_exam_record)
     end
   end
 
@@ -135,9 +137,9 @@ defmodule DbserviceWeb.StudentExamRecordController do
       |> put_status(:created)
       |> put_resp_header(
         "location",
-        Routes.student_exam_record_path(conn, :show, student_exam_record)
+        ~p"/api/student-exam-record/#{student_exam_record}"
       )
-      |> render("show.json", student_exam_record: student_exam_record)
+      |> render(:show, student_exam_record: student_exam_record)
     end
   end
 
@@ -146,7 +148,7 @@ defmodule DbserviceWeb.StudentExamRecordController do
            StudentExamRecords.update_student_exam_record(existing_student_exam_record, params) do
       conn
       |> put_status(:ok)
-      |> render("show.json", student_exam_record: student_exam_record)
+      |> render(:show, student_exam_record: student_exam_record)
     end
   end
 end

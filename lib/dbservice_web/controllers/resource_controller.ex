@@ -50,7 +50,7 @@ defmodule DbserviceWeb.ResourceController do
       end)
 
     resource = Repo.all(query)
-    render(conn, "index.json", resource: resource)
+    render(conn, :index, resource: resource)
   end
 
   swagger_path :create do
@@ -85,7 +85,7 @@ defmodule DbserviceWeb.ResourceController do
 
   def show(conn, %{"id" => id}) do
     resource = Resources.get_resource!(id)
-    render(conn, "show.json", resource: resource)
+    render(conn, :show, resource: resource)
   end
 
   swagger_path :update do
@@ -103,7 +103,7 @@ defmodule DbserviceWeb.ResourceController do
     resource = Resources.get_resource!(params["id"])
 
     with {:ok, %Resource{} = resource} <- Resources.update_resource(resource, params) do
-      render(conn, "show.json", resource: resource)
+      render(conn, :show, resource: resource)
     end
   end
 
@@ -129,8 +129,8 @@ defmodule DbserviceWeb.ResourceController do
     with {:ok, %Resource{} = resource} <- Resources.create_resource(params) do
       conn
       |> put_status(:created)
-      |> put_resp_header("location", Routes.resource_path(conn, :show, resource))
-      |> render("show.json", resource: resource)
+      |> put_resp_header("location", ~p"/api/resource/#{resource}")
+      |> render(:show, resource: resource)
     end
   end
 
@@ -141,7 +141,7 @@ defmodule DbserviceWeb.ResourceController do
            Resources.update_resource(existing_resource, merged_params) do
       conn
       |> put_status(:ok)
-      |> render("show.json", resource: resource)
+      |> render(:show, resource: resource)
     end
   end
 

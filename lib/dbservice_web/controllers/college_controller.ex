@@ -47,7 +47,7 @@ defmodule DbserviceWeb.CollegeController do
       end)
 
     college = Repo.all(query)
-    render(conn, "index.json", college: college)
+    render(conn, :index, college: college)
   end
 
   swagger_path :create do
@@ -82,7 +82,7 @@ defmodule DbserviceWeb.CollegeController do
 
   def show(conn, %{"id" => id}) do
     college = Colleges.get_college!(id)
-    render(conn, "show.json", college: college)
+    render(conn, :show, college: college)
   end
 
   swagger_path :update do
@@ -100,7 +100,7 @@ defmodule DbserviceWeb.CollegeController do
     college = Colleges.get_college!(params["id"])
 
     with {:ok, %College{} = college} <- Colleges.update_college(college, params) do
-      render(conn, "show.json", college: college)
+      render(conn, :show, college: college)
     end
   end
 
@@ -126,8 +126,8 @@ defmodule DbserviceWeb.CollegeController do
     with {:ok, %College{} = college} <- Colleges.create_college(params) do
       conn
       |> put_status(:created)
-      |> put_resp_header("location", Routes.college_path(conn, :show, college))
-      |> render("show.json", college: college)
+      |> put_resp_header("location", ~p"/api/college/#{college}")
+      |> render(:show, college: college)
     end
   end
 
@@ -135,7 +135,7 @@ defmodule DbserviceWeb.CollegeController do
     with {:ok, %College{} = college} <- Colleges.update_college(existing_college, params) do
       conn
       |> put_status(:ok)
-      |> render("show.json", college: college)
+      |> render(:show, college: college)
     end
   end
 end
