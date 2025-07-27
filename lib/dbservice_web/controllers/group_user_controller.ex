@@ -265,7 +265,7 @@ defmodule DbserviceWeb.GroupUserController do
            GroupUsers.update_group_user(existing_group_user, params) do
       conn
       |> put_status(:ok)
-      |> render("show.json", group_user: group_user)
+      |> render(:show, group_user: group_user)
     end
   end
 
