@@ -158,7 +158,8 @@ defmodule DbserviceWeb.GroupSessionController do
          {:ok, auth_group} <- get_auth_group(batch.auth_group_id) do
       conn
       |> put_status(:ok)
-      |> render(:auth_group, auth_group: auth_group)
+      |> put_view(DbserviceWeb.AuthGroupJSON)
+      |> render(:show, auth_group: auth_group)
     else
       {:error, :not_found, message} ->
         conn
