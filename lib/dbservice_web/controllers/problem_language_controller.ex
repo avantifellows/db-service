@@ -136,7 +136,7 @@ defmodule DbserviceWeb.ProblemLanguageController do
            ProblemLanguages.create_problem_language(params) do
       conn
       |> put_status(:created)
-      |> put_resp_header("location", Routes.problem_language_path(conn, :show, problem_language))
+      |> put_resp_header("location", ~p"/api/problem-language/#{problem_language}")
       |> render("show.json", problem_language: problem_language)
     end
   end

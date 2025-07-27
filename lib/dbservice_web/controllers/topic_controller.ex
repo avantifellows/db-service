@@ -78,8 +78,8 @@ defmodule DbserviceWeb.TopicController do
     # Language filtering
     query = Util.filter_by_lang(query, params)
 
-    topics = Repo.all(query)
-    render(conn, "index.json", topic: topics)
+    topic = Repo.all(query)
+    render(conn, :index, topic: topic)
   end
 
   swagger_path :create do
@@ -114,7 +114,7 @@ defmodule DbserviceWeb.TopicController do
 
   def show(conn, %{"id" => id}) do
     topic = Topics.get_topic!(id)
-    render(conn, "show.json", topic: topic)
+    render(conn, :show, topic: topic)
   end
 
   swagger_path :update do
@@ -132,7 +132,7 @@ defmodule DbserviceWeb.TopicController do
     topic = Topics.get_topic!(params["id"])
 
     with {:ok, %Topic{} = topic} <- Topics.update_topic(topic, params) do
-      render(conn, "show.json", topic: topic)
+      render(conn, :show, topic: topic)
     end
   end
 
@@ -158,8 +158,8 @@ defmodule DbserviceWeb.TopicController do
     with {:ok, %Topic{} = topic} <- Topics.create_topic_with_curriculum(params) do
       conn
       |> put_status(:created)
-      |> put_resp_header("location", Routes.topic_path(conn, :show, topic))
-      |> render("show.json", topic: topic)
+      |> put_resp_header("location", ~p"/api/topic/#{topic}")
+      |> render(:show, topic: topic)
     end
   end
 
@@ -168,7 +168,7 @@ defmodule DbserviceWeb.TopicController do
            Topics.update_topic_with_curriculum(existing_topic, params) do
       conn
       |> put_status(:ok)
-      |> render("show.json", topic: topic)
+      |> render(:show, topic: topic)
     end
   end
 end

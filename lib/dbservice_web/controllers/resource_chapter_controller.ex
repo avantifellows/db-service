@@ -136,7 +136,7 @@ defmodule DbserviceWeb.ResourceChapterController do
            ResourceChapters.create_resource_chapter(params) do
       conn
       |> put_status(:created)
-      |> put_resp_header("location", Routes.resource_chapter_path(conn, :show, resource_chapter))
+      |> put_resp_header("location", ~p"/api/resource-chapter/#{resource_chapter}")
       |> render("show.json", resource_chapter: resource_chapter)
     end
   end

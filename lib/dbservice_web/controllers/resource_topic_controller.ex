@@ -136,7 +136,7 @@ defmodule DbserviceWeb.ResourceTopicController do
            ResourceTopics.create_resource_topic(params) do
       conn
       |> put_status(:created)
-      |> put_resp_header("location", Routes.resource_topic_path(conn, :show, resource_topic))
+      |> put_resp_header("location", ~p"/api/resource-topic/#{resource_topic}")
       |> render("show.json", resource_topic: resource_topic)
     end
   end

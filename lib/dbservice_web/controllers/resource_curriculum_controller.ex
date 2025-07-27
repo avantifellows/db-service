@@ -139,7 +139,7 @@ defmodule DbserviceWeb.ResourceCurriculumController do
       |> put_status(:created)
       |> put_resp_header(
         "location",
-        Routes.resource_curriculum_path(conn, :show, resource_curriculum)
+        ~p"/api/resource-curriculum/#{resource_curriculum}"
       )
       |> render("show.json", resource_curriculum: resource_curriculum)
     end

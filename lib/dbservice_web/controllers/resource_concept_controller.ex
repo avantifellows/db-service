@@ -136,7 +136,7 @@ defmodule DbserviceWeb.ResourceConceptController do
            ResourceConcepts.create_resource_concept(params) do
       conn
       |> put_status(:created)
-      |> put_resp_header("location", Routes.resource_concept_path(conn, :show, resource_concept))
+      |> put_resp_header("location", ~p"/api/resource-concept/#{resource_concept}")
       |> render("show.json", resource_concept: resource_concept)
     end
   end

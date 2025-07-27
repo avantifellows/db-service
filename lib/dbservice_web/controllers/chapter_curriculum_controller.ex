@@ -135,7 +135,7 @@ defmodule DbserviceWeb.ChapterCurriculumController do
       |> put_status(:created)
       |> put_resp_header(
         "location",
-        Routes.chapter_curriculum_path(conn, :show, chapter_curriculum)
+        ~p"/api/chapter-curriculum/#{chapter_curriculum}"
       )
       |> render("show.json", chapter_curriculum: chapter_curriculum)
     end

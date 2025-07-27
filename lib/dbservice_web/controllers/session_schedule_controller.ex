@@ -53,7 +53,7 @@ defmodule DbserviceWeb.SessionScheduleController do
       end)
 
     session_schedule = Repo.all(query)
-    render(conn, "index.json", session_schedule: session_schedule)
+    render(conn, :index, session_schedule: session_schedule)
   end
 
   swagger_path :create do
@@ -71,8 +71,8 @@ defmodule DbserviceWeb.SessionScheduleController do
            SessionSchedules.create_session_schedule(params) do
       conn
       |> put_status(:created)
-      |> put_resp_header("location", Routes.session_schedule_path(conn, :show, session_schedule))
-      |> render("show.json", session_schedule: session_schedule)
+      |> put_resp_header("location", ~p"/api/session-schedule/#{session_schedule}")
+      |> render(:show, session_schedule: session_schedule)
     end
   end
 
@@ -88,7 +88,7 @@ defmodule DbserviceWeb.SessionScheduleController do
 
   def show(conn, %{"id" => id}) do
     session_schedule = SessionSchedules.get_session_schedule!(id)
-    render(conn, "show.json", session_schedule: session_schedule)
+    render(conn, :show, session_schedule: session_schedule)
   end
 
   swagger_path :update do
@@ -107,7 +107,7 @@ defmodule DbserviceWeb.SessionScheduleController do
 
     with {:ok, %SessionSchedule{} = session_schedule} <-
            SessionSchedules.update_session_schedule(session_schedule, params) do
-      render(conn, "show.json", session_schedule: session_schedule)
+      render(conn, :show, session_schedule: session_schedule)
     end
   end
 

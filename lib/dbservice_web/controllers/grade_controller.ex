@@ -50,7 +50,7 @@ defmodule DbserviceWeb.GradeController do
       end)
 
     grade = Repo.all(query)
-    render(conn, "index.json", grade: grade)
+    render(conn, :index, grade: grade)
   end
 
   swagger_path :create do
@@ -85,7 +85,7 @@ defmodule DbserviceWeb.GradeController do
 
   def show(conn, %{"id" => id}) do
     grade = Grades.get_grade!(id)
-    render(conn, "show.json", grade: grade)
+    render(conn, :show, grade: grade)
   end
 
   swagger_path :update do
@@ -103,7 +103,7 @@ defmodule DbserviceWeb.GradeController do
     grade = Grades.get_grade!(params["id"])
 
     with {:ok, %Grade{} = grade} <- Grades.update_grade(grade, params) do
-      render(conn, "show.json", grade: grade)
+      render(conn, :show, grade: grade)
     end
   end
 
@@ -129,8 +129,8 @@ defmodule DbserviceWeb.GradeController do
     with {:ok, %Grade{} = grade} <- Grades.create_grade(params) do
       conn
       |> put_status(:created)
-      |> put_resp_header("location", Routes.grade_path(conn, :show, grade))
-      |> render("show.json", grade: grade)
+      |> put_resp_header("location", ~p"/api/grade/#{grade}")
+      |> render(:show, grade: grade)
     end
   end
 
@@ -139,7 +139,7 @@ defmodule DbserviceWeb.GradeController do
            Grades.update_grade(existing_grade, params) do
       conn
       |> put_status(:ok)
-      |> render("show.json", grade: grade)
+      |> render(:show, grade: grade)
     end
   end
 end

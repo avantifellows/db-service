@@ -129,7 +129,7 @@ defmodule DbserviceWeb.TestRuleController do
     with {:ok, %TestRule{} = test_rule} <- TestRules.create_test_rule(params) do
       conn
       |> put_status(:created)
-      |> put_resp_header("location", Routes.test_rule_path(conn, :show, test_rule))
+      |> put_resp_header("location", ~p"/api/test-rule/#{test_rule}")
       |> render("show.json", test_rule: test_rule)
     end
   end

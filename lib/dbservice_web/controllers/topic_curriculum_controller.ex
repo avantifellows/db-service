@@ -135,7 +135,7 @@ defmodule DbserviceWeb.TopicCurriculumController do
       |> put_status(:created)
       |> put_resp_header(
         "location",
-        Routes.topic_curriculum_path(conn, :show, topic_curriculum)
+        ~p"/api/topic-curriculum/#{topic_curriculum}"
       )
       |> render("show.json", topic_curriculum: topic_curriculum)
     end

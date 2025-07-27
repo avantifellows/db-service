@@ -47,7 +47,7 @@ defmodule DbserviceWeb.FormSchemaController do
       end)
 
     form_schema = Repo.all(query)
-    render(conn, "index.json", form_schema: form_schema)
+    render(conn, :index, form_schema: form_schema)
   end
 
   swagger_path :create do
@@ -64,8 +64,8 @@ defmodule DbserviceWeb.FormSchemaController do
     with {:ok, %FormSchema{} = form_schema} <- FormSchemas.create_form_schema(params) do
       conn
       |> put_status(:created)
-      |> put_resp_header("location", Routes.form_schema_path(conn, :show, form_schema))
-      |> render("show.json", form_schema: form_schema)
+      |> put_resp_header("location", ~p"/api/form-schema/#{form_schema}")
+      |> render(:show, form_schema: form_schema)
     end
   end
 
@@ -81,7 +81,7 @@ defmodule DbserviceWeb.FormSchemaController do
 
   def show(conn, %{"id" => id}) do
     form_schema = FormSchemas.get_form_schema!(id)
-    render(conn, "show.json", form_schema: form_schema)
+    render(conn, :show, form_schema: form_schema)
   end
 
   swagger_path :update do
@@ -98,8 +98,9 @@ defmodule DbserviceWeb.FormSchemaController do
   def update(conn, params) do
     form_schema = FormSchemas.get_form_schema!(params["id"])
 
-    with {:ok, %FormSchema{} = form_schema} <- FormSchemas.update_form_schema(form_schema, params) do
-      render(conn, "show.json", form_schema: form_schema)
+    with {:ok, %FormSchema{} = form_schema} <-
+           FormSchemas.update_form_schema(form_schema, params) do
+      render(conn, :show, form_schema: form_schema)
     end
   end
 
