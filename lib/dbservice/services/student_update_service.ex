@@ -19,7 +19,7 @@ defmodule Dbservice.Services.StudentUpdateService do
   - {:ok, student} if successful
   - {:error, reason} if student not found or update fails
   """
-  def update_student_by_id(student_id, params) do
+  def update_student_by_student_id(student_id, params) do
     case Users.get_student_by_student_id(student_id) do
       nil ->
         {:error, "Student not found with ID: #{student_id}"}
