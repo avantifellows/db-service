@@ -14,7 +14,7 @@ config :dbservice,
 config :dbservice, DbserviceWeb.Endpoint,
   load_from_system_env: false,
   url: [host: "localhost"],
-  render_errors: [view: DbserviceWeb.ErrorView, accepts: ~w(json), layout: false],
+  render_errors: [formats: [json: DbserviceWeb.ErrorJSON], layout: false],
   pubsub_server: Dbservice.PubSub,
   live_view: [signing_salt: "KptGRhXD"]
 

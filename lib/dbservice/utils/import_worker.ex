@@ -15,6 +15,7 @@ defmodule Dbservice.DataImport.ImportWorker do
   alias Dbservice.Constants.Mappings
   alias Dbservice.Users
   alias Dbservice.Grades
+  alias Dbservice.Services.StudentUpdateService
 
   @impl Oban.Worker
   def perform(%Oban.Job{args: %{"id" => import_id}}) do
@@ -29,26 +30,66 @@ defmodule Dbservice.DataImport.ImportWorker do
 
     # Process the file based on type
     case import_record.type do
-      "student" -> process_student_import(import_record)
-      "batch_movement" -> process_batch_movement_import(import_record)
+      "student" -> process_import(import_record, &process_student_record/1, true)
+      "student_update" -> process_import(import_record, &process_student_update_record/1, false)
+      "batch_movement" -> process_import(import_record, &process_batch_movement_record/1, true)
       _ -> {:error, "Unsupported import type"}
     end
   end
 
-  # Updated function to map sheet column names to database field names using Mappings
-  defp map_fields(record, import_type) do
-    record
-    |> map_string_fields(import_type)
-    |> map_boolean_fields(import_type)
-    |> add_grade_id()
+  # Generic import processing function
+  defp process_import(import_record, record_processor_fn, halt_on_error?) do
+    path = Path.join(["priv", "static", "uploads", import_record.filename])
+    start_row = import_record.start_row || 2
+
+    case parse_csv_records(path, start_row, import_record.type) do
+      {:ok, parsed_records} ->
+        try do
+          case process_parsed_records(
+                 parsed_records,
+                 import_record,
+                 record_processor_fn,
+                 halt_on_error?
+               ) do
+            {:ok, processed_records} -> finalize_import(import_record, processed_records)
+            {:error, reason} -> handle_import_error(import_record, reason)
+          end
+        rescue
+          e -> handle_import_error(import_record, Exception.message(e))
+        end
+
+      {:error, reason} ->
+        handle_import_error(import_record, reason)
+    end
   end
 
-  defp map_string_fields(record, import_type) do
+  # Generic CSV parsing function
+  defp parse_csv_records(path, start_row, import_type) do
+    field_extractor_fn = get_field_extractor_fn(import_type)
+
+    parse_csv_records_with_extractor(path, start_row, field_extractor_fn)
+  end
+
+  # Unified field extractor function for all import types
+  defp get_field_extractor_fn(import_type) do
+    fn record ->
+      record
+      |> extract_field_mappings(import_type)
+      |> map_boolean_fields(import_type)
+      |> add_grade_id()
+    end
+  end
+
+  # Unified field extraction using mappings
+  defp extract_field_mappings(record, import_type) do
     field_mapping = Mappings.get_field_mapping(import_type)
 
-    Enum.reduce(field_mapping, %{}, fn {sheet_column, db_field}, acc ->
-      case Map.get(record, sheet_column) do
+    field_mapping
+    |> Enum.reduce(%{}, fn {sheet_col, db_field}, acc ->
+      case Map.get(record, sheet_col) do
         nil -> acc
+        # Skip empty values instead of defaulting to ""
+        "" -> acc
         value -> Map.put(acc, db_field, value)
       end
     end)
@@ -85,6 +126,144 @@ defmodule Dbservice.DataImport.ImportWorker do
             record
         end
     end
+  end
+
+  # Generic CSV parsing function that accepts a field extraction function
+  defp parse_csv_records_with_extractor(path, start_row, field_extractor_fn) do
+    try do
+      records =
+        path
+        |> File.stream!()
+        |> CSV.decode!(
+          separator: ?,,
+          escape_character: ?",
+          headers: true,
+          validate_row_length: false,
+          escape_max_lines: 2
+        )
+        |> Stream.with_index(1)
+        |> Stream.filter(fn {_record, index} -> index >= start_row - 1 end)
+        |> Stream.map(fn {record, index} -> {field_extractor_fn.(record), index} end)
+        |> Enum.to_list()
+
+      {:ok, records}
+    rescue
+      _e in CSV.StrayEscapeCharacterError ->
+        {:error, "CSV parsing failed: Stray escape character. Check file formatting."}
+
+      error ->
+        {:error, "Unexpected error parsing CSV: #{inspect(error)}"}
+    end
+  end
+
+  # Generic record processing with configurable error handling
+  defp process_parsed_records(records, import_record, record_processor_fn, halt_on_error?) do
+    initial_acc = {:ok, []}
+
+    result =
+      Enum.reduce_while(records, initial_acc, fn {record, index}, {:ok, processed_records} ->
+        handle_record_processing(
+          record,
+          index,
+          import_record,
+          record_processor_fn,
+          halt_on_error?,
+          processed_records
+        )
+      end)
+
+    case result do
+      {:ok, processed_records} -> {:ok, Enum.reverse(processed_records)}
+      error -> error
+    end
+  end
+
+  # Helper function to handle individual record processing within the reduce_while loop
+  defp handle_record_processing(
+         record,
+         index,
+         import_record,
+         record_processor_fn,
+         halt_on_error?,
+         processed_records
+       ) do
+    case process_single_record(record, index, import_record, record_processor_fn) do
+      {:ok, result} ->
+        {:cont, {:ok, [result | processed_records]}}
+
+      {:error, reason} ->
+        handle_record_error(index, reason, halt_on_error?, import_record, processed_records)
+    end
+  end
+
+  # Helper function to handle errors during record processing
+  defp handle_record_error(index, reason, halt_on_error?, import_record, processed_records) do
+    if halt_on_error? do
+      # Halt the entire import process if any row fails
+      {:halt, {:error, "Error processing row #{index}: #{reason}"}}
+    else
+      # Continue processing other records even if one fails
+      update_import_progress(import_record, index, :error, reason)
+      {:cont, {:ok, processed_records}}
+    end
+  end
+
+  # Generic single record processing
+  defp process_single_record(record, index, import_record, record_processor_fn) do
+    try do
+      case record_processor_fn.(record) do
+        {:ok, _} = result ->
+          update_import_progress(import_record, index, :success)
+          result
+
+        {:error, reason} = error ->
+          update_import_progress(import_record, index, :error, reason)
+          error
+      end
+    rescue
+      e ->
+        update_import_progress(import_record, index, :exception, e)
+        {:error, Exception.message(e)}
+    end
+  end
+
+  # Record processor functions for each import type
+  defp process_student_record(record) do
+    case Users.get_student_by_student_id(record["student_id"]) do
+      nil ->
+        with {:ok, student} <- Users.create_student_with_user(record),
+             student <- Dbservice.Repo.preload(student, [:user]),
+             {:ok, _} <- DataImport.StudentEnrollment.create_enrollments(student.user, record) do
+          {:ok, student}
+        else
+          {:error, _} = error -> error
+        end
+
+      existing_student ->
+        user = Users.get_user!(existing_student.user_id)
+
+        with {:ok, updated_student} <-
+               Users.update_student_with_user(existing_student, user, record),
+             {:ok, _} <- DataImport.StudentEnrollment.create_enrollments(user, record) do
+          {:ok, updated_student}
+        else
+          {:error, _} = error -> error
+        end
+    end
+  end
+
+  defp process_student_update_record(record) do
+    student_id = record["student_id"]
+
+    if is_nil(student_id) or student_id == "" do
+      {:error, "student_id is required for student updates"}
+    else
+      StudentUpdateService.update_student_by_student_id(student_id, record)
+    end
+  end
+
+  defp process_batch_movement_record(record) do
+    DataImport.BatchMovement.process_batch_movement(record)
   end
 
   defp count_total_rows(filename, start_row) do
@@ -128,97 +307,6 @@ defmodule Dbservice.DataImport.ImportWorker do
         |> Enum.drop(start_row - 1)
         |> Enum.filter(fn line -> String.trim(line) != "" end)
         |> length()
-    end
-  end
-
-  defp process_student_import(import_record) do
-    path = Path.join(["priv", "static", "uploads", import_record.filename])
-    start_row = import_record.start_row || 2
-
-    case parse_csv_records(path, start_row, import_record.type) do
-      {:ok, parsed_records} ->
-        try do
-          case process_parsed_records(parsed_records, import_record) do
-            {:ok, processed_records} -> finalize_import(import_record, processed_records)
-            {:error, reason} -> handle_import_error(import_record, reason)
-          end
-        rescue
-          e -> handle_import_error(import_record, Exception.message(e))
-        end
-
-      {:error, reason} ->
-        handle_import_error(import_record, reason)
-    end
-  end
-
-  # Generic CSV parsing function that accepts a field extraction function
-  defp parse_csv_records_with_extractor(path, start_row, field_extractor_fn) do
-    try do
-      records =
-        path
-        |> File.stream!()
-        |> CSV.decode!(
-          separator: ?,,
-          escape_character: ?",
-          headers: true,
-          validate_row_length: false,
-          escape_max_lines: 2
-        )
-        |> Stream.with_index(1)
-        |> Stream.filter(fn {_record, index} -> index >= start_row - 1 end)
-        |> Stream.map(fn {record, index} -> {field_extractor_fn.(record), index} end)
-        |> Enum.to_list()
-
-      {:ok, records}
-    rescue
-      _e in CSV.StrayEscapeCharacterError ->
-        {:error, "CSV parsing failed: Stray escape character. Check file formatting."}
-
-      error ->
-        {:error, "Unexpected error parsing CSV: #{inspect(error)}"}
-    end
-  end
-
-  defp parse_csv_records(path, start_row, import_type) do
-    parse_csv_records_with_extractor(path, start_row, fn record ->
-      record
-      |> extract_fields()
-      |> map_fields(import_type)
-    end)
-  end
-
-  defp process_parsed_records(records, import_record) do
-    Enum.reduce_while(records, {:ok, []}, fn {record, index}, {:ok, processed_records} ->
-      case process_single_record(record, index, import_record) do
-        {:ok, result} ->
-          {:cont, {:ok, [result | processed_records]}}
-
-        {:error, reason} ->
-          # Halt the entire import process if any row fails
-          {:halt, {:error, "Error processing row #{index}: #{reason}"}}
-      end
-    end)
-    |> case do
-      {:ok, processed_records} -> {:ok, Enum.reverse(processed_records)}
-      error -> error
-    end
-  end
-
-  defp process_single_record(record, index, import_record) do
-    try do
-      case process_student_record(record) do
-        {:ok, _} = result ->
-          update_import_progress(import_record, index, :success)
-          result
-
-        {:error, reason} = error ->
-          update_import_progress(import_record, index, :error, reason)
-          error
-      end
-    rescue
-      e ->
-        update_import_progress(import_record, index, :exception, e)
-        {:error, Exception.message(e)}
     end
   end
 
@@ -277,137 +365,5 @@ defmodule Dbservice.DataImport.ImportWorker do
     )
 
     {:error, reason}
-  end
-
-  defp extract_fields(record) do
-    case record do
-      # If the record is already a map with multiple keys, return it directly
-      record when is_map(record) and map_size(record) > 1 ->
-        record
-
-      # Handle single-key map scenario (potentially problematic CSV parsing)
-      record when is_map(record) ->
-        combined_key = Map.keys(record) |> List.first()
-        combined_value = Map.values(record) |> List.first()
-
-        # More robust splitting with CSV parsing
-        headers = String.split(combined_key, ",", trim: true)
-        values = String.split(combined_value, ",", trim: true)
-
-        # Ensure headers and values have the same length
-        headers
-        |> Enum.zip(values)
-        |> Enum.into(%{}, fn
-          {header, value} when is_binary(header) ->
-            # Trim whitespace and remove quotes if present
-            {String.trim(header), String.trim(value, "\"' ")}
-
-          _ ->
-            nil
-        end)
-        |> Enum.reject(fn {_, v} -> v == nil end)
-        |> Enum.into(%{})
-    end
-  end
-
-  defp process_student_record(record) do
-    case Users.get_student_by_student_id(record["student_id"]) do
-      nil ->
-        with {:ok, student} <- Users.create_student_with_user(record),
-             student <- Dbservice.Repo.preload(student, [:user]),
-             {:ok, _} <- DataImport.StudentEnrollment.create_enrollments(student.user, record) do
-          {:ok, student}
-        else
-          {:error, _} = error -> error
-        end
-
-      existing_student ->
-        user = Users.get_user!(existing_student.user_id)
-
-        with {:ok, updated_student} <-
-               Users.update_student_with_user(existing_student, user, record),
-             {:ok, _} <- DataImport.StudentEnrollment.create_enrollments(user, record) do
-          {:ok, updated_student}
-        else
-          {:error, _} = error -> error
-        end
-    end
-  end
-
-  defp process_batch_movement_import(import_record) do
-    path = Path.join(["priv", "static", "uploads", import_record.filename])
-    start_row = import_record.start_row || 2
-
-    case parse_batch_movement_csv_records(path, start_row, import_record.type) do
-      {:ok, parsed_records} ->
-        try do
-          case process_parsed_batch_movement_records(parsed_records, import_record) do
-            {:ok, processed_records} -> finalize_import(import_record, processed_records)
-            {:error, reason} -> handle_import_error(import_record, reason)
-          end
-        rescue
-          e -> handle_import_error(import_record, Exception.message(e))
-        end
-
-      {:error, reason} ->
-        handle_import_error(import_record, reason)
-    end
-  end
-
-  # Batch movement specific functions updated to use Mappings
-  defp parse_batch_movement_csv_records(path, start_row, import_type) do
-    parse_csv_records_with_extractor(path, start_row, fn record ->
-      record
-      |> extract_batch_movement_fields(import_type)
-    end)
-  end
-
-  defp extract_batch_movement_fields(record, import_type) do
-    field_mapping = Mappings.get_field_mapping(import_type)
-
-    # Extract and normalize the required fields for batch movement using Mappings
-    field_mapping
-    |> Enum.reduce(%{}, fn {sheet_col, db_field}, acc ->
-      Map.put(acc, db_field, Map.get(record, sheet_col) || "")
-    end)
-  end
-
-  defp process_parsed_batch_movement_records(records, import_record) do
-    Enum.reduce_while(records, {:ok, []}, fn {record, index}, {:ok, processed_records} ->
-      case process_single_batch_movement_record(record, index, import_record) do
-        {:ok, result} ->
-          {:cont, {:ok, [result | processed_records]}}
-
-        {:error, reason} ->
-          # Halt the entire import process if any row fails
-          {:halt, {:error, "Error processing row #{index}: #{reason}"}}
-      end
-    end)
-    |> case do
-      {:ok, processed_records} -> {:ok, Enum.reverse(processed_records)}
-      error -> error
-    end
-  end
-
-  defp process_single_batch_movement_record(record, index, import_record) do
-    try do
-      case process_batch_movement_record(record) do
-        {:ok, _} = result ->
-          update_import_progress(import_record, index, :success)
-          result
-
-        {:error, reason} = error ->
-          update_import_progress(import_record, index, :error, reason)
-          error
-      end
-    rescue
-      e ->
-        update_import_progress(import_record, index, :exception, e)
-        {:error, Exception.message(e)}
-    end
-  end
-
-  defp process_batch_movement_record(record) do
-    DataImport.BatchMovement.process_batch_movement(record)
   end
 end
