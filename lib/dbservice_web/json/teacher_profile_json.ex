@@ -15,6 +15,7 @@ defmodule DbserviceWeb.TeacherProfileJSON do
 
   def render(teacher_profile) do
     teacher_profile = Dbservice.Repo.preload(teacher_profile, :user_profile)
+
     %{
       id: teacher_profile.id,
       teacher_id: teacher_profile.teacher_id,
@@ -22,10 +23,11 @@ defmodule DbserviceWeb.TeacherProfileJSON do
       school: teacher_profile.school,
       program_manager: teacher_profile.program_manager,
       avg_rating: teacher_profile.avg_rating,
-      user_profile: if(teacher_profile.user_profile,
-        do: UserProfileJSON.render(teacher_profile.user_profile),
-        else: nil
-      )
+      user_profile:
+        if(teacher_profile.user_profile,
+          do: UserProfileJSON.render(teacher_profile.user_profile),
+          else: nil
+        )
     }
   end
 
