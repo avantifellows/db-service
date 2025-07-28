@@ -258,7 +258,7 @@ defmodule Dbservice.DataImport.ImportWorker do
     if is_nil(student_id) or student_id == "" do
       {:error, "student_id is required for student updates"}
     else
-      StudentUpdateService.update_student_by_id(student_id, record)
+      StudentUpdateService.update_student_by_student_id(student_id, record)
     end
   end
 
