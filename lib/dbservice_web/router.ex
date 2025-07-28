@@ -70,7 +70,6 @@ defmodule DbserviceWeb.Router do
     resources("/resource", ResourceController, except: [:new, :edit])
     resources("/exam", ExamController)
     resources("/student-exam-record", StudentExamRecordController)
-    resources("/session-schedule", SessionScheduleController)
     get("/user/:user_id/sessions", UserController, :get_user_sessions)
     patch("/dropout/:student_id", StudentController, :dropout)
     resources("/status", StatusController, except: [:new, :edit])

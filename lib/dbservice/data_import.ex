@@ -13,6 +13,7 @@ defmodule Dbservice.DataImport do
   Returns a human-readable name for the import type.
   """
   def format_type_name("student"), do: "Student"
+  def format_type_name("student_update"), do: "Student Update"
   def format_type_name("batch_movement"), do: "Batch Movement"
   def format_type_name(type), do: String.capitalize(type)
 

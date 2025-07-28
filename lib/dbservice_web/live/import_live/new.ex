@@ -120,7 +120,8 @@ defmodule DbserviceWeb.ImportLive.New do
                     class="block w-full pl-3 pr-10 py-2 text-base border-gray-300 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm rounded-md dark:bg-gray-700 dark:border-gray-600 dark:text-white"
                   >
                     <option disabled value="">Select import type</option>
-                    <option value="student" selected={@form[:type].value == "student"}>Student</option>
+                    <option value="student" selected={@form[:type].value == "student"}>Create Student</option>
+                    <option value="student_update" selected={@form[:type].value == "student_update"}>Update Student Details</option>
                     <option value="batch_movement" selected={@form[:type].value == "batch_movement"}>Batch Movement</option>
 
                   </select>

@@ -8,252 +8,303 @@ defmodule Dbservice.Constants.Mappings do
     "user_first_name" => %{
       db_field: "first_name",
       required: ["student"],
-      optional: [],
+      optional: ["student_update"],
       type: :string
     },
     "user_last_name" => %{
       db_field: "last_name",
       required: ["student"],
-      optional: [],
+      optional: ["student_update"],
       type: :string
     },
-    "user_email" => %{db_field: "email", required: ["student"], optional: [], type: :string},
-    "user_phone" => %{db_field: "phone", required: ["student"], optional: [], type: :string},
+    "user_email" => %{
+      db_field: "email",
+      required: ["student"],
+      optional: ["student_update"],
+      type: :string
+    },
+    "user_phone" => %{
+      db_field: "phone",
+      required: ["student"],
+      optional: ["student_update"],
+      type: :string
+    },
     "user_whatsapp_phone" => %{
       db_field: "whatsapp_phone",
       required: ["student"],
-      optional: [],
+      optional: ["student_update"],
       type: :string
     },
-    "user_gender" => %{db_field: "gender", required: ["student"], optional: [], type: :string},
+    "user_gender" => %{
+      db_field: "gender",
+      required: ["student"],
+      optional: ["student_update"],
+      type: :string
+    },
     "user_date_of_birth" => %{
       db_field: "date_of_birth",
       required: ["student"],
-      optional: [],
+      optional: ["student_update"],
       type: :date
     },
-    "user_address" => %{db_field: "address", required: ["student"], optional: [], type: :string},
-    "user_city" => %{db_field: "city", required: ["student"], optional: [], type: :string},
-    "user_district" => %{db_field: "district", required: ["student"], optional: [], type: :string},
-    "user_state" => %{db_field: "state", required: ["student"], optional: [], type: :string},
-    "user_pincode" => %{db_field: "pincode", required: ["student"], optional: [], type: :string},
+    "user_address" => %{
+      db_field: "address",
+      required: ["student"],
+      optional: ["student_update"],
+      type: :string
+    },
+    "user_city" => %{
+      db_field: "city",
+      required: ["student"],
+      optional: ["student_update"],
+      type: :string
+    },
+    "user_district" => %{
+      db_field: "district",
+      required: ["student"],
+      optional: ["student_update"],
+      type: :string
+    },
+    "user_state" => %{
+      db_field: "state",
+      required: ["student"],
+      optional: ["student_update"],
+      type: :string
+    },
+    "user_pincode" => %{
+      db_field: "pincode",
+      required: ["student"],
+      optional: ["student_update"],
+      type: :string
+    },
 
     # Student fields
     "student_id" => %{
       db_field: "student_id",
-      required: ["student", "batch_movement"],
+      required: ["student", "batch_movement", "student_update"],
       optional: [],
       type: :string
     },
     "student_father_name" => %{
       db_field: "father_name",
       required: ["student"],
-      optional: [],
+      optional: ["student_update"],
       type: :string
     },
     "student_father_phone" => %{
       db_field: "father_phone",
       required: ["student"],
-      optional: [],
+      optional: ["student_update"],
       type: :string
     },
     "student_mother_name" => %{
       db_field: "mother_name",
       required: ["student"],
-      optional: [],
+      optional: ["student_update"],
       type: :string
     },
     "student_mother_phone" => %{
       db_field: "mother_phone",
       required: ["student"],
-      optional: [],
+      optional: ["student_update"],
       type: :string
     },
     "student_category" => %{
       db_field: "category",
       required: ["student"],
-      optional: [],
+      optional: ["student_update"],
       type: :string
     },
-    "student_stream" => %{db_field: "stream", required: ["student"], optional: [], type: :string},
+    "student_stream" => %{
+      db_field: "stream",
+      required: ["student"],
+      optional: ["student_update"],
+      type: :string
+    },
     "student_family_income" => %{
       db_field: "family_income",
       required: ["student"],
-      optional: [],
+      optional: ["student_update"],
       type: :string
     },
     "student_father_profession" => %{
       db_field: "father_profession",
       required: ["student"],
-      optional: [],
+      optional: ["student_update"],
       type: :string
     },
     "student_father_education_level" => %{
       db_field: "father_education_level",
       required: ["student"],
-      optional: [],
+      optional: ["student_update"],
       type: :string
     },
     "student_mother_profession" => %{
       db_field: "mother_profession",
       required: ["student"],
-      optional: [],
+      optional: ["student_update"],
       type: :string
     },
     "student_mother_education_level" => %{
       db_field: "mother_education_level",
       required: ["student"],
-      optional: [],
+      optional: ["student_update"],
       type: :string
     },
     "student_time_of_device_availability" => %{
       db_field: "time_of_device_availability",
       required: ["student"],
-      optional: [],
+      optional: ["student_update"],
       type: :string
     },
     "student_has_internet_access" => %{
       db_field: "has_internet_access",
       required: ["student"],
-      optional: [],
+      optional: ["student_update"],
       type: :boolean
     },
     "student_primary_smartphone_owner" => %{
       db_field: "primary_smartphone_owner",
       required: ["student"],
-      optional: [],
+      optional: ["student_update"],
       type: :string
     },
     "student_primary_smartphone_owner_profession" => %{
       db_field: "primary_smartphone_owner_profession",
       required: ["student"],
-      optional: [],
+      optional: ["student_update"],
       type: :string
     },
     "student_guardian_name" => %{
       db_field: "guardian_name",
       required: ["student"],
-      optional: [],
+      optional: ["student_update"],
       type: :string
     },
     "student_guardian_relation" => %{
       db_field: "guardian_relation",
       required: ["student"],
-      optional: [],
+      optional: ["student_update"],
       type: :string
     },
     "student_guardian_phone" => %{
       db_field: "guardian_phone",
       required: ["student"],
-      optional: [],
+      optional: ["student_update"],
       type: :string
     },
     "student_guardian_education_level" => %{
       db_field: "guardian_education_level",
       required: ["student"],
-      optional: [],
+      optional: ["student_update"],
       type: :string
     },
     "student_guardian_profession" => %{
       db_field: "guardian_profession",
       required: ["student"],
-      optional: [],
+      optional: ["student_update"],
       type: :string
     },
     "student_annual_family_income" => %{
       db_field: "annual_family_income",
       required: ["student"],
-      optional: [],
+      optional: ["student_update"],
       type: :string
     },
     "student_monthly_family_income" => %{
       db_field: "monthly_family_income",
       required: ["student"],
-      optional: [],
+      optional: ["student_update"],
       type: :string
     },
     "student_number_of_smartphones" => %{
       db_field: "number_of_smartphones",
       required: ["student"],
-      optional: [],
+      optional: ["student_update"],
       type: :integer
     },
     "student_family_type" => %{
       db_field: "family_type",
       required: ["student"],
-      optional: [],
+      optional: ["student_update"],
       type: :string
     },
     "student_number_of_four_wheelers" => %{
       db_field: "number_of_four_wheelers",
       required: ["student"],
-      optional: [],
+      optional: ["student_update"],
       type: :integer
     },
     "student_number_of_two_wheelers" => %{
       db_field: "number_of_two_wheelers",
       required: ["student"],
-      optional: [],
+      optional: ["student_update"],
       type: :integer
     },
     "student_goes_for_tuition_or_other_coaching" => %{
       db_field: "goes_for_tuition_or_other_coaching",
       required: ["student"],
-      optional: [],
+      optional: ["student_update"],
       type: :boolean
     },
     "student_know_about_avanti" => %{
       db_field: "know_about_avanti",
       required: ["student"],
-      optional: [],
+      optional: ["student_update"],
       type: :boolean
     },
     "student_percentage_in_grade_10_science" => %{
       db_field: "percentage_in_grade_10_science",
       required: ["student"],
-      optional: [],
+      optional: ["student_update"],
       type: :float
     },
     "student_percentage_in_grade_10_math" => %{
       db_field: "percentage_in_grade_10_math",
       required: ["student"],
-      optional: [],
+      optional: ["student_update"],
       type: :float
     },
     "student_percentage_in_grade_10_english" => %{
       db_field: "percentage_in_grade_10_english",
       required: ["student"],
-      optional: [],
+      optional: ["student_update"],
       type: :float
     },
     "student_physically_handicapped" => %{
       db_field: "physically_handicapped",
       required: ["student"],
-      optional: [],
+      optional: ["student_update"],
       type: :boolean
     },
     "student_has_category_certificate" => %{
       db_field: "has_category_certificate",
       required: ["student"],
-      optional: [],
+      optional: ["student_update"],
       type: :boolean
     },
     "student_has_air_conditioner" => %{
       db_field: "has_air_conditioner",
       required: ["student"],
-      optional: [],
+      optional: ["student_update"],
       type: :boolean
     },
     "student_board_stream" => %{
       db_field: "board_stream",
       required: ["student"],
-      optional: [],
+      optional: ["student_update"],
       type: :string
     },
     "student_school_medium" => %{
       db_field: "school_medium",
       required: ["student"],
-      optional: [],
+      optional: ["student_update"],
+      type: :string
+    },
+    "student_apaar_id" => %{
+      db_field: "apaar_id",
+      required: [],
+      optional: ["student", "student_update"],
       type: :string
     },
 
@@ -274,7 +325,7 @@ defmodule Dbservice.Constants.Mappings do
     "grade" => %{
       db_field: "grade",
       required: ["student"],
-      optional: ["batch_movement"],
+      optional: ["batch_movement", "student_update"],
       type: :string
     },
     "batch_id" => %{
