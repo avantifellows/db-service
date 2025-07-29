@@ -481,7 +481,7 @@ defmodule Seed do
             "Differential Equations"
           ]),
         code: Faker.Lorem.word(),
-        grade_id: grade.id,
+        grade_ids: [grade.id],
         subject_id: subject.id,
         tag_id: tag.id
       })

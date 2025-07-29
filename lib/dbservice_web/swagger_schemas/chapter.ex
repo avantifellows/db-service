@@ -13,7 +13,7 @@ defmodule DbserviceWeb.SwaggerSchema.Chapter do
           properties do
             name(:string, "Chapter name")
             code(:string, "Chapter Code")
-            grade_id(:integer, "Grade id associated with the chapter")
+            grade_ids({:array, :integer}, "Array of grade ids associated with the chapter")
             subject_id(:integer, "Subject id associated with the chapter")
             tag_id(:integer, "Tag id associated with the chapter")
             curriculum_id(:integer, "Curriculum id associated with the chapter")
@@ -22,7 +22,7 @@ defmodule DbserviceWeb.SwaggerSchema.Chapter do
           example(%{
             name: "हमारे आस-पास के पदार्थ | Matter in Our Surroundings",
             code: "9C01",
-            grade_id: 1,
+            grade_ids: [1, 2, 3],
             subject_id: 1,
             tag_id: 4,
             curriculum_id: 1

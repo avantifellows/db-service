@@ -5,7 +5,6 @@ defmodule Dbservice.Grades.Grade do
   import Ecto.Changeset
 
   alias Dbservice.Tags.Tag
-  alias Dbservice.Chapters.Chapter
   alias Dbservice.Topics.Topic
   alias Dbservice.Users.Student
   alias Dbservice.Groups.Group
@@ -16,7 +15,6 @@ defmodule Dbservice.Grades.Grade do
 
     timestamps()
 
-    has_many(:chapter, Chapter)
     has_many(:student, Student)
     has_many(:topic, Topic)
     belongs_to(:tag, Tag)

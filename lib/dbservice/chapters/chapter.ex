@@ -4,7 +4,6 @@ defmodule Dbservice.Chapters.Chapter do
   use Ecto.Schema
   import Ecto.Changeset
 
-  alias Dbservice.Grades.Grade
   alias Dbservice.Subjects.Subject
   alias Dbservice.Tags.Tag
   alias Dbservice.Topics.Topic
@@ -14,12 +13,12 @@ defmodule Dbservice.Chapters.Chapter do
   schema "chapter" do
     field(:name, :string)
     field(:code, :string)
+    field(:grade_ids, {:array, :integer}, default: [])
 
     timestamps()
 
     has_many(:topic, Topic)
     has_many(:resource, Resource)
-    belongs_to(:grade, Grade)
     belongs_to(:subject, Subject)
     belongs_to(:tag, Tag)
     belongs_to(:curriculum, Curriculum)
@@ -31,7 +30,7 @@ defmodule Dbservice.Chapters.Chapter do
     |> cast(attrs, [
       :name,
       :code,
-      :grade_id,
+      :grade_ids,
       :subject_id,
       :tag_id,
       :curriculum_id

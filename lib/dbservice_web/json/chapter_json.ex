@@ -12,7 +12,7 @@ defmodule DbserviceWeb.ChapterJSON do
       id: chapter.id,
       name: chapter.name,
       code: chapter.code,
-      grade_id: chapter.grade_id,
+      grade_ids: chapter.grade_ids,
       subject_id: chapter.subject_id,
       tag_id: chapter.tag_id,
       curriculum_id: chapter.curriculum_id

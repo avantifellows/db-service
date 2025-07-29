@@ -32,6 +32,11 @@ defmodule DbserviceWeb.ChapterController do
         required: false,
         name: "code"
       )
+
+      params(:query, :integer, "Filter chapters by grade id",
+        required: false,
+        name: "grade_id"
+      )
     end
 
     response(200, "OK", Schema.ref(:Chapters))
@@ -48,9 +53,18 @@ defmodule DbserviceWeb.ChapterController do
     query =
       Enum.reduce(params, query, fn {key, value}, acc ->
         case String.to_existing_atom(key) do
-          :offset -> acc
-          :limit -> acc
-          atom -> from(u in acc, where: field(u, ^atom) == ^value)
+          :offset ->
+            acc
+
+          :limit ->
+            acc
+
+          :grade_id ->
+            # Handle grade_id parameter by checking if it exists in grade_ids array
+            from(u in acc, where: fragment("? && ?", u.grade_ids, ^[String.to_integer(value)]))
+
+          atom ->
+            from(u in acc, where: field(u, ^atom) == ^value)
         end
       end)
 
@@ -74,6 +88,7 @@ defmodule DbserviceWeb.ChapterController do
         create_new_chapter(conn, params)
 
       existing_chapter ->
+        # If chapter exists, merge grade_ids instead of replacing them
         update_existing_chapter(conn, existing_chapter, params)
     end
   end
@@ -140,8 +155,20 @@ defmodule DbserviceWeb.ChapterController do
   end
 
   defp update_existing_chapter(conn, existing_chapter, params) do
+    # Merge grade_ids if they exist in params
+    # This allows adding new grades to existing chapters without losing existing ones
+    updated_params =
+      if Map.has_key?(params, "grade_ids") do
+        existing_grade_ids = existing_chapter.grade_ids || []
+        new_grade_ids = params["grade_ids"] || []
+        merged_grade_ids = (existing_grade_ids ++ new_grade_ids) |> Enum.uniq()
+        Map.put(params, "grade_ids", merged_grade_ids)
+      else
+        params
+      end
+
     with {:ok, %Chapter{} = chapter} <-
-           Chapters.update_chapter(existing_chapter, params) do
+           Chapters.update_chapter(existing_chapter, updated_params) do
       conn
       |> put_status(:ok)
       |> render(:show, chapter: chapter)
