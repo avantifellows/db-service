@@ -15,7 +15,7 @@ defmodule DbserviceWeb.SwaggerSchema.College do
             name(:string, "The name of the college")
             state(:string, "State where the college is located")
             address(:string, "Address of the college")
-            district_code(:string, "District code")
+            district(:string, "District")
             gender_type(:string, "Gender type")
             college_type(:string, "Type of college")
             management_type(:string, "Type of management")
@@ -35,7 +35,7 @@ defmodule DbserviceWeb.SwaggerSchema.College do
             name: "IIT Bombay",
             state: "Maharashtra",
             address: "Powai, Mumbai",
-            district_code: "MUM",
+            district: "MUM",
             gender_type: "Co-ed",
             college_type: "Engineering",
             management_type: "Government",
