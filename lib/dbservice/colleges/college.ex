@@ -11,7 +11,7 @@ defmodule Dbservice.Colleges.College do
     field :name, :string
     field :state, :string
     field :address, :string
-    field :district_code, :string
+    field :district, :string
     field :gender_type, :string
     field :college_type, :string
     field :management_type, :string
@@ -36,7 +36,7 @@ defmodule Dbservice.Colleges.College do
       :name,
       :state,
       :address,
-      :district_code,
+      :district,
       :gender_type,
       :college_type,
       :management_type,

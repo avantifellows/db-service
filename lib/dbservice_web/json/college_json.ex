@@ -13,7 +13,7 @@ defmodule DbserviceWeb.CollegeJSON do
       name: college.name,
       state: college.state,
       address: college.address,
-      district_code: college.district_code,
+      district: college.district,
       gender_type: college.gender_type,
       college_type: college.college_type,
       management_type: college.management_type,
