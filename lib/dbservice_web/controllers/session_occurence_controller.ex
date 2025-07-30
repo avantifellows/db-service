@@ -31,6 +31,16 @@ defmodule DbserviceWeb.SessionOccurrenceController do
         required: false,
         name: "session_id"
       )
+      params(:query, :string, "Filter occurrences starting today",
+        required: false,
+        name: "is_start_time",
+        enum: ["today"]
+      )
+      params(:query, :string, "Filter currently active occurrences",
+        required: false,
+        name: "is_current_time", 
+        enum: ["active"]
+      )
     end
 
     response(200, "OK", Schema.ref(:SessionOccurrences))
@@ -42,6 +52,9 @@ defmodule DbserviceWeb.SessionOccurrenceController do
     # Construct the beginning and end of today
     today_start = NaiveDateTime.new!(today, ~T[00:00:00])
     today_end = NaiveDateTime.new!(today, ~T[23:59:59])
+    
+    # Get current timestamp for active occurrence queries
+    current_time = NaiveDateTime.utc_now()
 
     session_ids_param = Map.get(params, "session_ids", "")
     session_ids = if session_ids_param != "", do: String.split(session_ids_param, ","), else: []
@@ -65,16 +78,11 @@ defmodule DbserviceWeb.SessionOccurrenceController do
           :is_start_time when value == "today" ->
             from(u in acc, where: u.start_time >= ^today_start and u.start_time <= ^today_end)
 
+          :is_current_time when value == "active" ->
+            from(u in acc, where: u.start_time <= ^current_time and u.end_time >= ^current_time)
+
           :session_ids ->
             from(u in acc, where: u.session_id in ^session_ids)
-
-          :session_id ->
-            # When querying by session_id, only return currently active occurrences
-            now = NaiveDateTime.utc_now()
-            from(u in acc, 
-              where: u.session_id == ^value and 
-                     u.start_time <= ^now and 
-                     u.end_time >= ^now)
 
           atom ->
             from(u in acc, where: field(u, ^atom) == ^value)
