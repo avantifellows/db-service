@@ -315,22 +315,27 @@ defmodule Dbservice.Constants.Mappings do
       optional: [],
       type: :date
     },
-    "auth_group" => %{db_field: "auth_group", required: ["student"], optional: [], type: :string},
+    "auth_group" => %{
+      db_field: "auth_group",
+      required: ["student", "teacher_creation"],
+      optional: [],
+      type: :string
+    },
     "academic_year" => %{
       db_field: "academic_year",
-      required: ["student", "batch_movement"],
+      required: ["student", "batch_movement", "teacher_creation"],
       optional: [],
       type: :string
     },
     "grade" => %{
       db_field: "grade",
-      required: ["student"],
+      required: ["student", "teacher_creation"],
       optional: ["batch_movement", "student_update"],
       type: :string
     },
     "batch_id" => %{
       db_field: "batch_id",
-      required: ["student", "batch_movement"],
+      required: ["student", "batch_movement", "teacher_creation"],
       optional: [],
       type: :string
     },
@@ -348,9 +353,59 @@ defmodule Dbservice.Constants.Mappings do
     },
     "start_date" => %{
       db_field: "start_date",
-      required: ["student", "batch_movement"],
+      required: ["student", "batch_movement", "teacher_creation"],
       optional: [],
       type: :date
+    },
+
+    # Teacher creation fields
+    "first_name" => %{
+      db_field: "first_name",
+      required: ["teacher_creation"],
+      optional: [],
+      type: :string
+    },
+    "subject" => %{
+      db_field: "subject",
+      required: ["teacher_creation"],
+      optional: [],
+      type: :string
+    },
+    "district" => %{
+      db_field: "district",
+      required: ["teacher_creation"],
+      optional: [],
+      type: :string
+    },
+    "district_code" => %{
+      db_field: "district_code",
+      required: ["teacher_creation"],
+      optional: [],
+      type: :string
+    },
+    "teacher_id" => %{
+      db_field: "teacher_id",
+      required: ["teacher_creation"],
+      optional: [],
+      type: :string
+    },
+    "state" => %{
+      db_field: "state",
+      required: ["teacher_creation"],
+      optional: [],
+      type: :string
+    },
+    "state_code" => %{
+      db_field: "state_code",
+      required: ["teacher_creation"],
+      optional: [],
+      type: :string
+    },
+    "is_af_teacher" => %{
+      db_field: "is_af_teacher",
+      required: ["teacher_creation"],
+      optional: [],
+      type: :boolean
     },
 
     # Optional fields (can appear in any import)

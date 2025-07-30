@@ -123,7 +123,7 @@ defmodule DbserviceWeb.ImportLive.New do
                     <option value="student" selected={@form[:type].value == "student"}>Create Student</option>
                     <option value="student_update" selected={@form[:type].value == "student_update"}>Update Student Details</option>
                     <option value="batch_movement" selected={@form[:type].value == "batch_movement"}>Batch Movement</option>
-
+                    <option value="teacher_creation" selected={@form[:type].value == "teacher_creation"}>Create Teacher</option>
                   </select>
                 </div>
                 <%= if @form[:type].errors != [] do %>

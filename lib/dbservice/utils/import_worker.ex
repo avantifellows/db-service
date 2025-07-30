@@ -33,6 +33,7 @@ defmodule Dbservice.DataImport.ImportWorker do
       "student" -> process_import(import_record, &process_student_record/1, true)
       "student_update" -> process_import(import_record, &process_student_update_record/1, false)
       "batch_movement" -> process_import(import_record, &process_batch_movement_record/1, true)
+      "teacher_creation" -> process_import(import_record, &process_teacher_record/1, true)
       _ -> {:error, "Unsupported import type"}
     end
   end
@@ -77,6 +78,7 @@ defmodule Dbservice.DataImport.ImportWorker do
       |> extract_field_mappings(import_type)
       |> map_boolean_fields(import_type)
       |> add_grade_id()
+      |> add_subject_id()
     end
   end
 
@@ -124,6 +126,19 @@ defmodule Dbservice.DataImport.ImportWorker do
 
           _ ->
             record
+        end
+    end
+  end
+
+  defp add_subject_id(record) do
+    case Map.get(record, "subject") do
+      nil ->
+        record
+
+      subject_name ->
+        case DataImport.TeacherEnrollment.get_subject_id_by_name(subject_name) do
+          nil -> record
+          subject_id -> Map.put(record, "subject_id", subject_id)
         end
     end
   end
@@ -264,6 +279,30 @@ defmodule Dbservice.DataImport.ImportWorker do
 
   defp process_batch_movement_record(record) do
     DataImport.BatchMovement.process_batch_movement(record)
+  end
+
+  defp process_teacher_record(record) do
+    case Users.get_teacher_by_teacher_id(record["teacher_id"]) do
+      nil ->
+        with {:ok, teacher} <- Users.create_teacher_with_user(record),
+             teacher <- Dbservice.Repo.preload(teacher, [:user]),
+             {:ok, _} <- DataImport.TeacherEnrollment.create_enrollments(teacher.user, record) do
+          {:ok, teacher}
+        else
+          {:error, _} = error -> error
+        end
+
+      existing_teacher ->
+        user = Users.get_user!(existing_teacher.user_id)
+
+        with {:ok, updated_teacher} <-
+               Users.update_teacher_with_user(existing_teacher, user, record),
+             {:ok, _} <- DataImport.TeacherEnrollment.create_enrollments(user, record) do
+          {:ok, updated_teacher}
+        else
+          {:error, _} = error -> error
+        end
+    end
   end
 
   defp count_total_rows(filename, start_row) do
