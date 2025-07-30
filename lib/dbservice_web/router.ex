@@ -3,9 +3,27 @@ defmodule DbserviceWeb.Router do
   use PhoenixSwagger
 
   import Dotenvy
+  import Phoenix.LiveView.Router
 
   pipeline :api do
     plug(:accepts, ["json"])
+  end
+
+  pipeline :browser do
+    plug :accepts, ["html"]
+    plug(:fetch_session)
+    plug(:fetch_live_flash)
+    plug(:put_root_layout, {DbserviceWeb.Layouts, :root})
+    plug(:protect_from_forgery)
+    plug(:put_secure_browser_headers)
+  end
+
+  scope "/", DbserviceWeb do
+    pipe_through :browser
+
+    live "/imports", ImportLive.Index
+    live "/imports/new", ImportLive.New
+    live "/imports/:id", ImportLive.Show
   end
 
   scope "/api", DbserviceWeb do
@@ -52,7 +70,6 @@ defmodule DbserviceWeb.Router do
     resources("/resource", ResourceController, except: [:new, :edit])
     resources("/exam", ExamController)
     resources("/student-exam-record", StudentExamRecordController)
-    resources("/session-schedule", SessionScheduleController)
     get("/user/:user_id/sessions", UserController, :get_user_sessions)
     patch("/dropout/:student_id", StudentController, :dropout)
     resources("/status", StatusController, except: [:new, :edit])
@@ -63,6 +80,7 @@ defmodule DbserviceWeb.Router do
     patch("/update-user-enrollment-records", StudentController, :update_user_enrollment_records)
     post("/student/batch-process", StudentController, :batch_process)
     post("/group-user/batch-process", GroupUserController, :batch_process)
+    resources("/college", CollegeController, except: [:new, :edit])
 
     # Some students were incorrectly marked as "dropouts" in our system. This endpoint was introduced to reverse this mistake by removing the dropout status from both the enrollment records and the student table
     patch("/student/remove-dropout-status/:student_id", StudentController, :remove_dropout_status)

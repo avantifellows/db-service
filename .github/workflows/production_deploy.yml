@@ -49,6 +49,7 @@ jobs:
             sudo MIX_ENV=prod mix deps.compile &&
             sudo MIX_ENV=prod mix ecto.migrate &&
             sudo MIX_ENV=prod mix phx.swagger.generate &&
+            sudo MIX_ENV=prod mix assets.deploy &&
             sudo MIX_ENV=prod elixir --erl "-detached" -S mix phx.server
 
           '
