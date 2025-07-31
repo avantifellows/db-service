@@ -42,7 +42,7 @@ defmodule Dbservice.DataImport.EnrollmentHelpers do
   def create_batch_enrollment(_, _params), do: {:ok, "No batch enrollment needed"}
 
   @doc """
-  Creates grade enrollment for a user using grade_id.
+  Creates grade enrollment for a user. Supports both grade_id and grade number patterns.
   """
   def create_grade_enrollment(user_id, %{"grade_id" => grade_id} = params) do
     enrollment_data = %{
@@ -54,26 +54,6 @@ defmodule Dbservice.DataImport.EnrollmentHelpers do
     }
 
     EnrollmentService.process_enrollment(enrollment_data)
-  end
-
-  @doc """
-  Creates grade enrollment for a user using grade number (for teacher enrollment).
-  """
-  def create_grade_enrollment(user_id, %{"grade" => grade_number} = params) do
-    with {:ok, %Grades.Grade{id: grade_id}} <-
-           Grades.get_grade_by_number(grade_number, params["academic_year"]) do
-      enrollment_data = %{
-        "user_id" => user_id,
-        "enrollment_type" => "grade",
-        "grade_id" => grade_id,
-        "academic_year" => params["academic_year"],
-        "start_date" => params["start_date"]
-      }
-
-      EnrollmentService.process_enrollment(enrollment_data)
-    else
-      _error -> {:error, "Invalid grade number"}
-    end
   end
 
   def create_grade_enrollment(_, _params), do: {:ok, "No grade enrollment needed"}
