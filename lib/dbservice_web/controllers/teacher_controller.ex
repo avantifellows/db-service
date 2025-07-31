@@ -181,8 +181,7 @@ defmodule DbserviceWeb.TeacherController do
       {:ok, _message} ->
         # Get the updated teacher for response
         teacher = Users.get_teacher_by_teacher_id(params["teacher_id"])
-        teacher_with_user = Repo.preload(teacher, [:user])
-        render(conn, :show, teacher: teacher_with_user)
+        render(conn, :show, teacher: teacher)
 
       {:error, reason} ->
         conn
