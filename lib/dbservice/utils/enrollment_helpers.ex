@@ -5,7 +5,6 @@ defmodule Dbservice.DataImport.EnrollmentHelpers do
   """
 
   alias Dbservice.Services.EnrollmentService
-  alias Dbservice.Grades
 
   @doc """
   Creates auth group enrollment for a user.
