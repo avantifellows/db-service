@@ -8,16 +8,16 @@ defmodule Dbservice.DataImport.StudentEnrollment do
   """
 
   alias Dbservice.Services.EnrollmentService
-  alias Dbservice.DataImport.SharedEnrollment
+  alias Dbservice.DataImport.EnrollmentHelpers
 
   def create_enrollments(user, params) do
     user_id = user.id
 
     with {:ok, _auth_enrollment} <-
-           SharedEnrollment.create_auth_group_enrollment(user_id, params),
+           EnrollmentHelpers.create_auth_group_enrollment(user_id, params),
          {:ok, _school_enrollment} <- create_school_enrollment(user_id, params),
-         {:ok, _batch_enrollment} <- SharedEnrollment.create_batch_enrollment(user_id, params),
-         {:ok, _grade_enrollment} <- SharedEnrollment.create_grade_enrollment(user_id, params) do
+         {:ok, _batch_enrollment} <- EnrollmentHelpers.create_batch_enrollment(user_id, params),
+         {:ok, _grade_enrollment} <- EnrollmentHelpers.create_grade_enrollment(user_id, params) do
       {:ok, "Enrollments created successfully"}
     else
       error -> error

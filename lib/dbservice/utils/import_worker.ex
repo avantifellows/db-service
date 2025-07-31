@@ -33,7 +33,7 @@ defmodule Dbservice.DataImport.ImportWorker do
       "student" -> process_import(import_record, &process_student_record/1, true)
       "student_update" -> process_import(import_record, &process_student_update_record/1, false)
       "batch_movement" -> process_import(import_record, &process_batch_movement_record/1, true)
-      "teacher_creation" -> process_import(import_record, &process_teacher_record/1, true)
+      "teacher_addition" -> process_import(import_record, &process_teacher_record/1, true)
       _ -> {:error, "Unsupported import type"}
     end
   end
