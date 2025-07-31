@@ -1,5 +1,6 @@
 defmodule DbserviceWeb.TeacherJSON do
   alias DbserviceWeb.UserJSON
+  alias Dbservice.Repo
 
   def index(%{teacher: teacher}) do
     for(t <- teacher, do: render(t))
@@ -10,6 +11,8 @@ defmodule DbserviceWeb.TeacherJSON do
   end
 
   def render(teacher) do
+    teacher = Repo.preload(teacher, [:subject, :user])
+
     %{
       id: teacher.id,
       designation: teacher.designation,
