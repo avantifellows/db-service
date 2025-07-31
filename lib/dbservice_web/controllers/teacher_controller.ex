@@ -5,8 +5,6 @@ defmodule DbserviceWeb.TeacherController do
   alias Dbservice.Repo
   alias Dbservice.Users
   alias Dbservice.Users.Teacher
-  alias Dbservice.GroupUsers
-  alias Dbservice.Services.BatchEnrollmentService
 
   action_fallback DbserviceWeb.FallbackController
 
