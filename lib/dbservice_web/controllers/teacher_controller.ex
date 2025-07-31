@@ -179,37 +179,17 @@ defmodule DbserviceWeb.TeacherController do
   end
 
   def assign_batch(conn, params) do
-    # Retrieve the teacher information based on the provided teacher ID
-    teacher = Users.get_teacher_by_teacher_id(params["teacher_id"])
-    user_id = teacher.user_id
+    case Dbservice.DataImport.TeacherBatchAssignment.process_teacher_batch_assignment(params) do
+      {:ok, _message} ->
+        # Get the updated teacher for response
+        teacher = Users.get_teacher_by_teacher_id(params["teacher_id"])
+        teacher_with_user = Repo.preload(teacher, [:user])
+        render(conn, :show, teacher: teacher_with_user)
 
-    # Retrieve the group user information based on the user ID
-    group_users = GroupUsers.get_group_user_by_user_id(user_id)
-
-    # Get start_date from params instead of using current time
-    start_date = params["start_date"]
-
-    # Get batch information
-    {batch_group_id, batch_id, batch_group_type} =
-      BatchEnrollmentService.get_batch_info(params["batch_id"])
-
-    academic_year = params["academic_year"]
-
-    # Check if the teacher is already assigned to the specified batch
-    unless BatchEnrollmentService.existing_batch_enrollment?(user_id, batch_id) do
-      BatchEnrollmentService.handle_batch_enrollment(
-        user_id,
-        batch_id,
-        batch_group_type,
-        academic_year,
-        start_date
-      )
+      {:error, reason} ->
+        conn
+        |> put_status(:unprocessable_entity)
+        |> json(%{error: reason})
     end
-
-    # Always update the batch group user
-    BatchEnrollmentService.update_batch_user(user_id, batch_group_id, group_users)
-
-    # Render the response with the updated teacher
-    render(conn, :show, teacher: teacher)
   end
 end
