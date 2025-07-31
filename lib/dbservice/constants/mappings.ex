@@ -318,7 +318,7 @@ defmodule Dbservice.Constants.Mappings do
     "auth_group" => %{db_field: "auth_group", required: ["student"], optional: [], type: :string},
     "academic_year" => %{
       db_field: "academic_year",
-      required: ["student", "batch_movement"],
+      required: ["student", "batch_movement", "teacher_batch_assignment"],
       optional: [],
       type: :string
     },
@@ -330,7 +330,7 @@ defmodule Dbservice.Constants.Mappings do
     },
     "batch_id" => %{
       db_field: "batch_id",
-      required: ["student", "batch_movement"],
+      required: ["student", "batch_movement", "teacher_batch_assignment"],
       optional: [],
       type: :string
     },
@@ -354,9 +354,17 @@ defmodule Dbservice.Constants.Mappings do
     },
     "start_date" => %{
       db_field: "start_date",
-      required: ["student", "batch_movement"],
+      required: ["student", "batch_movement", "teacher_batch_assignment"],
       optional: [],
       type: :date
+    },
+
+    # Teacher batch assignment fields
+    "teacher_id" => %{
+      db_field: "teacher_id",
+      required: ["teacher_batch_assignment"],
+      optional: [],
+      type: :string
     },
 
     # Optional fields (can appear in any import)
