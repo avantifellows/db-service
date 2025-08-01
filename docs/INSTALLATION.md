@@ -60,7 +60,7 @@ There are several ways to install these specific versions:
 2. **Using Install Scripts**
    - Visit [Install Scripts documentation](https://elixir-lang.org/install.html#install-scripts)
    - Download the install script for your operating system
-   - Modify the script to specify version 1.14.2 before running
+   - Modify the script to specify version 1.18.4 before running
 
 3. **Manual Installation**
    - Download the specific version zip file from [Elixir releases](https://elixir-lang.org/docs)
