@@ -19,8 +19,8 @@ defmodule DbserviceWeb.TeacherController do
         SwaggerSchemaTeacher.teachers()
       ),
       Map.merge(
-        SwaggerSchemaTeacher.teacher_registration(),
-        SwaggerSchemaTeacher.teacher_with_user()
+        SwaggerSchemaTeacher.teacher_with_user(),
+        SwaggerSchemaTeacher.teacher_batch_assignment()
       )
     )
   end
@@ -56,7 +56,7 @@ defmodule DbserviceWeb.TeacherController do
         end
       end)
 
-    teacher = Repo.all(query) |> Repo.preload([:user]) |> Repo.preload([:subject])
+    teacher = Repo.all(query)
     render(conn, :index, teacher: teacher)
   end
 
@@ -161,6 +161,32 @@ defmodule DbserviceWeb.TeacherController do
       conn
       |> put_status(:ok)
       |> render(:show, teacher: teacher)
+    end
+  end
+
+  swagger_path :assign_batch do
+    patch("/api/teacher/batch/assign")
+
+    parameters do
+      body(:body, Schema.ref(:TeacherBatchAssignment), "Teacher batch assignment details",
+        required: true
+      )
+    end
+
+    response(200, "OK", Schema.ref(:Teacher))
+  end
+
+  def assign_batch(conn, params) do
+    case Dbservice.DataImport.TeacherBatchAssignment.process_teacher_batch_assignment(params) do
+      {:ok, _message} ->
+        # Get the updated teacher for response
+        teacher = Users.get_teacher_by_teacher_id(params["teacher_id"])
+        render(conn, :show, teacher: teacher)
+
+      {:error, reason} ->
+        conn
+        |> put_status(:unprocessable_entity)
+        |> json(%{error: reason})
     end
   end
 end
