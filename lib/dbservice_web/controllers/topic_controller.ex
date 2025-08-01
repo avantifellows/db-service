@@ -5,6 +5,7 @@ defmodule DbserviceWeb.TopicController do
   alias Dbservice.Repo
   alias Dbservice.Topics
   alias Dbservice.Topics.Topic
+  alias Dbservice.Utils.Util
 
   action_fallback(DbserviceWeb.FallbackController)
 
@@ -44,16 +45,38 @@ defmodule DbserviceWeb.TopicController do
         offset: ^params["offset"],
         limit: ^params["limit"]
       )
-      |> Ecto.Query.preload(:tag)
+
+    # |> Ecto.Query.preload(:tag)
 
     query =
       Enum.reduce(params, query, fn {key, value}, acc ->
         case String.to_existing_atom(key) do
-          :offset -> acc
-          :limit -> acc
-          atom -> from(u in acc, where: field(u, ^atom) == ^value)
+          :offset ->
+            acc
+
+          :limit ->
+            acc
+
+          :lang_code ->
+            acc
+
+          :name ->
+            from(u in acc,
+              where:
+                fragment(
+                  "EXISTS (SELECT 1 FROM JSONB_ARRAY_ELEMENTS(?) obj WHERE obj->>'topic' = ?)",
+                  u.name,
+                  ^value
+                )
+            )
+
+          atom ->
+            from(u in acc, where: field(u, ^atom) == ^value)
         end
       end)
+
+    # Language filtering
+    query = Util.filter_by_lang(query, params)
 
     topic = Repo.all(query)
     render(conn, :index, topic: topic)
@@ -132,7 +155,7 @@ defmodule DbserviceWeb.TopicController do
   end
 
   defp create_new_topic(conn, params) do
-    with {:ok, %Topic{} = topic} <- Topics.create_topic(params) do
+    with {:ok, %Topic{} = topic} <- Topics.create_topic_with_curriculum(params) do
       conn
       |> put_status(:created)
       |> put_resp_header("location", ~p"/api/topic/#{topic}")
@@ -141,7 +164,8 @@ defmodule DbserviceWeb.TopicController do
   end
 
   defp update_existing_topic(conn, existing_topic, params) do
-    with {:ok, %Topic{} = topic} <- Topics.update_topic(existing_topic, params) do
+    with {:ok, %Topic{} = topic} <-
+           Topics.update_topic_with_curriculum(existing_topic, params) do
       conn
       |> put_status(:ok)
       |> render(:show, topic: topic)

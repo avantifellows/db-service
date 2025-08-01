@@ -215,4 +215,34 @@ defmodule Dbservice.Utils.Util do
     # Return updated credentials
     Map.put(credentials, "private_key", fixed_private_key)
   end
+
+  @doc """
+  Filters a JSONB `name` field by `lang_code`. If `lang_code` is `"all"`, returns all.
+  Defaults to `"en"` if `lang_code` is missing.
+  """
+  def filter_by_lang(query, params) do
+    case Map.get(params, "lang_code", "en") do
+      "all" ->
+        # No filtering, return all languages
+        query
+
+      lang_code ->
+        from(u in query,
+          where:
+            fragment(
+              "EXISTS (SELECT 1 FROM JSONB_ARRAY_ELEMENTS(?) obj WHERE obj->>'lang_code' = ?)",
+              u.name,
+              ^lang_code
+            ),
+          select_merge: %{
+            name:
+              fragment(
+                "COALESCE((SELECT JSONB_AGG(obj) FROM JSONB_ARRAY_ELEMENTS(?) obj WHERE obj->>'lang_code' = ?), '[]'::JSONB)",
+                u.name,
+                ^lang_code
+              )
+          }
+        )
+    end
+  end
 end
