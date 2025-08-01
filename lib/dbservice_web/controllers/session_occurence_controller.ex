@@ -72,15 +72,7 @@ defmodule DbserviceWeb.SessionOccurrenceController do
             acc
 
           :is_start_time ->
-            case value do
-              "today" ->
-                from(u in acc, where: u.start_time >= ^today_start and u.start_time <= ^today_end)
-
-              "active" ->
-                from(u in acc,
-                  where: u.start_time <= ^current_time and u.end_time >= ^current_time
-                )
-            end
+            apply_time_filter(acc, value, today_start, today_end, current_time)
 
           :session_ids ->
             from(u in acc, where: u.session_id in ^session_ids)
@@ -171,6 +163,19 @@ defmodule DbserviceWeb.SessionOccurrenceController do
 
     with {:ok, %SessionOccurrence{}} <- Sessions.delete_session_occurrence(session_occurrence) do
       send_resp(conn, :no_content, "")
+    end
+  end
+
+  defp apply_time_filter(query, value, today_start, today_end, current_time) do
+    case value do
+      "today" ->
+        from(u in query, where: u.start_time >= ^today_start and u.start_time <= ^today_end)
+
+      "active" ->
+        from(u in query, where: u.start_time <= ^current_time and u.end_time >= ^current_time)
+
+      _ ->
+        query
     end
   end
 end
