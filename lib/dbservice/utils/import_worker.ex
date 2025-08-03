@@ -37,7 +37,7 @@ defmodule Dbservice.DataImport.ImportWorker do
         process_import(import_record, &process_student_record/1, true)
 
       "student_update" ->
-        process_import(import_record, &process_student_update_record/1, false)
+        process_import(import_record, &process_student_update_record/1, true)
 
       "batch_movement" ->
         process_import(import_record, &process_batch_movement_record/1, true)
