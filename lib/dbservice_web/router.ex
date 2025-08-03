@@ -40,6 +40,7 @@ defmodule DbserviceWeb.Router do
     post("/student/generate-id", StudentController, :create_student_id)
     post("/student/verify-student", StudentController, :verify_student)
     resources("/teacher", TeacherController, except: [:new, :edit])
+    patch("/teacher/batch/assign", TeacherController, :assign_batch)
     resources("/user-profile", UserProfileController, except: [:new, :edit])
     resources("/student-profile", StudentProfileController, except: [:new, :edit])
     resources("/teacher-profile", TeacherProfileController, except: [:new, :edit])

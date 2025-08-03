@@ -30,11 +30,23 @@ defmodule Dbservice.DataImport.ImportWorker do
 
     # Process the file based on type
     case import_record.type do
-      "student" -> process_import(import_record, &process_student_record/1, true)
-      "student_update" -> process_import(import_record, &process_student_update_record/1, false)
-      "batch_movement" -> process_import(import_record, &process_batch_movement_record/1, true)
-      "teacher_addition" -> process_import(import_record, &process_teacher_record/1, true)
-      _ -> {:error, "Unsupported import type"}
+      "teacher_addition" ->
+        process_import(import_record, &process_teacher_record/1, true)
+
+      "student" ->
+        process_import(import_record, &process_student_record/1, true)
+
+      "student_update" ->
+        process_import(import_record, &process_student_update_record/1, false)
+
+      "batch_movement" ->
+        process_import(import_record, &process_batch_movement_record/1, true)
+
+      "teacher_batch_assignment" ->
+        process_import(import_record, &process_teacher_batch_assignment_record/1, true)
+
+      _ ->
+        {:error, "Unsupported import type"}
     end
   end
 
@@ -303,6 +315,10 @@ defmodule Dbservice.DataImport.ImportWorker do
           {:error, _} = error -> error
         end
     end
+  end
+
+  defp process_teacher_batch_assignment_record(record) do
+    DataImport.TeacherBatchAssignment.process_teacher_batch_assignment(record)
   end
 
   defp count_total_rows(filename, start_row) do

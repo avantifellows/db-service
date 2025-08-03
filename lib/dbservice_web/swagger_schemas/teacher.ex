@@ -11,25 +11,40 @@ defmodule DbserviceWeb.SwaggerSchema.Teacher do
           description("A teacher in the application")
 
           properties do
-            designation(:string, "Designation")
-            subject(:string, "Core subject")
-            grade(:string, "Grade")
-            user_id(:integer, "User ID for the teacher")
-            school_id(:integer, "School ID for the teacher")
-            program_manager_id(:integer, "Program manager user ID for the teacher")
-            teacher_id(:string, "ID for the teacher")
+            id(:integer, "Teacher record ID")
+            designation(:string, "Designation of the teacher")
+            teacher_id(:string, "Unique teacher ID")
+            subject_id(:integer, "Subject ID associated with the teacher")
             is_af_teacher(:boolean, "Indicates whether the teacher is an AF teacher or not")
+            user_id(:integer, "User ID for the teacher")
+            user(:object, "User details associated with the teacher")
           end
 
           example(%{
+            id: 1,
             designation: "Vice Principal",
-            subject: "Maths",
-            grade: "12",
-            user_id: 1,
-            school_id: 2,
-            program_manager_id: 3,
             teacher_id: "3bc6b53e7bbbc883b9ab",
-            is_af_teacher: true
+            subject_id: 2,
+            is_af_teacher: true,
+            user_id: 1,
+            user: %{
+              id: 1,
+              first_name: "Michael",
+              last_name: "Chen",
+              email: "michael.chen@example.com",
+              phone: "1234567890",
+              gender: "Male",
+              address: "123 Main St",
+              city: "Mumbai",
+              district: "Mumbai",
+              state: "Maharashtra",
+              region: "West",
+              pincode: "400001",
+              role: "teacher",
+              whatsapp_phone: "1234567890",
+              date_of_birth: "1980-01-01",
+              country: "India"
+            }
           })
         end
     }
@@ -47,87 +62,79 @@ defmodule DbserviceWeb.SwaggerSchema.Teacher do
     }
   end
 
-  def teacher_registration do
-    %{
-      TeacherRegistration:
-        swagger_schema do
-          title("Teacher Registration")
-          description("A teacher in the application along with user info")
-
-          properties do
-            designation(:string, "Designation for the teacher")
-            grade(:string, "Grade level in which a teacher instructs")
-            subject(:string, "Subject taught by the teacher")
-            teacher_id(:string, "ID of the teacher")
-            school_id(:integer, "ID of the school associated with the teacher")
-            full_name(:string, "Full name")
-            email(:string, "Email")
-            phone(:string, "Phone number")
-            gender(:string, "Gender")
-            address(:string, "Address")
-            city(:string, "City")
-            district(:string, "District")
-            state(:string, "State")
-            pincode(:string, "Pin code")
-            role(:string, "User role")
-          end
-
-          example(%{
-            designation: "Principal",
-            grade: "High School",
-            teacher_id: "AF419",
-            category: "general",
-            stream: "PCB",
-            full_name: "Aman Bahuguna",
-            email: "aman.bahuguna@example.com",
-            school_id: 2,
-            phone: "8484515848",
-            gender: "Male",
-            address: "Bandra Complex, Kurla Road",
-            city: "Mumbai",
-            district: "Mumbai",
-            state: "Maharashtra",
-            pincode: "400011",
-            role: "principal"
-          })
-        end
-    }
-  end
-
   def teacher_with_user do
     %{
       TeacherWithUser:
         swagger_schema do
           title("Teacher with User")
-          description("A teacher in the application along with user info")
+          description("Input for creating a teacher along with user details")
 
           properties do
             designation(:string, "Designation for the teacher")
-            grade(:string, "Grade level in which a teacher instructs")
-            subject(:string, "Subject taught by the teacher")
             teacher_id(:string, "ID of the teacher")
-            user(:map, "User details associated with the teacher")
+            subject_id(:integer, "Subject ID associated with the teacher")
+            is_af_teacher(:boolean, "Indicates whether the teacher is an AF teacher or not")
+            first_name(:string, "User's first name")
+            last_name(:string, "User's last name")
+            email(:string, "User's email address")
+            phone(:string, "User's phone number")
+            gender(:string, "User's gender")
+            address(:string, "User's address")
+            city(:string, "User's city")
+            district(:string, "User's district")
+            state(:string, "User's state")
+            region(:string, "User's region")
+            pincode(:string, "User's pincode")
+            role(:string, "User's role")
+            whatsapp_phone(:string, "User's WhatsApp phone number")
+            date_of_birth(:string, "User's date of birth")
+            country(:string, "User's country")
           end
 
           example(%{
             designation: "Principal",
-            grade: "High School",
             teacher_id: "AF419",
-            category: "general",
-            stream: "PCB",
-            school_id: 2,
-            user: %{
-              full_name: "Aman Bahuguna",
-              email: "aman.bahuguna@example.com",
-              phone: "8484515848",
-              gender: "Male",
-              address: "Bandra Complex, Kurla Road",
-              city: "Mumbai",
-              district: "Mumbai",
-              state: "Maharashtra",
-              pincode: "400011",
-              role: "principal"
-            }
+            subject_id: 2,
+            is_af_teacher: true,
+            first_name: "Sarah",
+            last_name: "Johnson",
+            email: "sarah.johnson@example.com",
+            phone: "9876543210",
+            gender: "Female",
+            address: "456 Oak Street",
+            city: "Delhi",
+            district: "New Delhi",
+            state: "Delhi",
+            region: "North",
+            pincode: "110001",
+            role: "principal",
+            whatsapp_phone: "9876543210",
+            date_of_birth: "1985-05-15",
+            country: "India"
+          })
+        end
+    }
+  end
+
+  def teacher_batch_assignment do
+    %{
+      TeacherBatchAssignment:
+        swagger_schema do
+          title("Teacher Batch Assignment")
+          description("Teacher batch assignment details")
+
+          properties do
+            teacher_id(:string, "ID of the teacher to assign", required: true)
+            batch_id(:string, "ID of the batch to assign the teacher to", required: true)
+            start_date(:string, "Start date for the assignment", required: true)
+            academic_year(:string, "Academic year for the assignment", required: true)
+          end
+
+          example(%{
+            teacher_id: "AF419",
+            batch_id: "BATCH001",
+            start_date: "2024-01-01",
+            academic_year: "2024-2025"
           })
         end
     }

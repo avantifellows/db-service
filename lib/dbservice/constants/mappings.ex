@@ -323,7 +323,7 @@ defmodule Dbservice.Constants.Mappings do
     },
     "academic_year" => %{
       db_field: "academic_year",
-      required: ["student", "batch_movement", "teacher_addition"],
+      required: ["student", "batch_movement", "teacher_addition", "teacher_batch_assignment"],
       optional: [],
       type: :string
     },
@@ -335,7 +335,7 @@ defmodule Dbservice.Constants.Mappings do
     },
     "batch_id" => %{
       db_field: "batch_id",
-      required: ["student", "batch_movement", "teacher_addition"],
+      required: ["student", "batch_movement", "teacher_addition", "teacher_batch_assignment"],
       optional: [],
       type: :string
     },
@@ -343,6 +343,12 @@ defmodule Dbservice.Constants.Mappings do
       db_field: "school_code",
       required: ["student"],
       optional: [],
+      type: :string
+    },
+    "udise_code" => %{
+      db_field: "udise_code",
+      required: [],
+      optional: ["student"],
       type: :string
     },
     "school_name" => %{
@@ -353,7 +359,7 @@ defmodule Dbservice.Constants.Mappings do
     },
     "start_date" => %{
       db_field: "start_date",
-      required: ["student", "batch_movement", "teacher_addition"],
+      required: ["student", "batch_movement", "teacher_addition", "teacher_batch_assignment"],
       optional: [],
       type: :date
     },
@@ -373,7 +379,7 @@ defmodule Dbservice.Constants.Mappings do
     },
     "teacher_id" => %{
       db_field: "teacher_id",
-      required: ["teacher_addition"],
+      required: ["teacher_addition", "teacher_batch_assignment"],
       optional: [],
       type: :string
     },

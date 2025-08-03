@@ -31,6 +31,12 @@ defmodule DbserviceWeb.SessionOccurrenceController do
         required: false,
         name: "session_id"
       )
+
+      params(:query, :string, "Filter occurrences by time condition",
+        required: false,
+        name: "is_start_time",
+        enum: ["today", "active"]
+      )
     end
 
     response(200, "OK", Schema.ref(:SessionOccurrences))
@@ -42,6 +48,9 @@ defmodule DbserviceWeb.SessionOccurrenceController do
     # Construct the beginning and end of today
     today_start = NaiveDateTime.new!(today, ~T[00:00:00])
     today_end = NaiveDateTime.new!(today, ~T[23:59:59])
+
+    # Get current timestamp for active occurrence queries (when is_start_time="active")
+    current_time = NaiveDateTime.utc_now()
 
     session_ids_param = Map.get(params, "session_ids", "")
     session_ids = if session_ids_param != "", do: String.split(session_ids_param, ","), else: []
@@ -62,8 +71,8 @@ defmodule DbserviceWeb.SessionOccurrenceController do
           :limit ->
             acc
 
-          :is_start_time when value == "today" ->
-            from(u in acc, where: u.start_time >= ^today_start and u.start_time <= ^today_end)
+          :is_start_time ->
+            apply_time_filter(acc, value, today_start, today_end, current_time)
 
           :session_ids ->
             from(u in acc, where: u.session_id in ^session_ids)
@@ -154,6 +163,19 @@ defmodule DbserviceWeb.SessionOccurrenceController do
 
     with {:ok, %SessionOccurrence{}} <- Sessions.delete_session_occurrence(session_occurrence) do
       send_resp(conn, :no_content, "")
+    end
+  end
+
+  defp apply_time_filter(query, value, today_start, today_end, current_time) do
+    case value do
+      "today" ->
+        from(u in query, where: u.start_time >= ^today_start and u.start_time <= ^today_end)
+
+      "active" ->
+        from(u in query, where: u.start_time <= ^current_time and u.end_time >= ^current_time)
+
+      _ ->
+        query
     end
   end
 end
