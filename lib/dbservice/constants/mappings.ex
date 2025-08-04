@@ -7,7 +7,7 @@ defmodule Dbservice.Constants.Mappings do
     # User fields
     "user_first_name" => %{
       db_field: "first_name",
-      required: ["student"],
+      required: ["student", "teacher_addition"],
       optional: ["student_update"],
       type: :string
     },
@@ -61,13 +61,13 @@ defmodule Dbservice.Constants.Mappings do
     },
     "user_district" => %{
       db_field: "district",
-      required: ["student"],
+      required: ["student", "teacher_addition"],
       optional: ["student_update"],
       type: :string
     },
     "user_state" => %{
       db_field: "state",
-      required: ["student"],
+      required: ["student", "teacher_addition"],
       optional: ["student_update"],
       type: :string
     },
@@ -315,22 +315,27 @@ defmodule Dbservice.Constants.Mappings do
       optional: [],
       type: :date
     },
-    "auth_group" => %{db_field: "auth_group", required: ["student"], optional: [], type: :string},
+    "auth_group" => %{
+      db_field: "auth_group",
+      required: ["student", "teacher_addition"],
+      optional: [],
+      type: :string
+    },
     "academic_year" => %{
       db_field: "academic_year",
-      required: ["student", "batch_movement", "teacher_batch_assignment"],
+      required: ["student", "batch_movement", "teacher_addition", "teacher_batch_assignment"],
       optional: [],
       type: :string
     },
     "grade" => %{
       db_field: "grade",
-      required: ["student"],
+      required: ["student", "teacher_addition"],
       optional: ["batch_movement", "student_update"],
       type: :string
     },
     "batch_id" => %{
       db_field: "batch_id",
-      required: ["student", "batch_movement", "teacher_batch_assignment"],
+      required: ["student", "batch_movement", "teacher_addition", "teacher_batch_assignment"],
       optional: [],
       type: :string
     },
@@ -354,17 +359,41 @@ defmodule Dbservice.Constants.Mappings do
     },
     "start_date" => %{
       db_field: "start_date",
-      required: ["student", "batch_movement", "teacher_batch_assignment"],
+      required: ["student", "batch_movement", "teacher_addition", "teacher_batch_assignment"],
       optional: [],
       type: :date
     },
 
-    # Teacher batch assignment fields
-    "teacher_id" => %{
-      db_field: "teacher_id",
-      required: ["teacher_batch_assignment"],
+    # Teacher creation fields
+    "subject" => %{
+      db_field: "subject",
+      required: ["teacher_addition"],
       optional: [],
       type: :string
+    },
+    "district_code" => %{
+      db_field: "district_code",
+      required: ["teacher_addition"],
+      optional: [],
+      type: :string
+    },
+    "teacher_id" => %{
+      db_field: "teacher_id",
+      required: ["teacher_addition", "teacher_batch_assignment"],
+      optional: [],
+      type: :string
+    },
+    "state_code" => %{
+      db_field: "state_code",
+      required: ["teacher_addition"],
+      optional: [],
+      type: :string
+    },
+    "is_af_teacher" => %{
+      db_field: "is_af_teacher",
+      required: ["teacher_addition"],
+      optional: [],
+      type: :boolean
     },
 
     # Optional fields (can appear in any import)

@@ -16,6 +16,7 @@ defmodule Dbservice.DataImport do
   def format_type_name("student_update"), do: "Update Student Details"
   def format_type_name("batch_movement"), do: "Student Batch Movement"
   def format_type_name("teacher_batch_assignment"), do: "Teacher Batch Assignment"
+  def format_type_name("teacher_addition"), do: "Teacher Addition"
   def format_type_name(type), do: String.capitalize(type)
 
   @doc """
