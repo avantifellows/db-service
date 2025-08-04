@@ -50,7 +50,7 @@ defmodule DbserviceWeb.SessionOccurrenceController do
     today_end = NaiveDateTime.new!(today, ~T[23:59:59])
 
     # Get current timestamp for active occurrence queries (when is_start_time="active")
-    current_time = NaiveDateTime.utc_now()
+    current_time = NaiveDateTime.utc_now() |> NaiveDateTime.add(5 * 3600 + 30 * 60, :second)
 
     session_ids_param = Map.get(params, "session_ids", "")
     session_ids = if session_ids_param != "", do: String.split(session_ids_param, ","), else: []
