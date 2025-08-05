@@ -14,11 +14,8 @@ defmodule DbserviceWeb.CandidateController do
 
   def swagger_definitions do
     Map.merge(
-      Map.merge(
-        SwaggerSchemaCandidate.candidate(),
-        SwaggerSchemaCandidate.candidates()
-      ),
-      SwaggerSchemaCandidate.candidate_with_user()
+      SwaggerSchemaCandidate.candidate(),
+      SwaggerSchemaCandidate.candidates()
     )
   end
 
@@ -61,12 +58,10 @@ defmodule DbserviceWeb.CandidateController do
     post("/api/candidate")
 
     parameters do
-      body(:body, Schema.ref(:CandidateWithUser), "Candidate to create along with user",
-        required: true
-      )
+      body(:body, Schema.ref(:Candidate), "Candidate to create along with user", required: true)
     end
 
-    response(201, "Created", Schema.ref(:CandidateWithUser))
+    response(201, "Created", Schema.ref(:Candidate))
   end
 
   def create(conn, params) do
