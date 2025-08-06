@@ -83,8 +83,8 @@ defmodule Dbservice.DataImport do
 
     case download_google_sheet(url) do
       {:ok, filename} ->
-        # Validate CSV format before creating import record
-        case validate_csv_format(filename, type) do
+        # Validate CSV format and start row before creating import record
+        case validate_csv_format(filename, type, start_row) do
           :ok ->
             {:ok, import_record} =
               create_import(%{
@@ -147,22 +147,39 @@ defmodule Dbservice.DataImport do
   def complete_import(import_id, total_rows) do
     import_record = get_import!(import_id)
 
-    # Update the import record with completion status
-    {:ok, updated_import} =
-      update_import(import_record, %{
-        status: "completed",
-        processed_rows: total_rows,
-        total_rows: total_rows,
-        completed_at: DateTime.utc_now()
-      })
+    # Check if import was stopped - if so, don't change status to completed
+    if import_record.status == "stopped" do
+      # Import was halted, only update processed_rows to reflect actual progress
+      {:ok, updated_import} =
+        update_import(import_record, %{
+          processed_rows: total_rows
+        })
 
-    # Broadcast completion update
-    Phoenix.PubSub.broadcast(Dbservice.PubSub, "imports", {:import_updated, import_record.id})
+      # Broadcast update
+      Phoenix.PubSub.broadcast(Dbservice.PubSub, "imports", {:import_updated, import_record.id})
 
-    # Clean up the file
-    cleanup_import_file(updated_import)
+      # Clean up the file
+      cleanup_import_file(updated_import)
 
-    {:ok, updated_import}
+      {:ok, updated_import}
+    else
+      # Normal completion - update status to completed
+      # Do NOT update total_rows here as it was already set at the start
+      {:ok, updated_import} =
+        update_import(import_record, %{
+          status: "completed",
+          processed_rows: total_rows,
+          completed_at: DateTime.utc_now()
+        })
+
+      # Broadcast completion update
+      Phoenix.PubSub.broadcast(Dbservice.PubSub, "imports", {:import_updated, import_record.id})
+
+      # Clean up the file
+      cleanup_import_file(updated_import)
+
+      {:ok, updated_import}
+    end
   end
 
   @doc """
@@ -189,33 +206,93 @@ defmodule Dbservice.DataImport do
   end
 
   @doc """
-  Validates the CSV file format based on the import type.
-  Checks if the headers match the expected format for student or batch sheets.
+  Halts an import process, updating its status to stopped and cleaning up the file.
   """
-  def validate_csv_format(filename, type) do
+  def halt_import(import_id) do
+    import_record = get_import!(import_id)
+
+    # Only allow halting if the import is currently processing or pending
+    if import_record.status in ["processing", "pending"] do
+      # Update the import record with stopped status
+      {:ok, updated_import} =
+        update_import(import_record, %{
+          status: "stopped",
+          completed_at: DateTime.utc_now()
+        })
+
+      # Broadcast halt update
+      Phoenix.PubSub.broadcast(Dbservice.PubSub, "imports", {:import_updated, import_record.id})
+
+      # Clean up the file
+      cleanup_import_file(updated_import)
+
+      {:ok, updated_import}
+    else
+      {:error, "Import cannot be halted. Current status: #{import_record.status}"}
+    end
+  end
+
+  @doc """
+  Validates the CSV file format based on the import type.
+  Checks if the headers match the expected format and validates start row.
+  """
+  def validate_csv_format(filename, type, start_row \\ 2) do
     path = Path.join(["priv", "static", "uploads", filename])
 
     case File.read(path) do
       {:ok, content} ->
-        # Parse the first line to get headers
-        case String.split(content, "\n", parts: 2) do
-          [header_line | _] ->
-            headers =
-              header_line
-              |> String.trim()
-              |> String.split(",")
-              |> Enum.map(&String.trim/1)
-              |> Enum.map(&String.replace(&1, "\"", ""))
-              |> Enum.map(&String.trim/1)
+        lines = String.split(content, "\n")
+        # Count non-empty lines
+        total_rows = Enum.count(lines, &(String.trim(&1) != ""))
 
-            validate_headers(headers, type)
+        # Validate start row first
+        case validate_start_row(start_row, total_rows) do
+          :ok ->
+            # Parse the first line to get headers
+            case lines do
+              [header_line | _] when header_line != "" ->
+                headers =
+                  header_line
+                  |> String.trim()
+                  |> String.split(",")
+                  |> Enum.map(&String.trim/1)
+                  |> Enum.map(&String.replace(&1, "\"", ""))
+                  |> Enum.map(&String.trim/1)
 
-          [] ->
-            {:error, "CSV file is empty"}
+                validate_headers(headers, type)
+
+              [] ->
+                {:error, "CSV file is empty"}
+
+              _ ->
+                {:error, "CSV file has no valid header row"}
+            end
+
+          {:error, reason} ->
+            {:error, reason}
         end
 
       {:error, reason} ->
         {:error, "Failed to read CSV file: #{inspect(reason)}"}
+    end
+  end
+
+  # Private function to validate start row
+  defp validate_start_row(start_row, total_rows) do
+    cond do
+      start_row <= 1 ->
+        {:error, "Start row must be at least 2 (row 1 is reserved for headers)"}
+
+      start_row - 1 > total_rows ->
+        {:error,
+         "Start row (#{start_row}) cannot be greater than total rows (#{total_rows}). Please enter a valid start row number."}
+
+      start_row - 1 == total_rows ->
+        {:error,
+         "Start row (#{start_row}) is the last row. There must be at least one data row after the header row. Please enter a valid start row number."}
+
+      true ->
+        :ok
     end
   end
 
@@ -365,5 +442,24 @@ defmodule Dbservice.DataImport do
 
     # Prefer query parameter gid if available, otherwise use fragment gid
     query_gid || fragment_gid
+  end
+
+  @doc """
+  Generates a CSV template for the specified import type with proper headers.
+  """
+  def generate_csv_template(import_type) do
+    headers = Mappings.get_all_headers(import_type)
+
+    # Create CSV content with headers only
+    headers
+    |> Enum.join(",")
+    |> Kernel.<>("\n")
+  end
+
+  @doc """
+  Gets the filename for a CSV template download.
+  """
+  def get_template_filename(import_type) do
+    "#{import_type}_template.csv"
   end
 end

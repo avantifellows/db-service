@@ -24,6 +24,9 @@ defmodule DbserviceWeb.Router do
     live "/imports", ImportLive.Index
     live "/imports/new", ImportLive.New
     live "/imports/:id", ImportLive.Show
+
+    # Add route for CSV template downloads
+    get "/templates/:type/download", TemplateController, :download_csv_template
   end
 
   scope "/api", DbserviceWeb do
