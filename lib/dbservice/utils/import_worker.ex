@@ -30,17 +30,20 @@ defmodule Dbservice.DataImport.ImportWorker do
 
     # Process the file based on type
     case import_record.type do
+      "teacher_addition" ->
+        process_import(import_record, &process_teacher_record/1)
+
       "student" ->
-        process_import(import_record, &process_student_record/1, true)
+        process_import(import_record, &process_student_record/1)
 
       "student_update" ->
-        process_import(import_record, &process_student_update_record/1, false)
+        process_import(import_record, &process_student_update_record/1)
 
       "batch_movement" ->
-        process_import(import_record, &process_batch_movement_record/1, true)
+        process_import(import_record, &process_batch_movement_record/1)
 
       "teacher_batch_assignment" ->
-        process_import(import_record, &process_teacher_batch_assignment_record/1, true)
+        process_import(import_record, &process_teacher_batch_assignment_record/1)
 
       _ ->
         {:error, "Unsupported import type"}
@@ -48,7 +51,7 @@ defmodule Dbservice.DataImport.ImportWorker do
   end
 
   # Generic import processing function
-  defp process_import(import_record, record_processor_fn, halt_on_error?) do
+  defp process_import(import_record, record_processor_fn) do
     path = Path.join(["priv", "static", "uploads", import_record.filename])
     start_row = import_record.start_row || 2
 
@@ -58,8 +61,7 @@ defmodule Dbservice.DataImport.ImportWorker do
           case process_parsed_records(
                  parsed_records,
                  import_record,
-                 record_processor_fn,
-                 halt_on_error?
+                 record_processor_fn
                ) do
             {:ok, processed_records} -> finalize_import(import_record, processed_records)
             {:error, reason} -> handle_import_error(import_record, reason)
@@ -87,6 +89,7 @@ defmodule Dbservice.DataImport.ImportWorker do
       |> extract_field_mappings(import_type)
       |> map_boolean_fields(import_type)
       |> add_grade_id()
+      |> add_subject_id()
     end
   end
 
@@ -138,6 +141,19 @@ defmodule Dbservice.DataImport.ImportWorker do
     end
   end
 
+  defp add_subject_id(record) do
+    case Map.get(record, "subject") do
+      nil ->
+        record
+
+      subject_name ->
+        case DataImport.TeacherEnrollment.get_subject_id_by_name(subject_name) do
+          nil -> record
+          subject_id -> Map.put(record, "subject_id", subject_id)
+        end
+    end
+  end
+
   # Generic CSV parsing function that accepts a field extraction function
   defp parse_csv_records_with_extractor(path, start_row, field_extractor_fn) do
     try do
@@ -167,7 +183,7 @@ defmodule Dbservice.DataImport.ImportWorker do
   end
 
   # Generic record processing with configurable error handling
-  defp process_parsed_records(records, import_record, record_processor_fn, halt_on_error?) do
+  defp process_parsed_records(records, import_record, record_processor_fn) do
     initial_acc = {:ok, []}
 
     result =
@@ -177,7 +193,6 @@ defmodule Dbservice.DataImport.ImportWorker do
           index,
           import_record,
           record_processor_fn,
-          halt_on_error?,
           processed_records
         )
       end)
@@ -194,7 +209,6 @@ defmodule Dbservice.DataImport.ImportWorker do
          index,
          import_record,
          record_processor_fn,
-         halt_on_error?,
          processed_records
        ) do
     case process_single_record(record, index, import_record, record_processor_fn) do
@@ -202,20 +216,14 @@ defmodule Dbservice.DataImport.ImportWorker do
         {:cont, {:ok, [result | processed_records]}}
 
       {:error, reason} ->
-        handle_record_error(index, reason, halt_on_error?, import_record, processed_records)
+        handle_record_error(index, reason, import_record, processed_records)
     end
   end
 
   # Helper function to handle errors during record processing
-  defp handle_record_error(index, reason, halt_on_error?, import_record, processed_records) do
-    if halt_on_error? do
-      # Halt the entire import process if any row fails
-      {:halt, {:error, "Error processing row #{index}: #{reason}"}}
-    else
-      # Continue processing other records even if one fails
-      update_import_progress(import_record, index, :error, reason)
-      {:cont, {:ok, processed_records}}
-    end
+  defp handle_record_error(index, reason, _import_record, _processed_records) do
+    # Halt the entire import process if any row fails
+    {:halt, {:error, "Error processing row #{index}: #{reason}"}}
   end
 
   # Generic single record processing
@@ -274,6 +282,30 @@ defmodule Dbservice.DataImport.ImportWorker do
 
   defp process_batch_movement_record(record) do
     DataImport.BatchMovement.process_batch_movement(record)
+  end
+
+  defp process_teacher_record(record) do
+    case Users.get_teacher_by_teacher_id(record["teacher_id"]) do
+      nil ->
+        with {:ok, teacher} <- Users.create_teacher_with_user(record),
+             teacher <- Dbservice.Repo.preload(teacher, [:user]),
+             {:ok, _} <- DataImport.TeacherEnrollment.create_enrollments(teacher.user, record) do
+          {:ok, teacher}
+        else
+          {:error, _} = error -> error
+        end
+
+      existing_teacher ->
+        user = Users.get_user!(existing_teacher.user_id)
+
+        with {:ok, updated_teacher} <-
+               Users.update_teacher_with_user(existing_teacher, user, record),
+             {:ok, _} <- DataImport.TeacherEnrollment.create_enrollments(user, record) do
+          {:ok, updated_teacher}
+        else
+          {:error, _} = error -> error
+        end
+    end
   end
 
   defp process_teacher_batch_assignment_record(record) do
