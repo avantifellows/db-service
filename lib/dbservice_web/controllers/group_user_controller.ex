@@ -149,43 +149,39 @@ defmodule DbserviceWeb.GroupUserController do
   end
 
   defp find_records_to_update(group_users, user_id, type, params) do
-    group_user_to_update =
-      case type do
-        "batch" ->
-          current_batch_pk = params["current_batch_pk"]
-          Enum.find(group_users, fn gu -> gu.group.child_id == current_batch_pk end)
-
-        _ ->
-          # For non-batch types, just take the first (and likely only) GroupUser
-          List.first(group_users)
-      end
-
-    # Fetch the corresponding EnrollmentRecord
-    enrollment_record =
-      case type do
-        "batch" ->
-          current_batch_pk = params["current_batch_pk"]
-
-          from(er in EnrollmentRecord,
-            where:
-              er.user_id == ^user_id and
-                er.group_type == ^type and
-                er.group_id == ^current_batch_pk and
-                er.is_current == true
-          )
-          |> Repo.one()
-
-        _ ->
-          from(er in EnrollmentRecord,
-            where:
-              er.user_id == ^user_id and
-                er.group_type == ^type and
-                er.is_current == true
-          )
-          |> Repo.one()
-      end
+    group_user_to_update = find_group_user_to_update(group_users, type, params)
+    enrollment_record = find_enrollment_record(user_id, type, params)
 
     {group_user_to_update, enrollment_record}
+  end
+
+  defp find_group_user_to_update(group_users, "batch", %{"current_batch_pk" => current_batch_pk}) do
+    Enum.find(group_users, fn gu -> gu.group.child_id == current_batch_pk end)
+  end
+
+  defp find_group_user_to_update(group_users, _type, _params) do
+    List.first(group_users)
+  end
+
+  defp find_enrollment_record(user_id, "batch", %{"current_batch_pk" => current_batch_pk}) do
+    from(er in EnrollmentRecord,
+      where:
+        er.user_id == ^user_id and
+          er.group_type == "batch" and
+          er.group_id == ^current_batch_pk and
+          er.is_current == true
+    )
+    |> Repo.one()
+  end
+
+  defp find_enrollment_record(user_id, type, _params) do
+    from(er in EnrollmentRecord,
+      where:
+        er.user_id == ^user_id and
+          er.group_type == ^type and
+          er.is_current == true
+    )
+    |> Repo.one()
   end
 
   defp update_group_user_and_enrollment(conn, group_user, enrollment_record, params, new_group_id) do
