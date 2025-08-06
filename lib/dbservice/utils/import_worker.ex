@@ -380,50 +380,57 @@ defmodule Dbservice.DataImport.ImportWorker do
     # start_row is where data processing begins (usually 2 to skip headers)
     processed_rows = csv_row_number - (import_record.start_row || 2) + 1
 
-    update_params = %{
-      processed_rows: processed_rows
-    }
+    update_params = build_base_update_params(processed_rows)
+    update_params_with_errors = add_error_details(update_params, status, csv_row_number, error, import_record)
+    final_params = adjust_for_stopped_status(update_params_with_errors, import_record)
 
-    update_params =
-      case status do
-        :error ->
-          Map.merge(update_params, %{
-            error_count: (import_record.error_count || 0) + 1,
-            error_details: [
-              %{row: csv_row_number, error: inspect(error)}
-              | import_record.error_details || []
-            ]
-          })
-
-        :exception ->
-          Map.merge(update_params, %{
-            error_count: (import_record.error_count || 0) + 1,
-            error_details: [
-              %{row: csv_row_number, error: Exception.message(error)}
-              | import_record.error_details || []
-            ]
-          })
-
-        _ ->
-          update_params
-      end
-
-    # Check current import status - if stopped, only update progress but keep status as stopped
-    current_import = DataImport.get_import!(import_record.id)
-
-    final_update_params =
-      if current_import.status == "stopped" do
-        # Keep the status as stopped, only update progress and errors
-        update_params
-      else
-        # Normal processing - allow status updates
-        update_params
-      end
-
-    DataImport.update_import(import_record, final_update_params)
+    DataImport.update_import(import_record, final_params)
 
     # Broadcast progress update
     Phoenix.PubSub.broadcast(Dbservice.PubSub, "imports", {:import_updated, import_record.id})
+  end
+
+  # Extract base update params creation
+  defp build_base_update_params(processed_rows) do
+    %{processed_rows: processed_rows}
+  end
+
+  # Extract error handling logic
+  defp add_error_details(update_params, status, csv_row_number, error, import_record) do
+    case status do
+      :error ->
+        add_error_to_params(update_params, csv_row_number, inspect(error), import_record)
+
+      :exception ->
+        add_error_to_params(update_params, csv_row_number, Exception.message(error), import_record)
+
+      _ ->
+        update_params
+    end
+  end
+
+  # Extract error addition logic
+  defp add_error_to_params(update_params, csv_row_number, error_message, import_record) do
+    Map.merge(update_params, %{
+      error_count: (import_record.error_count || 0) + 1,
+      error_details: [
+        %{row: csv_row_number, error: error_message}
+        | import_record.error_details || []
+      ]
+    })
+  end
+
+  # Extract status checking logic
+  defp adjust_for_stopped_status(update_params, import_record) do
+    current_import = DataImport.get_import!(import_record.id)
+
+    if current_import.status == "stopped" do
+      # Keep the status as stopped, only update progress and errors
+      update_params
+    else
+      # Normal processing - allow status updates
+      update_params
+    end
   end
 
   defp finalize_import(import_record, records) do

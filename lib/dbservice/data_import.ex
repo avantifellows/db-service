@@ -241,40 +241,50 @@ defmodule Dbservice.DataImport do
 
     case File.read(path) do
       {:ok, content} ->
-        lines = String.split(content, "\n")
-        # Count non-empty lines
-        total_rows = Enum.count(lines, &(String.trim(&1) != ""))
-
-        # Validate start row first
-        case validate_start_row(start_row, total_rows) do
-          :ok ->
-            # Parse the first line to get headers
-            case lines do
-              [header_line | _] when header_line != "" ->
-                headers =
-                  header_line
-                  |> String.trim()
-                  |> String.split(",")
-                  |> Enum.map(&String.trim/1)
-                  |> Enum.map(&String.replace(&1, "\"", ""))
-                  |> Enum.map(&String.trim/1)
-
-                validate_headers(headers, type)
-
-              [] ->
-                {:error, "CSV file is empty"}
-
-              _ ->
-                {:error, "CSV file has no valid header row"}
-            end
-
-          {:error, reason} ->
-            {:error, reason}
-        end
+        validate_csv_content(content, type, start_row)
 
       {:error, reason} ->
         {:error, "Failed to read CSV file: #{inspect(reason)}"}
     end
+  end
+
+  # Extract CSV content validation to reduce nesting
+  defp validate_csv_content(content, type, start_row) do
+    lines = String.split(content, "\n")
+    total_rows = Enum.count(lines, &(String.trim(&1) != ""))
+
+    case validate_start_row(start_row, total_rows) do
+      :ok ->
+        validate_csv_headers(lines, type)
+
+      {:error, reason} ->
+        {:error, reason}
+    end
+  end
+
+  # Extract header validation to reduce nesting
+  defp validate_csv_headers(lines, type) do
+    case lines do
+      [header_line | _] when header_line != "" ->
+        headers = parse_header_line(header_line)
+        validate_headers(headers, type)
+
+      [] ->
+        {:error, "CSV file is empty"}
+
+      _ ->
+        {:error, "CSV file has no valid header row"}
+    end
+  end
+
+  # Extract header parsing logic
+  defp parse_header_line(header_line) do
+    header_line
+    |> String.trim()
+    |> String.split(",")
+    |> Enum.map(&String.trim/1)
+    |> Enum.map(&String.replace(&1, "\"", ""))
+    |> Enum.map(&String.trim/1)
   end
 
   # Private function to validate start row
