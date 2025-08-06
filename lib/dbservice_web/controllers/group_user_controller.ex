@@ -179,7 +179,8 @@ defmodule DbserviceWeb.GroupUserController do
           from(er in EnrollmentRecord,
             where:
               er.user_id == ^user_id and
-                er.group_type == ^type
+                er.group_type == ^type and
+                er.is_current == true
           )
           |> Repo.one()
       end
