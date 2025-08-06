@@ -381,7 +381,10 @@ defmodule Dbservice.DataImport.ImportWorker do
     processed_rows = csv_row_number - (import_record.start_row || 2) + 1
 
     update_params = build_base_update_params(processed_rows)
-    update_params_with_errors = add_error_details(update_params, status, csv_row_number, error, import_record)
+
+    update_params_with_errors =
+      add_error_details(update_params, status, csv_row_number, error, import_record)
+
     final_params = adjust_for_stopped_status(update_params_with_errors, import_record)
 
     DataImport.update_import(import_record, final_params)
@@ -402,7 +405,12 @@ defmodule Dbservice.DataImport.ImportWorker do
         add_error_to_params(update_params, csv_row_number, inspect(error), import_record)
 
       :exception ->
-        add_error_to_params(update_params, csv_row_number, Exception.message(error), import_record)
+        add_error_to_params(
+          update_params,
+          csv_row_number,
+          Exception.message(error),
+          import_record
+        )
 
       _ ->
         update_params
