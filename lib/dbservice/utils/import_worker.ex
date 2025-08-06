@@ -243,7 +243,7 @@ defmodule Dbservice.DataImport.ImportWorker do
   defp process_single_record(record, index, import_record, record_processor_fn) do
     # Add delay for testing halt functionality (only in dev/test environments)
     if Application.get_env(:dbservice, :import_test_delay, false) do
-      Process.sleep(Application.get_env(:dbservice, :import_test_delay_ms, 15000))
+      Process.sleep(Application.get_env(:dbservice, :import_test_delay_ms, 15_000))
     end
 
     try do
