@@ -13,7 +13,7 @@ defmodule DbserviceWeb.ImportLive.Index do
       Phoenix.PubSub.subscribe(Dbservice.PubSub, "imports")
     end
 
-    {:ok, assign(socket, imports: imports)}
+    {:ok, assign(socket, imports: imports, show_stop_modal: false, selected_import: nil)}
   end
 
   @impl true
@@ -24,6 +24,35 @@ defmodule DbserviceWeb.ImportLive.Index do
   @impl true
   def handle_event("validate", _params, socket) do
     {:noreply, socket}
+  end
+
+  @impl true
+  def handle_event("show_stop_modal", %{"import_id" => import_id}, socket) do
+    import_id = String.to_integer(import_id)
+    selected_import = Enum.find(socket.assigns.imports, &(&1.id == import_id))
+    {:noreply, assign(socket, show_stop_modal: true, selected_import: selected_import)}
+  end
+
+  @impl true
+  def handle_event("hide_stop_modal", _params, socket) do
+    {:noreply, assign(socket, show_stop_modal: false, selected_import: nil)}
+  end
+
+  @impl true
+  def handle_event("confirm_halt_import", _params, socket) do
+    case DataImport.halt_import(socket.assigns.selected_import.id) do
+      {:ok, _updated_import} ->
+        {:noreply,
+         socket
+         |> assign(show_stop_modal: false, selected_import: nil)
+         |> put_flash(:info, "Import has been stopped successfully.")}
+
+      {:error, reason} ->
+        {:noreply,
+         socket
+         |> assign(show_stop_modal: false, selected_import: nil)
+         |> put_flash(:error, "Failed to halt import: #{reason}")}
+    end
   end
 
   @impl true
@@ -71,12 +100,12 @@ defmodule DbserviceWeb.ImportLive.Index do
         </div>
 
         <!-- Stats overview cards -->
-        <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6 mb-6 sm:mb-8">
+        <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 sm:gap-6 mb-6 sm:mb-8">
           <div class="bg-white dark:bg-gray-800 rounded-xl sm:rounded-2xl p-4 sm:p-6 shadow-md border border-gray-100 dark:border-gray-700 transition-all duration-300 hover:shadow-lg">
             <div class="flex items-center">
               <div class="p-2 sm:p-3 rounded-lg sm:rounded-xl bg-indigo-100 dark:bg-indigo-900/30 text-indigo-600 dark:text-indigo-400">
                 <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 sm:h-6 sm:w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6-8a9 9 0 11-18 0 9 9 0 0118 0z" />
                 </svg>
               </div>
               <div class="ml-4">
@@ -100,7 +129,22 @@ defmodule DbserviceWeb.ImportLive.Index do
             </div>
           </div>
 
-          <div class="bg-white dark:bg-gray-800 rounded-xl sm:rounded-2xl p-4 sm:p-6 shadow-md border border-gray-100 dark:border-gray-700 transition-all duration-300 hover:shadow-lg sm:col-span-2 lg:col-span-1">
+          <div class="bg-white dark:bg-gray-800 rounded-xl sm:rounded-2xl p-4 sm:p-6 shadow-md border border-gray-100 dark:border-gray-700 transition-all duration-300 hover:shadow-lg">
+            <div class="flex items-center">
+              <div class="p-2 sm:p-3 rounded-lg sm:rounded-xl bg-orange-100 dark:bg-orange-900/30 text-orange-600 dark:text-orange-400">
+                <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 sm:h-6 sm:w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 10l6 6m0-6l-6 6" />
+                </svg>
+              </div>
+              <div class="ml-4">
+                <p class="text-sm font-medium text-gray-500 dark:text-gray-400">Stopped</p>
+                <p class="text-xl sm:text-2xl font-bold text-gray-900 dark:text-white"><%= Enum.count(@imports, & &1.status == "stopped") %></p>
+              </div>
+            </div>
+          </div>
+
+          <div class="bg-white dark:bg-gray-800 rounded-xl sm:rounded-2xl p-4 sm:p-6 shadow-md border border-gray-100 dark:border-gray-700 transition-all duration-300 hover:shadow-lg">
             <div class="flex items-center">
               <div class="p-2 sm:p-3 rounded-lg sm:rounded-xl bg-rose-100 dark:bg-rose-900/30 text-rose-600 dark:text-rose-400">
                 <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 sm:h-6 sm:w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -155,7 +199,7 @@ defmodule DbserviceWeb.ImportLive.Index do
                       <div class="text-xs text-gray-500 dark:text-gray-400">
                         <%= format_date(import.inserted_at) %> at <%= format_time(import.inserted_at) %>
                       </div>
-                      <div>
+                      <div class="flex space-x-2">
                         <.link navigate={~p"/imports/#{import.id}"}
                             class="inline-flex items-center justify-center p-2 rounded-lg text-indigo-600 hover:text-indigo-800 hover:bg-indigo-100 dark:text-indigo-400 dark:hover:text-indigo-300 dark:hover:bg-indigo-900/30 transition-colors">
                           <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
@@ -164,6 +208,19 @@ defmodule DbserviceWeb.ImportLive.Index do
                           </svg>
                           <span class="sr-only">View</span>
                         </.link>
+
+                        <%= if import.status in ["processing", "pending"] do %>
+                          <button
+                            phx-click="show_stop_modal"
+                            phx-value-import_id={import.id}
+                            class="inline-flex items-center justify-center p-2 rounded-lg text-red-600 hover:text-red-800 hover:bg-red-100 dark:text-red-400 dark:hover:text-red-300 dark:hover:bg-red-900/30 transition-colors">
+                            <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                              <path stroke-linecap="round" stroke-linejoin="round" d="M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                              <path stroke-linecap="round" stroke-linejoin="round" d="M9 10l6 6m0-6l-6 6" />
+                            </svg>
+                            <span class="sr-only">Stop</span>
+                          </button>
+                        <% end %>
                       </div>
                     </div>
                   </div>
@@ -236,6 +293,19 @@ defmodule DbserviceWeb.ImportLive.Index do
                             </svg>
                             <span class="sr-only">View</span>
                           </.link>
+
+                          <%= if import.status in ["processing", "pending"] do %>
+                            <button
+                              phx-click="show_stop_modal"
+                              phx-value-import_id={import.id}
+                              class="inline-flex items-center justify-center p-2 rounded-lg text-red-600 hover:text-red-800 hover:bg-red-100 dark:text-red-400 dark:hover:text-red-300 dark:hover:bg-red-900/30 transition-colors">
+                              <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                                <path stroke-linecap="round" stroke-linejoin="round" d="M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                                <path stroke-linecap="round" stroke-linejoin="round" d="M9 10l6 6m0-6l-6 6" />
+                              </svg>
+                              <span class="sr-only">Stop</span>
+                            </button>
+                          <% end %>
                         </div>
                       </td>
                     </tr>
@@ -245,6 +315,122 @@ defmodule DbserviceWeb.ImportLive.Index do
             </table>
           </div>
         </div>
+
+        <!-- Confirmation modal for stopping import -->
+        <%= if @show_stop_modal and @selected_import do %>
+        <div class="fixed inset-0 z-50 overflow-y-auto">
+          <!-- Backdrop overlay with better animation -->
+          <div class="fixed inset-0 bg-black/60 backdrop-blur-sm transition-all duration-300" phx-click="hide_stop_modal"></div>
+
+          <!-- Modal content with better positioning -->
+          <div class="flex min-h-full items-center justify-center p-4 sm:p-6">
+            <div class="relative bg-white dark:bg-gray-800 rounded-2xl shadow-2xl w-full max-w-lg transform transition-all duration-300 scale-100">
+
+              <!-- Modal header with improved styling -->
+              <div class="px-8 py-6 border-b border-gray-200 dark:border-gray-700">
+                <div class="flex items-center justify-between">
+                  <div class="flex items-center">
+                    <div class="flex-shrink-0 w-10 h-10 mx-auto flex items-center justify-center rounded-full bg-red-100 dark:bg-red-900/30">
+                      <svg xmlns="http://www.w3.org/2000/svg" class="w-6 h-6 text-red-600 dark:text-red-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                        <path stroke-linecap="round" stroke-linejoin="round" d="M12 9v2m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                      </svg>
+                    </div>
+                    <div class="ml-4">
+                      <h3 class="text-xl font-bold text-gray-900 dark:text-white">
+                        Stop Import
+                      </h3>
+                      <p class="text-sm text-gray-500 dark:text-gray-400 mt-1">
+                        This action cannot be undone
+                      </p>
+                    </div>
+                  </div>
+                  <button
+                    phx-click="hide_stop_modal"
+                    class="ml-4 text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 transition-colors p-2 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg">
+                    <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                      <path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12" />
+                    </svg>
+                  </button>
+                </div>
+              </div>
+
+              <!-- Modal body with better spacing -->
+              <div class="px-8 py-6">
+                <div class="space-y-4">
+                  <p class="text-base text-gray-700 dark:text-gray-300 leading-relaxed">
+                    Are you sure you want to stop this import process? All progress will be lost and you'll need to restart the import from the beginning.
+                  </p>
+
+                  <!-- Progress info card with improved design -->
+                  <div class="bg-gradient-to-r from-amber-50 to-orange-50 dark:from-amber-900/20 dark:to-orange-900/20 rounded-xl p-4 border border-amber-200 dark:border-amber-800">
+                    <div class="flex items-start">
+                      <div class="flex-shrink-0">
+                        <svg class="w-5 h-5 text-amber-600 dark:text-amber-400 mt-0.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                          <path stroke-linecap="round" stroke-linejoin="round" d="M12 9v2m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                        </svg>
+                      </div>
+                      <div class="ml-3">
+                        <h4 class="text-sm font-semibold text-amber-800 dark:text-amber-200">
+                          Current Progress
+                        </h4>
+                        <p class="text-sm text-amber-700 dark:text-amber-300 mt-1">
+                          <span class="font-medium"><%= @selected_import.processed_rows %></span> of
+                          <span class="font-medium"><%= @selected_import.total_rows %></span> records processed
+                          (<%= calculate_percentage(@selected_import.processed_rows, @selected_import.total_rows) %>% complete)
+                        </p>
+                      </div>
+                    </div>
+                  </div>
+
+                  <!-- Impact warning -->
+                  <div class="bg-red-50 dark:bg-red-900/20 rounded-xl p-4 border border-red-200 dark:border-red-800">
+                    <div class="flex items-start">
+                      <div class="flex-shrink-0">
+                        <svg class="w-5 h-5 text-red-600 dark:text-red-400 mt-0.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                          <path stroke-linecap="round" stroke-linejoin="round" d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                        </svg>
+                      </div>
+                      <div class="ml-3">
+                        <h4 class="text-sm font-semibold text-red-800 dark:text-red-200">
+                          Impact
+                        </h4>
+                        <ul class="text-sm text-red-700 dark:text-red-300 mt-1 space-y-1">
+                          <li>• Import will be marked as "Stopped"</li>
+                          <li>• Processed data will be retained</li>
+                          <li>• You'll need to create a new import to continue</li>
+                        </ul>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              <!-- Modal footer with improved button design -->
+              <div class="px-8 py-6 border-t border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-900/50 rounded-b-2xl">
+                <div class="flex justify-end gap-4">
+                  <button
+                    phx-click="hide_stop_modal"
+                    class="inline-flex items-center px-6 py-3 text-sm font-medium rounded-xl text-gray-700 bg-white border border-gray-300 hover:bg-gray-50 hover:border-gray-400 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-gray-500 dark:bg-gray-700 dark:text-gray-300 dark:border-gray-600 dark:hover:bg-gray-600 dark:hover:border-gray-500 transition-all duration-200 shadow-sm">
+                    <svg class="w-4 h-4 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                      <path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12" />
+                    </svg>
+                    Cancel
+                  </button>
+                  <button
+                    phx-click="confirm_halt_import"
+                    class="inline-flex items-center px-6 py-3 text-sm font-medium rounded-xl text-white bg-gradient-to-r from-red-600 to-red-700 border border-transparent hover:from-red-700 hover:to-red-800 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500 transition-all duration-200 shadow-lg hover:shadow-xl transform hover:scale-105">
+                    <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2">
+                      <path stroke-linecap="round" stroke-linejoin="round" d="M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                      <path stroke-linecap="round" stroke-linejoin="round" d="M9 10l6 6m0-6l-6 6"></path>
+                    </svg>
+                    Stop Import
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+        <% end %>
       </div>
     </div>
     """
@@ -310,6 +496,17 @@ defmodule DbserviceWeb.ImportLive.Index do
         <circle cx="4" cy="4" r="3" />
       </svg>
       Failed
+    </span>
+    """)
+  end
+
+  defp get_status_badge("stopped") do
+    raw("""
+    <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-orange-100 text-orange-800 dark:bg-orange-900/30 dark:text-orange-400">
+      <svg class="-ml-0.5 mr-1.5 h-2 w-2 text-orange-400 dark:text-orange-500" fill="currentColor" viewBox="0 0 8 8">
+        <circle cx="4" cy="4" r="3" />
+      </svg>
+      Stopped
     </span>
     """)
   end

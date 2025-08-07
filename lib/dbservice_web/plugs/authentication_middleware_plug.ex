@@ -46,6 +46,6 @@ defmodule DbserviceWeb.AuthenticationMiddleware do
   end
 
   defp contains_imports_path?(request_path) do
-    String.contains?(request_path, "/imports")
+    String.contains?(request_path, "/imports") || String.contains?(request_path, "/templates")
   end
 end
