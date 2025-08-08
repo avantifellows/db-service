@@ -23,8 +23,6 @@ defmodule DbserviceWeb.ResourceJSON do
   end
 
   defp render(resource) do
-    resource = Repo.preload(resource, :source)
-
     topic_id =
       Repo.one(
         from rt in ResourceTopic,

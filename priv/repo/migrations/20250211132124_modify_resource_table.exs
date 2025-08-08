@@ -39,22 +39,15 @@ defmodule Dbservice.Repo.Migrations.ModifyResourceTable do
         WHEN 'gdrive' THEN 'gdrive'
         WHEN 'PDF ' THEN 'gdrive'
       END,
-      type = CASE (SELECT name FROM source WHERE id = r.source_id)
-        WHEN 'youtube' THEN 'video'
-        WHEN 'gdrive' THEN 'video'
-        WHEN 'PDF ' THEN 'document'
-      END,
       type_params = CASE
         WHEN type_params IS NULL THEN
           jsonb_build_object(
-            'src_link', (SELECT link FROM source WHERE id = r.source_id),
-            'resource_type', r.type
+            'src_link', (SELECT link FROM source WHERE id = r.source_id)
           )
         ELSE
           type_params ||
           jsonb_build_object(
-            'src_link', (SELECT link FROM source WHERE id = r.source_id),
-            'resource_type', r.type
+            'src_link', (SELECT link FROM source WHERE id = r.source_id)
           )
       END
     WHERE source_id IS NOT NULL
