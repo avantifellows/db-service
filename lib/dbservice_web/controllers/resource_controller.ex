@@ -338,19 +338,86 @@ defmodule DbserviceWeb.ResourceController do
     Map.put(params, "tag_ids", merged_tags)
   end
 
+  swagger_path :curriculum_resources do
+    get("/api/resources/curriculum")
+
+    parameters do
+      curriculumId(
+        :query,
+        :integer,
+        "The ID of the curriculum",
+        required: true
+      )
+
+      gradeId(
+        :query,
+        :integer,
+        "The ID of the grade (optional - if not provided, returns resources for all grades)",
+        required: false
+      )
+
+      subjectId(
+        :query,
+        :integer,
+        "The ID of the subject (optional)",
+        required: false
+      )
+
+      chapterId(
+        :query,
+        :integer,
+        "The ID of the chapter (optional)",
+        required: false
+      )
+
+      type(
+        :query,
+        :string,
+        "The type of resource (optional - e.g., 'video', 'test', 'problem')",
+        required: false
+      )
+
+      subtype(
+        :query,
+        :string,
+        "The subtype of resource (optional)",
+        required: false
+      )
+
+      limit(
+        :query,
+        :integer,
+        "Number of resources to return (optional)",
+        required: false
+      )
+
+      offset(
+        :query,
+        :integer,
+        "Number of resources to skip (optional)",
+        required: false
+      )
+    end
+
+    response(200, "OK", Schema.ref(:Resources))
+  end
+
   def curriculum_resources(conn, params) do
     query =
       from(r in Resource,
         join: rc in ResourceCurriculum,
         on: rc.resource_id == r.id,
-        where:
-          rc.curriculum_id == ^params["curriculum_id"] and rc.grade_id == ^params["grade_id"],
+        where: rc.curriculum_id == ^params["curriculum_id"],
         order_by: [asc: r.id]
       )
+
+    # Apply grade filter only if grade_id is provided
+    query = filter_by_grade(query, params)
 
     query =
       query
       |> filter_by_subject(params)
+      |> filter_by_chapter(params)
       |> filter_by_type(params)
       |> filter_by_subtype(params)
       |> apply_pagination(params)
@@ -370,6 +437,26 @@ defmodule DbserviceWeb.ResourceController do
   end
 
   defp filter_by_subject(query, _), do: query
+
+  defp filter_by_chapter(query, %{"chapter_id" => chapter_id}) when not is_nil(chapter_id) do
+    from(r in query,
+      join: rch in ResourceChapter,
+      on: rch.resource_id == r.id,
+      where: rch.chapter_id == ^chapter_id
+    )
+  end
+
+  defp filter_by_chapter(query, _), do: query
+
+  defp filter_by_grade(query, %{"grade_id" => grade_id}) when not is_nil(grade_id) do
+    from(r in query,
+      join: rc in ResourceCurriculum,
+      on: rc.resource_id == r.id,
+      where: rc.grade_id == ^grade_id
+    )
+  end
+
+  defp filter_by_grade(query, _), do: query
 
   defp filter_by_type(query, %{"type" => type}) when not is_nil(type) do
     from(r in query, where: r.type == ^type)
