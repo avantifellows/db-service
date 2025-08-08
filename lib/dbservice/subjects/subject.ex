@@ -6,6 +6,8 @@ defmodule Dbservice.Subjects.Subject do
 
   # alias Dbservice.Tags.Tag
   alias Dbservice.Chapters.Chapter
+  alias Dbservice.Users.Teacher
+  alias Dbservice.Users.Candidate
 
   schema "subject" do
     field(:name, {:array, :map})
@@ -15,6 +17,8 @@ defmodule Dbservice.Subjects.Subject do
     timestamps()
 
     has_many(:chapter, Chapter)
+    has_many(:teacher, Teacher)
+    has_many(:candidate, Candidate)
     # belongs_to(:tag, Tag)
   end
 

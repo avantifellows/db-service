@@ -12,8 +12,11 @@ defmodule Dbservice.DataImport do
   @doc """
   Returns a human-readable name for the import type.
   """
-  def format_type_name("student"), do: "Student"
-  def format_type_name("batch_movement"), do: "Batch Movement"
+  def format_type_name("student"), do: "Student Addition"
+  def format_type_name("student_update"), do: "Update Student Details"
+  def format_type_name("batch_movement"), do: "Student Batch Movement"
+  def format_type_name("teacher_batch_assignment"), do: "Teacher Batch Assignment"
+  def format_type_name("teacher_addition"), do: "Teacher Addition"
   def format_type_name(type), do: String.capitalize(type)
 
   @doc """
