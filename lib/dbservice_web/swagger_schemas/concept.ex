@@ -11,15 +11,24 @@ defmodule DbserviceWeb.SwaggerSchema.Concept do
           description("A concept in the application")
 
           properties do
-            name(:string, "Concept name")
+            name(
+              Schema.array(:object),
+              "Multilingual concept names, each with a language code and value",
+              example: [
+                %{lang: "en", value: "Coulomb's Law"},
+                %{lang: "hi", value: "कूलॉम्ब का नियम"}
+              ]
+            )
+
             topic_id(:integer, "Topic id associated with the concept")
-            tag_id(:integer, "Tag id associated with the concept")
           end
 
           example(%{
-            name: "Coulomb's Law",
-            topic_id: 5,
-            tag_id: 6
+            name: [
+              %{lang: "en", value: "Coulomb's Law"},
+              %{lang: "hi", value: "कूलॉम्ब का नियम"}
+            ],
+            topic_id: 5
           })
         end
     }

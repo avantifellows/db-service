@@ -4,21 +4,22 @@ defmodule Dbservice.Subjects.Subject do
   use Ecto.Schema
   import Ecto.Changeset
 
-  alias Dbservice.Tags.Tag
+  # alias Dbservice.Tags.Tag
   alias Dbservice.Chapters.Chapter
   alias Dbservice.Users.Teacher
   alias Dbservice.Users.Candidate
 
   schema "subject" do
-    field(:name, :string)
+    field(:name, {:array, :map})
     field(:code, :string)
+    field(:parent_id, :integer)
 
     timestamps()
 
     has_many(:chapter, Chapter)
     has_many(:teacher, Teacher)
     has_many(:candidate, Candidate)
-    belongs_to(:tag, Tag)
+    # belongs_to(:tag, Tag)
   end
 
   @doc false
@@ -27,7 +28,8 @@ defmodule Dbservice.Subjects.Subject do
     |> cast(attrs, [
       :name,
       :code,
-      :tag_id
+      :parent_id
+      # :tag_id
     ])
   end
 end
