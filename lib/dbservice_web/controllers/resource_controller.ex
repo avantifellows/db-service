@@ -411,12 +411,10 @@ defmodule DbserviceWeb.ResourceController do
         order_by: [asc: r.id]
       )
 
-    # Apply grade filter only if grade_id is provided
-    query = filter_by_grade(query, params)
-
     query =
       query
       |> filter_by_subject(params)
+      |> filter_by_grade(params)
       |> filter_by_chapter(params)
       |> filter_by_type(params)
       |> filter_by_subtype(params)
