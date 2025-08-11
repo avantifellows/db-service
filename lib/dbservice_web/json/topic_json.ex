@@ -18,7 +18,7 @@ defmodule DbserviceWeb.TopicJSON do
       id: topic.id,
       name: topic.name,
       code: topic.code,
-      chapter_id: topic.chapter_id,
+      chapter_id: topic.chapter_id
     }
 
     # Add topic_curriculum fields if they exist
