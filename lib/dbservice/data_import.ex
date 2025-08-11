@@ -458,7 +458,10 @@ defmodule Dbservice.DataImport do
   Generates a CSV template for the specified import type with proper headers.
   """
   def generate_csv_template(import_type) do
-    headers = Mappings.get_all_headers(import_type)
+    headers =
+      import_type
+      |> Mappings.get_all_headers()
+      |> Enum.sort()
 
     # Create CSV content with headers only
     headers
