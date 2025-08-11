@@ -370,6 +370,13 @@ defmodule DbserviceWeb.ResourceController do
         required: false
       )
 
+      topicId(
+        :query,
+        :integer,
+        "The ID of the topic (optional)",
+        required: false
+      )
+
       type(
         :query,
         :string,
@@ -416,6 +423,7 @@ defmodule DbserviceWeb.ResourceController do
       |> filter_by_subject(params)
       |> filter_by_grade(params)
       |> filter_by_chapter(params)
+      |> filter_by_topic(params)
       |> filter_by_type(params)
       |> filter_by_subtype(params)
       |> apply_pagination(params)
@@ -445,6 +453,16 @@ defmodule DbserviceWeb.ResourceController do
   end
 
   defp filter_by_chapter(query, _), do: query
+
+  defp filter_by_topic(query, %{"topic_id" => topic_id}) when not is_nil(topic_id) do
+    from(r in query,
+      join: rt in ResourceTopic,
+      on: rt.resource_id == r.id,
+      where: rt.topic_id == ^topic_id
+    )
+  end
+
+  defp filter_by_topic(query, _), do: query
 
   defp filter_by_grade(query, %{"grade_id" => grade_id}) when not is_nil(grade_id) do
     from(r in query,
