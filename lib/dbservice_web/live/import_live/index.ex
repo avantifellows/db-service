@@ -103,9 +103,10 @@ defmodule DbserviceWeb.ImportLive.Index do
         <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 sm:gap-6 mb-6 sm:mb-8">
           <div class="bg-white dark:bg-gray-800 rounded-xl sm:rounded-2xl p-4 sm:p-6 shadow-md border border-gray-100 dark:border-gray-700 transition-all duration-300 hover:shadow-lg">
             <div class="flex items-center">
-              <div class="p-2 sm:p-3 rounded-lg sm:rounded-xl bg-indigo-100 dark:bg-indigo-900/30 text-indigo-600 dark:text-indigo-400">
+              <div class="flex items-center justify-center p-2 sm:p-3 rounded-lg sm:rounded-xl bg-indigo-100 dark:bg-indigo-900/30 text-indigo-600 dark:text-indigo-400">
                 <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 sm:h-6 sm:w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6-8a9 9 0 11-18 0 9 9 0 0118 0z" />
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4" />
+                  <circle cx="12" cy="12" r="9" />
                 </svg>
               </div>
               <div class="ml-4">
@@ -113,49 +114,51 @@ defmodule DbserviceWeb.ImportLive.Index do
                 <p class="text-xl sm:text-2xl font-bold text-gray-900 dark:text-white"><%= Enum.count(@imports, & &1.status == "completed") %></p>
               </div>
             </div>
-          </div>
+            </div>
 
-          <div class="bg-white dark:bg-gray-800 rounded-xl sm:rounded-2xl p-4 sm:p-6 shadow-md border border-gray-100 dark:border-gray-700 transition-all duration-300 hover:shadow-lg">
-            <div class="flex items-center">
-              <div class="p-2 sm:p-3 rounded-lg sm:rounded-xl bg-amber-100 dark:bg-amber-900/30 text-amber-600 dark:text-amber-400">
-                <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 sm:h-6 sm:w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
-                </svg>
-              </div>
-              <div class="ml-4">
-                <p class="text-sm font-medium text-gray-500 dark:text-gray-400">In Progress</p>
-                <p class="text-xl sm:text-2xl font-bold text-gray-900 dark:text-white"><%= Enum.count(@imports, & &1.status == "processing") %></p>
+            <div class="bg-white dark:bg-gray-800 rounded-xl sm:rounded-2xl p-4 sm:p-6 shadow-md border border-gray-100 dark:border-gray-700 transition-all duration-300 hover:shadow-lg">
+              <div class="flex items-center">
+                <div class="flex items-center justify-center p-2 sm:p-3 rounded-lg sm:rounded-xl bg-amber-100 dark:bg-amber-900/30 text-amber-600 dark:text-amber-400">
+                  <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 sm:h-6 sm:w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3" />
+                    <circle cx="12" cy="12" r="9" />
+                  </svg>
+                </div>
+                <div class="ml-4">
+                  <p class="text-sm font-medium text-gray-500 dark:text-gray-400">In Progress</p>
+                  <p class="text-xl sm:text-2xl font-bold text-gray-900 dark:text-white"><%= Enum.count(@imports, & &1.status == "processing") %></p>
+                </div>
               </div>
             </div>
-          </div>
 
-          <div class="bg-white dark:bg-gray-800 rounded-xl sm:rounded-2xl p-4 sm:p-6 shadow-md border border-gray-100 dark:border-gray-700 transition-all duration-300 hover:shadow-lg">
-            <div class="flex items-center">
-              <div class="p-2 sm:p-3 rounded-lg sm:rounded-xl bg-orange-100 dark:bg-orange-900/30 text-orange-600 dark:text-orange-400">
-                <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 sm:h-6 sm:w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 10l6 6m0-6l-6 6" />
-                </svg>
-              </div>
-              <div class="ml-4">
-                <p class="text-sm font-medium text-gray-500 dark:text-gray-400">Stopped</p>
-                <p class="text-xl sm:text-2xl font-bold text-gray-900 dark:text-white"><%= Enum.count(@imports, & &1.status == "stopped") %></p>
+            <div class="bg-white dark:bg-gray-800 rounded-xl sm:rounded-2xl p-4 sm:p-6 shadow-md border border-gray-100 dark:border-gray-700 transition-all duration-300 hover:shadow-lg">
+              <div class="flex items-center">
+                <div class="flex items-center justify-center p-2 sm:p-3 rounded-lg sm:rounded-xl bg-orange-100 dark:bg-orange-900/30 text-orange-600 dark:text-orange-400">
+                  <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 sm:h-6 sm:w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <circle cx="12" cy="12" r="9" />
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 10l6 6m0-6l-6 6" />
+                  </svg>
+                </div>
+                <div class="ml-4">
+                  <p class="text-sm font-medium text-gray-500 dark:text-gray-400">Stopped</p>
+                  <p class="text-xl sm:text-2xl font-bold text-gray-900 dark:text-white"><%= Enum.count(@imports, & &1.status == "stopped") %></p>
+                </div>
               </div>
             </div>
-          </div>
 
-          <div class="bg-white dark:bg-gray-800 rounded-xl sm:rounded-2xl p-4 sm:p-6 shadow-md border border-gray-100 dark:border-gray-700 transition-all duration-300 hover:shadow-lg">
-            <div class="flex items-center">
-              <div class="p-2 sm:p-3 rounded-lg sm:rounded-xl bg-rose-100 dark:bg-rose-900/30 text-rose-600 dark:text-rose-400">
-                <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 sm:h-6 sm:w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
-                </svg>
+            <div class="bg-white dark:bg-gray-800 rounded-xl sm:rounded-2xl p-4 sm:p-6 shadow-md border border-gray-100 dark:border-gray-700 transition-all duration-300 hover:shadow-lg">
+              <div class="flex items-center">
+                <div class="flex items-center justify-center p-2 sm:p-3 rounded-lg sm:rounded-xl bg-rose-100 dark:bg-rose-900/30 text-rose-600 dark:text-rose-400">
+                  <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 sm:h-6 sm:w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01" />
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6.062 20h11.876c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+                  </svg>
+                </div>
+                <div class="ml-4">
+                  <p class="text-sm font-medium text-gray-500 dark:text-gray-400">Failed</p>
+                  <p class="text-xl sm:text-2xl font-bold text-gray-900 dark:text-white"><%= Enum.count(@imports, & &1.status == "failed") %></p>
+                </div>
               </div>
-              <div class="ml-4">
-                <p class="text-sm font-medium text-gray-500 dark:text-gray-400">Failed</p>
-                <p class="text-xl sm:text-2xl font-bold text-gray-900 dark:text-white"><%= Enum.count(@imports, & &1.status == "failed") %></p>
-              </div>
-            </div>
           </div>
         </div>
 
@@ -458,8 +461,8 @@ defmodule DbserviceWeb.ImportLive.Index do
 
   defp get_status_badge("completed") do
     raw("""
-    <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-400">
-      <svg class="-ml-0.5 mr-1.5 h-2 w-2 text-green-400 dark:text-green-500" fill="currentColor" viewBox="0 0 8 8">
+    <span class="inline-flex items-center justify-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-400 min-h-[1.5rem]">
+      <svg class="mr-1.5 h-2.5 w-2.5 text-green-400 dark:text-green-500" fill="currentColor" viewBox="0 0 8 8">
         <circle cx="4" cy="4" r="3" />
       </svg>
       Completed
@@ -469,8 +472,8 @@ defmodule DbserviceWeb.ImportLive.Index do
 
   defp get_status_badge("pending") do
     raw("""
-    <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-400">
-      <svg class="-ml-0.5 mr-1.5 h-2 w-2 text-blue-400 dark:text-blue-500" fill="currentColor" viewBox="0 0 8 8">
+    <span class="inline-flex items-center justify-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-400 min-h-[1.5rem]">
+      <svg class="mr-1.5 h-2.5 w-2.5 text-blue-400 dark:text-blue-500" fill="currentColor" viewBox="0 0 8 8">
         <circle cx="4" cy="4" r="3" />
       </svg>
       Pending
@@ -480,8 +483,8 @@ defmodule DbserviceWeb.ImportLive.Index do
 
   defp get_status_badge("processing") do
     raw("""
-    <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-amber-100 text-amber-800 dark:bg-amber-900/30 dark:text-amber-400">
-      <svg class="-ml-0.5 mr-1.5 h-2 w-2 text-amber-400 dark:text-amber-500" fill="currentColor" viewBox="0 0 8 8">
+    <span class="inline-flex items-center justify-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-amber-100 text-amber-800 dark:bg-amber-900/30 dark:text-amber-400 min-h-[1.5rem]">
+      <svg class="mr-1.5 h-2.5 w-2.5 text-amber-400 dark:text-amber-500 animate-pulse" fill="currentColor" viewBox="0 0 8 8">
         <circle cx="4" cy="4" r="3" />
       </svg>
       Processing
@@ -491,8 +494,8 @@ defmodule DbserviceWeb.ImportLive.Index do
 
   defp get_status_badge("failed") do
     raw("""
-    <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-rose-100 text-rose-800 dark:bg-rose-900/30 dark:text-rose-400">
-      <svg class="-ml-0.5 mr-1.5 h-2 w-2 text-rose-400 dark:text-rose-500" fill="currentColor" viewBox="0 0 8 8">
+    <span class="inline-flex items-center justify-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-rose-100 text-rose-800 dark:bg-rose-900/30 dark:text-rose-400 min-h-[1.5rem]">
+      <svg class="mr-1.5 h-2.5 w-2.5 text-rose-400 dark:text-rose-500" fill="currentColor" viewBox="0 0 8 8">
         <circle cx="4" cy="4" r="3" />
       </svg>
       Failed
@@ -502,8 +505,8 @@ defmodule DbserviceWeb.ImportLive.Index do
 
   defp get_status_badge("stopped") do
     raw("""
-    <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-orange-100 text-orange-800 dark:bg-orange-900/30 dark:text-orange-400">
-      <svg class="-ml-0.5 mr-1.5 h-2 w-2 text-orange-400 dark:text-orange-500" fill="currentColor" viewBox="0 0 8 8">
+    <span class="inline-flex items-center justify-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-orange-100 text-orange-800 dark:bg-orange-900/30 dark:text-orange-400 min-h-[1.5rem]">
+      <svg class="mr-1.5 h-2.5 w-2.5 text-orange-400 dark:text-orange-500" fill="currentColor" viewBox="0 0 8 8">
         <circle cx="4" cy="4" r="3" />
       </svg>
       Stopped
@@ -514,8 +517,8 @@ defmodule DbserviceWeb.ImportLive.Index do
   # Added a fallback clause for any unexpected status values
   defp get_status_badge(status) do
     raw("""
-    <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-gray-100 text-gray-800 dark:bg-gray-900/30 dark:text-gray-400">
-      <svg class="-ml-0.5 mr-1.5 h-2 w-2 text-gray-400 dark:text-gray-500" fill="currentColor" viewBox="0 0 8 8">
+    <span class="inline-flex items-center justify-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-gray-100 text-gray-800 dark:bg-gray-900/30 dark:text-gray-400 min-h-[1.5rem]">
+      <svg class="mr-1.5 h-2.5 w-2.5 text-gray-400 dark:text-gray-500" fill="currentColor" viewBox="0 0 8 8">
         <circle cx="4" cy="4" r="3" />
       </svg>
       #{status}
