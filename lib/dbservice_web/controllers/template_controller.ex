@@ -15,7 +15,11 @@ defmodule DbserviceWeb.TemplateController do
          "teacher_batch_assignment"
        ] do
       csv_content = DataImport.generate_csv_template(import_type)
-      filename = DataImport.get_template_filename(import_type)
+
+      filename =
+        DataImport.format_type_name(import_type)
+        |> String.replace(" ", "")
+        |> Kernel.<>(".csv")
 
       conn
       |> put_resp_content_type("text/csv")

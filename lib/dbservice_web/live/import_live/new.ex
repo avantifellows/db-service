@@ -230,15 +230,16 @@ defmodule DbserviceWeb.ImportLive.New do
                 <h3 class="text-sm font-medium text-gray-900 dark:text-gray-100">
                   Download CSV Template
                 </h3>
-                <div class="mt-2 text-sm text-gray-700 dark:text-gray-300">
+                <div class="mt-2 text-sm text-gray-700 dark:text-gray-300" id={"template-section-#{@selected_type}"}>
                   <p class="mb-3">Download a properly formatted CSV template for <strong><%= DataImport.format_type_name(@selected_type) %></strong> with all required and optional fields:</p>
 
-                  <a href={~p"/templates/#{@selected_type}/download"}
-                     class="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-green-600 hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-green-500 transition-colors">
+                  <a href={~p"/templates/#{@selected_type}/download?v=#{System.system_time(:millisecond)}"}
+                     class="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-green-600 hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-green-500 transition-colors"
+                     target="_blank">
                     <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                       <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
                     </svg>
-                    Download <%= DataImport.get_template_filename(@selected_type) %>
+                    Download <%= DataImport.format_type_name(@selected_type) %> Template
                   </a>
 
                   <p class="mt-3 text-xs text-gray-600 dark:text-gray-400">

@@ -63,9 +63,3 @@ config :phoenix, :stacktrace_depth, 20
 config :phoenix, :plug_init_mode, :runtime
 
 config :dbservice, :environment, :dev
-
-# Import testing configurations for halt functionality
-# Set to true to enable delays between record processing (useful for testing halt feature)
-config :dbservice, :import_test_delay, false
-# Delay in milliseconds between processing each record (when test_delay is enabled)
-config :dbservice, :import_test_delay_ms, 15000
