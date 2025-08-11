@@ -13,10 +13,10 @@ defmodule DbserviceWeb.SwaggerSchema.Chapter do
           properties do
             name(
               Schema.array(:object),
-              "Multilingual chapter names, each with a language code and value",
+              "Multilingual chapter names. Each object should contain 'lang_code' and 'chapter' keys",
               example: [
-                %{lang: "hi", value: "हमारे आस-पास के पदार्थ"},
-                %{lang: "en", value: "Matter in Our Surroundings"}
+                %{lang_code: "hi", chapter: "हमारे आस-पास के पदार्थ"},
+                %{lang_code: "en", chapter: "Matter in Our Surroundings"}
               ]
             )
 
@@ -27,8 +27,8 @@ defmodule DbserviceWeb.SwaggerSchema.Chapter do
 
           example(%{
             name: [
-              %{lang: "hi", value: "हमारे आस-पास के पदार्थ"},
-              %{lang: "en", value: "Matter in Our Surroundings"}
+              %{lang_code: "hi", chapter: "हमारे आस-पास के पदार्थ"},
+              %{lang_code: "en", chapter: "Matter in Our Surroundings"}
             ],
             code: "9C01",
             grade_id: 1,

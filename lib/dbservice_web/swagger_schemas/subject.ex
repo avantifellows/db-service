@@ -13,10 +13,10 @@ defmodule DbserviceWeb.SwaggerSchema.Subject do
           properties do
             name(
               Schema.array(:object),
-              "Multilingual subject names, each with a language code and value",
+              "Multilingual subject names. Each object should contain 'lang_code' and 'subject' keys",
               example: [
-                %{lang: "en", value: "Physics"},
-                %{lang: "hi", value: "भौतिकी"}
+                %{lang_code: "en", subject: "Physics"},
+                %{lang_code: "hi", subject: "भौतिकी"}
               ]
             )
 
@@ -26,8 +26,8 @@ defmodule DbserviceWeb.SwaggerSchema.Subject do
 
           example(%{
             name: [
-              %{lang: "en", value: "Physics"},
-              %{lang: "hi", value: "भौतिकी"}
+              %{lang_code: "en", subject: "Physics"},
+              %{lang_code: "hi", subject: "भौतिकी"}
             ],
             code: "P11",
             parent_id: 1
