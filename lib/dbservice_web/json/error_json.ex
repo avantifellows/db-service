@@ -6,7 +6,7 @@ defmodule DbserviceWeb.ErrorJSON do
 
     message =
       case assigns[:reason] do
-        %{message: msg} -> msg
+        %{message: msg} -> remove_special_chars(msg)
         nil -> "Internal Server Error"
         other -> other
       end
@@ -20,7 +20,7 @@ defmodule DbserviceWeb.ErrorJSON do
 
     message =
       case assigns[:reason] do
-        %{message: msg} -> msg
+        %{message: msg} -> remove_special_chars(msg)
         nil -> "Not Found"
         other -> other
       end
@@ -33,7 +33,7 @@ defmodule DbserviceWeb.ErrorJSON do
 
     message =
       case assigns[:reason] do
-        %{message: msg} -> msg
+        %{message: msg} -> remove_special_chars(msg)
         nil -> "Invalid request"
         other -> other
       end
@@ -49,7 +49,7 @@ defmodule DbserviceWeb.ErrorJSON do
 
     message =
       case assigns[:reason] do
-        %{message: msg} -> msg
+        %{message: msg} -> remove_special_chars(msg)
         nil -> "Unknown error"
         other -> other
       end
@@ -62,5 +62,11 @@ defmodule DbserviceWeb.ErrorJSON do
   # "Not Found".
   def template_not_found(template, _assigns) do
     %{errors: %{detail: Phoenix.Controller.status_message_from_template(template)}}
+  end
+
+  def remove_special_chars(str) when is_binary(str) do
+    str
+    |> String.replace("\n", " ")
+    |> String.replace("\"", "")
   end
 end
