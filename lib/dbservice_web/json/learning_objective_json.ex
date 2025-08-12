@@ -7,12 +7,11 @@ defmodule DbserviceWeb.LearningObjectiveJSON do
     render(learning_objective)
   end
 
-  def render(learning_objective) do
+  defp render(learning_objective) do
     %{
       id: learning_objective.id,
       title: learning_objective.title,
-      concept_id: learning_objective.concept_id,
-      tag_id: learning_objective.tag_id
+      concept_id: learning_objective.concept_id
     }
   end
 end
