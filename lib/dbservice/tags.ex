@@ -78,4 +78,11 @@ defmodule Dbservice.Tags do
   def change_tag(%Tag{} = tag, attrs \\ %{}) do
     Tag.changeset(tag, attrs)
   end
+
+  @doc """
+  Gets a tag by name. Returns nil if not found.
+  """
+  def get_tag_by_name(name) do
+    Repo.get_by(Tag, name: name)
+  end
 end

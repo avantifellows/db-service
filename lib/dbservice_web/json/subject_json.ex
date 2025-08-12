@@ -7,12 +7,12 @@ defmodule DbserviceWeb.SubjectJSON do
     render(subject)
   end
 
-  def render(subject) do
+  defp render(subject) do
     %{
       id: subject.id,
       name: subject.name,
       code: subject.code,
-      tag_id: subject.tag_id
+      parent_id: subject.parent_id
     }
   end
 end
