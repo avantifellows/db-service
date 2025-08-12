@@ -10,8 +10,7 @@ defmodule DbserviceWeb.GradeJSON do
   def render(grade) do
     %{
       id: grade.id,
-      number: grade.number,
-      tag_id: grade.tag_id
+      number: grade.number
     }
   end
 end

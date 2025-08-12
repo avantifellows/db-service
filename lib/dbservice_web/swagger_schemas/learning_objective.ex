@@ -11,15 +11,24 @@ defmodule DbserviceWeb.SwaggerSchema.LearningObjective do
           description("A learning objective in the application")
 
           properties do
-            title(:string, "Title of the learning objective")
+            title(
+              Schema.array(:object),
+              "Multilingual titles for the learning objective",
+              example: [
+                %{lang: "en", value: "Understanding fundamental concept of Electromagnetism"},
+                %{lang: "hi", value: "विद्युत चुंबकत्व की मौलिक अवधारणा को समझना"}
+              ]
+            )
+
             concept_id(:integer, "Concept id associated with the learning objective")
-            tag_id(:integer, "Tag id associated with the learning objective")
           end
 
           example(%{
-            title: "Understanding fundamental concept of Electromagnetism",
-            concept_id: 1,
-            tag_id: 6
+            title: [
+              %{lang: "en", value: "Understanding fundamental concept of Electromagnetism"},
+              %{lang: "hi", value: "विद्युत चुंबकत्व की मौलिक अवधारणा को समझना"}
+            ],
+            concept_id: 1
           })
         end
     }

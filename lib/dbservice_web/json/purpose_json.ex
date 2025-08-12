@@ -7,12 +7,11 @@ defmodule DbserviceWeb.PurposeJSON do
     render(purpose)
   end
 
-  def render(purpose) do
+  defp render(purpose) do
     %{
       id: purpose.id,
       name: purpose.name,
-      description: purpose.description,
-      tag_id: purpose.tag_id
+      description: purpose.description
     }
   end
 end
