@@ -1,5 +1,6 @@
 defmodule DbserviceWeb.ErrorJSON do
   require Logger
+
   def render(template, assigns) do
     {detail, default_message} =
       case template do

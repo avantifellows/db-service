@@ -68,36 +68,36 @@ defmodule DbserviceWeb.ImportLive.Show do
 
   defp parse_error_details(error_details) when is_list(error_details) do
     Enum.map(error_details, fn
-        detail when is_map(detail) ->
+      detail when is_map(detail) ->
         detail
 
-        detail when is_binary(detail) ->
-          try do
-            # Attempt to parse JSON-like string
-            case Jason.decode(detail) do
-              {:ok, parsed_detail} ->
+      detail when is_binary(detail) ->
+        try do
+          # Attempt to parse JSON-like string
+          case Jason.decode(detail) do
+            {:ok, parsed_detail} ->
               parsed_detail
 
-              _ ->
-                # Fallback parsing for string-encoded error
-                %{
-                "row" => extract_row(detail),
-                  "error" => detail
-                }
-            end
-          rescue
             _ ->
+              # Fallback parsing for string-encoded error
               %{
-              "row" => "Unknown",
+                "row" => extract_row(detail),
                 "error" => detail
               }
           end
+        rescue
+          _ ->
+            %{
+              "row" => "Unknown",
+              "error" => detail
+            }
+        end
 
-        _ ->
-          %{
+      _ ->
+        %{
           "row" => "Unknown",
-            "error" => "Unprocessable error format"
-          }
+          "error" => "Unprocessable error format"
+        }
     end)
   end
 

@@ -394,7 +394,7 @@ defmodule Dbservice.Constants.Mappings do
       required: ["teacher_addition"],
       optional: [],
       type: :boolean
-    },
+    }
   }
 
   def get_mappings, do: @mappings

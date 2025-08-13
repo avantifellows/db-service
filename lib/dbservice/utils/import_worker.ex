@@ -229,7 +229,7 @@ defmodule Dbservice.DataImport.ImportWorker do
         {:cont, {:ok, [result | processed_records]}}
 
       {:error, reason} ->
-        handle_record_error(index-1, reason, import_record, processed_records)
+        handle_record_error(index - 1, reason, import_record, processed_records)
     end
   end
 
@@ -242,6 +242,7 @@ defmodule Dbservice.DataImport.ImportWorker do
   # Generic single record processing
   defp process_single_record(record, index, import_record, record_processor_fn) do
     :timer.sleep(5000)
+
     try do
       case record_processor_fn.(record) do
         {:ok, _} = result ->
