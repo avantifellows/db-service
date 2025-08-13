@@ -147,39 +147,23 @@ defmodule Dbservice.DataImport do
   def complete_import(import_id, total_rows) do
     import_record = get_import!(import_id)
 
-    # Check if import was stopped - if so, don't change status to completed
-    if import_record.status == "stopped" do
-      # Import was halted, only update processed_rows to reflect actual progress
-      {:ok, updated_import} =
-        update_import(import_record, %{
-          processed_rows: total_rows
-        })
-
-      # Broadcast update
-      Phoenix.PubSub.broadcast(Dbservice.PubSub, "imports", {:import_updated, import_record.id})
-
-      # Clean up the file
-      cleanup_import_file(updated_import)
-
-      {:ok, updated_import}
-    else
-      # Normal completion - update status to completed
-      # Do NOT update total_rows here as it was already set at the start
-      {:ok, updated_import} =
-        update_import(import_record, %{
+    attrs =
+      if import_record.status == "stopped" do
+        %{processed_rows: total_rows}
+      else
+        %{
           status: "completed",
           processed_rows: total_rows,
           completed_at: DateTime.utc_now()
-        })
+        }
+      end
 
-      # Broadcast completion update
-      Phoenix.PubSub.broadcast(Dbservice.PubSub, "imports", {:import_updated, import_record.id})
+    {:ok, updated_import} = update_import(import_record, attrs)
 
-      # Clean up the file
-      cleanup_import_file(updated_import)
+    Phoenix.PubSub.broadcast(Dbservice.PubSub, "imports", {:import_updated, import_record.id})
+    cleanup_import_file(updated_import)
 
-      {:ok, updated_import}
-    end
+    {:ok, updated_import}
   end
 
   @doc """

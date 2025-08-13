@@ -1,60 +1,24 @@
 defmodule DbserviceWeb.ErrorJSON do
   require Logger
-
-  def render("500.json", assigns) do
-    Logger.error("Internal Server Error: #{inspect(assigns[:reason])}")
-
-    message =
-      case assigns[:reason] do
-        %{message: msg} -> remove_special_chars(msg)
-        nil -> "Internal Server Error"
-        other -> other
-      end
-
-    %{errors: %{detail: "Internal Server Error", message: message}}
-  end
-
-  # Optionally, add other error handlers:
-  def render("404.json", assigns) do
-    Logger.error("Not Found: #{inspect(assigns[:reason])}")
-
-    message =
-      case assigns[:reason] do
-        %{message: msg} -> remove_special_chars(msg)
-        nil -> "Not Found"
-        other -> other
-      end
-
-    %{errors: %{detail: "Not Found", message: message}}
-  end
-
-  def render("400.json", assigns) do
-    Logger.error("Bad Request: #{inspect(assigns[:reason])}")
-
-    message =
-      case assigns[:reason] do
-        %{message: msg} -> remove_special_chars(msg)
-        nil -> "Invalid request"
-        other -> other
-      end
-
-    %{errors: %{detail: "Bad Request", message: message}}
-  end
-
-  # Fallback for any other status
   def render(template, assigns) do
-    Logger.error(
-      "Unknown error - Template: #{inspect(template)}, Assigns: #{inspect(assigns[:reason])}"
-    )
+    {detail, default_message} =
+      case template do
+        "500.json" -> {"Internal Server Error", "Internal Server Error"}
+        "404.json" -> {"Not Found", "Not Found"}
+        "400.json" -> {"Bad Request", "Invalid request"}
+        _ -> {"Unknown error", "Unknown error"}
+      end
+
+    Logger.error("#{detail}: #{inspect(assigns[:reason])}")
 
     message =
       case assigns[:reason] do
         %{message: msg} -> remove_special_chars(msg)
-        nil -> "Unknown error"
+        nil -> default_message
         other -> other
       end
 
-    %{errors: %{detail: "Unknown error", message: message}}
+    %{errors: %{detail: detail, message: message}}
   end
 
   # By default, Phoenix returns the status message from
