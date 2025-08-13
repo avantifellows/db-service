@@ -1,4 +1,22 @@
 defmodule DbserviceWeb.Components.ImportStopModal do
+  @moduledoc """
+  A reusable Phoenix LiveView component that renders a confirmation modal for stopping data imports.
+
+  This component provides a consistent user interface for confirming the action of stopping
+  an import process across different pages in the application. It displays import progress
+  information and warns users about the consequences of stopping an import.
+
+  The modal includes:
+  - Current import progress with percentage completion
+  - Warning about data loss and the need to restart
+  - Cancel and confirm action buttons
+  - Responsive design with proper accessibility features
+
+  ## Usage
+
+  This component is designed to be used in LiveView pages that manage import operations,
+  such as the import index and show pages.
+  """
   use Phoenix.Component
 
   @doc """
