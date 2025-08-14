@@ -1,6 +1,14 @@
 defmodule Dbservice.DataImport.ImportWorker do
   @moduledoc """
-  This module defines a worker for processing student data imports using Oban.
+  This m      {:error, reason} ->
+        # Update import record with CSV parsing error details
+        update_params = %{
+          error_count: 1,
+          error_details: [%{row: "CSV Parsing", error: reason}]
+        }
+        DataImport.update_import(import_record, update_params)
+        # Don't broadcast here as handle_import_error will call fail_import which broadcasts
+        handle_import_error(import_record, reason)ines a worker for processing student data imports using Oban.
 
   It reads CSV files, maps their fields to the database schema, and processes
   student records by creating or updating them in the database. It also
@@ -71,6 +79,14 @@ defmodule Dbservice.DataImport.ImportWorker do
         end
 
       {:error, reason} ->
+        # Update import record with CSV parsing error details
+        update_params = %{
+          error_count: 1,
+          error_details: [%{row: "CSV Parsing", error: reason}]
+        }
+
+        DataImport.update_import(import_record, update_params)
+        Phoenix.PubSub.broadcast(Dbservice.PubSub, "imports", {:import_updated, import_record.id})
         handle_import_error(import_record, reason)
     end
   end
@@ -78,6 +94,7 @@ defmodule Dbservice.DataImport.ImportWorker do
   # Generic CSV parsing function
   defp parse_csv_records(path, start_row, import_type) do
     field_extractor_fn = get_field_extractor_fn(import_type)
+    IO.inspect("Parsing CSV records from #{path} starting at row #{start_row}")
 
     parse_csv_records_with_extractor(path, start_row, field_extractor_fn)
   end
@@ -221,7 +238,20 @@ defmodule Dbservice.DataImport.ImportWorker do
   end
 
   # Helper function to handle errors during record processing
-  defp handle_record_error(index, reason, _import_record, _processed_records) do
+  defp handle_record_error(index, reason, import_record, _processed_records) do
+    # Update import record with error details before halting
+    update_params = %{
+      error_count: (import_record.error_count || 0) + 1,
+      error_details: [
+        %{row: index, error: reason}
+        | import_record.error_details || []
+      ]
+    }
+
+    DataImport.update_import(import_record, update_params)
+
+    # Don't broadcast here as the error will be handled by handle_import_error which calls fail_import
+
     # Halt the entire import process if any row fails
     {:halt, {:error, "Error processing row #{index}: #{reason}"}}
   end
