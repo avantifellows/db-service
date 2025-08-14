@@ -94,8 +94,6 @@ defmodule Dbservice.DataImport.ImportWorker do
   # Generic CSV parsing function
   defp parse_csv_records(path, start_row, import_type) do
     field_extractor_fn = get_field_extractor_fn(import_type)
-    IO.inspect("Parsing CSV records from #{path} starting at row #{start_row}")
-
     parse_csv_records_with_extractor(path, start_row, field_extractor_fn)
   end
 
