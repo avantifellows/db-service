@@ -80,17 +80,6 @@ defmodule Dbservice.DataImport.ImportWorker do
         DataImport.update_import(import_record, update_params)
         Phoenix.PubSub.broadcast(Dbservice.PubSub, "imports", {:import_updated, import_record.id})
         handle_import_error(import_record, error_message)
-
-      {:error, reason} ->
-        # Fallback for unstructured errors
-        update_params = %{
-          error_count: 1,
-          error_details: [%{row: "CSV Parsing", error: reason}]
-        }
-
-        DataImport.update_import(import_record, update_params)
-        Phoenix.PubSub.broadcast(Dbservice.PubSub, "imports", {:import_updated, import_record.id})
-        handle_import_error(import_record, reason)
     end
   end
 
