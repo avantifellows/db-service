@@ -1,18 +1,10 @@
 defmodule Dbservice.DataImport.ImportWorker do
   @moduledoc """
-  This m      {:error, reason} ->
-        # Update import record with CSV parsing error details
-        update_params = %{
-          error_count: 1,
-          error_details: [%{row: "CSV Parsing", error: reason}]
-        }
-        DataImport.update_import(import_record, update_params)
-        # Don't broadcast here as handle_import_error will call fail_import which broadcasts
-        handle_import_error(import_record, reason)ines a worker for processing student data imports using Oban.
+  Defines a worker for processing data imports using Oban.
 
-  It reads CSV files, maps their fields to the database schema, and processes
-  student records by creating or updating them in the database. It also
-  handles student enrollments based on the imported data.
+  This worker reads CSV files, maps their fields to the database schema, and processes
+  records by creating or updating them in the database. It also handles enrollments
+  and other related operations based on the imported data.
 
   The worker updates the import record's status and keeps track of processing
   progress, including errors encountered.
@@ -78,8 +70,19 @@ defmodule Dbservice.DataImport.ImportWorker do
           e -> handle_import_error(import_record, Exception.message(e))
         end
 
+      {:error, {error_message, row_info}} ->
+        # Structured error with explicit row number
+        update_params = %{
+          error_count: 1,
+          error_details: [%{row: row_info, error: error_message}]
+        }
+
+        DataImport.update_import(import_record, update_params)
+        Phoenix.PubSub.broadcast(Dbservice.PubSub, "imports", {:import_updated, import_record.id})
+        handle_import_error(import_record, error_message)
+
       {:error, reason} ->
-        # Update import record with CSV parsing error details
+        # Fallback for unstructured errors
         update_params = %{
           error_count: 1,
           error_details: [%{row: "CSV Parsing", error: reason}]
@@ -99,12 +102,12 @@ defmodule Dbservice.DataImport.ImportWorker do
 
   # Unified field extractor function for all import types
   defp get_field_extractor_fn(import_type) do
-    fn record ->
+    fn {record, row_number} ->
       record
       |> extract_field_mappings(import_type)
       |> map_boolean_fields(import_type)
-      |> add_grade_id()
-      |> add_subject_id()
+      |> add_grade_id(row_number)
+      |> add_subject_id(row_number)
     end
   end
 
@@ -137,34 +140,46 @@ defmodule Dbservice.DataImport.ImportWorker do
     end)
   end
 
-  defp add_grade_id(record) do
+  defp add_grade_id(record, row_number) do
     case Map.get(record, "grade") do
       nil ->
         record
 
       grade ->
-        case Grades.get_grade_by_number(grade) do
-          %Dbservice.Grades.Grade{} = grade_record ->
-            Map.put(record, "grade_id", grade_record.id)
+        try do
+          case Grades.get_grade_by_number(grade) do
+            %Dbservice.Grades.Grade{} = grade_record ->
+              Map.put(record, "grade_id", grade_record.id)
 
-          {:ok, grade_record} ->
-            Map.put(record, "grade_id", grade_record.id)
+            {:ok, grade_record} ->
+              Map.put(record, "grade_id", grade_record.id)
 
-          _ ->
-            record
+            _ ->
+              record
+          end
+        rescue
+          error ->
+            # Re-raise with more specific error message for grade lookup failures
+            raise "Failed to lookup grade '#{grade}' on row #{row_number}: #{Exception.message(error)}"
         end
     end
   end
 
-  defp add_subject_id(record) do
+  defp add_subject_id(record, row_number) do
     case Map.get(record, "subject") do
       nil ->
         record
 
       subject_name ->
-        case DataImport.TeacherEnrollment.get_subject_id_by_name(subject_name) do
-          nil -> record
-          subject_id -> Map.put(record, "subject_id", subject_id)
+        try do
+          case DataImport.TeacherEnrollment.get_subject_id_by_name(subject_name) do
+            nil -> record
+            subject_id -> Map.put(record, "subject_id", subject_id)
+          end
+        rescue
+          error ->
+            # Re-raise with more specific error message for subject lookup failures
+            raise "Failed to lookup subject '#{subject_name}' on row #{row_number}: #{Exception.message(error)}"
         end
     end
   end
@@ -182,18 +197,37 @@ defmodule Dbservice.DataImport.ImportWorker do
           validate_row_length: false,
           escape_max_lines: 2
         )
+        # index 1 corresponds to first data row (after header)
         |> Stream.with_index(1)
         |> Stream.filter(fn {_record, index} -> index >= start_row - 1 end)
-        |> Stream.map(fn {record, index} -> {field_extractor_fn.(record), index} end)
+        |> Stream.map(fn {record, index} ->
+          # Compute actual CSV row number (header is row 1)
+          csv_row_number = index + 1
+
+          try do
+            {field_extractor_fn.({record, csv_row_number}), index}
+          rescue
+            e ->
+              {:error, Exception.message(e), csv_row_number}
+          end
+        end)
         |> Enum.to_list()
 
-      {:ok, records}
+      # If any field extraction failed, return first structured error with row number
+      case Enum.find(records, fn
+             {:error, _msg, _row} -> true
+             _ -> false
+           end) do
+        {:error, msg, row} -> {:error, {msg, row}}
+        nil -> {:ok, records}
+      end
     rescue
       _e in CSV.StrayEscapeCharacterError ->
-        {:error, "CSV parsing failed: Stray escape character. Check file formatting."}
+        {:error,
+         {"CSV parsing failed: Stray escape character. Check file formatting.", "CSV Parsing"}}
 
       error ->
-        {:error, "Unexpected error parsing CSV: #{inspect(error)}"}
+        {:error, {"Unexpected error during CSV processing: #{inspect(error)}", "CSV Parsing"}}
     end
   end
 
@@ -237,11 +271,14 @@ defmodule Dbservice.DataImport.ImportWorker do
 
   # Helper function to handle errors during record processing
   defp handle_record_error(index, reason, import_record, _processed_records) do
+    # Calculate actual CSV row number: index is 1-based for data rows, so CSV row = index + 1 (accounting for header)
+    csv_row_number = index + 1
+
     # Update import record with error details before halting
     update_params = %{
       error_count: (import_record.error_count || 0) + 1,
       error_details: [
-        %{row: index, error: reason}
+        %{row: csv_row_number, error: reason}
         | import_record.error_details || []
       ]
     }
@@ -251,7 +288,7 @@ defmodule Dbservice.DataImport.ImportWorker do
     # Don't broadcast here as the error will be handled by handle_import_error which calls fail_import
 
     # Halt the entire import process if any row fails
-    {:halt, {:error, "Error processing row #{index}: #{reason}"}}
+    {:halt, {:error, "Error processing row #{csv_row_number}: #{reason}"}}
   end
 
   # Generic single record processing
@@ -385,7 +422,10 @@ defmodule Dbservice.DataImport.ImportWorker do
   end
 
   defp update_import_progress(import_record, index, status, error \\ nil) do
-    processed_rows = index + 1 - (import_record.start_row || 2)
+    # Calculate actual CSV row number: index is 1-based for data rows, so CSV row = index + 1 (accounting for header)
+    csv_row_number = index + 1
+    # Calculate how many data rows we've processed
+    processed_rows = csv_row_number - (import_record.start_row || 2)
 
     update_params = %{
       processed_rows: processed_rows
@@ -397,7 +437,7 @@ defmodule Dbservice.DataImport.ImportWorker do
           Map.merge(update_params, %{
             error_count: (import_record.error_count || 0) + 1,
             error_details: [
-              %{row: index + 1, error: inspect(error)}
+              %{row: csv_row_number, error: inspect(error)}
               | import_record.error_details || []
             ]
           })
@@ -406,7 +446,7 @@ defmodule Dbservice.DataImport.ImportWorker do
           Map.merge(update_params, %{
             error_count: (import_record.error_count || 0) + 1,
             error_details: [
-              %{row: index + 1, error: Exception.message(error)}
+              %{row: csv_row_number, error: Exception.message(error)}
               | import_record.error_details || []
             ]
           })
