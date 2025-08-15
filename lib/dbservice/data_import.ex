@@ -172,11 +172,20 @@ defmodule Dbservice.DataImport do
   def fail_import(import_id, reason) do
     import_record = get_import!(import_id)
 
+    # Preserve existing error details and add the failure reason
+    existing_error_details = import_record.error_details || []
+
+    error_details =
+      case existing_error_details do
+        [] -> [%{error: reason}]
+        _ -> existing_error_details
+      end
+
     # Update the import record with failure status
     {:ok, updated_import} =
       update_import(import_record, %{
         status: "failed",
-        error_details: [%{error: reason}],
+        error_details: error_details,
         completed_at: DateTime.utc_now()
       })
 
