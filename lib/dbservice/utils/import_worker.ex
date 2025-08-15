@@ -159,8 +159,8 @@ defmodule Dbservice.DataImport.ImportWorker do
           end
         rescue
           error ->
-            # Re-raise with more specific error message for grade lookup failures
-            raise "Failed to lookup grade '#{grade}' on row #{row_number}: #{Exception.message(error)}"
+            # Preserve original stacktrace while adding context
+            reraise "Failed to lookup grade '#{grade}' on row #{row_number}: #{Exception.message(error)}", __STACKTRACE__
         end
     end
   end
@@ -178,8 +178,8 @@ defmodule Dbservice.DataImport.ImportWorker do
           end
         rescue
           error ->
-            # Re-raise with more specific error message for subject lookup failures
-            raise "Failed to lookup subject '#{subject_name}' on row #{row_number}: #{Exception.message(error)}"
+            # Preserve original stacktrace while adding context
+            reraise "Failed to lookup subject '#{subject_name}' on row #{row_number}: #{Exception.message(error)}", __STACKTRACE__
         end
     end
   end
