@@ -5,6 +5,7 @@ defmodule Dbservice.Subjects do
 
   import Ecto.Query, warn: false
   alias Dbservice.Repo
+  alias Dbservice.Utils.Util
 
   alias Dbservice.Subjects.Subject
 
@@ -30,22 +31,45 @@ defmodule Dbservice.Subjects do
   def get_subject!(id), do: Repo.get!(Subject, id)
 
   @doc """
-  Gets a subject by name.
+  Gets a subject by name, searching in the JSONB name array for English language entries.
 
-  Raises `Ecto.NoResultsError` if the School does not exist.
+  The name field is now a JSONB array of objects like:
+  [{"subject": "English", "lang_code": "en"}, {"subject": null, "lang_code": "hi"}]
+
+  This function uses the filter_by_lang utility to filter by English language entries,
+  then searches for the given subject name (case-insensitive).
 
   ## Examples
 
-      iex> get_subject_by_name(Sankalp)
-      %School{}
+      iex> get_subject_by_name("botany")
+      %Subject{}
 
-      iex> get_subject_by_name(Sankalp)
-      ** (Ecto.NoResultsError)
+      iex> get_subject_by_name("Botany")
+      %Subject{}
+
+      iex> get_subject_by_name("nonexistent")
+      nil
 
   """
-  def get_subject_by_name(name) do
-    Repo.get_by(Subject, name: name)
+  def get_subject_by_name(name) when is_binary(name) do
+    base_query = from(s in Subject)
+
+    # Use filter_by_lang to filter for English entries only
+    filtered_query = Util.filter_by_lang(base_query, %{"lang_code" => "en"})
+
+    # Then filter by the subject name (case-insensitive) within the filtered English entries
+    from(s in filtered_query,
+      where:
+        fragment(
+          "EXISTS (SELECT 1 FROM JSONB_ARRAY_ELEMENTS(?) obj WHERE LOWER(obj->>'subject') = LOWER(?))",
+          s.name,
+          ^name
+        )
+    )
+    |> Repo.one()
   end
+
+  def get_subject_by_name(_), do: nil
 
   @doc """
   Creates a subject.

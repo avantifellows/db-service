@@ -13,7 +13,13 @@ defmodule DbserviceWeb.ImportLive.Index do
       Phoenix.PubSub.subscribe(Dbservice.PubSub, "imports")
     end
 
-    {:ok, assign(socket, imports: imports)}
+    # Track import statuses to avoid duplicate notifications
+    import_statuses =
+      imports
+      |> Enum.map(&{&1.id, &1.status})
+      |> Enum.into(%{})
+
+    {:ok, assign(socket, imports: imports, import_statuses: import_statuses)}
   end
 
   @impl true
@@ -31,12 +37,26 @@ defmodule DbserviceWeb.ImportLive.Index do
     # Refresh the imports list when any import is updated
     imports = DataImport.list_imports()
 
-    # Check if this import just failed and show a notification
+    # Check if this import status changed to a terminal state
     updated_import = Enum.find(imports, &(&1.id == import_id))
+    previous_status = Map.get(socket.assigns.import_statuses, import_id)
 
-    socket = handle_import_notification(socket, updated_import)
+    socket =
+      if should_show_notification?(previous_status, updated_import) do
+        handle_import_notification(socket, updated_import)
+      else
+        socket
+      end
 
-    {:noreply, assign(socket, imports: imports)}
+    # Update the import statuses map
+    new_import_statuses =
+      if updated_import do
+        Map.put(socket.assigns.import_statuses, import_id, updated_import.status)
+      else
+        socket.assigns.import_statuses
+      end
+
+    {:noreply, assign(socket, imports: imports, import_statuses: new_import_statuses)}
   end
 
   defp apply_action(socket, :index, _params) do
@@ -357,6 +377,19 @@ defmodule DbserviceWeb.ImportLive.Index do
     </svg>
     """)
   end
+
+  # Helper function to determine if we should show a notification
+  # Only show notifications when transitioning to a terminal state (completed/failed)
+  # and we haven't already shown a notification for this import
+  defp should_show_notification?(previous_status, %{status: "failed"})
+       when previous_status != "failed",
+       do: true
+
+  defp should_show_notification?(previous_status, %{status: "completed"})
+       when previous_status != "completed",
+       do: true
+
+  defp should_show_notification?(_, _), do: false
 
   # Helper function to handle import notifications and reduce nesting
   defp handle_import_notification(socket, %{status: "failed"} = import) do
