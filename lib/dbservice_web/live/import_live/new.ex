@@ -27,7 +27,21 @@ defmodule DbserviceWeb.ImportLive.New do
     # Get the selected type to show relevant template download
     selected_type = Map.get(import_params, "type", "student")
 
-    {:noreply, assign(socket, changeset: changeset, form: form, selected_type: selected_type)}
+    {:noreply,
+     assign(socket,
+       changeset: changeset,
+       form: form,
+       selected_type: selected_type
+     )}
+  end
+
+  def handle_event("download_template", %{"type" => type}, socket) do
+    # Simple redirect to the template download URL
+    url = "/templates/#{type}/download"
+
+    {:noreply,
+     socket
+     |> push_event("download_file", %{url: url})}
   end
 
   def handle_event("save", params, socket) do
@@ -84,7 +98,9 @@ defmodule DbserviceWeb.ImportLive.New do
 
   def render(assigns) do
     ~H"""
-    <div class="min-h-screen bg-gradient-to-br from-gray-50 to-gray-100 dark:from-gray-900 dark:to-gray-800">
+    <div class="min-h-screen bg-gradient-to-br from-gray-50 to-gray-100 dark:from-gray-900 dark:to-gray-800"
+         phx-hook="TemplateDownloader"
+         id="template-downloader">
       <div class="max-w-7xl mx-auto px-4 py-10 sm:px-6 lg:px-8">
         <!-- Header with navigation -->
         <div class="mb-8 flex items-center">
@@ -230,17 +246,20 @@ defmodule DbserviceWeb.ImportLive.New do
                 <h3 class="text-sm font-medium text-gray-900 dark:text-gray-100">
                   Download CSV Template
                 </h3>
-                <div class="mt-2 text-sm text-gray-700 dark:text-gray-300" id={"template-section-#{@selected_type}"}>
+                <div class="mt-2 text-sm text-gray-700 dark:text-gray-300">
                   <p class="mb-3">Download a properly formatted CSV template for <strong><%= DataImport.format_type_name(@selected_type) %></strong> with all required and optional fields:</p>
 
-                  <a href={~p"/templates/#{@selected_type}/download?v=#{System.system_time(:millisecond)}"}
+                  <button
+                     phx-click="download_template"
+                     phx-value-type={@selected_type}
                      class="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-green-600 hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-green-500 transition-colors"
+                     type="button"
                      >
                     <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                       <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
                     </svg>
                     Download <%= DataImport.format_type_name(@selected_type) %> Template
-                  </a>
+                  </button>
 
                   <p class="mt-3 text-xs text-gray-600 dark:text-gray-400">
                     The template contains only the column headers. Fill in your data below the headers and upload as a Google Sheet.

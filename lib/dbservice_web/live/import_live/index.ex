@@ -20,7 +20,13 @@ defmodule DbserviceWeb.ImportLive.Index do
       |> Enum.map(&{&1.id, &1.status})
       |> Enum.into(%{})
 
-    {:ok, assign(socket, imports: imports, import_statuses: import_statuses)}
+    {:ok,
+     assign(socket,
+       imports: imports,
+       import_statuses: import_statuses,
+       show_stop_modal: false,
+       selected_import: nil
+     )}
   end
 
   @impl true
