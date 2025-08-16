@@ -3,6 +3,7 @@ defmodule DbserviceWeb.ImportLive.Show do
   alias Dbservice.DataImport
   alias Dbservice.Utils.Util
   import Phoenix.HTML, only: [raw: 1]
+  import DbserviceWeb.Components.ImportStopModal
 
   @impl true
   def mount(%{"id" => id}, _session, socket) do
@@ -13,7 +14,7 @@ defmodule DbserviceWeb.ImportLive.Show do
       Phoenix.PubSub.subscribe(Dbservice.PubSub, "imports")
     end
 
-    {:ok, assign(socket, import: import_record)}
+    {:ok, assign(socket, import: import_record, show_stop_modal: false)}
   end
 
   @impl true
@@ -24,6 +25,44 @@ defmodule DbserviceWeb.ImportLive.Show do
       {:noreply, assign(socket, import: import_record)}
     else
       {:noreply, socket}
+    end
+  end
+
+  @impl true
+  def handle_event("show_stop_modal", _params, socket) do
+    {:noreply, assign(socket, show_stop_modal: true)}
+  end
+
+  @impl true
+  def handle_event("hide_stop_modal", _params, socket) do
+    {:noreply, assign(socket, show_stop_modal: false)}
+  end
+
+  @impl true
+  def handle_event("confirm_halt_import", _params, socket) do
+    case DataImport.halt_import(socket.assigns.import.id) do
+      {:ok, _updated_import} ->
+        {:noreply,
+         socket
+         |> assign(show_stop_modal: false)
+         |> put_flash(:info, "Import has been stopped successfully.")}
+
+      {:error, reason} ->
+        {:noreply,
+         socket
+         |> assign(show_stop_modal: false)
+         |> put_flash(:error, "Failed to halt import: #{reason}")}
+    end
+  end
+
+  @impl true
+  def handle_event("halt_import", _params, socket) do
+    case DataImport.halt_import(socket.assigns.import.id) do
+      {:ok, _updated_import} ->
+        {:noreply, put_flash(socket, :info, "Import has been stopped successfully.")}
+
+      {:error, reason} ->
+        {:noreply, put_flash(socket, :error, "Failed to halt import: #{reason}")}
     end
   end
 
@@ -102,8 +141,20 @@ defmodule DbserviceWeb.ImportLive.Show do
                 </p>
               </div>
 
-              <div>
+              <div class="flex items-center gap-3">
                 <%= status_badge(@import.status) %>
+
+                <%= if @import.status in ["processing", "pending"] do %>
+                  <button
+                    phx-click="show_stop_modal"
+                    class="inline-flex items-center px-3 py-2 border border-red-300 shadow-sm text-sm leading-4 font-medium rounded-md text-red-700 bg-white hover:bg-red-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500 dark:bg-gray-800 dark:border-red-600 dark:text-red-400 dark:hover:bg-red-900/20">
+                    <svg class="-ml-0.5 mr-2 h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 10l6 6m0-6l-6 6"></path>
+                    </svg>
+                    Stop Import
+                  </button>
+                <% end %>
               </div>
             </div>
           </div>
@@ -135,7 +186,7 @@ defmodule DbserviceWeb.ImportLive.Show do
                     </div>
                     <div class="ml-3">
                       <p class="text-xs font-medium text-gray-500 dark:text-gray-400">Type</p>
-                      <p class="text-sm font-semibold text-gray-900 dark:text-white"><%= @import.type || "Unknown" %></p>
+                      <p class="text-sm font-semibold text-gray-900 dark:text-white"><%= DataImport.format_type_name(@import.type) %></p>
                     </div>
                   </div>
                 </div>
@@ -234,6 +285,14 @@ defmodule DbserviceWeb.ImportLive.Show do
           <% end %>
         </div>
       </div>
+
+      <!-- Reusable confirmation modal for stopping import -->
+      <.import_stop_modal
+        show={@show_stop_modal}
+        import={@import}
+        on_hide="hide_stop_modal"
+        on_confirm="confirm_halt_import"
+      />
     </div>
     """
   end
@@ -355,6 +414,17 @@ defmodule DbserviceWeb.ImportLive.Show do
         <circle cx="4" cy="4" r="3" />
       </svg>
       Failed
+    </span>
+    """)
+  end
+
+  defp status_badge("stopped") do
+    raw("""
+    <span class="inline-flex items-center px-3 py-1 rounded-full text-sm font-medium bg-orange-100 text-orange-800 dark:bg-orange-900/30 dark:text-orange-400">
+      <svg class="-ml-0.5 mr-1.5 h-3 w-3 text-orange-400 dark:text-orange-500" fill="currentColor" viewBox="0 0 8 8">
+        <circle cx="4" cy="4" r="3" />
+      </svg>
+      Stopped
     </span>
     """)
   end

@@ -394,11 +394,7 @@ defmodule Dbservice.Constants.Mappings do
       required: ["teacher_addition"],
       optional: [],
       type: :boolean
-    },
-
-    # Optional fields (can appear in any import)
-    "Added by" => %{db_field: "added_by", required: [], optional: ["student"], type: :string},
-    "Added on" => %{db_field: "added_on", required: [], optional: ["student"], type: :date}
+    }
   }
 
   def get_mappings, do: @mappings

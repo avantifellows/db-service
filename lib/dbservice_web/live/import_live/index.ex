@@ -3,6 +3,7 @@ defmodule DbserviceWeb.ImportLive.Index do
   alias Dbservice.DataImport
   alias Dbservice.Utils.Util
   import Phoenix.HTML, only: [raw: 1]
+  import DbserviceWeb.Components.ImportStopModal
 
   @impl true
   def mount(_params, _session, socket) do
@@ -13,7 +14,19 @@ defmodule DbserviceWeb.ImportLive.Index do
       Phoenix.PubSub.subscribe(Dbservice.PubSub, "imports")
     end
 
-    {:ok, assign(socket, imports: imports)}
+    # Track import statuses to avoid duplicate notifications
+    import_statuses =
+      imports
+      |> Enum.map(&{&1.id, &1.status})
+      |> Enum.into(%{})
+
+    {:ok,
+     assign(socket,
+       imports: imports,
+       import_statuses: import_statuses,
+       show_stop_modal: false,
+       selected_import: nil
+     )}
   end
 
   @impl true
@@ -27,16 +40,59 @@ defmodule DbserviceWeb.ImportLive.Index do
   end
 
   @impl true
+  def handle_event("show_stop_modal", %{"import_id" => import_id}, socket) do
+    import_id = String.to_integer(import_id)
+    selected_import = Enum.find(socket.assigns.imports, &(&1.id == import_id))
+    {:noreply, assign(socket, show_stop_modal: true, selected_import: selected_import)}
+  end
+
+  @impl true
+  def handle_event("hide_stop_modal", _params, socket) do
+    {:noreply, assign(socket, show_stop_modal: false, selected_import: nil)}
+  end
+
+  @impl true
+  def handle_event("confirm_halt_import", _params, socket) do
+    case DataImport.halt_import(socket.assigns.selected_import.id) do
+      {:ok, _updated_import} ->
+        {:noreply,
+         socket
+         |> assign(show_stop_modal: false, selected_import: nil)
+         |> put_flash(:info, "Import has been stopped successfully.")}
+
+      {:error, reason} ->
+        {:noreply,
+         socket
+         |> assign(show_stop_modal: false, selected_import: nil)
+         |> put_flash(:error, "Failed to halt import: #{reason}")}
+    end
+  end
+
+  @impl true
   def handle_info({:import_updated, import_id}, socket) do
     # Refresh the imports list when any import is updated
     imports = DataImport.list_imports()
 
-    # Check if this import just failed and show a notification
+    # Check if this import status changed to a terminal state
     updated_import = Enum.find(imports, &(&1.id == import_id))
+    previous_status = Map.get(socket.assigns.import_statuses, import_id)
 
-    socket = handle_import_notification(socket, updated_import)
+    socket =
+      if should_show_notification?(previous_status, updated_import) do
+        handle_import_notification(socket, updated_import)
+      else
+        socket
+      end
 
-    {:noreply, assign(socket, imports: imports)}
+    # Update the import statuses map
+    new_import_statuses =
+      if updated_import do
+        Map.put(socket.assigns.import_statuses, import_id, updated_import.status)
+      else
+        socket.assigns.import_statuses
+      end
+
+    {:noreply, assign(socket, imports: imports, import_statuses: new_import_statuses)}
   end
 
   defp apply_action(socket, :index, _params) do
@@ -71,47 +127,105 @@ defmodule DbserviceWeb.ImportLive.Index do
         </div>
 
         <!-- Stats overview cards -->
-        <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6 mb-6 sm:mb-8">
+        <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 sm:gap-6 mb-6 sm:mb-8">
           <div class="bg-white dark:bg-gray-800 rounded-xl sm:rounded-2xl p-4 sm:p-6 shadow-md border border-gray-100 dark:border-gray-700 transition-all duration-300 hover:shadow-lg">
             <div class="flex items-center">
-              <div class="p-2 sm:p-3 rounded-lg sm:rounded-xl bg-indigo-100 dark:bg-indigo-900/30 text-indigo-600 dark:text-indigo-400">
-                <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 sm:h-6 sm:w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+              <div class="flex items-center justify-center p-2 sm:p-3 rounded-lg sm:rounded-xl bg-green-100 dark:bg-green-900/30 text-green-600 dark:text-green-400">
+               <svg xmlns="http://www.w3.org/2000/svg"
+                    class="h-5 w-5 sm:h-6 sm:w-6"
+                    fill="none"
+                    viewBox="0 0 24 24"
+                    stroke="currentColor"
+                    stroke-width="2"
+                    stroke-linecap="round"
+                    stroke-linejoin="round">
+                  <!-- Checkmark -->
+                  <path d="M9 12l2 2 4-4" />
+                  <!-- Circle -->
+                  <circle cx="12" cy="12" r="9" />
                 </svg>
+
               </div>
               <div class="ml-4">
                 <p class="text-sm font-medium text-gray-500 dark:text-gray-400">Completed</p>
                 <p class="text-xl sm:text-2xl font-bold text-gray-900 dark:text-white"><%= Enum.count(@imports, & &1.status == "completed") %></p>
               </div>
             </div>
-          </div>
+            </div>
 
-          <div class="bg-white dark:bg-gray-800 rounded-xl sm:rounded-2xl p-4 sm:p-6 shadow-md border border-gray-100 dark:border-gray-700 transition-all duration-300 hover:shadow-lg">
-            <div class="flex items-center">
-              <div class="p-2 sm:p-3 rounded-lg sm:rounded-xl bg-amber-100 dark:bg-amber-900/30 text-amber-600 dark:text-amber-400">
-                <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 sm:h-6 sm:w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
-                </svg>
-              </div>
-              <div class="ml-4">
-                <p class="text-sm font-medium text-gray-500 dark:text-gray-400">In Progress</p>
-                <p class="text-xl sm:text-2xl font-bold text-gray-900 dark:text-white"><%= Enum.count(@imports, & &1.status == "processing") %></p>
+            <div class="bg-white dark:bg-gray-800 rounded-xl sm:rounded-2xl p-4 sm:p-6 shadow-md border border-gray-100 dark:border-gray-700 transition-all duration-300 hover:shadow-lg">
+              <div class="flex items-center">
+               <div class="flex items-center justify-center p-2 sm:p-3 rounded-lg sm:rounded-xl bg-indigo-100 dark:bg-indigo-900/30 text-indigo-600 dark:text-indigo-400">
+                  <svg xmlns="http://www.w3.org/2000/svg"
+                      class="h-5 w-5 sm:h-6 sm:w-6"
+                      fill="none"
+                      viewBox="0 0 24 24"
+                      stroke="currentColor"
+                      stroke-width="2"
+                      stroke-linecap="round"
+                      stroke-linejoin="round">
+                    <!-- Clock hands -->
+                    <path d="M12 8v4l3 3" />
+                    <!-- Circle with same stroke width as path -->
+                    <circle cx="12" cy="12" r="9" />
+                  </svg>
+                </div>
+                <div class="ml-4">
+                  <p class="text-sm font-medium text-gray-500 dark:text-gray-400">In Progress</p>
+                  <p class="text-xl sm:text-2xl font-bold text-gray-900 dark:text-white"><%= Enum.count(@imports, & &1.status == "processing") %></p>
+                </div>
               </div>
             </div>
-          </div>
 
-          <div class="bg-white dark:bg-gray-800 rounded-xl sm:rounded-2xl p-4 sm:p-6 shadow-md border border-gray-100 dark:border-gray-700 transition-all duration-300 hover:shadow-lg sm:col-span-2 lg:col-span-1">
-            <div class="flex items-center">
-              <div class="p-2 sm:p-3 rounded-lg sm:rounded-xl bg-rose-100 dark:bg-rose-900/30 text-rose-600 dark:text-rose-400">
-                <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 sm:h-6 sm:w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
-                </svg>
-              </div>
-              <div class="ml-4">
-                <p class="text-sm font-medium text-gray-500 dark:text-gray-400">Failed</p>
-                <p class="text-xl sm:text-2xl font-bold text-gray-900 dark:text-white"><%= Enum.count(@imports, & &1.status == "failed") %></p>
+            <div class="bg-white dark:bg-gray-800 rounded-xl sm:rounded-2xl p-4 sm:p-6 shadow-md border border-gray-100 dark:border-gray-700 transition-all duration-300 hover:shadow-lg">
+              <div class="flex items-center">
+                <div class="flex items-center justify-center p-2 sm:p-3 rounded-lg sm:rounded-xl bg-amber-100 dark:bg-amber-900/30 text-amber-600 dark:text-amber-400">
+                   <svg xmlns="http://www.w3.org/2000/svg"
+                    class="h-5 w-5 sm:h-6 sm:w-6"
+                    fill="none"
+                    viewBox="0 0 24 24"
+                    stroke="currentColor"
+                    stroke-width="2">
+                  <!-- Circle -->
+                  <circle cx="12" cy="12" r="9" />
+                  <!-- Centered X -->
+                  <path stroke-linecap="round" stroke-linejoin="round"
+                        d="M9 9l6 6m0-6l-6 6" />
+                   </svg>
+                </div>
+                <div class="ml-4">
+                  <p class="text-sm font-medium text-gray-500 dark:text-gray-400">Stopped</p>
+                  <p class="text-xl sm:text-2xl font-bold text-gray-900 dark:text-white"><%= Enum.count(@imports, & &1.status == "stopped") %></p>
+                </div>
               </div>
             </div>
+
+            <div class="bg-white dark:bg-gray-800 rounded-xl sm:rounded-2xl p-4 sm:p-6 shadow-md border border-gray-100 dark:border-gray-700 transition-all duration-300 hover:shadow-lg">
+              <div class="flex items-center">
+
+                  <div class="flex items-center justify-center p-2 sm:p-3 rounded-lg sm:rounded-xl bg-rose-100 dark:bg-rose-900/30 text-rose-600 dark:text-rose-400">
+                  <svg xmlns="http://www.w3.org/2000/svg"
+                      class="h-5 w-5 sm:h-6 sm:w-6"
+                      fill="none"
+                      viewBox="0 0 24 24"
+                      stroke="currentColor"
+                      stroke-width="2"
+                      stroke-linecap="round"
+                      stroke-linejoin="round">
+                    <!-- Rounded triangle -->
+                    <path d="M12 3 L21 20 H3 Z" fill="none" stroke="currentColor" />
+                    <!-- Exclamation mark -->
+                    <line x1="12" y1="9" x2="12" y2="14" />
+                    <circle cx="12" cy="17" r="1" fill="currentColor" stroke="none" />
+                  </svg>
+                </div>
+
+
+                <div class="ml-4">
+                  <p class="text-sm font-medium text-gray-500 dark:text-gray-400">Failed</p>
+                  <p class="text-xl sm:text-2xl font-bold text-gray-900 dark:text-white"><%= Enum.count(@imports, & &1.status == "failed") %></p>
+                </div>
+              </div>
           </div>
         </div>
 
@@ -155,7 +269,7 @@ defmodule DbserviceWeb.ImportLive.Index do
                       <div class="text-xs text-gray-500 dark:text-gray-400">
                         <%= format_date(import.inserted_at) %> at <%= format_time(import.inserted_at) %>
                       </div>
-                      <div>
+                      <div class="flex space-x-2">
                         <.link navigate={~p"/imports/#{import.id}"}
                             class="inline-flex items-center justify-center p-2 rounded-lg text-indigo-600 hover:text-indigo-800 hover:bg-indigo-100 dark:text-indigo-400 dark:hover:text-indigo-300 dark:hover:bg-indigo-900/30 transition-colors">
                           <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
@@ -164,6 +278,19 @@ defmodule DbserviceWeb.ImportLive.Index do
                           </svg>
                           <span class="sr-only">View</span>
                         </.link>
+
+                        <%= if import.status in ["processing", "pending"] do %>
+                          <button
+                            phx-click="show_stop_modal"
+                            phx-value-import_id={import.id}
+                            class="inline-flex items-center justify-center p-2 rounded-lg text-red-600 hover:text-red-800 hover:bg-red-100 dark:text-red-400 dark:hover:text-red-300 dark:hover:bg-red-900/30 transition-colors">
+                            <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                              <path stroke-linecap="round" stroke-linejoin="round" d="M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                              <path stroke-linecap="round" stroke-linejoin="round" d="M9 10l6 6m0-6l-6 6" />
+                            </svg>
+                            <span class="sr-only">Stop</span>
+                          </button>
+                        <% end %>
                       </div>
                     </div>
                   </div>
@@ -236,6 +363,36 @@ defmodule DbserviceWeb.ImportLive.Index do
                             </svg>
                             <span class="sr-only">View</span>
                           </.link>
+
+                          <%= if import.status in ["processing", "pending"] do %>
+                            <button
+                              phx-click="show_stop_modal"
+                              phx-value-import_id={import.id}
+                              class="inline-flex items-center justify-center p-2 rounded-lg text-red-600 hover:text-red-800 hover:bg-red-100 dark:text-red-400 dark:hover:text-red-300 dark:hover:bg-red-900/30 transition-colors">
+                              <svg
+                                xmlns="http://www.w3.org/2000/svg"
+                                class="h-5 w-5 mx-auto"
+                                fill="none"
+                                viewBox="0 0 24 24"
+                                stroke="currentColor"
+                                stroke-width="2"
+                              >
+                                <!-- Circle -->
+                                <path
+                                  stroke-linecap="round"
+                                  stroke-linejoin="round"
+                                  d="M21 12a9 9 0 11-18 0 9 9 0 0118 0z"
+                                />
+                                <!-- Centered X -->
+                                <path
+                                  stroke-linecap="round"
+                                  stroke-linejoin="round"
+                                  d="M9 9l6 6m0-6l-6 6"
+                                />
+                              </svg>
+                              <span class="sr-only">Stop</span>
+                            </button>
+                          <% end %>
                         </div>
                       </td>
                     </tr>
@@ -245,6 +402,14 @@ defmodule DbserviceWeb.ImportLive.Index do
             </table>
           </div>
         </div>
+
+        <!-- Reusable confirmation modal for stopping import -->
+        <.import_stop_modal
+          show={@show_stop_modal}
+          import={@selected_import}
+          on_hide="hide_stop_modal"
+          on_confirm="confirm_halt_import"
+        />
       </div>
     </div>
     """
@@ -272,8 +437,8 @@ defmodule DbserviceWeb.ImportLive.Index do
 
   defp get_status_badge("completed") do
     raw("""
-    <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-400">
-      <svg class="-ml-0.5 mr-1.5 h-2 w-2 text-green-400 dark:text-green-500" fill="currentColor" viewBox="0 0 8 8">
+    <span class="inline-flex items-center justify-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-400 min-h-[1.5rem]">
+      <svg class="mr-1.5 h-2.5 w-2.5 text-green-400 dark:text-green-500" fill="currentColor" viewBox="0 0 8 8">
         <circle cx="4" cy="4" r="3" />
       </svg>
       Completed
@@ -283,8 +448,8 @@ defmodule DbserviceWeb.ImportLive.Index do
 
   defp get_status_badge("pending") do
     raw("""
-    <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-400">
-      <svg class="-ml-0.5 mr-1.5 h-2 w-2 text-blue-400 dark:text-blue-500" fill="currentColor" viewBox="0 0 8 8">
+    <span class="inline-flex items-center justify-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-400 min-h-[1.5rem]">
+      <svg class="mr-1.5 h-2.5 w-2.5 text-blue-400 dark:text-blue-500" fill="currentColor" viewBox="0 0 8 8">
         <circle cx="4" cy="4" r="3" />
       </svg>
       Pending
@@ -294,8 +459,8 @@ defmodule DbserviceWeb.ImportLive.Index do
 
   defp get_status_badge("processing") do
     raw("""
-    <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-amber-100 text-amber-800 dark:bg-amber-900/30 dark:text-amber-400">
-      <svg class="-ml-0.5 mr-1.5 h-2 w-2 text-amber-400 dark:text-amber-500" fill="currentColor" viewBox="0 0 8 8">
+    <span class="inline-flex items-center justify-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-amber-100 text-amber-800 dark:bg-amber-900/30 dark:text-amber-400 min-h-[1.5rem]">
+      <svg class="mr-1.5 h-2.5 w-2.5 text-amber-400 dark:text-amber-500 animate-pulse" fill="currentColor" viewBox="0 0 8 8">
         <circle cx="4" cy="4" r="3" />
       </svg>
       Processing
@@ -305,8 +470,8 @@ defmodule DbserviceWeb.ImportLive.Index do
 
   defp get_status_badge("failed") do
     raw("""
-    <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-rose-100 text-rose-800 dark:bg-rose-900/30 dark:text-rose-400">
-      <svg class="-ml-0.5 mr-1.5 h-2 w-2 text-rose-400 dark:text-rose-500" fill="currentColor" viewBox="0 0 8 8">
+    <span class="inline-flex items-center justify-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-rose-100 text-rose-800 dark:bg-rose-900/30 dark:text-rose-400 min-h-[1.5rem]">
+      <svg class="mr-1.5 h-2.5 w-2.5 text-rose-400 dark:text-rose-500" fill="currentColor" viewBox="0 0 8 8">
         <circle cx="4" cy="4" r="3" />
       </svg>
       Failed
@@ -314,11 +479,22 @@ defmodule DbserviceWeb.ImportLive.Index do
     """)
   end
 
+  defp get_status_badge("stopped") do
+    raw("""
+    <span class="inline-flex items-center justify-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-orange-100 text-orange-800 dark:bg-orange-900/30 dark:text-orange-400 min-h-[1.5rem]">
+      <svg class="mr-1.5 h-2.5 w-2.5 text-orange-400 dark:text-orange-500" fill="currentColor" viewBox="0 0 8 8">
+        <circle cx="4" cy="4" r="3" />
+      </svg>
+      Stopped
+    </span>
+    """)
+  end
+
   # Added a fallback clause for any unexpected status values
   defp get_status_badge(status) do
     raw("""
-    <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-gray-100 text-gray-800 dark:bg-gray-900/30 dark:text-gray-400">
-      <svg class="-ml-0.5 mr-1.5 h-2 w-2 text-gray-400 dark:text-gray-500" fill="currentColor" viewBox="0 0 8 8">
+    <span class="inline-flex items-center justify-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-gray-100 text-gray-800 dark:bg-gray-900/30 dark:text-gray-400 min-h-[1.5rem]">
+      <svg class="mr-1.5 h-2.5 w-2.5 text-gray-400 dark:text-gray-500" fill="currentColor" viewBox="0 0 8 8">
         <circle cx="4" cy="4" r="3" />
       </svg>
       #{status}
@@ -357,6 +533,19 @@ defmodule DbserviceWeb.ImportLive.Index do
     </svg>
     """)
   end
+
+  # Helper function to determine if we should show a notification
+  # Only show notifications when transitioning to a terminal state (completed/failed)
+  # and we haven't already shown a notification for this import
+  defp should_show_notification?(previous_status, %{status: "failed"})
+       when previous_status != "failed",
+       do: true
+
+  defp should_show_notification?(previous_status, %{status: "completed"})
+       when previous_status != "completed",
+       do: true
+
+  defp should_show_notification?(_, _), do: false
 
   # Helper function to handle import notifications and reduce nesting
   defp handle_import_notification(socket, %{status: "failed"} = import) do

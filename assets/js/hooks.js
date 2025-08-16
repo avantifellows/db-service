@@ -17,6 +17,20 @@ const Hooks = {
         }
       }, 3000);
     }
+  },
+
+  TemplateDownloader: {
+    mounted() {
+      this.handleEvent("download_file", ({ url }) => {
+        // Create a temporary link element and click it to trigger download
+        const link = document.createElement('a');
+        link.href = url;
+        link.download = ''; // This will use the filename from the server
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+      });
+    }
   }
 };
 
