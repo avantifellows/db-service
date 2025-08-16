@@ -451,90 +451,50 @@ defmodule Dbservice.DataImport.ImportWorker do
             ]
           })
 
-          DataImport.update_import(import_record, final_params)
-
-          # Broadcast progress update
-          Phoenix.PubSub.broadcast(
-            Dbservice.PubSub,
-            "imports",
-            {:import_updated, import_record.id}
-          )
-      end
-
-    # Extract base update params creation
-    defp build_base_update_params(processed_rows) do
-      %{processed_rows: processed_rows}
-    end
-
-    # Extract error handling logic
-    defp add_error_details(update_params, status, csv_row_number, error, import_record) do
-      case status do
-        :error ->
-          add_error_to_params(update_params, csv_row_number, inspect(error), import_record)
-
-        :exception ->
-          add_error_to_params(
-            update_params,
-            csv_row_number,
-            Exception.message(error),
-            import_record
-          )
-
         _ ->
           update_params
       end
-    end
 
-    # Extract error addition logic
-    defp add_error_to_params(update_params, csv_row_number, error_message, import_record) do
-      Map.merge(update_params, %{
-        error_count: (import_record.error_count || 0) + 1,
-        error_details: [
-          %{row: csv_row_number, error: error_message}
-          | import_record.error_details || []
-        ]
-      })
-    end
+    DataImport.update_import(import_record, update_params)
 
-    # Extract status checking logic
-    defp adjust_for_stopped_status(update_params, import_record) do
-      current_import = DataImport.get_import!(import_record.id)
+    # Broadcast progress update
+    Phoenix.PubSub.broadcast(
+      Dbservice.PubSub,
+      "imports",
+      {:import_updated, import_record.id}
+    )
+  end
 
-      if current_import.status == "stopped" do
-        # Keep the status as stopped, only update progress and errors
-        update_params
-      else
-        # Normal processing - allow status updates
-        update_params
-      end
-    end
+  # Extract base update params creation
+  defp build_base_update_params(processed_rows) do
+    %{processed_rows: processed_rows}
+  end
 
-    defp finalize_import(import_record, records) do
-      # Check if import was stopped during processing
-      current_import = DataImport.get_import!(import_record.id)
+  defp finalize_import(import_record, records) do
+    # Check if import was stopped during processing
+    current_import = DataImport.get_import!(import_record.id)
 
-      if current_import.status == "stopped" do
-        # Import was halted, don't mark as completed
-        {:ok, records}
-      else
-        total_records = length(records)
+    if current_import.status == "stopped" do
+      # Import was halted, don't mark as completed
+      {:ok, records}
+    else
+      total_records = length(records)
 
-        DataImport.complete_import(
-          import_record.id,
-          total_records
-        )
-
-        {:ok, records}
-      end
-    end
-
-    defp handle_import_error(import_record, reason) do
-      DataImport.fail_import(
+      DataImport.complete_import(
         import_record.id,
-        reason
+        total_records
       )
 
-      {:error, reason}
+      {:ok, records}
     end
+  end
+
+  defp handle_import_error(import_record, reason) do
+    DataImport.fail_import(
+      import_record.id,
+      reason
+    )
+
+    {:error, reason}
   end
 end
