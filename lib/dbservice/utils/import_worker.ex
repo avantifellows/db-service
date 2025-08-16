@@ -20,12 +20,14 @@ defmodule Dbservice.DataImport.ImportWorker do
   @impl Oban.Worker
   def perform(%Oban.Job{args: %{"id" => import_id}}) do
     import_record = DataImport.get_import!(import_id)
-    total_rows = count_total_rows(import_record.filename, import_record.start_row || 2)
 
-    # Update status to processing
+    # Calculate and update total rows immediately at the start of processing
+    total_rows = count_total_rows(import_record.filename, import_record.start_row || 2) + 1
+
+    # Update status to processing and set total_rows right away
     DataImport.update_import(import_record, %{status: "processing", total_rows: total_rows})
 
-    # Broadcast status update
+    # Broadcast status update so UI shows total rows immediately
     Phoenix.PubSub.broadcast(Dbservice.PubSub, "imports", {:import_updated, import_record.id})
 
     # Process the file based on type
@@ -228,13 +230,20 @@ defmodule Dbservice.DataImport.ImportWorker do
 
     result =
       Enum.reduce_while(records, initial_acc, fn {record, index}, {:ok, processed_records} ->
-        handle_record_processing(
-          record,
-          index,
-          import_record,
-          record_processor_fn,
-          processed_records
-        )
+        # Check if import has been halted before processing each record
+        current_import = DataImport.get_import!(import_record.id)
+
+        if current_import.status == "stopped" do
+          {:halt, {:ok, Enum.reverse(processed_records)}}
+        else
+          handle_record_processing(
+            record,
+            index,
+            import_record,
+            record_processor_fn,
+            processed_records
+          )
+        end
       end)
 
     case result do
@@ -256,7 +265,7 @@ defmodule Dbservice.DataImport.ImportWorker do
         {:cont, {:ok, [result | processed_records]}}
 
       {:error, reason} ->
-        handle_record_error(index, reason, import_record, processed_records)
+        handle_record_error(index - 1, reason, import_record, processed_records)
     end
   end
 
@@ -418,9 +427,7 @@ defmodule Dbservice.DataImport.ImportWorker do
     # Calculate how many data rows we've processed
     processed_rows = csv_row_number - (import_record.start_row || 2)
 
-    update_params = %{
-      processed_rows: processed_rows
-    }
+    update_params = build_base_update_params(processed_rows)
 
     update_params =
       case status do
@@ -449,18 +456,35 @@ defmodule Dbservice.DataImport.ImportWorker do
     DataImport.update_import(import_record, update_params)
 
     # Broadcast progress update
-    Phoenix.PubSub.broadcast(Dbservice.PubSub, "imports", {:import_updated, import_record.id})
+    Phoenix.PubSub.broadcast(
+      Dbservice.PubSub,
+      "imports",
+      {:import_updated, import_record.id}
+    )
+  end
+
+  # Extract base update params creation
+  defp build_base_update_params(processed_rows) do
+    %{processed_rows: processed_rows}
   end
 
   defp finalize_import(import_record, records) do
-    total_records = length(records)
+    # Check if import was stopped during processing
+    current_import = DataImport.get_import!(import_record.id)
 
-    DataImport.complete_import(
-      import_record.id,
-      total_records
-    )
+    if current_import.status == "stopped" do
+      # Import was halted, don't mark as completed
+      {:ok, records}
+    else
+      total_records = length(records)
 
-    {:ok, records}
+      DataImport.complete_import(
+        import_record.id,
+        total_records
+      )
+
+      {:ok, records}
+    end
   end
 
   defp handle_import_error(import_record, reason) do
