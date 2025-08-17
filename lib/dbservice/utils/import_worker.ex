@@ -47,6 +47,18 @@ defmodule Dbservice.DataImport.ImportWorker do
       "teacher_batch_assignment" ->
         process_import(import_record, &process_teacher_batch_assignment_record/1)
 
+      "update_incorrect_batch_id_to_correct_batch_id" ->
+        process_import(import_record, &process_batch_id_update_record/1)
+
+      "update_incorrect_school_to_correct_school" ->
+        process_import(import_record, &process_school_update_record/1)
+
+      "update_incorrect_grade_to_correct_grade" ->
+        process_import(import_record, &process_grade_update_record/1)
+
+      "update_incorrect_auth_group_to_correct_auth_group" ->
+        process_import(import_record, &process_auth_group_update_record/1)
+
       _ ->
         {:error, "Unsupported import type"}
     end
@@ -375,6 +387,22 @@ defmodule Dbservice.DataImport.ImportWorker do
 
   defp process_teacher_batch_assignment_record(record) do
     DataImport.TeacherBatchAssignment.process_teacher_batch_assignment(record)
+  end
+
+  defp process_batch_id_update_record(record) do
+    DataImport.GroupUpdateProcessor.process_batch_id_update(record)
+  end
+
+  defp process_school_update_record(record) do
+    DataImport.GroupUpdateProcessor.process_school_update(record)
+  end
+
+  defp process_grade_update_record(record) do
+    DataImport.GroupUpdateProcessor.process_grade_update(record)
+  end
+
+  defp process_auth_group_update_record(record) do
+    DataImport.GroupUpdateProcessor.process_auth_group_update(record)
   end
 
   defp count_total_rows(filename, start_row) do
