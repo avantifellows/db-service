@@ -169,10 +169,17 @@ defmodule DbserviceWeb.SessionOccurrenceController do
   defp apply_time_filter(query, value, today_start, today_end, current_time) do
     case value do
       "today" ->
-        from(u in query, where: u.start_time >= ^today_start and u.start_time <= ^today_end)
+        from so in query,
+          join: s in assoc(so, :session),
+          where:
+            (fragment("?->>'type' = 'continuous'", s.repeat_schedule) and
+               so.start_time <= ^current_time and so.end_time >= ^current_time) or
+              (fragment("?->>'type' != 'continuous'", s.repeat_schedule) and
+                 so.start_time >= ^today_start and so.start_time <= ^today_end)
 
       "active" ->
-        from(u in query, where: u.start_time <= ^current_time and u.end_time >= ^current_time)
+        from so in query,
+          where: so.start_time <= ^current_time and so.end_time >= ^current_time
 
       _ ->
         query
