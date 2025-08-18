@@ -223,7 +223,9 @@ defmodule DbserviceWeb.UserController do
       session ->
         session.is_active &&
           if quiz_flag && session.meta_data["batch_id"] != "" do
-            session.meta_data["batch_id"] == class_batch_id and session.platform == "quiz"
+            # Split the comma-separated batch_id and check if class_batch_id is in the list
+            batch_ids = String.split(session.meta_data["batch_id"], ",")
+            class_batch_id in batch_ids and session.platform == "quiz"
           else
             true
           end
