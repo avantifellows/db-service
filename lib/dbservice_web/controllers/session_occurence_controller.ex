@@ -46,6 +46,8 @@ defmodule DbserviceWeb.SessionOccurrenceController do
     today = Date.utc_today()
 
     # Construct the beginning and end of today
+    today_start = NaiveDateTime.new!(today, ~T[00:00:00])
+    today_end = NaiveDateTime.new!(today, ~T[23:59:59])
 
     # Get current timestamp for active occurrence queries (when is_start_time="active")
     current_time = NaiveDateTime.utc_now() |> NaiveDateTime.add(5 * 3600 + 30 * 60, :second)
@@ -70,7 +72,7 @@ defmodule DbserviceWeb.SessionOccurrenceController do
             acc
 
           :is_start_time ->
-            apply_time_filter(acc, value, current_time)
+            apply_time_filter(acc, value, today_start, today_end, current_time)
 
           :session_ids ->
             from(u in acc, where: u.session_id in ^session_ids)
@@ -164,12 +166,31 @@ defmodule DbserviceWeb.SessionOccurrenceController do
     end
   end
 
-  defp apply_time_filter(query, value, current_time) do
+  defp apply_time_filter(query, value, today_start, today_end, current_time) do
     case value do
       "today" ->
-        from(so in query,
-          where: so.start_time <= ^current_time and so.end_time >= ^current_time
-        )
+        from so in query,
+          join: s in assoc(so, :session),
+          where:
+            fragment(
+              """
+              CASE
+              WHEN (?->>'type') = 'continuous'
+              THEN (? <= ? AND ? >= ?)
+              ELSE (? >= ? AND ? <= ?)
+              END
+              """,
+              # from session table
+              s.repeat_schedule,
+              so.start_time,
+              ^current_time,
+              so.end_time,
+              ^current_time,
+              so.start_time,
+              ^today_start,
+              so.start_time,
+              ^today_end
+            )
 
       "active" ->
         from(so in query,
