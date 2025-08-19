@@ -172,10 +172,25 @@ defmodule DbserviceWeb.SessionOccurrenceController do
         from so in query,
           join: s in assoc(so, :session),
           where:
-            (fragment("?->>'type' = 'continuous'", s.repeat_schedule) and
-               so.start_time <= ^current_time and so.end_time >= ^current_time) or
-              (fragment("?->>'type' != 'continuous'", s.repeat_schedule) and
-                 so.start_time >= ^today_start and so.start_time <= ^today_end)
+            fragment(
+              """
+              CASE
+                WHEN (?->>'type') = 'continuous'
+                THEN (? <= ? AND ? >= ?)
+                ELSE (? >= ? AND ? <= ?)
+              END
+              """,
+              # from session table
+              s.repeat_schedule,
+              so.start_time,
+              ^current_time,
+              so.end_time,
+              ^current_time,
+              so.start_time,
+              ^today_start,
+              so.start_time,
+              ^today_end
+            )
 
       "active" ->
         from so in query,
