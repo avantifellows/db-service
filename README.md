@@ -9,21 +9,37 @@ To set up this project locally, visit the [installation steps](./docs/INSTALLATI
 ## Development
 
 ### Running the Application
+
+**For macOS users:**
 ```bash
-./start_server.sh
+./start_server_macos.sh
+```
+
+**For Windows/Linux users or manual setup:**
+```bash
+mix phx.server
 ```
 
 Visit [`localhost:4000`](http://localhost:4000) to access the application.
 
+**Note**: macOS users can also use the convenient alias `dbservice` from anywhere in the terminal.
+
 ### API Documentation
 Access the Swagger documentation at: `http://localhost:4000/docs/swagger/index.html`
 
-**Note**: The startup script automatically generates Swagger documentation. For more details about API documentation setup, see [API Documentation Guide](./docs/SWAGGER.md).
+**Note**: The macOS startup script automatically generates Swagger documentation. **Windows/Linux users** should run `mix phx.swagger.generate` once before accessing the API docs. For more details about API documentation setup, see [API Documentation Guide](./docs/SWAGGER.md).
 
 ### Database Management
 For database operations like fetching data from production/staging:
+
+**macOS/Linux users:**
 ```bash
 ./utils/fetch-data.sh
+```
+
+**Windows users:**
+```bash
+bash utils/fetch-data.sh
 ```
 
 See [Database Utils Guide](./utils/README.md) for setup and configuration.
