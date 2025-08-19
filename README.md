@@ -10,13 +10,23 @@ To set up this project locally, visit the [installation steps](./docs/INSTALLATI
 
 ### Running the Application
 ```bash
-mix phx.server
+./start_server.sh
 ```
 
 Visit [`localhost:4000`](http://localhost:4000) to access the application.
 
 ### API Documentation
 Access the Swagger documentation at: `http://localhost:4000/docs/swagger/index.html`
+
+**Note**: The startup script automatically generates Swagger documentation. For more details about API documentation setup, see [API Documentation Guide](./docs/SWAGGER.md).
+
+### Database Management
+For database operations like fetching data from production/staging:
+```bash
+./utils/fetch-data.sh
+```
+
+See [Database Utils Guide](./utils/README.md) for setup and configuration.
 
 ## Documentation
 
