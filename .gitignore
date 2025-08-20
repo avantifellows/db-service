@@ -22,8 +22,9 @@ erl_crash.dump
 # Ignore package tarball (built via "mix hex.build").
 dbservice-*.tar
 
-# Ignore .env
+# Ignore .env files
 /config/.env
+/utils/.env
 
 # Ignore ETL flow key
 /config/etl-flow-key.json
