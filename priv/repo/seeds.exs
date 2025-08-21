@@ -21,9 +21,12 @@ seed_files = [
   "priv/repo/seeds/subjects/subjects.exs",
 
   # Dependent models (depend on the above)
-  "priv/repo/seeds/users/students.exs",    # depends on users + grades
-  "priv/repo/seeds/users/teachers.exs",    # depends on users + subjects
-  "priv/repo/seeds/users/candidates.exs",  # depends on users + subjects
+  # depends on users + grades
+  "priv/repo/seeds/users/students.exs",
+  # depends on users + subjects
+  "priv/repo/seeds/users/teachers.exs",
+  # depends on users + subjects
+  "priv/repo/seeds/users/candidates.exs"
 ]
 
 # Run seed files in order
