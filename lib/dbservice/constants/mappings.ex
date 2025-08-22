@@ -81,7 +81,15 @@ defmodule Dbservice.Constants.Mappings do
     # Student fields
     "student_id" => %{
       db_field: "student_id",
-      required: ["student", "batch_movement", "student_update"],
+      required: [
+        "student",
+        "batch_movement",
+        "student_update",
+        "update_incorrect_batch_id_to_correct_batch_id",
+        "update_incorrect_school_to_correct_school",
+        "update_incorrect_grade_to_correct_grade",
+        "update_incorrect_auth_group_to_correct_auth_group"
+      ],
       optional: [],
       type: :string
     },
@@ -329,19 +337,25 @@ defmodule Dbservice.Constants.Mappings do
     },
     "grade" => %{
       db_field: "grade",
-      required: ["student", "teacher_addition"],
+      required: ["student", "teacher_addition", "update_incorrect_grade_to_correct_grade"],
       optional: ["batch_movement", "student_update"],
       type: :string
     },
     "batch_id" => %{
       db_field: "batch_id",
-      required: ["student", "batch_movement", "teacher_addition", "teacher_batch_assignment"],
+      required: [
+        "student",
+        "batch_movement",
+        "teacher_addition",
+        "teacher_batch_assignment",
+        "update_incorrect_batch_id_to_correct_batch_id"
+      ],
       optional: [],
       type: :string
     },
     "school_code" => %{
       db_field: "school_code",
-      required: ["student"],
+      required: ["student", "update_incorrect_school_to_correct_school"],
       optional: [],
       type: :string
     },
@@ -394,6 +408,20 @@ defmodule Dbservice.Constants.Mappings do
       required: ["teacher_addition"],
       optional: [],
       type: :boolean
+    },
+
+    # Update fields for correction import types
+    "old_batch_id" => %{
+      db_field: "old_batch_id",
+      required: ["update_incorrect_batch_id_to_correct_batch_id"],
+      optional: [],
+      type: :string
+    },
+    "auth_group_name" => %{
+      db_field: "auth_group_name",
+      required: ["update_incorrect_auth_group_to_correct_auth_group"],
+      optional: [],
+      type: :string
     }
   }
 

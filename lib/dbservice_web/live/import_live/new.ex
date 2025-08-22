@@ -144,6 +144,10 @@ defmodule DbserviceWeb.ImportLive.New do
                     <option value="student_update" selected={@form[:type].value == "student_update"}>Update Student Details</option>        <option value="teacher_addition" selected={@form[:type].value == "teacher_addition"}>Teacher Addition</option>
                     <option value="batch_movement" selected={@form[:type].value == "batch_movement"}>Student Batch Movement</option>
                     <option value="teacher_batch_assignment" selected={@form[:type].value == "teacher_batch_assignment"}>Teacher Batch Assignment</option>
+                    <option value="update_incorrect_batch_id_to_correct_batch_id" selected={@form[:type].value == "update_incorrect_batch_id_to_correct_batch_id"}>Update Incorrect Batch ID to Correct Batch ID</option>
+                    <option value="update_incorrect_school_to_correct_school" selected={@form[:type].value == "update_incorrect_school_to_correct_school"}>Update Incorrect School to Correct School</option>
+                    <option value="update_incorrect_grade_to_correct_grade" selected={@form[:type].value == "update_incorrect_grade_to_correct_grade"}>Update Incorrect Grade to Correct Grade</option>
+                    <option value="update_incorrect_auth_group_to_correct_auth_group" selected={@form[:type].value == "update_incorrect_auth_group_to_correct_auth_group"}>Update Incorrect Auth Group to Correct Auth Group</option>
 
                   </select>
                 </div>
