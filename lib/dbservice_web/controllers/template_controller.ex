@@ -12,7 +12,11 @@ defmodule DbserviceWeb.TemplateController do
          "student_update",
          "teacher_addition",
          "batch_movement",
-         "teacher_batch_assignment"
+         "teacher_batch_assignment",
+         "update_incorrect_batch_id_to_correct_batch_id",
+         "update_incorrect_school_to_correct_school",
+         "update_incorrect_grade_to_correct_grade",
+         "update_incorrect_auth_group_to_correct_auth_group"
        ] do
       csv_content = DataImport.generate_csv_template(import_type)
 

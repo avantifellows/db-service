@@ -1,15 +1,13 @@
 defmodule DbserviceWeb.GroupUserController do
   alias Dbservice.Groups
-  alias Dbservice.EnrollmentRecords
   alias Dbservice.Services.EnrollmentService
+  alias Dbservice.Services.GroupUpdateService
   use DbserviceWeb, :controller
 
   import Ecto.Query
   alias Dbservice.Repo
   alias Dbservice.GroupUsers
   alias Dbservice.Groups.GroupUser
-  alias Dbservice.EnrollmentRecords
-  alias Dbservice.EnrollmentRecords.EnrollmentRecord
 
   action_fallback(DbserviceWeb.FallbackController)
 
@@ -118,89 +116,12 @@ defmodule DbserviceWeb.GroupUserController do
     - Returns an error tuple if the `GroupUser` or `EnrollmentRecord` is not found.
   """
   def update_by_type(conn, params) do
-    user_id = params["user_id"]
-    type = params["type"]
-    new_group = Groups.get_group_by_group_id_and_type(params["group_id"], type)
-    new_group_id = new_group.child_id
-
-    # Fetch all GroupUsers for the specified user_id and type
-    group_users = GroupUsers.get_group_user_by_user_id_and_type(user_id, type)
-
-    # Determine which GroupUser to update and fetch the corresponding EnrollmentRecord
-    {group_user_to_update, enrollment_record} =
-      find_records_to_update(group_users, user_id, type, params)
-
-    case {group_user_to_update, enrollment_record} do
-      {nil, _} ->
-        {:error, :not_found}
-
-      {_, nil} ->
-        {:error, :not_found}
-
-      {group_user, enrollment_record} ->
-        update_group_user_and_enrollment(
-          conn,
-          group_user,
-          enrollment_record,
-          params,
-          new_group_id
-        )
-    end
-  end
-
-  defp find_records_to_update(group_users, user_id, type, params) do
-    group_user_to_update = find_group_user_to_update(group_users, type, params)
-    enrollment_record = find_enrollment_record(user_id, type, params)
-
-    {group_user_to_update, enrollment_record}
-  end
-
-  defp find_group_user_to_update(group_users, "batch", %{"current_batch_pk" => current_batch_pk}) do
-    Enum.find(group_users, fn gu -> gu.group.child_id == current_batch_pk end)
-  end
-
-  defp find_group_user_to_update(group_users, _type, _params) do
-    List.first(group_users)
-  end
-
-  defp find_enrollment_record(user_id, "batch", %{"current_batch_pk" => current_batch_pk}) do
-    from(er in EnrollmentRecord,
-      where:
-        er.user_id == ^user_id and
-          er.group_type == "batch" and
-          er.group_id == ^current_batch_pk and
-          er.is_current == true
-    )
-    |> Repo.one()
-  end
-
-  defp find_enrollment_record(user_id, type, _params) do
-    from(er in EnrollmentRecord,
-      where:
-        er.user_id == ^user_id and
-          er.group_type == ^type and
-          er.is_current == true
-    )
-    |> Repo.one()
-  end
-
-  defp update_group_user_and_enrollment(conn, group_user, enrollment_record, params, new_group_id) do
-    Repo.transaction(fn ->
-      with {:ok, %GroupUser{} = updated_group_user} <-
-             GroupUsers.update_group_user(group_user, %{group_id: params["group_id"]}),
-           {:ok, %EnrollmentRecord{} = updated_enrollment_record} <-
-             EnrollmentRecords.update_enrollment_record(enrollment_record, %{
-               "group_id" => new_group_id
-             }) do
-        {updated_group_user, updated_enrollment_record}
-      else
-        {:error, failed_operation} ->
-          Repo.rollback(failed_operation)
-      end
-    end)
-    |> case do
-      {:ok, {updated_group_user, _updated_enrollment_record}} ->
+    case GroupUpdateService.update_user_group_by_type(params) do
+      {:ok, updated_group_user} ->
         render(conn, :show, group_user: updated_group_user)
+
+      {:error, :not_found} ->
+        {:error, :not_found}
 
       {:error, reason} ->
         {:error, reason}
