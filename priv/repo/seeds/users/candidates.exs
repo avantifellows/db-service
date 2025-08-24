@@ -32,7 +32,7 @@ else
     # Create user for this candidate using the centralized function
     email = "candidate_#{String.downcase(Faker.Person.first_name())}_#{i}@example.com"
     user = UserSeeder.create_user_with_role("candidate", email)
-    candidate_id = "CAN#{String.pad_leading(to_string(user.id), 6, "0")}"
+    candidate_id = "#{String.pad_leading(to_string(user.id), 10, "0")}"
 
     unless Repo.get_by(Candidate, user_id: user.id) do
       candidate_attrs = %{

@@ -29,7 +29,7 @@ else
     # Create user for this teacher using the centralized function
     email = "teacher_#{String.downcase(Faker.Person.first_name())}_#{i}@example.com"
     user = UserSeeder.create_user_with_role("teacher", email)
-    teacher_id = "TCH#{String.pad_leading(to_string(user.id), 6, "0")}"
+    teacher_id = "#{String.pad_leading(to_string(user.id), 10, "0")}"
 
     unless Repo.get_by(Teacher, user_id: user.id) do
       teacher_attrs = %{

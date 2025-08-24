@@ -3,18 +3,43 @@ alias Dbservice.Users.User
 
 IO.puts("  → Seeding users...")
 
-# Helper function to create a user with specific role and email
 defmodule UserSeeder do
   def create_user_with_role(role, email) do
-    indian_states = [
-      "Andhra Pradesh", "Arunachal Pradesh", "Assam", "Bihar", "Chhattisgarh",
-      "Goa", "Gujarat", "Haryana", "Himachal Pradesh", "Jharkhand", "Karnataka",
-      "Kerala", "Madhya Pradesh", "Maharashtra", "Manipur", "Meghalaya", "Mizoram",
-      "Nagaland", "Odisha", "Punjab", "Rajasthan", "Sikkim", "Tamil Nadu",
-      "Telangana", "Tripura", "Uttar Pradesh", "Uttarakhand", "West Bengal"
-    ]
+    state_cities = %{
+      "Andhra Pradesh" => ["Visakhapatnam", "Vijayawada", "Guntur"],
+      "Arunachal Pradesh" => ["Itanagar", "Naharlagun"],
+      "Assam" => ["Guwahati", "Silchar", "Dibrugarh"],
+      "Bihar" => ["Patna", "Gaya", "Bhagalpur"],
+      "Chhattisgarh" => ["Raipur", "Bhilai", "Bilaspur"],
+      "Goa" => ["Panaji", "Margao"],
+      "Gujarat" => ["Ahmedabad", "Surat", "Vadodara"],
+      "Haryana" => ["Gurgaon", "Faridabad", "Panipat"],
+      "Himachal Pradesh" => ["Shimla", "Manali"],
+      "Jharkhand" => ["Ranchi", "Jamshedpur", "Dhanbad"],
+      "Karnataka" => ["Bengaluru", "Mysuru", "Mangaluru"],
+      "Kerala" => ["Thiruvananthapuram", "Kochi", "Kozhikode"],
+      "Madhya Pradesh" => ["Bhopal", "Indore", "Gwalior"],
+      "Maharashtra" => ["Mumbai", "Pune", "Nagpur"],
+      "Manipur" => ["Imphal"],
+      "Meghalaya" => ["Shillong"],
+      "Mizoram" => ["Aizawl"],
+      "Nagaland" => ["Kohima", "Dimapur"],
+      "Odisha" => ["Bhubaneswar", "Cuttack", "Rourkela"],
+      "Punjab" => ["Ludhiana", "Amritsar", "Jalandhar"],
+      "Rajasthan" => ["Jaipur", "Jodhpur", "Udaipur"],
+      "Sikkim" => ["Gangtok"],
+      "Tamil Nadu" => ["Chennai", "Coimbatore", "Madurai"],
+      "Telangana" => ["Hyderabad", "Warangal"],
+      "Tripura" => ["Agartala"],
+      "Uttar Pradesh" => ["Lucknow", "Kanpur", "Varanasi"],
+      "Uttarakhand" => ["Dehradun", "Haridwar"],
+      "West Bengal" => ["Kolkata", "Howrah", "Durgapur"]
+    }
 
     genders = ["Male", "Female", "Others"]
+
+    state = Enum.random(Map.keys(state_cities))
+    city = Enum.random(Map.get(state_cities, state))
 
     user_attrs = %{
       first_name: Faker.Person.first_name(),
@@ -24,10 +49,10 @@ defmodule UserSeeder do
       role: role,
       gender: Enum.random(genders),
       country: "India",
-      state: Enum.random(indian_states),
-      city: Faker.Address.city(),
+      state: state,
+      city: city,
       address: Faker.Address.street_address(),
-      district: Faker.Address.secondary_address(),
+      district: city,
       pincode: "#{Enum.random(100000..999999)}",
       region: Enum.random(["North", "South", "East", "West", "Central"])
     }

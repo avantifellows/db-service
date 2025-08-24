@@ -16,13 +16,15 @@ else
   education_levels = ["Primary", "Secondary", "Higher Secondary", "Graduate", "Post Graduate"]
   professions = ["Farmer", "Teacher", "Engineer", "Doctor", "Businessman", "Government Employee", "Private Employee", "Daily Wage Worker"]
   family_types = ["Nuclear", "Joint"]
+  guardian_relations = ["Uncle", "Aunt", "Grandfather", "Grandmother", "Elder Brother", "Elder Sister", "Cousin"]
+  competitive_exams = [1, 2, 3, 4, 5] # Sample exam IDs
 
   # Create 10 students
   students_created = for i <- 1..10 do
     # Create user for this student using the centralized function
     email = "student_#{String.downcase(Faker.Person.first_name())}_#{i}@example.com"
     user = UserSeeder.create_user_with_role("student", email)
-    student_id = "STU#{String.pad_leading(to_string(user.id), 6, "0")}"
+    student_id = String.pad_leading(to_string(user.id), 10, "0")
 
     unless Repo.get_by(Student, user_id: user.id) do
       student_attrs = %{
@@ -37,6 +39,11 @@ else
         mother_phone: "#{Enum.random(7000000000..9999999999)}",
         mother_education_level: Enum.random(education_levels),
         mother_profession: Enum.random(professions),
+        guardian_name: Faker.Person.name(),
+        guardian_relation: Enum.random(guardian_relations),
+        guardian_phone: "#{Enum.random(7000000000..9999999999)}",
+        guardian_education_level: Enum.random(education_levels),
+        guardian_profession: Enum.random(professions),
         category: Enum.random(categories),
         has_category_certificate: Enum.random([true, false]),
         stream: Enum.random(streams),
@@ -60,7 +67,7 @@ else
         status: "active",
         board_stream: Enum.random(["CBSE", "ICSE", "State Board"]),
         school_medium: Enum.random(["English", "Hindi", "Regional"]),
-        apaar_id: "APAAR#{Enum.random(100000000..999999999)}"
+        apaar_id: "#{Enum.random(100000000000..999999999999)}"
       }
 
       %Student{}
