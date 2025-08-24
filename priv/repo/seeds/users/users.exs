@@ -1,5 +1,6 @@
 alias Dbservice.Repo
 alias Dbservice.Users.User
+alias Dbservice.Profiles.UserProfile
 
 IO.puts("  → Seeding users...")
 
@@ -60,9 +61,20 @@ defmodule UserSeeder do
     # Check if user already exists, if not create
     case Repo.get_by(User, email: user_attrs.email) do
       nil ->
-        %User{}
+        user = %User{}
         |> User.changeset(user_attrs)
         |> Repo.insert!()
+
+        # Create UserProfile for the new user
+        %UserProfile{}
+        |> UserProfile.changeset(%{
+          user_id: user.id,
+          logged_in_atleast_once: false,
+          latest_session_accessed: nil
+        })
+        |> Repo.insert!()
+
+        user
       existing_user ->
         existing_user
     end

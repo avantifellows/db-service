@@ -1,6 +1,7 @@
 alias Dbservice.Repo
 alias Dbservice.Users.Student
 alias Dbservice.Grades.Grade
+alias Dbservice.Profiles.{UserProfile, StudentProfile}
 
 IO.puts("  → Seeding students...")
 
@@ -70,9 +71,37 @@ else
         apaar_id: "#{Enum.random(100000000000..999999999999)}"
       }
 
-      %Student{}
+      student = %Student{}
       |> Student.changeset(student_attrs)
       |> Repo.insert!()
+
+      # Get the user_profile for this student
+      user_profile = Repo.get_by!(UserProfile, user_id: user.id)
+
+      # Create StudentProfile for the new student
+      %StudentProfile{}
+      |> StudentProfile.changeset(%{
+        student_fk: student.id,
+        user_profile_id: user_profile.id,
+        student_id: student_id,
+        took_test_atleast_once: false,
+        took_class_atleast_once: false,
+        total_number_of_tests: 0,
+        total_number_of_live_classes: 0,
+        attendance_in_classes_current_year: [],
+        classes_activity_cohort: Enum.random(["High", "Medium", "Low"]),
+        attendance_in_tests_current_year: [],
+        tests_activity_cohort: Enum.random(["High", "Medium", "Low"]),
+        performance_trend_in_fst: Enum.random(["Improving", "Stable", "Declining"]),
+        max_batch_score_in_latest_test: Enum.random(80..100),
+        average_batch_score_in_latest_test: "#{Enum.random(60..85)}.#{Enum.random(10..99)}",
+        tests_number_of_correct_questions: Enum.random(0..50),
+        tests_number_of_wrong_questions: Enum.random(0..20),
+        tests_number_of_skipped_questions: Enum.random(0..10)
+      })
+      |> Repo.insert!()
+
+      student
     else
       nil
     end

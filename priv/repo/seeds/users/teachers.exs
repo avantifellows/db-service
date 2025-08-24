@@ -1,6 +1,7 @@
 alias Dbservice.Repo
 alias Dbservice.Users.Teacher
 alias Dbservice.Subjects.Subject
+alias Dbservice.Profiles.{UserProfile, TeacherProfile}
 
 IO.puts("  → Seeding teachers...")
 
@@ -40,9 +41,29 @@ else
         is_af_teacher: Enum.random([true, false])
       }
 
-      %Teacher{}
+      teacher = %Teacher{}
       |> Teacher.changeset(teacher_attrs)
       |> Repo.insert!()
+
+      # Get the user_profile for this teacher
+      user_profile = Repo.get_by!(UserProfile, user_id: user.id)
+
+      # Create TeacherProfile for the new teacher
+      schools = ["Avanti Learning Centre", "Government School", "Private School", "International School"]
+      program_managers = ["John Doe", "Jane Smith", "Alex Johnson", "Sarah Wilson", "Mike Davis"]
+
+      %TeacherProfile{}
+      |> TeacherProfile.changeset(%{
+        teacher_fk: teacher.id,
+        user_profile_id: user_profile.id,
+        teacher_id: teacher_id,
+        school: Enum.random(schools),
+        program_manager: Enum.random(program_managers),
+        avg_rating: "#{Enum.random(3..5)}.#{Enum.random(10..99)}"
+      })
+      |> Repo.insert!()
+
+      teacher
     else
       nil
     end

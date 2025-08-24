@@ -19,6 +19,9 @@ seed_files = [
   "priv/repo/seeds/users/users.exs",
   "priv/repo/seeds/grades/grades.exs",
   "priv/repo/seeds/subjects/subjects.exs",
+  "priv/repo/seeds/products/products.exs",
+  "priv/repo/seeds/auth_groups/auth_groups.exs",
+  "priv/repo/seeds/schools/schools.exs",
 
   # Dependent models (depend on the above)
   # depends on users + grades
@@ -26,7 +29,10 @@ seed_files = [
   # depends on users + subjects
   "priv/repo/seeds/users/teachers.exs",
   # depends on users + subjects
-  "priv/repo/seeds/users/candidates.exs"
+  "priv/repo/seeds/users/candidates.exs",
+
+  # Groups (depend on products, auth_groups, schools)
+  "priv/repo/seeds/groups/groups.exs"
 ]
 
 # Run seed files in order
