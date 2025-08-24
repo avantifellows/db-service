@@ -21,34 +21,46 @@ defmodule Dbservice.DataImport.ImportWorker do
   def perform(%Oban.Job{args: %{"id" => import_id}}) do
     import_record = DataImport.get_import!(import_id)
 
-    # Calculate and update total rows immediately at the start of processing
+    with {:ok, updated_import} <- initialize_import_processing(import_record),
+         {:ok, processor_fn} <- get_record_processor(updated_import.type) do
+      process_import(updated_import, processor_fn)
+    else
+      {:error, reason} -> {:error, reason}
+    end
+  end
+
+  # Initialize import processing with total rows calculation and status update
+  defp initialize_import_processing(import_record) do
     total_rows = count_total_rows(import_record.filename, import_record.start_row || 2) + 1
 
-    # Update status to processing and set total_rows right away
-    DataImport.update_import(import_record, %{status: "processing", total_rows: total_rows})
+    case DataImport.update_import(import_record, %{status: "processing", total_rows: total_rows}) do
+      {:ok, updated_import} ->
+        # Broadcast status update so UI shows total rows immediately
+        Phoenix.PubSub.broadcast(Dbservice.PubSub, "imports", {:import_updated, import_record.id})
+        {:ok, updated_import}
 
-    # Broadcast status update so UI shows total rows immediately
-    Phoenix.PubSub.broadcast(Dbservice.PubSub, "imports", {:import_updated, import_record.id})
+      {:error, reason} ->
+        {:error, reason}
+    end
+  end
 
-    # Process the file based on type
-    case import_record.type do
-      "teacher_addition" ->
-        process_import(import_record, &process_teacher_record/1)
+  # Get the appropriate record processor function for the import type
+  defp get_record_processor(import_type) do
+    processor_map = %{
+      "teacher_addition" => &process_teacher_record/1,
+      "student" => &process_student_record/1,
+      "student_update" => &process_student_update_record/1,
+      "batch_movement" => &process_batch_movement_record/1,
+      "teacher_batch_assignment" => &process_teacher_batch_assignment_record/1,
+      "update_incorrect_batch_id_to_correct_batch_id" => &process_batch_id_update_record/1,
+      "update_incorrect_school_to_correct_school" => &process_school_update_record/1,
+      "update_incorrect_grade_to_correct_grade" => &process_grade_update_record/1,
+      "update_incorrect_auth_group_to_correct_auth_group" => &process_auth_group_update_record/1
+    }
 
-      "student" ->
-        process_import(import_record, &process_student_record/1)
-
-      "student_update" ->
-        process_import(import_record, &process_student_update_record/1)
-
-      "batch_movement" ->
-        process_import(import_record, &process_batch_movement_record/1)
-
-      "teacher_batch_assignment" ->
-        process_import(import_record, &process_teacher_batch_assignment_record/1)
-
-      _ ->
-        {:error, "Unsupported import type"}
+    case Map.get(processor_map, import_type) do
+      nil -> {:error, "Unsupported import type"}
+      processor_fn -> {:ok, processor_fn}
     end
   end
 
@@ -375,6 +387,22 @@ defmodule Dbservice.DataImport.ImportWorker do
 
   defp process_teacher_batch_assignment_record(record) do
     DataImport.TeacherBatchAssignment.process_teacher_batch_assignment(record)
+  end
+
+  defp process_batch_id_update_record(record) do
+    DataImport.GroupUpdateProcessor.process_batch_id_update(record)
+  end
+
+  defp process_school_update_record(record) do
+    DataImport.GroupUpdateProcessor.process_school_update(record)
+  end
+
+  defp process_grade_update_record(record) do
+    DataImport.GroupUpdateProcessor.process_grade_update(record)
+  end
+
+  defp process_auth_group_update_record(record) do
+    DataImport.GroupUpdateProcessor.process_auth_group_update(record)
   end
 
   defp count_total_rows(filename, start_row) do

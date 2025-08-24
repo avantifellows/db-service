@@ -17,6 +17,19 @@ defmodule Dbservice.DataImport do
   def format_type_name("batch_movement"), do: "Student Batch Movement"
   def format_type_name("teacher_batch_assignment"), do: "Teacher Batch Assignment"
   def format_type_name("teacher_addition"), do: "Teacher Addition"
+
+  def format_type_name("update_incorrect_batch_id_to_correct_batch_id"),
+    do: "Update Incorrect Batch ID to Correct Batch ID"
+
+  def format_type_name("update_incorrect_school_to_correct_school"),
+    do: "Update Incorrect School to Correct School"
+
+  def format_type_name("update_incorrect_grade_to_correct_grade"),
+    do: "Update Incorrect Grade to Correct Grade"
+
+  def format_type_name("update_incorrect_auth_group_to_correct_auth_group"),
+    do: "Update Incorrect Auth Group to Correct Auth Group"
+
   def format_type_name(type), do: String.capitalize(type)
 
   @doc """
