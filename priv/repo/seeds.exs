@@ -60,7 +60,10 @@ seed_files = [
   # Exams (no dependencies)
   "priv/repo/seeds/exams.exs",
   # Student exam records (depend on students and exams)
-  "priv/repo/seeds/student_exam_records.exs"
+  "priv/repo/seeds/student_exam_records.exs",
+
+  # Enrollment system (depends on students, schools, batches, auth_groups, grades)
+  "priv/repo/seeds/enrollments.exs"
 ]
 
 # Run seed files in order
