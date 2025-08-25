@@ -101,6 +101,16 @@ defmodule Dbservice.GroupUsers do
   end
 
   @doc """
+  Deletes all group_user entries for a user.
+
+  Returns {:ok, count}.
+  """
+  def delete_all_by_user_id(user_id) do
+    {count, _} = from(gu in GroupUser, where: gu.user_id == ^user_id) |> Repo.delete_all()
+    {:ok, count}
+  end
+
+  @doc """
   Creates a group_user.
 
   ## Examples

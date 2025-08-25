@@ -325,4 +325,14 @@ defmodule Dbservice.Sessions do
   def change_user_session(%UserSession{} = user_session, attrs \\ %{}) do
     UserSession.changeset(user_session, attrs)
   end
+
+  @doc """
+  Deletes all user_session rows for a given user.
+
+  Returns {:ok, count}.
+  """
+  def delete_user_sessions_by_user_id(user_id) do
+    {count, _} = from(us in UserSession, where: us.user_id == ^user_id) |> Repo.delete_all()
+    {:ok, count}
+  end
 end

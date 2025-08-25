@@ -5,12 +5,12 @@ defmodule DbserviceWeb.UserSessionController do
   alias Dbservice.Repo
   alias Dbservice.Sessions
   alias Dbservice.Sessions.UserSession
+  alias Dbservice.Users
   alias Dbservice.Users.User
-  alias Dbservice.Users.Student
-  alias Dbservice.Users.Teacher
   alias Dbservice.Groups.GroupUser
-  alias Dbservice.EnrollmentRecords.EnrollmentRecord
-  alias Dbservice.Batches.Batch
+  alias Dbservice.EnrollmentRecords
+  alias Dbservice.GroupUsers
+  alias Dbservice.Batches
   alias Dbservice.Groups.Group
 
   action_fallback DbserviceWeb.FallbackController
@@ -136,7 +136,8 @@ defmodule DbserviceWeb.UserSessionController do
   end
 
   def cleanup_student(conn, %{"student_id" => student_id}) do
-    with {:ok, student} <- get_student(student_id),
+    with student when not is_nil(student) <-
+           Users.get_student_by_student_id(student_id) || {:error, :not_found},
          {:ok, user_id} <- extract_user_id(student),
          :ok <- check_if_session_accessed(user_id),
          {:ok, _} <- delete_student_and_related_data(student) do
@@ -160,9 +161,11 @@ defmodule DbserviceWeb.UserSessionController do
   end
 
   def remove_batch_mapping(conn, %{"student_id" => student_id, "batch_id" => batch_id}) do
-    with {:ok, student} <- get_student(student_id),
+    with student when not is_nil(student) <-
+           Users.get_student_by_student_id(student_id) || {:error, :not_found},
          {:ok, user_id} <- extract_user_id(student),
-         {:ok, batch} <- get_batch(batch_id),
+         batch when not is_nil(batch) <-
+           Batches.get_batch_by_batch_id(batch_id) || {:error, :batch_not_found},
          {:ok, _} <- delete_batch_mappings(user_id, batch) do
       send_resp(conn, 200, "Batch mapping removed successfully!")
     else
@@ -180,13 +183,6 @@ defmodule DbserviceWeb.UserSessionController do
         conn
         |> put_status(:bad_request)
         |> json(%{error: "Error occurred: #{inspect(reason)}"})
-    end
-  end
-
-  defp get_student(student_id) do
-    case Repo.get_by(Student, student_id: student_id) do
-      nil -> {:error, :not_found}
-      student -> {:ok, student}
     end
   end
 
@@ -225,22 +221,11 @@ defmodule DbserviceWeb.UserSessionController do
     end
   end
 
-  defp delete_group_user(user_id) do
-    {count, _} = from(gu in GroupUser, where: gu.user_id == ^user_id) |> Repo.delete_all()
-    {:ok, count}
-  end
+  defp delete_group_user(user_id), do: GroupUsers.delete_all_by_user_id(user_id)
 
-  defp delete_enrollment_record(user_id) do
-    {count, _} = from(er in EnrollmentRecord, where: er.user_id == ^user_id) |> Repo.delete_all()
-    {:ok, count}
-  end
+  defp delete_enrollment_record(user_id), do: EnrollmentRecords.delete_all_by_user_id(user_id)
 
-  defp get_batch(batch_id) do
-    case Repo.get_by(Batch, batch_id: batch_id) do
-      nil -> {:error, :batch_not_found}
-      batch -> {:ok, batch}
-    end
-  end
+  # batch fetched via Batches context above
 
   defp delete_batch_mappings(user_id, batch) do
     Repo.transaction(fn ->
@@ -275,21 +260,12 @@ defmodule DbserviceWeb.UserSessionController do
     end
   end
 
-  defp delete_batch_enrollment_record(user_id, batch_id) do
-    {count, _} =
-      from(er in EnrollmentRecord,
-        where:
-          er.user_id == ^user_id and
-            er.group_type == "batch" and
-            er.group_id == ^batch_id
-      )
-      |> Repo.delete_all()
-
-    {:ok, count}
-  end
+  defp delete_batch_enrollment_record(user_id, batch_id),
+    do: EnrollmentRecords.delete_batch_enrollments(user_id, batch_id)
 
   def cleanup_teacher(conn, %{"teacher_id" => teacher_id}) do
-    with {:ok, teacher} <- get_teacher(teacher_id),
+    with teacher when not is_nil(teacher) <-
+           Users.get_teacher_by_teacher_id(teacher_id) || {:error, :not_found},
          {:ok, _} <- delete_teacher_and_related_data(teacher) do
       send_resp(conn, 200, "Teacher deleted successfully!")
     else
@@ -302,13 +278,6 @@ defmodule DbserviceWeb.UserSessionController do
         conn
         |> put_status(:bad_request)
         |> json(%{error: "Error occurred: #{inspect(reason)}"})
-    end
-  end
-
-  defp get_teacher(teacher_id) do
-    case Repo.get_by(Teacher, teacher_id: teacher_id) do
-      nil -> {:error, :not_found}
-      teacher -> {:ok, teacher}
     end
   end
 
@@ -328,8 +297,5 @@ defmodule DbserviceWeb.UserSessionController do
     end)
   end
 
-  defp delete_user_sessions(user_id) do
-    {count, _} = from(us in UserSession, where: us.user_id == ^user_id) |> Repo.delete_all()
-    {:ok, count}
-  end
+  defp delete_user_sessions(user_id), do: Sessions.delete_user_sessions_by_user_id(user_id)
 end

@@ -198,4 +198,30 @@ defmodule Dbservice.EnrollmentRecords do
     )
     |> Repo.all()
   end
+
+  @doc """
+  Deletes all enrollment records for a given user.
+
+  Returns {:ok, count} for consistency with other delete helpers.
+  """
+  def delete_all_by_user_id(user_id) do
+    {count, _} = from(er in EnrollmentRecord, where: er.user_id == ^user_id) |> Repo.delete_all()
+    {:ok, count}
+  end
+
+  @doc """
+  Deletes enrollment records for a given user limited to a specific batch.
+  """
+  def delete_batch_enrollments(user_id, batch_id) do
+    {count, _} =
+      from(er in EnrollmentRecord,
+        where:
+          er.user_id == ^user_id and
+            er.group_type == "batch" and
+            er.group_id == ^batch_id
+      )
+      |> Repo.delete_all()
+
+    {:ok, count}
+  end
 end
