@@ -43,7 +43,7 @@ seed_files = [
 
   # School batches (depend on schools and batches)
   "priv/repo/seeds/school_batches.exs",
-  
+
   # Session-related models
   # Form schemas (no dependencies)
   "priv/repo/seeds/form_schemas.exs",
