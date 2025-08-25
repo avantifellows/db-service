@@ -42,7 +42,19 @@ seed_files = [
   "priv/repo/seeds/groups.exs",
 
   # School batches (depend on schools and batches)
-  "priv/repo/seeds/school_batches.exs"
+  "priv/repo/seeds/school_batches.exs",
+  
+  # Session-related models
+  # Form schemas (no dependencies)
+  "priv/repo/seeds/form_schemas.exs",
+  # Sessions (depend on form schemas and users)
+  "priv/repo/seeds/sessions.exs",
+  # Group sessions (depend on groups and sessions)
+  "priv/repo/seeds/group_sessions.exs",
+  # Session occurrences (depend on sessions)
+  "priv/repo/seeds/session_occurrences.exs",
+  # User sessions (depend on session occurrences and users)
+  "priv/repo/seeds/user_sessions.exs"
 ]
 
 # Run seed files in order

@@ -18,7 +18,7 @@ else
   professions = ["Farmer", "Teacher", "Engineer", "Doctor", "Businessman", "Government Employee", "Private Employee", "Daily Wage Worker"]
   family_types = ["Nuclear", "Joint"]
   guardian_relations = ["Uncle", "Aunt", "Grandfather", "Grandmother", "Elder Brother", "Elder Sister", "Cousin"]
-  competitive_exams = [1, 2, 3, 4, 5] # Sample exam IDs
+  _competitive_exams = [1, 2, 3, 4, 5] # Sample exam IDs
 
   # Create 10 students
   students_created = for i <- 1..10 do

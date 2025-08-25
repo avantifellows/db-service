@@ -15,72 +15,82 @@ schools = Repo.all(School)
 batches = Repo.all(Batch)
 statuses = Repo.all(Status)
 
-groups_created = 0
-
-# Create groups for products
-for product <- products do
-  unless Repo.get_by(Group, type: "product", child_id: product.id) do
-    %Group{}
-    |> Group.changeset(%{
-      type: "product",
-      child_id: product.id
-    })
-    |> Repo.insert!()
-    groups_created = groups_created + 1
+# Create groups for all entity types
+product_groups =
+  for product <- products do
+    unless Repo.get_by(Group, type: "product", child_id: product.id) do
+      %Group{}
+      |> Group.changeset(%{
+        type: "product",
+        child_id: product.id
+      })
+      |> Repo.insert!()
+      1
+    else
+      0
+    end
   end
-end
 
-# Create groups for auth_groups
-for auth_group <- auth_groups do
-  unless Repo.get_by(Group, type: "auth_group", child_id: auth_group.id) do
-    %Group{}
-    |> Group.changeset(%{
-      type: "auth_group",
-      child_id: auth_group.id
-    })
-    |> Repo.insert!()
-    groups_created = groups_created + 1
+auth_group_groups =
+  for auth_group <- auth_groups do
+    unless Repo.get_by(Group, type: "auth_group", child_id: auth_group.id) do
+      %Group{}
+      |> Group.changeset(%{
+        type: "auth_group",
+        child_id: auth_group.id
+      })
+      |> Repo.insert!()
+      1
+    else
+      0
+    end
   end
-end
 
-# Create groups for schools
-for school <- schools do
-  unless Repo.get_by(Group, type: "school", child_id: school.id) do
-    %Group{}
-    |> Group.changeset(%{
-      type: "school",
-      child_id: school.id
-    })
-    |> Repo.insert!()
-    groups_created = groups_created + 1
+school_groups =
+  for school <- schools do
+    unless Repo.get_by(Group, type: "school", child_id: school.id) do
+      %Group{}
+      |> Group.changeset(%{
+        type: "school",
+        child_id: school.id
+      })
+      |> Repo.insert!()
+      1
+    else
+      0
+    end
   end
-end
 
-# Create groups for batches
-for batch <- batches do
-  unless Repo.get_by(Group, type: "batch", child_id: batch.id) do
-    %Group{}
-    |> Group.changeset(%{
-      type: "batch",
-      child_id: batch.id
-    })
-    |> Repo.insert!()
-    groups_created = groups_created + 1
+batch_groups =
+  for batch <- batches do
+    unless Repo.get_by(Group, type: "batch", child_id: batch.id) do
+      %Group{}
+      |> Group.changeset(%{
+        type: "batch",
+        child_id: batch.id
+      })
+      |> Repo.insert!()
+      1
+    else
+      0
+    end
   end
-end
 
-# Create groups for statuses
-for status <- statuses do
-  unless Repo.get_by(Group, type: "status", child_id: status.id) do
-    %Group{}
-    |> Group.changeset(%{
-      type: "status",
-      child_id: status.id
-    })
-    |> Repo.insert!()
-    groups_created = groups_created + 1
+status_groups =
+  for status <- statuses do
+    unless Repo.get_by(Group, type: "status", child_id: status.id) do
+      %Group{}
+      |> Group.changeset(%{
+        type: "status",
+        child_id: status.id
+      })
+      |> Repo.insert!()
+      1
+    else
+      0
+    end
   end
-end
 
+groups_created = Enum.sum(product_groups) + Enum.sum(auth_group_groups) + Enum.sum(school_groups) + Enum.sum(batch_groups) + Enum.sum(status_groups)
 total_entities = length(products) + length(auth_groups) + length(schools) + length(batches) + length(statuses)
 IO.puts("    ✅ Groups seeded (#{total_entities} total entities, #{groups_created} new groups created)")
