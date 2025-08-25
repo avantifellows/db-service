@@ -328,8 +328,9 @@ defmodule Dbservice.Sessions do
 
   @doc """
   Deletes all user_session rows for a given user.
-
-  Returns {:ok, count}.
+  Returns {:ok, count} where `count` is the number of rows deleted.
+  Note: `count` is currently unused by callers but can be useful for
+  logging/metrics or conditional logic.
   """
   def delete_user_sessions_by_user_id(user_id) do
     {count, _} = from(us in UserSession, where: us.user_id == ^user_id) |> Repo.delete_all()
