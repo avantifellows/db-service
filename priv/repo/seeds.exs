@@ -22,6 +22,13 @@ seed_files = [
   "priv/repo/seeds/products.exs",
   "priv/repo/seeds/auth_groups.exs",
   "priv/repo/seeds/schools.exs",
+  "priv/repo/seeds/status.exs",
+
+  # Programs (depend on products)
+  "priv/repo/seeds/programs.exs",
+
+  # Batches (depend on programs and auth_groups)
+  "priv/repo/seeds/batches.exs",
 
   # Dependent models (depend on the above)
   # depends on users + grades
@@ -31,8 +38,11 @@ seed_files = [
   # depends on users + subjects
   "priv/repo/seeds/candidates.exs",
 
-  # Groups (depend on products, auth_groups, schools)
-  "priv/repo/seeds/groups.exs"
+  # Groups (depend on products, auth_groups, schools, batches, status)
+  "priv/repo/seeds/groups.exs",
+
+  # School batches (depend on schools and batches)
+  "priv/repo/seeds/school_batches.exs"
 ]
 
 # Run seed files in order

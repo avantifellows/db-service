@@ -3,6 +3,8 @@ alias Dbservice.Groups.Group
 alias Dbservice.Products.Product
 alias Dbservice.Groups.AuthGroup
 alias Dbservice.Schools.School
+alias Dbservice.Batches.Batch
+alias Dbservice.Statuses.Status
 
 IO.puts("  → Seeding groups...")
 
@@ -10,6 +12,8 @@ IO.puts("  → Seeding groups...")
 products = Repo.all(Product)
 auth_groups = Repo.all(AuthGroup)
 schools = Repo.all(School)
+batches = Repo.all(Batch)
+statuses = Repo.all(Status)
 
 groups_created = 0
 
@@ -52,5 +56,31 @@ for school <- schools do
   end
 end
 
-total_entities = length(products) + length(auth_groups) + length(schools)
+# Create groups for batches
+for batch <- batches do
+  unless Repo.get_by(Group, type: "batch", child_id: batch.id) do
+    %Group{}
+    |> Group.changeset(%{
+      type: "batch",
+      child_id: batch.id
+    })
+    |> Repo.insert!()
+    groups_created = groups_created + 1
+  end
+end
+
+# Create groups for statuses
+for status <- statuses do
+  unless Repo.get_by(Group, type: "status", child_id: status.id) do
+    %Group{}
+    |> Group.changeset(%{
+      type: "status",
+      child_id: status.id
+    })
+    |> Repo.insert!()
+    groups_created = groups_created + 1
+  end
+end
+
+total_entities = length(products) + length(auth_groups) + length(schools) + length(batches) + length(statuses)
 IO.puts("    ✅ Groups seeded (#{total_entities} total entities, #{groups_created} new groups created)")
