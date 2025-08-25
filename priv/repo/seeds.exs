@@ -16,23 +16,23 @@ IO.puts("🌱 Running seeds...")
 # Models with no dependencies first, then dependent models
 seed_files = [
   # Independent models (no dependencies)
-  "priv/repo/seeds/users/users.exs",
-  "priv/repo/seeds/grades/grades.exs",
-  "priv/repo/seeds/subjects/subjects.exs",
-  "priv/repo/seeds/products/products.exs",
-  "priv/repo/seeds/auth_groups/auth_groups.exs",
-  "priv/repo/seeds/schools/schools.exs",
+  "priv/repo/seeds/users.exs",
+  "priv/repo/seeds/grades.exs",
+  "priv/repo/seeds/subjects.exs",
+  "priv/repo/seeds/products.exs",
+  "priv/repo/seeds/auth_groups.exs",
+  "priv/repo/seeds/schools.exs",
 
   # Dependent models (depend on the above)
   # depends on users + grades
-  "priv/repo/seeds/users/students.exs",
+  "priv/repo/seeds/students.exs",
   # depends on users + subjects
-  "priv/repo/seeds/users/teachers.exs",
+  "priv/repo/seeds/teachers.exs",
   # depends on users + subjects
-  "priv/repo/seeds/users/candidates.exs",
+  "priv/repo/seeds/candidates.exs",
 
   # Groups (depend on products, auth_groups, schools)
-  "priv/repo/seeds/groups/groups.exs"
+  "priv/repo/seeds/groups.exs"
 ]
 
 # Run seed files in order

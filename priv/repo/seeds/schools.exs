@@ -17,10 +17,26 @@ indian_states = [
   "Uttarakhand", "West Bengal"
 ]
 
-# Generate 20 unique school codes
-school_codes = Enum.to_list(1000000000..9999999999)
-|> Enum.take_random(20)
-|> Enum.map(&to_string/1)
+# Generate 20 unique school codes efficiently
+school_codes = Enum.map(1..20, fn _ ->
+  # Generate a random 10-digit number
+  Enum.random(1000000000..9999999999) |> to_string()
+end)
+|> Enum.uniq()
+|> case do
+  codes when length(codes) < 20 ->
+    # If we have duplicates, generate more codes to reach 20
+    additional_needed = 20 - length(codes)
+    additional_codes = Stream.repeatedly(fn ->
+      Enum.random(1000000000..9999999999) |> to_string()
+    end)
+    |> Stream.reject(&(&1 in codes))
+    |> Enum.take(additional_needed)
+
+    codes ++ additional_codes
+  codes ->
+    codes
+end
 
 schools_data = for {code, index} <- Enum.with_index(school_codes, 1) do
   state = Enum.random(indian_states)
