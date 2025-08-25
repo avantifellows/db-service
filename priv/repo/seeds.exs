@@ -54,7 +54,13 @@ seed_files = [
   # Session occurrences (depend on sessions)
   "priv/repo/seeds/session_occurrences.exs",
   # User sessions (depend on session occurrences and users)
-  "priv/repo/seeds/user_sessions.exs"
+  "priv/repo/seeds/user_sessions.exs",
+
+  # Exam-related models
+  # Exams (no dependencies)
+  "priv/repo/seeds/exams.exs",
+  # Student exam records (depend on students and exams)
+  "priv/repo/seeds/student_exam_records.exs"
 ]
 
 # Run seed files in order
