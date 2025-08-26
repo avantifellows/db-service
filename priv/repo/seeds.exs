@@ -47,6 +47,12 @@ seed_files = [
   # Chapters (depend on grades and subjects)
   "priv/repo/seeds/chapters.exs",
 
+  # Topics (depend on chapters)
+  "priv/repo/seeds/topics.exs",
+
+  # Chapter curriculums (depend on chapters and curriculums)
+  "priv/repo/seeds/chapter_curriculums.exs",
+
   # Groups (depend on products, auth_groups, schools, batches, status)
   "priv/repo/seeds/groups.exs",
 
@@ -70,6 +76,8 @@ seed_files = [
   "priv/repo/seeds/exams.exs",
   # Student exam records (depend on students and exams)
   "priv/repo/seeds/student_exam_records.exs",
+  # Test rules (depend on exams)
+  "priv/repo/seeds/test_rules.exs",
 
   # Enrollment system (depends on students, schools, batches, auth_groups, grades)
   "priv/repo/seeds/enrollments.exs"
