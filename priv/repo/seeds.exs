@@ -79,17 +79,32 @@ seed_files = [
   # Test rules (depend on exams)
   "priv/repo/seeds/test_rules.exs",
 
+  # Resources (depend on purposes, tags, skills, learning objectives, exams, teachers)
+  "priv/repo/seeds/resources.exs",
+
   # Problem languages (depend on resources and languages)
   "priv/repo/seeds/problem_languages.exs",
 
   # Concepts (depend on topics)
   "priv/repo/seeds/concepts.exs",
 
+  # Learning objectives (depend on concepts)
+  "priv/repo/seeds/learning_objectives.exs",
+
   # Resource topics (depend on resources and topics)
   "priv/repo/seeds/resource_topics.exs",
 
   # Resource concepts (depend on resources and concepts)
   "priv/repo/seeds/resource_concepts.exs",
+
+  # Resource chapters (depend on resources and chapters)
+  "priv/repo/seeds/resource_chapters.exs",
+
+  # Resource curriculums (depend on resources, curriculums, grades, subjects)
+  "priv/repo/seeds/resource_curriculums.exs",
+
+  # Topic curriculums (depend on topics and curriculums)
+  "priv/repo/seeds/topic_curriculums.exs",
 
   # Enrollment system (depends on students, schools, batches, auth_groups, grades)
   "priv/repo/seeds/enrollments.exs"
