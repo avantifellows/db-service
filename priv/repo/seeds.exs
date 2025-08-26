@@ -79,6 +79,18 @@ seed_files = [
   # Test rules (depend on exams)
   "priv/repo/seeds/test_rules.exs",
 
+  # Problem languages (depend on resources and languages)
+  "priv/repo/seeds/problem_languages.exs",
+
+  # Concepts (depend on topics)
+  "priv/repo/seeds/concepts.exs",
+
+  # Resource topics (depend on resources and topics)
+  "priv/repo/seeds/resource_topics.exs",
+
+  # Resource concepts (depend on resources and concepts)
+  "priv/repo/seeds/resource_concepts.exs",
+
   # Enrollment system (depends on students, schools, batches, auth_groups, grades)
   "priv/repo/seeds/enrollments.exs"
 ]
