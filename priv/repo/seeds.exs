@@ -23,6 +23,11 @@ seed_files = [
   "priv/repo/seeds/auth_groups.exs",
   "priv/repo/seeds/schools.exs",
   "priv/repo/seeds/status.exs",
+  "priv/repo/seeds/languages.exs",
+  "priv/repo/seeds/purposes.exs",
+  "priv/repo/seeds/tags.exs",
+  "priv/repo/seeds/skills.exs",
+  "priv/repo/seeds/colleges.exs",
 
   # Programs (depend on products)
   "priv/repo/seeds/programs.exs",
