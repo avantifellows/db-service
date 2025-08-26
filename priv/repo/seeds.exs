@@ -28,6 +28,7 @@ seed_files = [
   "priv/repo/seeds/tags.exs",
   "priv/repo/seeds/skills.exs",
   "priv/repo/seeds/colleges.exs",
+  "priv/repo/seeds/curriculums.exs",
 
   # Programs (depend on products)
   "priv/repo/seeds/programs.exs",
@@ -42,6 +43,9 @@ seed_files = [
   "priv/repo/seeds/teachers.exs",
   # depends on users + subjects
   "priv/repo/seeds/candidates.exs",
+
+  # Chapters (depend on grades and subjects)
+  "priv/repo/seeds/chapters.exs",
 
   # Groups (depend on products, auth_groups, schools, batches, status)
   "priv/repo/seeds/groups.exs",
