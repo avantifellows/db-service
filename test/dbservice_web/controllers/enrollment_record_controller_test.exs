@@ -73,7 +73,9 @@ defmodule DbserviceWeb.EnrollmentRecordControllerTest do
 
     test "renders errors when data is invalid", %{conn: conn} do
       conn =
-        post(conn, Routes.enrollment_record_path(conn, :create), enrollment_record: @invalid_attrs)
+        post(conn, Routes.enrollment_record_path(conn, :create),
+          enrollment_record: @invalid_attrs
+        )
 
       assert json_response(conn, 422)["errors"] != %{}
     end

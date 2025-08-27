@@ -1,4 +1,4 @@
-defmodule Dbservice.Repo.Migrations.AlterStudentTableMigration do
+defmodule Dbservice.Repo.Migrations.AlterStudentTableDeviceAvailability do
   use Ecto.Migration
 
   def change do

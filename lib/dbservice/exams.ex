@@ -93,4 +93,14 @@ defmodule Dbservice.Exams do
   def change_exam(%Exam{} = exam, attrs \\ %{}) do
     Exam.changeset(exam, attrs)
   end
+
+  def get_exams_by_ids(ids) when is_list(ids) do
+    import Ecto.Query
+
+    Dbservice.Exams.Exam
+    |> where([exam], exam.id in ^ids)
+    |> Dbservice.Repo.all()
+  end
+
+  def get_exams_by_ids(_), do: []
 end

@@ -3,6 +3,7 @@ defmodule Dbservice.Users.Student do
 
   use Ecto.Schema
   import Ecto.Changeset
+  import Dbservice.Utils.Util
 
   alias Dbservice.Users.User
   alias Dbservice.Profiles.StudentProfile
@@ -52,6 +53,7 @@ defmodule Dbservice.Users.Student do
     field(:status, :string)
     field(:board_stream, :string)
     field(:school_medium, :string)
+    field(:apaar_id, :string)
 
     belongs_to(:user, User)
     has_one(:student_profile, StudentProfile)
@@ -106,8 +108,11 @@ defmodule Dbservice.Users.Student do
       :planned_competitive_exams,
       :status,
       :board_stream,
-      :school_medium
+      :school_medium,
+      :apaar_id
     ])
     |> validate_required([:user_id])
+    |> validate_category(:category)
+    |> validate_stream(:stream)
   end
 end

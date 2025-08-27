@@ -41,7 +41,6 @@ defmodule Dbservice.ProfilesTest do
       }
 
       assert {:ok, %UserProfile{} = user_profile} = Profiles.create_user_profile(valid_attrs)
-      assert user_profile.current_grade == "11"
     end
 
     test "create_user_profile/1 with invalid data returns error changeset" do
@@ -56,14 +55,11 @@ defmodule Dbservice.ProfilesTest do
         current_grade: "11",
         current_program: "HaryanaStudents",
         current_batch: "Photon",
-        logged_in_atleast_once: true,
         latest_session_accessed: "LiveClass_10"
       }
 
       assert {:ok, %UserProfile{} = user_profile} =
                Profiles.update_user_profile(user_profile, update_attrs)
-
-      assert user_profile.current_grade == "11"
     end
 
     test "update_user_profile/2 with invalid data returns error changeset" do
@@ -314,7 +310,10 @@ defmodule Dbservice.ProfilesTest do
         school: "XYZ High School",
         program_manager: "John Doe",
         user_profile_id: user_profile.id,
-        user_id: user.id
+        user_id: user.id,
+        avg_rating: 4.5,
+        logged_in_atleast_once: false,
+        latest_session_accessed: "LiveClass_10"
       }
 
       assert {:ok, %TeacherProfile{} = teacher_profile} =

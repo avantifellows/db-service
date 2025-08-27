@@ -5,17 +5,13 @@ defmodule Dbservice.LearningObjectives.LearningObjective do
   import Ecto.Changeset
 
   alias Dbservice.Concepts.Concept
-  alias Dbservice.Tags.Tag
-  alias Dbservice.Resources.Resource
 
   schema "learning_objective" do
-    field(:title, :string)
+    field(:title, {:array, :map})
 
     timestamps()
 
-    has_many(:resource, Resource)
     belongs_to(:concept, Concept)
-    belongs_to(:tag, Tag)
   end
 
   @doc false
@@ -23,8 +19,7 @@ defmodule Dbservice.LearningObjectives.LearningObjective do
     learning_objective
     |> cast(attrs, [
       :title,
-      :concept_id,
-      :tag_id
+      :concept_id
     ])
   end
 end

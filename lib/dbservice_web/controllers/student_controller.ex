@@ -13,11 +13,11 @@ defmodule DbserviceWeb.StudentController do
   alias Dbservice.EnrollmentRecords.EnrollmentRecord
   alias Dbservice.Statuses.Status
   alias Dbservice.Groups.Group
-  alias Dbservice.Batches.Batch
   alias Dbservice.GroupUsers
-  alias Dbservice.Grades.Grade
-  alias DbserviceWeb.EnrollmentRecordView
+  alias DbserviceWeb.EnrollmentRecordJSON
   alias Dbservice.Statuses
+  alias Dbservice.Services.BatchEnrollmentService
+  alias Dbservice.Services.StudentUpdateService
 
   action_fallback(DbserviceWeb.FallbackController)
 
@@ -33,10 +33,7 @@ defmodule DbserviceWeb.StudentController do
           SwaggerSchemaStudent.student(),
           SwaggerSchemaStudent.students()
         ),
-        Map.merge(
-          SwaggerSchemaStudent.student_registration(),
-          SwaggerSchemaStudent.student_with_user()
-        )
+        SwaggerSchemaStudent.student_with_user()
       ),
       Map.merge(
         Map.merge(
@@ -70,6 +67,12 @@ defmodule DbserviceWeb.StudentController do
     response(200, "OK", Schema.ref(:Students))
   end
 
+  def index(conn, %{"id" => id, "group" => group} = _params) do
+    student = Users.get_student_by_id_and_group(id, group)
+    students = if student, do: [student], else: []
+    render(conn, :index, student: students)
+  end
+
   def index(conn, params) do
     query =
       from(m in Student,
@@ -88,7 +91,7 @@ defmodule DbserviceWeb.StudentController do
       end)
 
     student = Repo.all(query)
-    render(conn, "index.json", student: student)
+    render(conn, :index, student: student)
   end
 
   swagger_path :create do
@@ -125,7 +128,7 @@ defmodule DbserviceWeb.StudentController do
 
   def show(conn, %{"id" => id}) do
     student = Users.get_student!(id)
-    render(conn, "show.json", student: student)
+    render(conn, :show, student: student)
   end
 
   swagger_path :update do
@@ -141,12 +144,12 @@ defmodule DbserviceWeb.StudentController do
 
   def update(conn, params) do
     student = Users.get_student!(params["id"])
-    user = Users.get_user!(student.user_id)
 
-    with {:ok, %Student{} = student} <- Users.update_student_with_user(student, user, params) do
+    with {:ok, %Student{} = student} <-
+           StudentUpdateService.update_student_with_user_data(student, params) do
       conn
       |> put_status(:ok)
-      |> render("show.json", student: student)
+      |> render(:show, student: student)
     end
   end
 
@@ -175,7 +178,7 @@ defmodule DbserviceWeb.StudentController do
            Users.update_student_with_user(existing_student, user, params) do
       conn
       |> put_status(:ok)
-      |> render("show.json", student: student)
+      |> render(:show, student: student)
     end
   end
 
@@ -183,7 +186,7 @@ defmodule DbserviceWeb.StudentController do
     with {:ok, %Student{} = student} <- Users.create_student_with_user(params) do
       conn
       |> put_status(:created)
-      |> render("show.json", student: student)
+      |> render(:show, student: student)
     end
   end
 
@@ -253,7 +256,7 @@ defmodule DbserviceWeb.StudentController do
       # Update the student's status to 'dropout' using update_student/2
       with {:ok, %Student{} = updated_student} <-
              Users.update_student(student, %{"status" => "dropout"}) do
-        render(conn, "show.json", student: updated_student)
+        render(conn, :show, student: updated_student)
       end
     end
   end
@@ -270,14 +273,16 @@ defmodule DbserviceWeb.StudentController do
     start_date = params["start_date"]
 
     # Get batch information and enrolled status information
-    {batch_group_id, batch_id, batch_group_type} = get_batch_info(params["batch_id"])
-    {status_id, status_group_type} = get_enrolled_status_info()
+    {batch_group_id, batch_id, batch_group_type} =
+      BatchEnrollmentService.get_batch_info(params["batch_id"])
+
+    {status_id, status_group_type} = BatchEnrollmentService.get_enrolled_status_info()
 
     academic_year = params["academic_year"]
 
     # Check if the student is already enrolled in the specified batch
-    unless existing_batch_enrollment?(user_id, batch_id) do
-      handle_batch_enrollment(
+    unless BatchEnrollmentService.existing_batch_enrollment?(user_id, batch_id) do
+      BatchEnrollmentService.handle_batch_enrollment(
         user_id,
         batch_id,
         batch_group_type,
@@ -286,7 +291,7 @@ defmodule DbserviceWeb.StudentController do
       )
 
       # Handle the enrollment process for the status
-      handle_status_enrollment(
+      BatchEnrollmentService.handle_status_enrollment(
         user_id,
         status_id,
         status_group_type,
@@ -297,190 +302,36 @@ defmodule DbserviceWeb.StudentController do
 
     # Only handle grade if it's provided in the params
     if Map.has_key?(params, "grade") do
-      {grade_group_id, grade_id, grade_group_type} = get_grade_info(params["grade"])
+      {grade_group_id, grade_id, grade_group_type} =
+        BatchEnrollmentService.get_grade_info(params["grade"])
 
-      # Fetch current grade from database to compare
-      current_grade = EnrollmentRecords.get_current_grade_id(user_id)
-      grade_changed = current_grade != grade_id
-
-      # If grade has changed, create a new grade entry in ER
-      if grade_changed do
-        handle_grade_change(user_id, grade_id, start_date, academic_year, grade_group_type)
+      # Check if grade has changed
+      if BatchEnrollmentService.grade_changed?(user_id, grade_id) do
+        # Handle grade enrollment
+        BatchEnrollmentService.handle_grade_enrollment(
+          user_id,
+          grade_id,
+          grade_group_type,
+          academic_year,
+          start_date
+        )
 
         # Update grade in group_user
-        update_group_user_grade(user_id, grade_group_id, group_users)
+        BatchEnrollmentService.update_grade_user(user_id, grade_group_id, group_users)
 
         # Update grade in student table
-        update_student_grade(student, grade_id)
+        BatchEnrollmentService.update_student_grade(student, grade_id)
       end
     end
 
     # Always update the batch group user
-    update_batch_user(user_id, batch_group_id, group_users)
+    BatchEnrollmentService.update_batch_user(user_id, batch_group_id, group_users)
 
     # Update the student's status to "enrolled" and render the response
     with {:ok, %Student{} = updated_student} <-
            Users.update_student(student, %{"status" => "enrolled"}) do
-      render(conn, "show.json", student: updated_student)
+      render(conn, :show, student: updated_student)
     end
-  end
-
-  # Handle grade change by creating a new grade entry in ER
-  defp handle_grade_change(user_id, grade_id, start_date, academic_year, grade_group_type) do
-    # First mark all current grade entries as not current
-    from(e in EnrollmentRecord,
-      where: e.user_id == ^user_id and e.group_type == "grade" and e.is_current == true,
-      update: [set: [is_current: false, end_date: ^start_date]]
-    )
-    |> Repo.update_all([])
-
-    # Create new grade enrollment record
-    EnrollmentRecords.create_enrollment_record(%{
-      user_id: user_id,
-      is_current: true,
-      start_date: start_date,
-      group_id: grade_id,
-      group_type: grade_group_type,
-      academic_year: academic_year
-    })
-  end
-
-  # Update grade in group_user
-  defp update_group_user_grade(user_id, grade_group_id, group_users) do
-    grade_group_user = Enum.find(group_users, &group_user_by_type?(&1, "grade"))
-
-    if grade_group_user do
-      GroupUsers.update_group_user(grade_group_user, %{group_id: grade_group_id})
-    else
-      # Create a new grade group user if one doesn't exist
-      GroupUsers.create_group_user(%{
-        user_id: user_id,
-        group_id: grade_group_id
-      })
-    end
-  end
-
-  # Update grade in student table
-  defp update_student_grade(student, grade_id) do
-    Users.update_student(student, %{"grade_id" => grade_id})
-  end
-
-  # Fetches batch information based on the batch ID
-  defp get_batch_info(batch_id) do
-    from(b in Batch,
-      join: g in Group,
-      on: g.child_id == b.id and g.type == "batch",
-      where: b.batch_id == ^batch_id,
-      select: {g.id, g.child_id, g.type}
-    )
-    |> Repo.one()
-  end
-
-  # Fetches grade information based on the grade number
-  defp get_grade_info(grade) do
-    from(gr in Grade,
-      join: g in Group,
-      on: g.child_id == gr.id and g.type == "grade",
-      where: gr.number == ^grade,
-      select: {g.id, g.child_id, g.type}
-    )
-    |> Repo.one()
-  end
-
-  # Fetches enrolled status information
-  defp get_enrolled_status_info do
-    from(s in Status,
-      join: g in Group,
-      on: g.child_id == s.id and g.type == "status",
-      where: s.title == :enrolled,
-      select: {g.child_id, g.type}
-    )
-    |> Repo.one()
-  end
-
-  # Checks if the student is already enrolled in the batch
-  defp existing_batch_enrollment?(user_id, batch_id) do
-    from(e in EnrollmentRecord,
-      where:
-        e.user_id == ^user_id and e.group_id == ^batch_id and e.group_type == "batch" and
-          e.is_current == true
-    )
-    |> Repo.exists?()
-  end
-
-  # Handles batch enrollment process
-  defp handle_batch_enrollment(
-         user_id,
-         batch_id,
-         group_type,
-         academic_year,
-         start_date
-       ) do
-    new_enrollment_attrs = %{
-      user_id: user_id,
-      is_current: true,
-      start_date: start_date,
-      group_id: batch_id,
-      group_type: group_type,
-      academic_year: academic_year
-    }
-
-    # Update existing enrollments to mark them as not current
-    update_existing_enrollments(user_id, "batch", start_date)
-    EnrollmentRecords.create_enrollment_record(new_enrollment_attrs)
-  end
-
-  # Handles status enrollment process
-  defp handle_status_enrollment(
-         user_id,
-         status_id,
-         status_group_type,
-         academic_year,
-         start_date
-       ) do
-    new_status_enrollment_attrs = %{
-      user_id: user_id,
-      is_current: true,
-      start_date: start_date,
-      group_id: status_id,
-      group_type: status_group_type,
-      academic_year: academic_year
-    }
-
-    # Update existing enrollments to mark them as not current
-    update_existing_enrollments(user_id, "status", start_date)
-    EnrollmentRecords.create_enrollment_record(new_status_enrollment_attrs)
-  end
-
-  # Updates existing enrollments to mark them as not current
-  defp update_existing_enrollments(user_id, group_type, start_date) do
-    from(e in EnrollmentRecord,
-      where: e.user_id == ^user_id and e.group_type == ^group_type and e.is_current == true,
-      update: [set: [is_current: false, end_date: ^start_date]]
-    )
-    |> Repo.update_all([])
-  end
-
-  # Updates or creates a group user record for the batch
-  defp update_batch_user(user_id, group_id, group_users) do
-    batch_group_user = Enum.find(group_users, &group_user_by_type?(&1, "batch"))
-
-    if batch_group_user do
-      # Update existing group user with the new group ID
-      GroupUsers.update_group_user(batch_group_user, %{group_id: group_id})
-    else
-      # Create a new group user record
-      GroupUsers.create_group_user(%{user_id: user_id, group_id: group_id, type: "batch"})
-    end
-  end
-
-  # Checks if a group user is associated with a specific type
-  defp group_user_by_type?(group_user, type) do
-    from(g in Group,
-      where: g.id == ^group_user.group_id and g.type == ^type,
-      select: g.id
-    )
-    |> Repo.exists?()
   end
 
   swagger_path :create_student_id do
@@ -735,44 +586,74 @@ defmodule DbserviceWeb.StudentController do
   end
 
   def update_user_enrollment_records(conn, params) do
-    student = Users.get_student_by_student_id(params["student_id"])
-    user_id = student.user_id
-    academic_year = params["academic_year"]
+    with student when not is_nil(student) <-
+           Users.get_student_by_student_id(params["student_id"]),
+         user_id <- student.user_id,
+         group_id <- params["group_id"],
+         group_type <- params["group_type"] do
+      update_attrs = Map.drop(params, ["student_id", "group_id", "group_type"])
 
-    # Remove non-updateable fields from params
-    updateable_params = Map.drop(params, ["student_id", "academic_year"])
+      enrollment_response = update_enrollment_record(user_id, group_id, group_type, update_attrs)
 
-    # Fetch all enrollment records for the user in the given academic year
-    enrollment_records =
-      EnrollmentRecords.get_enrollment_records_by_user_and_academic_year(user_id, academic_year)
-
-    # Update each record with the provided params
-    updated_records =
-      Enum.map(enrollment_records, fn record ->
-        case EnrollmentRecords.update_enrollment_record(record, updateable_params) do
-          {:ok, updated_record} ->
-            EnrollmentRecordView.render("enrollment_record.json", %{
-              enrollment_record: updated_record
-            })
-
-          {:error, _changeset} ->
-            %{error: "Failed to update record"}
+      status_response =
+        if group_type == "batch" do
+          update_status_record(user_id, update_attrs)
+        else
+          nil
         end
-      end)
 
-    case updated_records do
-      [] ->
+      conn
+      |> put_status(:ok)
+      |> json(%{
+        message: "Enrollment records updated.",
+        updated_record: enrollment_response,
+        updated_status_record: status_response
+      })
+    else
+      nil ->
         conn
         |> put_status(:not_found)
-        |> json(%{message: "No records found for the given user and academic year."})
+        |> json(%{message: "Student not found"})
+    end
+  end
 
-      _ ->
-        conn
-        |> put_status(:ok)
-        |> json(%{
-          message: "Enrollment records updated successfully.",
-          updated_records: updated_records
-        })
+  defp update_enrollment_record(user_id, group_id, group_type, attrs) do
+    case Repo.get_by(EnrollmentRecord,
+           user_id: user_id,
+           group_id: group_id,
+           group_type: group_type
+         ) do
+      nil ->
+        %{error: "Enrollment record not found for given group_type and group_id"}
+
+      record ->
+        case EnrollmentRecords.update_enrollment_record(record, attrs) do
+          {:ok, updated} ->
+            EnrollmentRecordJSON.show(%{enrollment_record: updated})
+
+          {:error, _changeset} ->
+            %{error: "Failed to update enrollment record"}
+        end
+    end
+  end
+
+  defp update_status_record(user_id, attrs) do
+    case Repo.get_by(EnrollmentRecord,
+           user_id: user_id,
+           group_type: "status",
+           is_current: true
+         ) do
+      nil ->
+        %{error: "Status record not found"}
+
+      record ->
+        case EnrollmentRecords.update_enrollment_record(record, attrs) do
+          {:ok, updated} ->
+            EnrollmentRecordJSON.show(%{enrollment_record: updated})
+
+          {:error, _changeset} ->
+            %{error: "Failed to update status record"}
+        end
     end
   end
 
@@ -846,7 +727,7 @@ defmodule DbserviceWeb.StudentController do
 
     conn
     |> put_status(:ok)
-    |> render("batch_result.json", %{
+    |> render(:batch_result, %{
       message: "Batch processing completed",
       successful: successful,
       failed: failed,
@@ -931,20 +812,21 @@ defmodule DbserviceWeb.StudentController do
 
   def update_student_status(conn, params) do
     with {:ok, status} <- get_status_by_title(params["status"]),
-         {:ok, student} <- get_student_by_student_id(params["student_id"]),
+         student when not is_nil(student) <-
+           Users.get_student_by_student_id(params["student_id"]),
          :ok <- check_existing_status(student, status.title),
          {:ok, %Student{} = updated_student} <- update_student_status_field(student, status),
          {:ok, _enrollment_record} <- create_status_enrollment_record(student, status, params) do
       conn
       |> put_status(:ok)
-      |> render("show.json", student: updated_student)
+      |> render(:show, student: updated_student)
     else
       {:error, :status_not_found} ->
         conn
         |> put_status(:not_found)
         |> json(%{error: "Status not found"})
 
-      {:error, :student_not_found} ->
+      nil ->
         conn
         |> put_status(:not_found)
         |> json(%{error: "Student not found"})
@@ -974,14 +856,6 @@ defmodule DbserviceWeb.StudentController do
     case Statuses.get_status_by_title(status_title) do
       nil -> {:error, :status_not_found}
       status -> {:ok, status}
-    end
-  end
-
-  # Helper function to get student by student_id
-  defp get_student_by_student_id(student_id) do
-    case Users.get_student_by_student_id(student_id) do
-      nil -> {:error, :student_not_found}
-      student -> {:ok, student}
     end
   end
 

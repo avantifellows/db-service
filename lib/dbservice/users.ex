@@ -290,6 +290,7 @@ defmodule Dbservice.Users do
   end
 
   alias Dbservice.Users.Teacher
+  alias Dbservice.Users.Candidate
 
   @doc """
   Returns the list of teacher.
@@ -446,6 +447,157 @@ defmodule Dbservice.Users do
   end
 
   @doc """
+  Returns the list of candidate.
+
+  ## Examples
+
+      iex> list_candidate()
+      [%Candidate{}, ...]
+
+  """
+  def list_candidate do
+    Repo.all(Candidate)
+  end
+
+  @doc """
+  Gets a single candidate.
+
+  Raises `Ecto.NoResultsError` if the Candidate does not exist.
+
+  ## Examples
+
+      iex> get_candidate!(123)
+      %Candidate{}
+
+      iex> get_candidate!(456)
+      ** (Ecto.NoResultsError)
+
+  """
+  def get_candidate!(id), do: Repo.get!(Candidate, id)
+
+  @doc """
+  Gets a Candidate by candidate ID.
+  Raises `Ecto.NoResultsError` if the Candidate does not exist.
+  ## Examples
+      iex> get_candidate_by_candidate_id(1234)
+      %Candidate{}
+      iex> get_candidate_by_candidate_id(abc)
+      ** (Ecto.NoResultsError)
+  """
+  def get_candidate_by_candidate_id(candidate_id) do
+    Repo.get_by(Candidate, candidate_id: candidate_id)
+  end
+
+  @doc """
+  Creates a candidate.
+
+  ## Examples
+
+      iex> create_candidate(%{field: value})
+      {:ok, %Candidate{}}
+
+      iex> create_candidate(%{field: bad_value})
+      {:error, %Ecto.Changeset{}}
+
+  """
+  def create_candidate(attrs \\ %{}) do
+    %Candidate{}
+    |> Candidate.changeset(attrs)
+    |> Repo.insert()
+  end
+
+  @doc """
+  Updates a candidate.
+
+  ## Examples
+
+      iex> update_candidate(candidate, %{field: new_value})
+      {:ok, %Candidate{}}
+
+      iex> update_candidate(candidate, %{field: bad_value})
+      {:error, %Ecto.Changeset{}}
+
+  """
+  def update_candidate(%Candidate{} = candidate, attrs) do
+    candidate
+    |> Candidate.changeset(attrs)
+    |> Repo.update()
+  end
+
+  @doc """
+  Deletes a candidate.
+
+  ## Examples
+
+      iex> delete_candidate(candidate)
+      {:ok, %Candidate{}}
+
+      iex> delete_candidate(candidate)
+      {:error, %Ecto.Changeset{}}
+
+  """
+  def delete_candidate(%Candidate{} = candidate) do
+    Repo.delete(candidate)
+  end
+
+  @doc """
+  Creates a user first and then the candidate.
+
+  ## Examples
+
+      iex> create_candidate_with_user(%{field: value})
+      {:ok, %Candidate{}}
+
+      iex> create_candidate_with_user(%{field: bad_value})
+      {:error, %Ecto.Changeset{}}
+
+  """
+  def create_candidate_with_user(attrs \\ %{}) do
+    alias Dbservice.Users
+
+    with {:ok, %User{} = user} <- Users.create_user(attrs),
+         {:ok, %Candidate{} = candidate} <-
+           Users.create_candidate(Map.merge(attrs, %{"user_id" => user.id})) do
+      {:ok, candidate}
+    end
+  end
+
+  @doc """
+  Updates a user first and then the candidate.
+
+  ## Examples
+
+      iex> update_candidate_with_user(%{field: value})
+      {:ok, %Candidate{}}
+
+      iex> update_candidate_with_user(%{field: bad_value})
+      {:error, %Ecto.Changeset{}}
+
+  """
+  def update_candidate_with_user(candidate, user, attrs \\ %{}) do
+    alias Dbservice.Users
+
+    with {:ok, %User{} = user} <- Users.update_user(user, attrs),
+         {:ok, %Candidate{} = candidate} <-
+           Users.update_candidate(candidate, Map.merge(attrs, %{"user_id" => user.id})) do
+      {:ok, candidate}
+    end
+  end
+
+  @doc """
+  Returns an `%Ecto.Changeset{}` for tracking candidate changes.
+
+  ## Examples
+
+      iex> change_candidate(candidate)
+      %Ecto.Changeset{data: %Candidate{}}
+
+  """
+  def change_candidate(%Candidate{} = candidate, attrs \\ %{}) do
+    Candidate.changeset(candidate, attrs)
+  end
+
+  @doc """
   Gets students based on the given parameters.
   Returns an empty list if no students are found.
 
@@ -488,10 +640,21 @@ defmodule Dbservice.Users do
     )
     |> Repo.all()
   end
-
   defp stringify_keys(map) do
     map
     |> Enum.map(fn {key, value} -> {to_string(key), value} end)
     |> Enum.into(%{})
+  end
+  @doc """
+  Gets a student by id and group.
+  """
+  def get_student_by_id_and_group(id, group) do
+    case group do
+      "EnableStudents" ->
+        Repo.one(from s in Student, where: s.apaar_id == ^id or s.student_id == ^id)
+
+      _ ->
+        Repo.one(from s in Student, where: s.student_id == ^id)
+    end
   end
 end

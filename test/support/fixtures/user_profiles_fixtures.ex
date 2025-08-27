@@ -15,9 +15,6 @@ defmodule Dbservice.UserProfilesFixtures do
       attrs
       |> Enum.into(%{
         user_id: user.id,
-        current_grade: "11",
-        current_program: "HaryanaStudents",
-        current_batch: "Photon",
         logged_in_atleast_once: true,
         latest_session_accessed: "LiveClass_10"
       })
@@ -51,6 +48,7 @@ defmodule Dbservice.UserProfilesFixtures do
         current_grade: "11",
         current_program: "HaryanaStudents",
         current_batch: "Photon",
+        user_id: student.user_id,
         logged_in_atleast_once: true,
         latest_session_accessed: "LiveClass_10",
         user_id: user.id

@@ -8,6 +8,7 @@ defmodule Dbservice.Users.User do
   alias Dbservice.Sessions.SessionOccurrence
   alias Dbservice.Users.Teacher
   alias Dbservice.Users.Student
+  alias Dbservice.Users.Candidate
   alias Dbservice.Profiles.UserProfile
   alias Dbservice.Groups.Group
   alias Dbservice.EnrollmentRecords.EnrollmentRecord
@@ -35,6 +36,7 @@ defmodule Dbservice.Users.User do
     many_to_many(:sessions, SessionOccurrence, join_through: "user_session", on_replace: :delete)
     has_one(:teacher, Teacher)
     has_one(:student, Student)
+    has_one(:candidate, Candidate)
     has_one(:user_profile, UserProfile)
     has_many(:enrollment_record, EnrollmentRecord)
     many_to_many(:group, Group, join_through: "group_user", on_replace: :delete)
@@ -63,6 +65,7 @@ defmodule Dbservice.Users.User do
     ])
     |> validate_format(:phone, ~r{\A\d*\z})
     |> validate_date_of_birth
+    |> validate_gender(:gender)
   end
 
   def changeset_update_groups(user, groups) do

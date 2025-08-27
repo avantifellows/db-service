@@ -11,21 +11,28 @@ defmodule DbserviceWeb.SwaggerSchema.Chapter do
           description("A chapter in the application")
 
           properties do
-            name(:string, "Chapter name")
+            name(
+              Schema.array(:object),
+              "Multilingual chapter names. Each object should contain 'lang_code' and 'chapter' keys",
+              example: [
+                %{lang_code: "hi", chapter: "हमारे आस-पास के पदार्थ"},
+                %{lang_code: "en", chapter: "Matter in Our Surroundings"}
+              ]
+            )
+
             code(:string, "Chapter Code")
             grade_id(:integer, "Grade id associated with the chapter")
             subject_id(:integer, "Subject id associated with the chapter")
-            tag_id(:integer, "Tag id associated with the chapter")
-            curriculum_id(:integer, "Curriculum id associated with the chapter")
           end
 
           example(%{
-            name: "हमारे आस-पास के पदार्थ | Matter in Our Surroundings",
+            name: [
+              %{lang_code: "hi", chapter: "हमारे आस-पास के पदार्थ"},
+              %{lang_code: "en", chapter: "Matter in Our Surroundings"}
+            ],
             code: "9C01",
             grade_id: 1,
-            subject_id: 1,
-            tag_id: 4,
-            curriculum_id: 1
+            subject_id: 1
           })
         end
     }
