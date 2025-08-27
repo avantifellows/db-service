@@ -640,11 +640,13 @@ defmodule Dbservice.Users do
     )
     |> Repo.all()
   end
+
   defp stringify_keys(map) do
     map
     |> Enum.map(fn {key, value} -> {to_string(key), value} end)
     |> Enum.into(%{})
   end
+
   @doc """
   Gets a student by id and group.
   """
