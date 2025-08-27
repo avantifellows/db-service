@@ -246,7 +246,7 @@ defmodule Dbservice.Users do
 
     with {:ok, %User{} = user} <- Users.create_user(attrs),
          {:ok, %Student{} = student} <-
-           Users.create_student(Map.merge(attrs, %{"user_id" => user.id})) do
+           Users.create_student(Map.merge(stringify_keys(attrs), %{"user_id" => user.id})) do
       {:ok, student}
     end
   end
@@ -268,7 +268,10 @@ defmodule Dbservice.Users do
 
     with {:ok, %User{} = user} <- Users.update_user(user, attrs),
          {:ok, %Student{} = student} <-
-           Users.update_student(student, Map.merge(attrs, %{"user_id" => user.id})) do
+           Users.update_student(
+             student,
+             Map.merge(stringify_keys(attrs), %{"user_id" => user.id})
+           ) do
       {:ok, student}
     end
   end
@@ -400,7 +403,7 @@ defmodule Dbservice.Users do
 
     with {:ok, %User{} = user} <- Users.create_user(attrs),
          {:ok, %Teacher{} = teacher} <-
-           Users.create_teacher(Map.merge(attrs, %{"user_id" => user.id})) do
+           Users.create_teacher(Map.merge(stringify_keys(attrs), %{"user_id" => user.id})) do
       {:ok, teacher}
     end
   end
@@ -422,7 +425,10 @@ defmodule Dbservice.Users do
 
     with {:ok, %User{} = user} <- Users.update_user(user, attrs),
          {:ok, %Teacher{} = teacher} <-
-           Users.update_teacher(teacher, Map.merge(attrs, %{"user_id" => user.id})) do
+           Users.update_teacher(
+             teacher,
+             Map.merge(stringify_keys(attrs), %{"user_id" => user.id})
+           ) do
       {:ok, teacher}
     end
   end
@@ -633,6 +639,12 @@ defmodule Dbservice.Users do
       select: {s, u}
     )
     |> Repo.all()
+  end
+
+  defp stringify_keys(map) do
+    map
+    |> Enum.map(fn {key, value} -> {to_string(key), value} end)
+    |> Enum.into(%{})
   end
 
   @doc """

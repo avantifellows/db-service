@@ -16,8 +16,8 @@ defmodule Dbservice.SchoolsFixtures do
         code: "some code",
         name: "some name",
         udise_code: "some udise code",
-        type: "some type",
-        category: "some category",
+        gender_type: "some gender type",
+        af_school_category: "some af school category",
         region: "some region",
         state_code: "some state code",
         state: "some state",
@@ -26,7 +26,7 @@ defmodule Dbservice.SchoolsFixtures do
         block_code: "some block code",
         block_name: "some block name",
         board: "some board",
-        board_medium: "some board medium"
+        user_id: nil
       })
       |> Dbservice.Schools.create_school()
 
