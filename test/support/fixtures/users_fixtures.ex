@@ -1,6 +1,5 @@
 defmodule Dbservice.UsersFixtures do
   alias Dbservice.Users
-  alias Dbservice.SubjectsFixtures
 
   @moduledoc """
   This module defines test helpers for creating
@@ -16,12 +15,13 @@ defmodule Dbservice.UsersFixtures do
       |> Enum.into(%{
         first_name: "some first name",
         last_name: "some last name",
-        email: "some.email@example.com",
-        phone: "9456591269",
-        gender: "male",
         address: "some address",
         city: "some city",
         district: "some district",
+        email: "some email",
+        gender: "Male",
+        phone: "9456591269",
+        pincode: "some pincode",
         state: "some state",
         region: "some region",
         pincode: "123456",
@@ -45,47 +45,22 @@ defmodule Dbservice.UsersFixtures do
     {:ok, student} =
       attrs
       |> Enum.into(%{
-        student_id: "some_student_id",
-        father_name: "some father name",
-        father_phone: "some father phone",
+        student_id: "some student id",
+        category: "Gen",
+        father_name: "some father_name",
+        father_phone: "some father_phone",
+        mother_name: "some mother_name",
+        stream: "medical",
+        physically_handicapped: false,
+        annual_family_income: "some family income",
         father_education_level: "some father education level",
         father_profession: "some father profession",
-        mother_name: "some mother name",
         mother_phone: "some mother phone",
         mother_education_level: "some mother education level",
-        mother_profession: "some mother profession",
-        guardian_name: "some guardian name",
-        guardian_relation: "some guardian relation",
-        guardian_phone: "some guardian phone",
-        guardian_education_level: "some guardian education level",
-        guardian_profession: "some guardian profession",
-        category: "some category",
-        has_category_certificate: false,
-        stream: "some stream",
-        physically_handicapped: false,
-        physically_handicapped_certificate: "some certificate",
-        annual_family_income: "some income",
-        monthly_family_income: "some income",
-        time_of_device_availability: "some time",
-        has_internet_access: "no",
-        primary_smartphone_owner: "some owner",
-        primary_smartphone_owner_profession: "some profession",
-        number_of_smartphones: "1",
-        family_type: "nuclear",
-        number_of_four_wheelers: "0",
-        number_of_two_wheelers: "1",
-        has_air_conditioner: false,
-        goes_for_tuition_or_other_coaching: "no",
-        know_about_avanti: "no",
-        percentage_in_grade_10_science: "85",
-        percentage_in_grade_10_math: "90",
-        percentage_in_grade_10_english: "88",
-        grade_10_marksheet: "some marksheet",
-        photo: "some photo",
-        planned_competitive_exams: [],
-        status: "active",
-        board_stream: "science",
-        school_medium: "english",
+        time_of_device_availability: "morning",
+        has_internet_access: "false",
+        primary_smartphone_owner: "some primary smartphone owner",
+        primary_smartphone_owner_profession: "some primary smartphone owner profession",
         user_id: user_id
       })
       |> Dbservice.Users.create_student()
@@ -99,20 +74,43 @@ defmodule Dbservice.UsersFixtures do
   def teacher_fixture(attrs \\ %{}) do
     user = user_fixture()
     user_id = user.id
-    subject = SubjectsFixtures.subject_fixture()
-    subject_id = subject.id
 
     {:ok, teacher} =
       attrs
       |> Enum.into(%{
+        teacher_id: "some teacher id",
         designation: "some designation",
-        teacher_id: "some_teacher_id",
         is_af_teacher: false,
-        user_id: user_id,
-        subject_id: subject_id
+        user_id: user_id
       })
       |> Dbservice.Users.create_teacher()
 
-    {user, subject, teacher}
+    {user, teacher}
+  end
+
+  def get_user_id do
+    case Users.list_student() do
+      [] ->
+        # No students exist, create a user first
+        user = user_fixture()
+        user.id
+
+      [head | _tail] ->
+        # Use existing student's user_id
+        head.user_id
+    end
+  end
+
+  def get_user_id_for_teacher do
+    case Users.list_teacher() do
+      [] ->
+        # No teachers exist, create a user first
+        user = user_fixture()
+        user.id
+
+      [head | _tail] ->
+        # Use existing teacher's user_id
+        head.user_id
+    end
   end
 end
