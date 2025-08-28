@@ -51,7 +51,7 @@ defmodule DbserviceWeb.BatchController do
       end)
 
     batch = Repo.all(query)
-    render(conn, "index.json", batch: batch)
+    render(conn, :index, batch: batch)
   end
 
   swagger_path :create do
@@ -86,7 +86,7 @@ defmodule DbserviceWeb.BatchController do
 
   def show(conn, %{"id" => id}) do
     batch = Batches.get_batch!(id)
-    render(conn, "show.json", batch: batch)
+    render(conn, :show, batch: batch)
   end
 
   swagger_path :update do
@@ -104,7 +104,7 @@ defmodule DbserviceWeb.BatchController do
     batch = Batches.get_batch!(params["id"])
 
     with {:ok, %Batch{} = batch} <- Batches.update_batch(batch, params) do
-      render(conn, "show.json", batch: batch)
+      render(conn, :show, batch: batch)
     end
   end
 
@@ -130,8 +130,8 @@ defmodule DbserviceWeb.BatchController do
     with {:ok, %Batch{} = batch} <- Batches.create_batch(params) do
       conn
       |> put_status(:created)
-      |> put_resp_header("location", Routes.batch_path(conn, :show, batch))
-      |> render("show.json", batch: batch)
+      |> put_resp_header("location", ~p"/api/batch/#{batch}")
+      |> render(:show, batch: batch)
     end
   end
 
@@ -140,7 +140,7 @@ defmodule DbserviceWeb.BatchController do
          {:ok, _} <- update_users_for_batch(batch.id) do
       conn
       |> put_status(:ok)
-      |> render("show.json", batch: batch)
+      |> render(:show, batch: batch)
     end
   end
 

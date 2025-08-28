@@ -31,6 +31,12 @@ defmodule DbserviceWeb.SessionOccurrenceController do
         required: false,
         name: "session_id"
       )
+
+      params(:query, :string, "Filter occurrences by time condition",
+        required: false,
+        name: "is_start_time",
+        enum: ["today", "active"]
+      )
     end
 
     response(200, "OK", Schema.ref(:SessionOccurrences))
@@ -42,6 +48,9 @@ defmodule DbserviceWeb.SessionOccurrenceController do
     # Construct the beginning and end of today
     today_start = NaiveDateTime.new!(today, ~T[00:00:00])
     today_end = NaiveDateTime.new!(today, ~T[23:59:59])
+
+    # Get current timestamp for active occurrence queries (when is_start_time="active")
+    current_time = NaiveDateTime.utc_now() |> NaiveDateTime.add(5 * 3600 + 30 * 60, :second)
 
     session_ids_param = Map.get(params, "session_ids", "")
     session_ids = if session_ids_param != "", do: String.split(session_ids_param, ","), else: []
@@ -62,8 +71,8 @@ defmodule DbserviceWeb.SessionOccurrenceController do
           :limit ->
             acc
 
-          :is_start_time when value == "today" ->
-            from(u in acc, where: u.start_time >= ^today_start and u.start_time <= ^today_end)
+          :is_start_time ->
+            apply_time_filter(acc, value, today_start, today_end, current_time)
 
           :session_ids ->
             from(u in acc, where: u.session_id in ^session_ids)
@@ -74,7 +83,7 @@ defmodule DbserviceWeb.SessionOccurrenceController do
       end)
 
     session_occurrence = Repo.all(query)
-    render(conn, "index.json", session_occurrence: session_occurrence)
+    render(conn, :index, session_occurrence: session_occurrence)
   end
 
   swagger_path :create do
@@ -94,9 +103,9 @@ defmodule DbserviceWeb.SessionOccurrenceController do
       |> put_status(:created)
       |> put_resp_header(
         "location",
-        Routes.session_occurrence_path(conn, :show, session_occurrence)
+        ~p"/api/session-occurrence/#{session_occurrence}"
       )
-      |> render("show.json", session_occurrence: session_occurrence)
+      |> render(:show, session_occurrence: session_occurrence)
     end
   end
 
@@ -114,7 +123,7 @@ defmodule DbserviceWeb.SessionOccurrenceController do
 
   def show(conn, %{"id" => id}) do
     session_occurrence = Sessions.get_session_occurrence!(id)
-    render(conn, "show.json", session_occurrence: session_occurrence)
+    render(conn, :show, session_occurrence: session_occurrence)
   end
 
   swagger_path :update do
@@ -133,7 +142,7 @@ defmodule DbserviceWeb.SessionOccurrenceController do
 
     with {:ok, %SessionOccurrence{} = session_occurrence} <-
            Sessions.update_session_occurrence(session_occurrence, params) do
-      render(conn, "show.json", session_occurrence: session_occurrence)
+      render(conn, :show, session_occurrence: session_occurrence)
     end
   end
 
@@ -154,6 +163,42 @@ defmodule DbserviceWeb.SessionOccurrenceController do
 
     with {:ok, %SessionOccurrence{}} <- Sessions.delete_session_occurrence(session_occurrence) do
       send_resp(conn, :no_content, "")
+    end
+  end
+
+  defp apply_time_filter(query, value, today_start, today_end, current_time) do
+    case value do
+      "today" ->
+        from so in query,
+          join: s in assoc(so, :session),
+          where:
+            fragment(
+              """
+              CASE
+              WHEN (?->>'type') = 'continuous'
+              THEN (? <= ? AND ? >= ?)
+              ELSE (? >= ? AND ? <= ?)
+              END
+              """,
+              # from session table
+              s.repeat_schedule,
+              so.start_time,
+              ^current_time,
+              so.end_time,
+              ^current_time,
+              so.start_time,
+              ^today_start,
+              so.start_time,
+              ^today_end
+            )
+
+      "active" ->
+        from(so in query,
+          where: so.start_time <= ^current_time and so.end_time >= ^current_time
+        )
+
+      _ ->
+        query
     end
   end
 end

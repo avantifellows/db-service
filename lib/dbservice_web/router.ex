@@ -3,19 +3,30 @@ defmodule DbserviceWeb.Router do
   use PhoenixSwagger
 
   import Dotenvy
+  import Phoenix.LiveView.Router
 
   pipeline :api do
     plug(:accepts, ["json"])
   end
 
   pipeline :browser do
-    plug(:accepts, ["html"])
+    plug :accepts, ["html"]
+    plug(:fetch_session)
+    plug(:fetch_live_flash)
+    plug(:put_root_layout, {DbserviceWeb.Layouts, :root})
+    plug(:protect_from_forgery)
+    plug(:put_secure_browser_headers)
   end
 
   scope "/", DbserviceWeb do
     pipe_through :browser
 
-    get "/", WelcomeController, :index
+    live "/imports", ImportLive.Index
+    live "/imports/new", ImportLive.New
+    live "/imports/:id", ImportLive.Show
+
+    # Add route for CSV template downloads
+    get "/templates/:type/download", TemplateController, :download_csv_template
   end
 
   scope "/api", DbserviceWeb do
@@ -32,10 +43,14 @@ defmodule DbserviceWeb.Router do
     post("/student/generate-id", StudentController, :create_student_id)
     post("/student/verify-student", StudentController, :verify_student)
     resources("/teacher", TeacherController, except: [:new, :edit])
+    patch("/teacher/batch/assign", TeacherController, :assign_batch)
+    resources("/candidate", CandidateController, except: [:new, :edit])
     resources("/user-profile", UserProfileController, except: [:new, :edit])
     resources("/student-profile", StudentProfileController, except: [:new, :edit])
     resources("/teacher-profile", TeacherProfileController, except: [:new, :edit])
     resources("/school", SchoolController, except: [:new, :edit])
+    resources("/language", LanguageController, except: [:new, :edit])
+    resources("/skill", SkillController, except: [:new, :edit])
     resources("/enrollment-record", EnrollmentRecordController, except: [:new, :edit])
     resources("/session", SessionController, only: [:index, :create, :update, :show])
     post("/session/:id/update-groups", SessionController, :update_groups)
@@ -57,12 +72,10 @@ defmodule DbserviceWeb.Router do
     resources("/topic", TopicController, except: [:new, :edit])
     resources("/concept", ConceptController, except: [:new, :edit])
     resources("/learning-objective", LearningObjectiveController, except: [:new, :edit])
-    resources("/source", SourceController, except: [:new, :edit])
     resources("/purpose", PurposeController, except: [:new, :edit])
     resources("/resource", ResourceController, except: [:new, :edit])
     resources("/exam", ExamController)
     resources("/student-exam-record", StudentExamRecordController)
-    resources("/session-schedule", SessionScheduleController)
     get("/user/:user_id/sessions", UserController, :get_user_sessions)
     patch("/dropout/:student_id", StudentController, :dropout)
     resources("/status", StatusController, except: [:new, :edit])
@@ -73,12 +86,31 @@ defmodule DbserviceWeb.Router do
     patch("/update-user-enrollment-records", StudentController, :update_user_enrollment_records)
     post("/student/batch-process", StudentController, :batch_process)
     post("/group-user/batch-process", GroupUserController, :batch_process)
+    resources("/college", CollegeController, except: [:new, :edit])
+    get("/resources/curriculum", ResourceController, :curriculum_resources)
+    get("/resource/subtypes/:type", ResourceController, :get_subtypes)
 
     # Some students were incorrectly marked as "dropouts" in our system. This endpoint was introduced to reverse this mistake by removing the dropout status from both the enrollment records and the student table
     patch("/student/remove-dropout-status/:student_id", StudentController, :remove_dropout_status)
     delete("/cleanup-student/:student_id", UserSessionController, :cleanup_student)
     delete("/remove-batch/:student_id/:batch_id", UserSessionController, :remove_batch_mapping)
     post("/student/:student_id/status", StudentController, :update_student_status)
+    resources("/chapter-curriculum", ChapterCurriculumController, except: [:new, :edit])
+    resources("/topic-curriculum", TopicCurriculumController, except: [:new, :edit])
+    resources("/resource-curriculum", ResourceCurriculumController, except: [:new, :edit])
+    resources("/resource-chapter", ResourceChapterController, except: [:new, :edit])
+    resources("/resource-topic", ResourceTopicController, except: [:new, :edit])
+    resources("/resource-concept", ResourceConceptController, except: [:new, :edit])
+    resources("/problem-language", ProblemLanguageController, except: [:new, :edit])
+    get("/resource/test/:id/problems", ResourceController, :test_problems)
+    get("/problems", ResourceController, :fetch_problems)
+    resources("/test-rule", TestRuleController, except: [:new, :edit])
+
+    get(
+      "/resource/problem/:problem_id/:lang_code/:curriculum_id",
+      ResourceController,
+      :get_problem
+    )
 
     def swagger_info do
       source(["config/.env", "config/.env"])

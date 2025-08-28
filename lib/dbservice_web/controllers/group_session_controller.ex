@@ -45,7 +45,7 @@ defmodule DbserviceWeb.GroupSessionController do
       end)
 
     group_session = Repo.all(query)
-    render(conn, "index.json", group_session: group_session)
+    render(conn, :index, group_session: group_session)
   end
 
   swagger_path :create do
@@ -80,7 +80,7 @@ defmodule DbserviceWeb.GroupSessionController do
 
   def show(conn, %{"id" => id}) do
     group_session = GroupSessions.get_group_session!(id)
-    render(conn, "show.json", group_session: group_session)
+    render(conn, :show, group_session: group_session)
   end
 
   swagger_path :update do
@@ -99,7 +99,7 @@ defmodule DbserviceWeb.GroupSessionController do
 
     with {:ok, %GroupSession{} = group_session} <-
            GroupSessions.update_group_session(group_session, params) do
-      render(conn, "show.json", group_session: group_session)
+      render(conn, :show, group_session: group_session)
     end
   end
 
@@ -126,11 +126,8 @@ defmodule DbserviceWeb.GroupSessionController do
            GroupSessions.create_group_session(params) do
       conn
       |> put_status(:created)
-      |> put_resp_header(
-        "location",
-        Routes.group_session_path(conn, :show, group_session)
-      )
-      |> render("show.json", group_session: group_session)
+      |> put_resp_header("location", ~p"/api/group-session/#{group_session}")
+      |> render(:show, group_session: group_session)
     end
   end
 
@@ -139,7 +136,7 @@ defmodule DbserviceWeb.GroupSessionController do
            GroupSessions.update_group_session(existing_group_session, params) do
       conn
       |> put_status(:ok)
-      |> render("show.json", group_session: group_session)
+      |> render(:show, group_session: group_session)
     end
   end
 
@@ -161,18 +158,13 @@ defmodule DbserviceWeb.GroupSessionController do
          {:ok, auth_group} <- get_auth_group(batch.auth_group_id) do
       conn
       |> put_status(:ok)
-      |> put_view(DbserviceWeb.AuthGroupView)
-      |> render("auth_group.json", auth_group: auth_group)
+      |> put_view(DbserviceWeb.AuthGroupJSON)
+      |> render(:show, auth_group: auth_group)
     else
       {:error, :not_found, message} ->
         conn
         |> put_status(:not_found)
-        |> json(%{error: message})
-
-      {:error, :bad_request, message} ->
-        conn
-        |> put_status(:bad_request)
-        |> json(%{error: message})
+        |> render(:error, error: message)
     end
   end
 

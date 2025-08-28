@@ -14,7 +14,7 @@ config :dbservice,
 config :dbservice, DbserviceWeb.Endpoint,
   load_from_system_env: false,
   url: [host: "localhost"],
-  render_errors: [view: DbserviceWeb.ErrorView, accepts: ~w(json), layout: false],
+  render_errors: [formats: [json: DbserviceWeb.ErrorJSON], layout: false],
   pubsub_server: Dbservice.PubSub,
   live_view: [signing_salt: "KptGRhXD"]
 
@@ -33,8 +33,7 @@ config :swoosh, :api_client, false
 # Configures Elixir's Logger
 config :logger,
   backends: [:console, {LoggerFileBackend, :request_log}],
-  format: "$time $metadata[$level] $message\n",
-  metadata: [:request_id]
+  format: "$time $metadata[$level] $message\n"
 
 config :logger, :request_log,
   path: "logs/info.log",
@@ -62,6 +61,34 @@ config :dbservice, Dbservice.Repo,
   timeout: 120_000,
   queue_target: 15_000,
   queue_interval: 100_000
+
+# Oban configuration
+config :dbservice, Oban,
+  repo: Dbservice.Repo,
+  plugins: [Oban.Plugins.Pruner],
+  queues: [imports: 10]
+
+# Tailwind configuration
+config :tailwind,
+  version: "4.0.0",
+  dbservice: [
+    args: ~w(
+      --input=css/app.css
+      --output=../priv/static/assets/app.css
+    ),
+    cd: Path.expand("../assets", __DIR__)
+  ],
+  http_client_opts: [ssl: [verify: :verify_none]]
+
+# Configure esbuild
+config :esbuild,
+  version: "0.14.41",
+  default: [
+    args: ~w(js/app.js --bundle --target=es2017 --outdir=../priv/static/assets),
+    cd: Path.expand("../assets", __DIR__),
+    env: %{"NODE_PATH" => Path.expand("../deps", __DIR__)}
+  ],
+  http_client_opts: [ssl: [verify: :verify_none]]
 
 # Import environment-specific config. This must remain at the bottom
 # of this file so it overrides the configuration defined above.

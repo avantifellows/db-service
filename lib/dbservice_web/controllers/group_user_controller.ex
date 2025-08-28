@@ -1,17 +1,13 @@
 defmodule DbserviceWeb.GroupUserController do
-  alias Dbservice.Batches
-  alias Dbservice.Schools
   alias Dbservice.Groups
-  alias Dbservice.EnrollmentRecords
-  alias Dbservice.Grades
+  alias Dbservice.Services.EnrollmentService
+  alias Dbservice.Services.GroupUpdateService
   use DbserviceWeb, :controller
 
   import Ecto.Query
   alias Dbservice.Repo
   alias Dbservice.GroupUsers
   alias Dbservice.Groups.GroupUser
-  alias Dbservice.EnrollmentRecords
-  alias Dbservice.EnrollmentRecords.EnrollmentRecord
 
   action_fallback(DbserviceWeb.FallbackController)
 
@@ -50,7 +46,7 @@ defmodule DbserviceWeb.GroupUserController do
       end)
 
     group_user = Repo.all(query)
-    render(conn, "index.json", group_user: group_user)
+    render(conn, :index, group_user: group_user)
   end
 
   swagger_path :create do
@@ -85,7 +81,7 @@ defmodule DbserviceWeb.GroupUserController do
 
   def show(conn, %{"id" => id}) do
     group_user = GroupUsers.get_group_user!(id)
-    render(conn, "show.json", group_user: group_user)
+    render(conn, :show, group_user: group_user)
   end
 
   swagger_path :update do
@@ -104,7 +100,7 @@ defmodule DbserviceWeb.GroupUserController do
 
     with {:ok, %GroupUser{} = group_user} <-
            GroupUsers.update_group_user(group_user, params) do
-      render(conn, "show.json", group_user: group_user)
+      render(conn, :show, group_user: group_user)
     end
   end
 
@@ -120,92 +116,12 @@ defmodule DbserviceWeb.GroupUserController do
     - Returns an error tuple if the `GroupUser` or `EnrollmentRecord` is not found.
   """
   def update_by_type(conn, params) do
-    user_id = params["user_id"]
-    type = params["type"]
-    new_group = Groups.get_group_by_group_id_and_type(params["group_id"], type)
-    new_group_id = new_group.child_id
+    case GroupUpdateService.update_user_group_by_type(params) do
+      {:ok, updated_group_user} ->
+        render(conn, :show, group_user: updated_group_user)
 
-    # Fetch all GroupUsers for the specified user_id and type
-    group_users = GroupUsers.get_group_user_by_user_id_and_type(user_id, type)
-
-    # Determine which GroupUser to update and fetch the corresponding EnrollmentRecord
-    {group_user_to_update, enrollment_record} =
-      find_records_to_update(group_users, user_id, type, params)
-
-    case {group_user_to_update, enrollment_record} do
-      {nil, _} ->
+      {:error, :not_found} ->
         {:error, :not_found}
-
-      {_, nil} ->
-        {:error, :not_found}
-
-      {group_user, enrollment_record} ->
-        update_group_user_and_enrollment(
-          conn,
-          group_user,
-          enrollment_record,
-          params,
-          new_group_id
-        )
-    end
-  end
-
-  defp find_records_to_update(group_users, user_id, type, params) do
-    group_user_to_update =
-      case type do
-        "batch" ->
-          current_batch_pk = params["current_batch_pk"]
-          Enum.find(group_users, fn gu -> gu.group.child_id == current_batch_pk end)
-
-        _ ->
-          # For non-batch types, just take the first (and likely only) GroupUser
-          List.first(group_users)
-      end
-
-    # Fetch the corresponding EnrollmentRecord
-    enrollment_record =
-      case type do
-        "batch" ->
-          current_batch_pk = params["current_batch_pk"]
-
-          from(er in EnrollmentRecord,
-            where:
-              er.user_id == ^user_id and
-                er.group_type == ^type and
-                er.group_id == ^current_batch_pk and
-                er.is_current == true
-          )
-          |> Repo.one()
-
-        _ ->
-          from(er in EnrollmentRecord,
-            where:
-              er.user_id == ^user_id and
-                er.group_type == ^type
-          )
-          |> Repo.one()
-      end
-
-    {group_user_to_update, enrollment_record}
-  end
-
-  defp update_group_user_and_enrollment(conn, group_user, enrollment_record, params, new_group_id) do
-    Repo.transaction(fn ->
-      with {:ok, %GroupUser{} = updated_group_user} <-
-             GroupUsers.update_group_user(group_user, %{group_id: params["group_id"]}),
-           {:ok, %EnrollmentRecord{} = updated_enrollment_record} <-
-             EnrollmentRecords.update_enrollment_record(enrollment_record, %{
-               "group_id" => new_group_id
-             }) do
-        {updated_group_user, updated_enrollment_record}
-      else
-        {:error, failed_operation} ->
-          Repo.rollback(failed_operation)
-      end
-    end)
-    |> case do
-      {:ok, {updated_group_user, _updated_enrollment_record}} ->
-        render(conn, "show.json", group_user: updated_group_user)
 
       {:error, reason} ->
         {:error, reason}
@@ -231,42 +147,50 @@ defmodule DbserviceWeb.GroupUserController do
   end
 
   defp create_new_group_user(conn, params) do
-    group = Groups.get_group!(params["group_id"])
-
-    academic_year = resolve_academic_year(group.type, params)
-
-    enrollment_record = %{
-      "group_id" => group.child_id,
-      "group_type" => group.type,
-      "user_id" => params["user_id"],
-      "academic_year" => academic_year,
-      "start_date" => params["start_date"]
-    }
-
-    with {:ok, %EnrollmentRecord{} = _} <-
-           EnrollmentRecords.create_enrollment_record(enrollment_record) do
-      with {:ok, %GroupUser{} = group_user} <- GroupUsers.create_group_user(params) do
+    case EnrollmentService.create_new_group_user(params) do
+      {:ok, group_user} ->
         conn
         |> put_status(:created)
-        |> put_resp_header("location", Routes.group_user_path(conn, :show, group_user))
-        |> render("show.json", group_user: group_user)
-      end
+        |> put_resp_header("location", ~p"/api/group-user/#{group_user}")
+        |> render(:show, group_user: group_user)
+
+      error ->
+        error
     end
   end
 
   defp update_existing_group_user(conn, existing_group_user, params) do
+    group = Groups.get_group!(params["group_id"])
+
+    if Map.has_key?(params, "academic_year") and group.type == "school" do
+      EnrollmentService.update_school_enrollment(
+        params["user_id"],
+        group.child_id,
+        params["academic_year"],
+        params["start_date"]
+      )
+
+      EnrollmentService.handle_enrollment_record(
+        params["user_id"],
+        group.child_id,
+        group.type,
+        params["academic_year"],
+        params["start_date"]
+      )
+    end
+
     with {:ok, %GroupUser{} = group_user} <-
            GroupUsers.update_group_user(existing_group_user, params) do
       conn
       |> put_status(:ok)
-      |> render("show.json", group_user: group_user)
+      |> render(:show, group_user: group_user)
     end
   end
 
   def batch_process(conn, %{"data" => batch_data}) do
     results =
       Enum.map(batch_data, fn data ->
-        case process_group_user(data) do
+        case EnrollmentService.process_enrollment(data) do
           {:ok, group_user} ->
             {:ok, group_user}
 
@@ -280,164 +204,11 @@ defmodule DbserviceWeb.GroupUserController do
 
     conn
     |> put_status(:ok)
-    |> render("batch_result.json", %{
+    |> render(:batch_result, %{
       message: "Batch processing completed",
       successful: successful,
       failed: failed,
       results: results
     })
-  end
-
-  defp process_group_user(group_user_data) do
-    case group_user_data["enrollment_type"] do
-      "school" ->
-        handle_school_enrollment(group_user_data)
-
-      "batch" ->
-        handle_batch_enrollment(group_user_data)
-
-      "auth_group" ->
-        handle_group_user(group_user_data)
-
-      "grade" ->
-        handle_grade_enrollment(group_user_data)
-
-      _ ->
-        {:error, "Unknown enrollment type"}
-    end
-  end
-
-  defp handle_school_enrollment(group_user_data) do
-    case get_school_group_id(group_user_data["school_code"]) do
-      {:error, error_msg} ->
-        {:error, error_msg}
-
-      school_group_id ->
-        group_user_data
-        |> Map.put("group_id", school_group_id)
-        |> handle_group_user()
-    end
-  end
-
-  defp handle_batch_enrollment(group_user_data) do
-    case get_batch_group_id(group_user_data["batch_id"]) do
-      {:error, error_msg} ->
-        {:error, error_msg}
-
-      batch_group_id ->
-        group_user_data
-        |> Map.put("group_id", batch_group_id)
-        |> handle_group_user()
-    end
-  end
-
-  defp handle_grade_enrollment(group_user_data) do
-    case get_grade_group_id(group_user_data["grade_id"]) do
-      {:error, error_msg} ->
-        {:error, error_msg}
-
-      grade_group_id ->
-        group_user_data
-        |> Map.put("group_id", grade_group_id)
-        |> handle_group_user()
-    end
-  end
-
-  defp handle_group_user(group_user_data) do
-    case GroupUsers.get_group_user_by_user_id_and_group_id(
-           group_user_data["user_id"],
-           group_user_data["group_id"]
-         ) do
-      nil ->
-        create_new_group_user_from_batch(group_user_data)
-
-      existing_group_user ->
-        update_existing_group_user_from_batch(existing_group_user, group_user_data)
-    end
-  end
-
-  defp get_school_group_id(school_code) do
-    case Schools.get_school_by_code(school_code) do
-      nil ->
-        {:error, "School not found"}
-
-      school ->
-        case Groups.get_group_by_child_id_and_type(school.id, "school") do
-          nil ->
-            {:error, "School group not found"}
-
-          group ->
-            group.id
-        end
-    end
-  end
-
-  defp get_batch_group_id(batch_id) do
-    case Batches.get_batch_by_batch_id(batch_id) do
-      nil ->
-        {:error, "Batch not found"}
-
-      batch ->
-        case Groups.get_group_by_child_id_and_type(batch.id, "batch") do
-          nil ->
-            {:error, "Batch group not found"}
-
-          group ->
-            group.id
-        end
-    end
-  end
-
-  defp get_grade_group_id(grade_id) do
-    case Grades.get_grade!(grade_id) do
-      nil ->
-        {:error, "Grade not found"}
-
-      grade ->
-        case Groups.get_group_by_child_id_and_type(grade.id, "grade") do
-          nil ->
-            {:error, "Grade group not found"}
-
-          group ->
-            group.id
-        end
-    end
-  end
-
-  defp create_new_group_user_from_batch(params) do
-    group = Groups.get_group!(params["group_id"])
-
-    academic_year = resolve_academic_year(group.type, params)
-
-    enrollment_record = %{
-      "group_id" => group.child_id,
-      "group_type" => group.type,
-      "user_id" => params["user_id"],
-      "academic_year" => academic_year,
-      "start_date" => params["start_date"]
-    }
-
-    with {:ok, %EnrollmentRecord{} = _} <-
-           EnrollmentRecords.create_enrollment_record(enrollment_record),
-         {:ok, %GroupUser{} = group_user} <- GroupUsers.create_group_user(params) do
-      {:ok, group_user}
-    else
-      {:error, _changeset} -> {:error, "Failed to create group user. Some problem with changeset"}
-    end
-  end
-
-  defp update_existing_group_user_from_batch(existing_group_user, params) do
-    case GroupUsers.update_group_user(existing_group_user, params) do
-      {:ok, group_user} -> {:ok, group_user}
-      {:error, _changeset} -> {:error, "Failed to update group user. Some problem with changeset"}
-    end
-  end
-
-  defp resolve_academic_year(group_type, params) do
-    if group_type == "auth_group" do
-      nil
-    else
-      params["academic_year"]
-    end
   end
 end

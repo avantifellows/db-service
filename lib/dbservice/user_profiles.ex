@@ -38,6 +38,19 @@ defmodule Dbservice.Profiles do
   def get_user_profile!(id), do: Repo.get!(UserProfile, id)
 
   @doc """
+  Gets a user profile by user ID.
+  Raises `Ecto.NoResultsError` if the UserProfile does not exist.
+  ## Examples
+      iex> get_user_profile_by_user_id(1234)
+      %UserProfile{}
+      iex> get_user_profile_by_user_id(abc)
+      ** (Ecto.NoResultsError)
+  """
+  def get_user_profile_by_user_id(user_id) do
+    Repo.get_by(UserProfile, user_id: user_id)
+  end
+
+  @doc """
   Creates a user profile.
 
   ## Examples
@@ -132,6 +145,19 @@ defmodule Dbservice.Profiles do
 
   """
   def get_student_profile!(id), do: Repo.get!(StudentProfile, id)
+
+  @doc """
+  Gets a student profile by student ID.
+  Raises `Ecto.NoResultsError` if the StudentProfile does not exist.
+  ## Examples
+      iex> get_student_profile_by_student_id(1234)
+      %StudentProfile{}
+      iex> get_student_profile_by_student_id(abc)
+      ** (Ecto.NoResultsError)
+  """
+  def get_student_profile_by_student_id(student_id) do
+    Repo.get_by(StudentProfile, student_id: student_id)
+  end
 
   @doc """
   Creates a student profile.
@@ -278,6 +304,19 @@ defmodule Dbservice.Profiles do
 
   """
   def get_teacher_profile!(id), do: Repo.get!(TeacherProfile, id)
+
+  @doc """
+  Gets a teacher profile by teacher ID.
+  Raises `Ecto.NoResultsError` if the TeacherProfile does not exist.
+  ## Examples
+      iex> get_teacher_profile_by_teacher_id(1234)
+      %TeacherProfile{}
+      iex> get_teacher_profile_by_teacher_id(abc)
+      ** (Ecto.NoResultsError)
+  """
+  def get_teacher_profile_by_teacher_id(teacher_id) do
+    Repo.get_by(TeacherProfile, teacher_id: teacher_id)
+  end
 
   @doc """
   Creates a teacher profile.

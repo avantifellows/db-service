@@ -60,9 +60,6 @@ defmodule DbserviceWeb.SwaggerSchema.TeacherProfile do
             avg_rating(:decimal, "Average rating of the teacher")
             teacher_id(:string, "Teacher ID associated with the teacher's profile")
 
-            current_grade(:string, "Current Grade")
-            current_program(:string, "Current Program")
-            current_batch(:string, "Current Batch")
             logged_in_atleast_once(:boolean, "Has user logged in atleast once?")
             latest_session_accessed(:string, "Name of the latest session accessed")
           end
@@ -72,9 +69,6 @@ defmodule DbserviceWeb.SwaggerSchema.TeacherProfile do
             program_manager: "John Doe",
             avg_rating: 4.5,
             teacher_id: "20202",
-            current_grade: "11",
-            current_program: "HaryanaStudents",
-            current_batch: "Photon",
             logged_in_atleast_once: false,
             latest_session_accessed: "LiveClass_10"
           })
@@ -110,9 +104,6 @@ defmodule DbserviceWeb.SwaggerSchema.TeacherProfile do
             teacher_fk: 2,
             user_profile: %{
               user_id: 2,
-              current_grade: "11",
-              current_program: "HaryanaStudents",
-              current_batch: "Photon",
               logged_in_atleast_once: false,
               latest_session_accessed: "LiveClass_10"
             }

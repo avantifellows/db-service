@@ -9,6 +9,10 @@ defmodule Dbservice.Utils.Util do
   alias Dbservice.GroupUsers
   alias Dbservice.Users
 
+  @valid_categories ~w(Gen OBC SC ST Gen-EWS PWD-SC PWD-Gen PWD-OBC PWD-EWS PWD-ST)
+  @valid_genders ~w(Male Female Others)
+  @valid_streams ~w(engineering medical pcmb pcm pcb foundation)
+
   def invalidate_future_date(changeset, date_field_atom) do
     utc_now = DateTime.utc_now()
     ist_now = DateTime.add(utc_now, 5 * 60 * 60 + 30 * 60, :second)
@@ -99,5 +103,146 @@ defmodule Dbservice.Utils.Util do
     end)
 
     {:ok, :updated}
+  end
+
+  @doc """
+  Returns list of valid categories. This can be used in portal to populate categories in dropdown menus
+  """
+  def valid_categories, do: @valid_categories
+
+  @doc """
+  Returns list of valid genders. This can be used in portal to populate genders in dropdown menus
+  """
+  def valid_genders, do: @valid_genders
+
+  @doc """
+  Returns list of valid streams. This can be used in portal to populate streams in dropdown menus
+  """
+  def valid_streams, do: @valid_streams
+
+  @doc """
+  Validates and normalizes category in a changeset.
+  Raises an error if the category is invalid.
+  """
+  def validate_category(changeset, field) do
+    validate_field(changeset, field, :category, @valid_categories)
+  end
+
+  @doc """
+  Validates and normalizes gender in a changeset.
+  Raises an error if the gender is invalid.
+  """
+  def validate_gender(changeset, field) do
+    validate_field(changeset, field, :gender, @valid_genders)
+  end
+
+  @doc """
+  Validates and normalizes stream in a changeset.
+  Raises an error if the stream is invalid.
+  """
+  def validate_stream(changeset, field) do
+    validate_field(changeset, field, :stream, @valid_streams)
+  end
+
+  # Generic field validator
+  defp validate_field(changeset, field, field_type, valid_values) do
+    case get_change(changeset, field) do
+      nil ->
+        changeset
+
+      value ->
+        case normalize_value(value, field_type, valid_values) do
+          {:ok, normalized} ->
+            put_change(changeset, field, normalized)
+
+          {:error, message} ->
+            raise ArgumentError, message
+        end
+    end
+  end
+
+  # Generic value normalizer
+  defp normalize_value(value, field_type, valid_values) when is_binary(value) do
+    normalized =
+      valid_values
+      |> Enum.find(fn valid ->
+        String.upcase(valid) == String.upcase(value)
+      end)
+
+    case normalized do
+      nil ->
+        {:error,
+         "Invalid #{field_type}: #{value}. Valid values are: #{Enum.join(valid_values, ", ")}"}
+
+      value ->
+        {:ok, value}
+    end
+  end
+
+  defp normalize_value(nil, _field_type, _valid_values), do: {:ok, nil}
+
+  defp normalize_value(invalid, field_type, _valid_values),
+    do: {:error, "#{field_type} must be a string, got: #{inspect(invalid)}"}
+
+  def to_ist(datetime) do
+    ist_offset = 5 * 60 * 60 + 30 * 60
+    DateTime.add(datetime, ist_offset, :second)
+  end
+
+  # Helper function to ensure we have a DateTime
+  def naive_to_datetime(%NaiveDateTime{} = naive) do
+    # Convert NaiveDateTime to UTC DateTime
+    {:ok, datetime} = DateTime.from_naive(naive, "Etc/UTC")
+    datetime
+  end
+
+  def naive_to_datetime(%DateTime{} = datetime), do: datetime
+
+  def process_credentials(credentials) do
+    private_key = credentials["private_key"]
+
+    # Ensured private key has proper line breaks if they got mangled
+    fixed_private_key =
+      if is_binary(private_key) && !String.contains?(private_key, "\n") do
+        private_key
+        |> String.replace("-----BEGIN PRIVATE KEY-----", "-----BEGIN PRIVATE KEY-----\n")
+        |> String.replace("-----END PRIVATE KEY-----", "\n-----END PRIVATE KEY-----")
+        |> String.replace(~r/([A-Za-z0-9+\/=]{64})/, "\\1\n")
+      else
+        private_key
+      end
+
+    # Return updated credentials
+    Map.put(credentials, "private_key", fixed_private_key)
+  end
+
+  @doc """
+  Filters a JSONB `name` field by `lang_code`. If `lang_code` is `"all"`, returns all.
+  Defaults to `"en"` if `lang_code` is missing.
+  """
+  def filter_by_lang(query, params) do
+    case Map.get(params, "lang_code", "en") do
+      "all" ->
+        # No filtering, return all languages
+        query
+
+      lang_code ->
+        from(u in query,
+          where:
+            fragment(
+              "EXISTS (SELECT 1 FROM JSONB_ARRAY_ELEMENTS(?) obj WHERE obj->>'lang_code' = ?)",
+              u.name,
+              ^lang_code
+            ),
+          select_merge: %{
+            name:
+              fragment(
+                "COALESCE((SELECT JSONB_AGG(obj) FROM JSONB_ARRAY_ELEMENTS(?) obj WHERE obj->>'lang_code' = ?), '[]'::JSONB)",
+                u.name,
+                ^lang_code
+              )
+          }
+        )
+    end
   end
 end

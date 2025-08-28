@@ -22,16 +22,27 @@ erl_crash.dump
 # Ignore package tarball (built via "mix hex.build").
 dbservice-*.tar
 
-# Ignore all .env files
+# Ignore .env files
 /config/.env
-/deployment/.env.*
+/utils/.env
 
-# But do not ignore .env.example
-!.env.example
-!/deployment/.env.example
+# Ignore ETL flow key
+/config/etl-flow-key.json
 
 # Ignore log file
 /logs/info.log
 
 # Ignore mix.lock file
 mix.lock
+
+# Ignore node_modules
+/assets/node_modules
+
+# Static asset builds
+priv/static
+
+# Keep favicon.ico
+!priv/static/favicon.ico
+
+# Ignore ElixirLS files
+.elixir_ls

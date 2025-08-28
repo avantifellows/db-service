@@ -56,7 +56,7 @@ defmodule DbserviceWeb.TeacherProfileController do
       end)
 
     teacher_profile = Repo.all(query) |> Repo.preload([:user_profile])
-    render(conn, "index.json", teacher_profile: teacher_profile)
+    render(conn, :index, teacher_profile: teacher_profile)
   end
 
   swagger_path :show do
@@ -71,7 +71,12 @@ defmodule DbserviceWeb.TeacherProfileController do
 
   def show(conn, %{"id" => id}) do
     teacher_profile = Profiles.get_teacher_profile!(id)
-    render(conn, "show.json", teacher_profile: teacher_profile)
+
+    render(
+      conn,
+      :show_teacher_profile_with_user_profile,
+      teacher_profile: teacher_profile
+    )
   end
 
   swagger_path :update do
@@ -95,7 +100,11 @@ defmodule DbserviceWeb.TeacherProfileController do
              user_profile,
              params
            ) do
-      render(conn, "show.json", teacher_profile: teacher_profile)
+      render(
+        conn,
+        :show_teacher_profile_with_user_profile,
+        teacher_profile: teacher_profile
+      )
     end
   end
 
@@ -142,11 +151,37 @@ defmodule DbserviceWeb.TeacherProfileController do
       |> Map.put_new("user_id", user_id)
       |> Map.put_new("teacher_fk", teacher_fk)
 
+    case Profiles.get_teacher_profile_by_teacher_id(updated_params["teacher_id"]) do
+      nil ->
+        create_new_profile(conn, updated_params)
+
+      existing_profile ->
+        update_existing_profile(conn, existing_profile, updated_params)
+    end
+  end
+
+  defp create_new_profile(conn, params) do
     with {:ok, %TeacherProfile{} = teacher_profile} <-
-           Profiles.create_teacher_profile_with_user_profile(updated_params) do
+           Profiles.create_teacher_profile_with_user_profile(params) do
       conn
       |> put_status(:created)
-      |> render("show.json", teacher_profile: teacher_profile)
+      |> put_resp_header("location", ~p"/api/teacher-profile/#{teacher_profile}")
+      |> render(:show, teacher_profile: teacher_profile)
+    end
+  end
+
+  defp update_existing_profile(conn, existing_profile, params) do
+    user_profile = Profiles.get_user_profile!(existing_profile.user_profile_id)
+
+    with {:ok, %TeacherProfile{} = teacher_profile} <-
+           Profiles.update_teacher_profile_with_user_profile(
+             existing_profile,
+             user_profile,
+             params
+           ) do
+      conn
+      |> put_status(:ok)
+      |> render(:show, teacher_profile: teacher_profile)
     end
   end
 end
