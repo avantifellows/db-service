@@ -48,7 +48,6 @@ defmodule Dbservice.UserProfilesFixtures do
         current_grade: "11",
         current_program: "HaryanaStudents",
         current_batch: "Photon",
-        user_id: student.user_id,
         logged_in_atleast_once: true,
         latest_session_accessed: "LiveClass_10",
         user_id: user.id
@@ -59,7 +58,7 @@ defmodule Dbservice.UserProfilesFixtures do
   end
 
   def teacher_profile_fixture(attrs \\ %{}) do
-    {user, _subject, teacher} = UsersFixtures.teacher_fixture()
+    {user, teacher} = UsersFixtures.teacher_fixture()
 
     {:ok, teacher_profile} =
       attrs

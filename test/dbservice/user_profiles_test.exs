@@ -40,7 +40,7 @@ defmodule Dbservice.ProfilesTest do
         latest_session_accessed: "LiveClass_10"
       }
 
-      assert {:ok, %UserProfile{} = user_profile} = Profiles.create_user_profile(valid_attrs)
+      assert {:ok, %UserProfile{} = _user_profile} = Profiles.create_user_profile(valid_attrs)
     end
 
     test "create_user_profile/1 with invalid data returns error changeset" do
@@ -58,7 +58,7 @@ defmodule Dbservice.ProfilesTest do
         latest_session_accessed: "LiveClass_10"
       }
 
-      assert {:ok, %UserProfile{} = user_profile} =
+      assert {:ok, %UserProfile{} = _user_profile} =
                Profiles.update_user_profile(user_profile, update_attrs)
     end
 
@@ -301,7 +301,7 @@ defmodule Dbservice.ProfilesTest do
     end
 
     test "create_teacher_profile/1 with valid data creates a teacher profile" do
-      {user, _subject, teacher} = teacher_fixture()
+      {user, teacher} = teacher_fixture()
       user_profile = user_profile_fixture()
 
       valid_attrs = %{
@@ -366,7 +366,7 @@ defmodule Dbservice.ProfilesTest do
     end
 
     test "create_teacher_profile_with_user_profile creates a user profile and teacher profile" do
-      {user, _subject, teacher} = teacher_fixture()
+      {user, teacher} = teacher_fixture()
       user_profile = user_profile_fixture()
 
       valid_attrs = %{

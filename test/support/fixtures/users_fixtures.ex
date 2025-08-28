@@ -21,7 +21,6 @@ defmodule Dbservice.UsersFixtures do
         email: "some email",
         gender: "Male",
         phone: "9456591269",
-        pincode: "some pincode",
         state: "some state",
         region: "some region",
         pincode: "123456",
