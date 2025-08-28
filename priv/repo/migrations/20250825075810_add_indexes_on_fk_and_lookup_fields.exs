@@ -12,10 +12,6 @@ defmodule Dbservice.Repo.Migrations.AddIndexesOnFkAndLookupFields do
     create index(:group_session, [:group_id])
     create index(:group_session, [:session_id])
 
-    create index(:user_session, [:user_id])
-    create index(:user_session, [:session_id])
-    create index(:user_session, [:session_occurrence_id])
-
     create index(:session_occurrence, [:session_fk])
     create index(:session_occurrence, [:session_id])
 
