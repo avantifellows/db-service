@@ -14,12 +14,16 @@ defmodule Dbservice.Repo.Migrations.AddIndexesOnFkAndLookupFields do
 
     create index(:user_session, [:user_id])
     create index(:user_session, [:session_id])
+    create index(:user_session, [:session_occurrence_id])
 
     create index(:session_occurrence, [:session_fk])
+    create index(:session_occurrence, [:session_id])
 
     # Lookup / filter field indexes
+    create index(:user, [:email])
     create index(:user, [:phone])
     create index(:user, [:date_of_birth])
+    create index(:user, [:email, :phone])
 
     create index(:student, [:student_id])
     create index(:student, [:apaar_id])
@@ -41,8 +45,7 @@ defmodule Dbservice.Repo.Migrations.AddIndexesOnFkAndLookupFields do
     create index(:resource, [:type])
     create index(:resource, [:subtype])
 
-    create index(:group, [:type])
-    create index(:group, [:child_id])
+    create(index(:group, [:child_id, :type]))
 
     create index(:enrollment_record, [:group_type])
     create index(:enrollment_record, [:is_current])
@@ -51,7 +54,12 @@ defmodule Dbservice.Repo.Migrations.AddIndexesOnFkAndLookupFields do
     create index(:school, [:code])
     create index(:school, [:udise_code])
     create index(:school, [:state])
+    create index(:school, [:district])
 
     create index(:batch, [:batch_id])
+    create index(:batch, [:auth_group_id])
+
+    create index(:teacher, [:teacher_id])
+    create index(:auth_group, [:name])
   end
 end
