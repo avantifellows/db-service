@@ -34,15 +34,18 @@ install_system_dependencies() {
     apt update -y
     apt upgrade -y
     
-    # Install required packages if not present
-    for package in elixir rebar erlang-dev erlang-xmerl; do
-        if ! dpkg -l | grep -q "^ii  $package "; then
-            echo "Installing $package..."
-            apt install -y $package
-        else
-            echo "$package is already installed"
-        fi
-    done
+    # Install Elixir using the new method in ubuntu user's home
+    echo "Installing Elixir 1.18.4 with OTP 27.3.4..."
+    export HOME=/home/ubuntu
+    curl -fsSO https://elixir-lang.org/install.sh
+    sudo -u ubuntu HOME=/home/ubuntu sh install.sh elixir@1.18.4 otp@27.3.4
+    installs_dir=/home/ubuntu/.elixir-install/installs
+    export PATH=$installs_dir/otp/27.3.4/bin:$PATH
+    export PATH=$installs_dir/elixir/1.18.4-otp-27/bin:$PATH
+
+    # Set capability for BEAM to bind to privileged ports
+    echo "Setting capability for BEAM to bind to privileged ports..."
+    setcap 'cap_net_bind_service=+ep' /home/ubuntu/.elixir-install/installs/otp/27.3.4/erts-15.2.7/bin/beam.smp
 }
 
 # Function to setup CloudWatch agent
@@ -99,10 +102,38 @@ SECRET_KEY_BASE=${SECRET_KEY_BASE}
 BEARER_TOKEN=${BEARER_TOKEN}
 PORT=${PORT}
 POOL_SIZE=${POOL_SIZE}
+PATH_TO_CREDENTIALS=${PATH_TO_CREDENTIALS}
 EOF
 
     # Copy .env to config
     cp .env config/.env
+
+    # Ensure AWS CLI is installed
+    if ! command -v aws &> /dev/null; then
+        echo "AWS CLI not found. Installing..."
+        apt update -y
+        apt install awscli -y
+    fi
+    # Retrieve ETL flow key file from AWS Secrets Manager if it doesn't exist
+    if [ ! -f "/home/ubuntu/db-service/config/etl-flow-key.json" ]; then
+        echo "ETL flow key file not found. Retrieving from AWS Secrets Manager..."
+        if aws secretsmanager get-secret-value \
+            --secret-id "etl-flow-key" \
+            --query 'SecretString' \
+            --output text \
+            --region ap-south-1 > /home/ubuntu/db-service/config/etl-flow-key.json 2>/dev/null; then
+            
+            echo "Successfully retrieved ETL flow key file"
+            # Set proper permissions for the key file
+            chmod 600 /home/ubuntu/db-service/config/etl-flow-key.json
+            chown ubuntu:ubuntu /home/ubuntu/db-service/config/etl-flow-key.json
+        else
+            echo "Warning: Failed to retrieve ETL flow key file from Secrets Manager"
+            echo "Please ensure the secret 'etl-flow-key' exists and EC2 has proper IAM permissions"
+        fi
+    else
+        echo "ETL flow key file already exists, skipping retrieval from Secrets Manager"
+    fi
 }
 
 # Function to stop the running application if it's already running
@@ -126,6 +157,11 @@ start_application() {
     # Ensure HOME is set
     export HOME=/home/ubuntu
     
+    # Set Elixir PATH
+    installs_dir=/home/ubuntu/.elixir-install/installs
+    export PATH=$installs_dir/otp/27.3.4/bin:$PATH
+    export PATH=$installs_dir/elixir/1.18.4-otp-27/bin:$PATH
+    
     echo "Setting up Elixir environment..."
     MIX_ENV=prod mix local.hex --force
     MIX_ENV=prod mix local.rebar --force
@@ -133,12 +169,16 @@ start_application() {
     echo "Installing and compiling dependencies..."
     MIX_ENV=prod mix deps.get
     MIX_ENV=prod mix deps.compile
+    MIX_ENV=prod mix tailwind.install
     
     echo "Running migrations..."
     MIX_ENV=prod mix ecto.migrate
     
     echo "Generating swagger..."
     MIX_ENV=prod mix phx.swagger.generate
+
+    echo "Deploying assets"
+    MIX_ENV=prod mix assets.deploy
     
     echo "Starting Phoenix server..."
     MIX_ENV=prod elixir --erl "-detached" -S mix phx.server
@@ -150,6 +190,10 @@ if ! grep -q "nofile 1048576" /etc/security/limits.conf; then
     echo "root soft nofile 1048576" >> /etc/security/limits.conf
     echo "root hard nofile 1048576" >> /etc/security/limits.conf
 fi
+
+# Add Elixir and Erlang to PATH for all future sessions
+echo 'export PATH=/home/ubuntu/.elixir-install/installs/otp/27.3.4/bin:$PATH' >> /home/ubuntu/.profile
+echo 'export PATH=/home/ubuntu/.elixir-install/installs/elixir/1.18.4-otp-27/bin:$PATH' >> /home/ubuntu/.profile
 
 # Main execution
 install_system_dependencies

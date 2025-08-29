@@ -34,6 +34,24 @@ resource "aws_iam_role_policy_attachment" "ec2_cloudwatch_logs" {
   policy_arn = "arn:aws:iam::aws:policy/CloudWatchAgentServerPolicy"
 }
 
+resource "aws_iam_role_policy" "ec2_secretsmanager_access" {
+  name = "${local.environment_prefix}ec2_secretsmanager_access"
+  role = aws_iam_role.ec2_role.id
+
+  policy = jsonencode({
+    Version = "2012-10-17",
+    Statement = [
+      {
+        Effect = "Allow",
+        Action = [
+          "secretsmanager:GetSecretValue"
+        ],
+        Resource = "arn:aws:secretsmanager:ap-south-1:111766607077:secret:etl-flow-key*"
+      }
+    ]
+  })
+}
+
 # Creates an instance profile to attach the IAM role to EC2 instances
 resource "aws_iam_instance_profile" "ec2_profile" {
   name_prefix = "${local.environment_prefix}ec2_profile"
@@ -57,6 +75,7 @@ resource "aws_launch_template" "ec2_launch_templ" {
     POOL_SIZE             = data.dotenv.env_file.env["POOL_SIZE"]
     BEARER_TOKEN          = data.dotenv.env_file.env["BEARER_TOKEN"]
     PORT                  = data.dotenv.env_file.env["PORT"]
+    PATH_TO_CREDENTIALS   = data.dotenv.env_file.env["PATH_TO_CREDENTIALS"]
   }))
 
   network_interfaces { # Network configuration for instances
