@@ -178,6 +178,38 @@ defmodule Dbservice.Users do
   end
 
   @doc """
+  Gets a student by either student_id or apaar_id.
+  Returns the first student found with either identifier.
+
+  ## Examples
+
+      iex> get_student_by_id_or_apaar_id(%{"student_id" => "1234", "apaar_id" => nil})
+      %Student{}
+      iex> get_student_by_id_or_apaar_id(%{"student_id" => nil, "apaar_id" => "123456789101"})
+      %Student{}
+      iex> get_student_by_id_or_apaar_id(%{"student_id" => nil, "apaar_id" => nil})
+      nil
+  """
+  def get_student_by_id_or_apaar_id(%{"student_id" => student_id, "apaar_id" => apaar_id}) do
+    cond do
+      student_id && student_id != "" ->
+        get_student_by_student_id(student_id)
+
+      apaar_id && apaar_id != "" ->
+        Repo.get_by(Student, apaar_id: apaar_id)
+
+      true ->
+        nil
+    end
+  end
+
+  def get_student_by_id_or_apaar_id(record) when is_map(record) do
+    student_id = Map.get(record, "student_id")
+    apaar_id = Map.get(record, "apaar_id")
+    get_student_by_id_or_apaar_id(%{"student_id" => student_id, "apaar_id" => apaar_id})
+  end
+
+  @doc """
   Creates a student.
 
   ## Examples
