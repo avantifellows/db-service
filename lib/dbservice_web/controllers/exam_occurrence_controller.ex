@@ -71,7 +71,9 @@ defmodule DbserviceWeb.ExamOccurrenceController do
     post("/api/exam_occurrence")
 
     parameters do
-      exam_occurrence(:body, Schema.ref(:ExamOccurrence), "The exam occurrence to create", required: true)
+      exam_occurrence(:body, Schema.ref(:ExamOccurrence), "The exam occurrence to create",
+        required: true
+      )
     end
 
     response(201, "Created", Schema.ref(:ExamOccurrence))
@@ -114,7 +116,10 @@ defmodule DbserviceWeb.ExamOccurrenceController do
 
     parameters do
       id(:path, :integer, "The ID of the exam occurrence", required: true)
-      exam_occurrence(:body, Schema.ref(:ExamOccurrence), "The exam occurrence updates", required: true)
+
+      exam_occurrence(:body, Schema.ref(:ExamOccurrence), "The exam occurrence updates",
+        required: true
+      )
     end
 
     response(200, "OK", Schema.ref(:ExamOccurrence))

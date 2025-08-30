@@ -71,7 +71,12 @@ defmodule DbserviceWeb.DemographicProfileController do
     post("/api/demographic_profile")
 
     parameters do
-      demographic_profile(:body, Schema.ref(:DemographicProfile), "The demographic profile to create", required: true)
+      demographic_profile(
+        :body,
+        Schema.ref(:DemographicProfile),
+        "The demographic profile to create",
+        required: true
+      )
     end
 
     response(201, "Created", Schema.ref(:DemographicProfile))
@@ -114,7 +119,13 @@ defmodule DbserviceWeb.DemographicProfileController do
 
     parameters do
       id(:path, :integer, "The ID of the demographic profile", required: true)
-      demographic_profile(:body, Schema.ref(:DemographicProfile), "The demographic profile updates", required: true)
+
+      demographic_profile(
+        :body,
+        Schema.ref(:DemographicProfile),
+        "The demographic profile updates",
+        required: true
+      )
     end
 
     response(200, "OK", Schema.ref(:DemographicProfile))

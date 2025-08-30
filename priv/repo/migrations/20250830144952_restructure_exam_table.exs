@@ -33,4 +33,4 @@ defmodule Dbservice.Repo.Migrations.RestructureExamTable do
   end
 end
 
-#the previous exam table was incorrect and has been restructured with exam (as master) and exam_occurrence (as slave)
+# the previous exam table was incorrect and has been restructured with exam (as master) and exam_occurrence (as slave)

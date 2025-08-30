@@ -17,11 +17,18 @@ defmodule DbserviceWeb.ExamJSON do
 
     # Include exam_occurrences if they are loaded
     case Map.get(exam, :exam_occurrences) do
-      %Ecto.Association.NotLoaded{} -> base_exam
-      nil -> base_exam
+      %Ecto.Association.NotLoaded{} ->
+        base_exam
+
+      nil ->
+        base_exam
+
       exam_occurrences ->
-        Map.put(base_exam, :exam_occurrences,
-          Enum.map(exam_occurrences, &DbserviceWeb.ExamOccurrenceJSON.render/1))
+        Map.put(
+          base_exam,
+          :exam_occurrences,
+          Enum.map(exam_occurrences, &DbserviceWeb.ExamOccurrenceJSON.render/1)
+        )
     end
   end
 end

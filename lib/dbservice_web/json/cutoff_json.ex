@@ -30,17 +30,29 @@ defmodule DbserviceWeb.CutoffJSON do
 
   defp maybe_include_exam_occurrence(cutoff_data, cutoff) do
     case Map.get(cutoff, :exam_occurrence) do
-      %Ecto.Association.NotLoaded{} -> cutoff_data
-      nil -> cutoff_data
+      %Ecto.Association.NotLoaded{} ->
+        cutoff_data
+
+      nil ->
+        cutoff_data
+
       exam_occurrence ->
-        Map.put(cutoff_data, :exam_occurrence, DbserviceWeb.ExamOccurrenceJSON.render(exam_occurrence))
+        Map.put(
+          cutoff_data,
+          :exam_occurrence,
+          DbserviceWeb.ExamOccurrenceJSON.render(exam_occurrence)
+        )
     end
   end
 
   defp maybe_include_college(cutoff_data, cutoff) do
     case Map.get(cutoff, :college) do
-      %Ecto.Association.NotLoaded{} -> cutoff_data
-      nil -> cutoff_data
+      %Ecto.Association.NotLoaded{} ->
+        cutoff_data
+
+      nil ->
+        cutoff_data
+
       college ->
         Map.put(cutoff_data, :college, DbserviceWeb.CollegeJSON.render(college))
     end
@@ -48,8 +60,12 @@ defmodule DbserviceWeb.CutoffJSON do
 
   defp maybe_include_branch(cutoff_data, cutoff) do
     case Map.get(cutoff, :branch) do
-      %Ecto.Association.NotLoaded{} -> cutoff_data
-      nil -> cutoff_data
+      %Ecto.Association.NotLoaded{} ->
+        cutoff_data
+
+      nil ->
+        cutoff_data
+
       branch ->
         Map.put(cutoff_data, :branch, DbserviceWeb.BranchJSON.render(branch))
     end

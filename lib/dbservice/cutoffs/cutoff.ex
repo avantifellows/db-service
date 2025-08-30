@@ -33,7 +33,13 @@ defmodule Dbservice.Cutoffs.Cutoff do
       :opening_rank,
       :closing_rank
     ])
-    |> validate_required([:cutoff_year, :exam_occurrence_id, :college_id, :branch_id, :category_id])
+    |> validate_required([
+      :cutoff_year,
+      :exam_occurrence_id,
+      :college_id,
+      :branch_id,
+      :category_id
+    ])
     |> foreign_key_constraint(:exam_occurrence_id)
     |> foreign_key_constraint(:college_id)
     |> foreign_key_constraint(:branch_id)
