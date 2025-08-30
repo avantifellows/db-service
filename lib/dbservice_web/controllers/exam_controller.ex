@@ -23,7 +23,7 @@ defmodule DbserviceWeb.ExamController do
     get("/api/exam")
 
     parameters do
-      params(:query, :string, "The name of the exam", required: false, name: "name")
+      params(:query, :string, "The name of the exam", required: false, name: "exam_name")
     end
 
     response(200, "OK", Schema.ref(:Exams))
@@ -61,7 +61,7 @@ defmodule DbserviceWeb.ExamController do
   end
 
   def create(conn, params) do
-    case Exams.get_exam_by_name(params["name"]) do
+    case Exams.get_exam_by_name(params["exam_name"]) do
       nil ->
         create_new_exam(conn, params)
 

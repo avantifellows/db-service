@@ -5,13 +5,11 @@ defmodule Dbservice.Exams.Exam do
   import Ecto.Changeset
 
   schema "exam" do
-    field :exam_id, :string
-    field :name, :string
-    field :cutoff_id, :string
-    field :conducting_body, :string
-    field :registration_deadline, :utc_datetime
-    field :date, :utc_datetime
-    field :cutoff, :map
+    field :exam_name, :string
+    field :counselling_body, :string
+    field :type, :string
+
+    has_many :exam_occurrences, Dbservice.Exams.ExamOccurrence
 
     timestamps()
   end
@@ -20,14 +18,10 @@ defmodule Dbservice.Exams.Exam do
   def changeset(exam, attrs) do
     exam
     |> cast(attrs, [
-      :exam_id,
-      :name,
-      :cutoff_id,
-      :conducting_body,
-      :registration_deadline,
-      :date,
-      :cutoff
+      :exam_name,
+      :counselling_body,
+      :type
     ])
-    |> validate_required([:name])
+    |> validate_required([:exam_name])
   end
 end

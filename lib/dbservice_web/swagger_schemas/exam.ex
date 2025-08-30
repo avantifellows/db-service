@@ -11,23 +11,15 @@ defmodule DbserviceWeb.SwaggerSchema.Exam do
           description("An exam in application")
 
           properties do
-            exam_id(:string, "The unique ID of the exam")
-            name(:string, "The name of an exam")
-            cutoff_id(:string, "The cutoff ID for the exam")
-            conducting_body(:string, "The conducting body of the exam")
-            registration_deadline(:timestamp, "Deadline for registration of exam")
-            date(:timestamp, "Date of the exam")
-            cutoff(:object, "Cutoff details")
+            exam_name(:string, "The name of an exam")
+            counselling_body(:string, "The counselling body of the exam")
+            type(:string, "The type of the exam")
           end
 
           example(%{
-            exam_id: "EXAM123",
-            name: "NEET",
-            cutoff_id: "CUTOFF456",
-            conducting_body: "NTA",
-            registration_deadline: "2023-12-31T11:30:00Z",
-            date: "2024-02-02T11:30:00Z",
-            cutoff: %{category: "General", value: 600}
+            exam_name: "NEET",
+            counselling_body: "NTA",
+            type: "Medical"
           })
         end
     }

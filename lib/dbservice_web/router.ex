@@ -74,7 +74,15 @@ defmodule DbserviceWeb.Router do
     resources("/learning-objective", LearningObjectiveController, except: [:new, :edit])
     resources("/purpose", PurposeController, except: [:new, :edit])
     resources("/resource", ResourceController, except: [:new, :edit])
+
+    # routes for college-predictors
+    resources("/college", CollegeController, except: [:new, :edit])
     resources("/exam", ExamController)
+    resources("/exam_occurrence", ExamOccurrenceController, except: [:new, :edit])
+    resources("/demographic_profile", DemographicProfileController, except: [:new, :edit])
+    resources("/branch", BranchController, except: [:new, :edit])
+    resources("/cutoffs", CutoffController, except: [:new, :edit])
+
     resources("/student-exam-record", StudentExamRecordController)
     get("/user/:user_id/sessions", UserController, :get_user_sessions)
     patch("/dropout/:student_id", StudentController, :dropout)
@@ -86,7 +94,6 @@ defmodule DbserviceWeb.Router do
     patch("/update-user-enrollment-records", StudentController, :update_user_enrollment_records)
     post("/student/batch-process", StudentController, :batch_process)
     post("/group-user/batch-process", GroupUserController, :batch_process)
-    resources("/college", CollegeController, except: [:new, :edit])
     get("/resources/curriculum", ResourceController, :curriculum_resources)
     get("/resource/subtypes/:type", ResourceController, :get_subtypes)
 
