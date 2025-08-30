@@ -8,15 +8,20 @@ defmodule DbserviceWeb.ExamJSON do
   end
 
   def render(exam) do
-    %{
+    base_exam = %{
       id: exam.id,
-      name: exam.name,
-      exam_id: exam.exam_id,
-      cutoff_id: exam.cutoff_id,
-      conducting_body: exam.conducting_body,
-      registration_deadline: exam.registration_deadline,
-      date: exam.date,
-      cutoff: exam.cutoff
+      exam_name: exam.exam_name,
+      counselling_body: exam.counselling_body,
+      type: exam.type
     }
+
+    # Include exam_occurrences if they are loaded
+    case Map.get(exam, :exam_occurrences) do
+      %Ecto.Association.NotLoaded{} -> base_exam
+      nil -> base_exam
+      exam_occurrences ->
+        Map.put(base_exam, :exam_occurrences,
+          Enum.map(exam_occurrences, &DbserviceWeb.ExamOccurrenceJSON.render/1))
+    end
   end
 end
