@@ -181,7 +181,7 @@ start_application() {
     MIX_ENV=prod mix assets.deploy
     
     echo "Starting Phoenix server..."
-    MIX_ENV=prod elixir --erl "-detached" -S mix phx.server
+    prlimit --nofile=1048576 -- MIX_ENV=prod elixir --erl "-detached" -S mix phx.server
 }
 
 # Set ulimit values
