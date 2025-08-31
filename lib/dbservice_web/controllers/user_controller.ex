@@ -279,14 +279,4 @@ defmodule DbserviceWeb.UserController do
   end
 
   defp batch_ids_overlap_with_user_batches?(_, _), do: false
-
-  # Helper functions for the context module functions mentioned
-  def get_group_user_by_user_id_and_group_id(user_id, group_id) do
-    Repo.get_by(GroupUser, user_id: user_id, group_id: group_id)
-  end
-
-  def get_group_session_by_group_id(group_id) do
-    from(g in GroupSession, where: g.group_id == ^group_id)
-    |> Repo.all()
-  end
 end
