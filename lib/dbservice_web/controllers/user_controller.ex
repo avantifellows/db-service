@@ -175,9 +175,8 @@ defmodule DbserviceWeb.UserController do
     end
   end
 
-  # OPTIMIZED VERSION - Single database query approach
   def get_user_sessions(conn, %{"user_id" => user_id, "quiz" => quiz_flag}) do
-    sessions = fetch_user_sessions_optimized(user_id, quiz_flag)
+    sessions = fetch_user_sessions(user_id, quiz_flag)
     render(conn, :user_sessions, session: sessions)
   end
 
@@ -185,121 +184,17 @@ defmodule DbserviceWeb.UserController do
     get_user_sessions(conn, %{"user_id" => user_id, "quiz" => false})
   end
 
-  # Debug version to compare with original - remove this after testing
-  def get_user_sessions_debug(conn, %{"user_id" => user_id, "quiz" => quiz_flag}) do
-    IO.puts("=== DEBUG: Starting get_user_sessions for user_id: #{user_id}, quiz: #{quiz_flag}")
-
-    # Get sessions using original logic for comparison
-    original_sessions = get_user_sessions_original_logic(user_id, quiz_flag)
-    IO.puts("Original sessions count: #{length(original_sessions)}")
-
-    # Get sessions using optimized logic
-    optimized_sessions = fetch_user_sessions_optimized(user_id, quiz_flag)
-    IO.puts("Optimized sessions count: #{length(optimized_sessions)}")
-
-    # Compare session IDs
-    original_ids = Enum.map(original_sessions, & &1.id) |> Enum.sort()
-    optimized_ids = Enum.map(optimized_sessions, & &1.id) |> Enum.sort()
-
-    IO.puts("Original session IDs: #{inspect(original_ids)}")
-    IO.puts("Optimized session IDs: #{inspect(optimized_ids)}")
-
-    missing_in_optimized = original_ids -- optimized_ids
-    extra_in_optimized = optimized_ids -- original_ids
-
-    if !Enum.empty?(missing_in_optimized) do
-      IO.puts("MISSING in optimized: #{inspect(missing_in_optimized)}")
-    end
-
-    if !Enum.empty?(extra_in_optimized) do
-      IO.puts("EXTRA in optimized: #{inspect(extra_in_optimized)}")
-    end
-
-    render(conn, :user_sessions, session: optimized_sessions)
-  end
-
-  # Original logic for comparison - remove this after debugging
-  defp get_user_sessions_original_logic(user_id, quiz_flag) do
-    # This mirrors the original nested loop structure
-    group_users = Repo.all(from gu in GroupUser, where: gu.user_id == ^user_id)
-
-    Enum.flat_map(group_users, fn group_user ->
-      fetch_group_user_sessions_original(group_user, quiz_flag)
-    end)
-  end
-
-  defp fetch_group_user_sessions_original(group_user, quiz_flag) do
-    group_id = group_user.group_id
-
-    case Repo.one(from g in Group, where: g.id == ^group_id and g.type == "batch") do
-      nil -> []
-      group -> fetch_group_sessions_original(group, quiz_flag)
-    end
-  end
-
-  defp fetch_group_sessions_original(group, quiz_flag) do
-    child_id = group.child_id
-    batch = Repo.get!(Batch, child_id)
-    class_batch_id = batch.batch_id
-    quiz_id = batch.parent_id
-    quiz_group = Repo.one(from g in Group, where: g.child_id == ^quiz_id and g.type == "batch")
-
-    if quiz_group do
-      quiz_group_id = quiz_group.id
-      group_id = if quiz_flag, do: quiz_group_id, else: group.id
-      group_sessions = Repo.all(from gs in GroupSession, where: gs.group_id == ^group_id)
-
-      filter_sessions_original(group_sessions, quiz_flag, class_batch_id)
-      |> Enum.map(&get_session_by_id_original/1)
-      |> Enum.filter(&(&1 != nil))
-    else
-      []
-    end
-  end
-
-  defp filter_sessions_original(group_sessions, quiz_flag, class_batch_id) do
-    Enum.filter(group_sessions, &should_include_session_original?(&1, quiz_flag, class_batch_id))
-  end
-
-  defp should_include_session_original?(group_session, quiz_flag, class_batch_id) do
-    case get_session_by_id_original(group_session) do
-      nil ->
-        false
-
-      session ->
-        session.is_active &&
-          if quiz_flag && session.meta_data["batch_id"] != "" do
-            # Split the comma-separated batch_id and check if class_batch_id is in the list
-            batch_ids =
-              String.split(session.meta_data["batch_id"], ",") |> Enum.map(&String.trim/1)
-
-            class_batch_id in batch_ids and session.platform == "quiz"
-          else
-            true
-          end
-    end
-  end
-
-  defp get_session_by_id_original(group_session) do
-    Repo.get(Dbservice.Sessions.Session, group_session.session_id)
-  end
-
   # Single optimized query that fetches all required data in one go
-  defp fetch_user_sessions_optimized(user_id, quiz_flag) do
-    # The original logic has a critical nuance: it gets sessions from different groups
-    # based on quiz_flag, but always does the batch_id filtering for quiz=true
-
-    # Step 1: Get all user's group_users with batch info in one query
+  defp fetch_user_sessions(user_id, quiz_flag) do
     user_batch_data = get_user_batch_data(user_id)
 
     if Enum.empty?(user_batch_data) do
       []
     else
-      # Step 2: Get sessions based on quiz_flag
       if quiz_flag do
-        get_quiz_sessions_optimized(user_batch_data)
+        get_quiz_sessions(user_batch_data)
       else
-        get_regular_sessions_optimized(user_batch_data)
+        get_regular_sessions(user_batch_data)
       end
     end
   end
@@ -325,7 +220,7 @@ defmodule DbserviceWeb.UserController do
   end
 
   # Get quiz sessions - sessions come from quiz groups, filtered by class batch IDs
-  defp get_quiz_sessions_optimized(user_batch_data) do
+  defp get_quiz_sessions(user_batch_data) do
     quiz_group_ids =
       user_batch_data
       |> Enum.map(& &1.quiz_group_id)
@@ -361,7 +256,7 @@ defmodule DbserviceWeb.UserController do
   end
 
   # Get regular sessions - sessions come from class groups, no additional filtering
-  defp get_regular_sessions_optimized(user_batch_data) do
+  defp get_regular_sessions(user_batch_data) do
     class_group_ids = Enum.map(user_batch_data, & &1.class_group_id) |> Enum.uniq()
 
     from(gs in GroupSession,
