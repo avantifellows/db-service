@@ -76,10 +76,13 @@ resource "aws_autoscaling_group" "main" {
     triggers = ["tag"]
   }
 
-  # Tag that changes when user data changes to trigger refresh
+  # Tag that changes when user data or setup script changes to trigger refresh
   tag {
     key                 = "UserDataHash"
-    value               = md5(templatefile("${path.module}/user_data.sh.tpl", local.user_data_vars))
+    value               = md5(join("", [
+      templatefile("${path.module}/user_data.sh.tpl", local.user_data_vars),
+      file("${path.module}/../scripts/setup.sh")
+    ]))
     propagate_at_launch = false
   }
 

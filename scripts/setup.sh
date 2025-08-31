@@ -65,7 +65,7 @@ log "Installing required packages"
 if ! rpm -q nginx >/dev/null 2>&1; then
     log "Installing nginx"
     yum update -y
-    yum install -y nginx
+    amazon-linux-extras install -y nginx1
 else
     log "Nginx already installed, skipping"
 fi
