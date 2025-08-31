@@ -154,16 +154,16 @@ else
     asdf global elixir 1.18.4
 fi
 
-# Make sure asdf is available for all users (idempotent)
+# Make sure asdf binaries are available globally (idempotent)
 log "Creating global symlinks for ASDF binaries"
 if [ ! -L /usr/local/bin/erl ]; then
-    sudo ln -sf ~/.asdf/shims/erl /usr/local/bin/erl
+    ln -sf ~/.asdf/shims/erl /usr/local/bin/erl
 fi
 if [ ! -L /usr/local/bin/elixir ]; then
-    sudo ln -sf ~/.asdf/shims/elixir /usr/local/bin/elixir
+    ln -sf ~/.asdf/shims/elixir /usr/local/bin/elixir
 fi
 if [ ! -L /usr/local/bin/mix ]; then
-    sudo ln -sf ~/.asdf/shims/mix /usr/local/bin/mix
+    ln -sf ~/.asdf/shims/mix /usr/local/bin/mix
 fi
 
 # Configure Nginx (idempotent)
@@ -349,32 +349,34 @@ WHITELISTED_DOMAINS=$WHITELISTED_DOMAINS
 PATH_TO_CREDENTIALS=/var/www/html/dbservice-$ENVIRONMENT/config/etl-flow-key.json
 EOF
 
-chown -R ec2-user:ec2-user /var/www/html/dbservice-$ENVIRONMENT
+# Application will run as root, so no ownership change needed
 
 # Only rebuild if we cloned or updated the repository
 if [ "$NEED_CLONE" = true ] || [ "$NEED_UPDATE" = true ]; then
     log "Building application (dependencies changed)"
     export MIX_ENV=prod
     
-    runuser -l ec2-user -c "cd /var/www/html/dbservice-$ENVIRONMENT && mix local.hex --force"
-    runuser -l ec2-user -c "cd /var/www/html/dbservice-$ENVIRONMENT && mix local.rebar --force"
-    runuser -l ec2-user -c "cd /var/www/html/dbservice-$ENVIRONMENT && mix deps.get"
-    runuser -l ec2-user -c "cd /var/www/html/dbservice-$ENVIRONMENT && mix deps.compile"
+    cd /var/www/html/dbservice-$ENVIRONMENT
+    mix local.hex --force
+    mix local.rebar --force
+    mix deps.get
+    mix deps.compile
     
-    runuser -l ec2-user -c "cd /var/www/html/dbservice-$ENVIRONMENT && mix assets.deploy"
-    runuser -l ec2-user -c "cd /var/www/html/dbservice-$ENVIRONMENT && mix phx.digest"
+    mix assets.deploy
+    mix phx.digest
     
     # Always run migrations (they're idempotent in Ecto)
-    runuser -l ec2-user -c "cd /var/www/html/dbservice-$ENVIRONMENT && mix ecto.migrate"
+    mix ecto.migrate
     
-    runuser -l ec2-user -c "cd /var/www/html/dbservice-$ENVIRONMENT && mix phx.swagger.generate"
+    mix phx.swagger.generate
     
     RESTART_SERVICE=true
 else
     log "Application code unchanged, skipping build"
     # Still run migrations in case there are new ones
     export MIX_ENV=prod
-    runuser -l ec2-user -c "cd /var/www/html/dbservice-$ENVIRONMENT && mix ecto.migrate"
+    cd /var/www/html/dbservice-$ENVIRONMENT
+    mix ecto.migrate
     RESTART_SERVICE=false
 fi
 
@@ -397,8 +399,8 @@ Wants=network.target
 
 [Service]
 Type=simple
-User=ec2-user
-Group=ec2-user
+User=root
+Group=root
 WorkingDirectory=/var/www/html/dbservice-$ENVIRONMENT
 Environment=MIX_ENV=prod
 Environment=ERL_MAX_PORTS=32768
