@@ -232,15 +232,7 @@ defmodule DbserviceWeb.UserController do
     else
       class_batch_ids = Enum.map(user_batch_data, & &1.class_batch_id) |> Enum.uniq()
 
-      quiz_sessions =
-        from(gs in GroupSession,
-          where: gs.group_id in ^quiz_group_ids,
-          join: s in Dbservice.Sessions.Session,
-          on: s.id == gs.session_id,
-          where: s.is_active == true,
-          select: s
-        )
-        |> Repo.all()
+      quiz_sessions = Dbservice.GroupSessions.fetch_sessions_by_group_ids(quiz_group_ids)
 
       Enum.filter(quiz_sessions, &quiz_session_filter(&1, class_batch_ids))
     end
@@ -249,7 +241,7 @@ defmodule DbserviceWeb.UserController do
   defp quiz_session_filter(session, class_batch_ids) do
     if session.meta_data["batch_id"] != "" do
       session.platform == "quiz" &&
-        batch_ids_overlap_with_user_batches?(session.meta_data["batch_id"], class_batch_ids)
+        should_include_session?(session.meta_data["batch_id"], class_batch_ids)
     else
       true
     end
@@ -259,17 +251,10 @@ defmodule DbserviceWeb.UserController do
   defp get_regular_sessions(user_batch_data) do
     class_group_ids = Enum.map(user_batch_data, & &1.class_group_id) |> Enum.uniq()
 
-    from(gs in GroupSession,
-      where: gs.group_id in ^class_group_ids,
-      join: s in Dbservice.Sessions.Session,
-      on: s.id == gs.session_id,
-      where: s.is_active == true,
-      select: s
-    )
-    |> Repo.all()
+    Dbservice.GroupSessions.fetch_sessions_by_group_ids(class_group_ids)
   end
 
-  defp batch_ids_overlap_with_user_batches?(session_batch_id_string, user_class_batch_ids)
+  defp should_include_session?(session_batch_id_string, user_class_batch_ids)
        when is_binary(session_batch_id_string) do
     # Session's batch_id metadata is comma-separated
     session_batch_ids = String.split(session_batch_id_string, ",") |> Enum.map(&String.trim/1)
@@ -278,5 +263,5 @@ defmodule DbserviceWeb.UserController do
     Enum.any?(session_batch_ids, &(&1 in user_class_batch_ids))
   end
 
-  defp batch_ids_overlap_with_user_batches?(_, _), do: false
+  defp should_include_session?(_, _), do: false
 end

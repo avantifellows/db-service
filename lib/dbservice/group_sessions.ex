@@ -145,4 +145,19 @@ defmodule Dbservice.GroupSessions do
   def change_group_session(%GroupSession{} = group_session, attrs \\ %{}) do
     GroupSession.changeset(group_session, attrs)
   end
+
+  @doc """
+  Fetches sessions by a list of group IDs, only returning active sessions.
+  Joins GroupSession and Session.
+  """
+  def fetch_sessions_by_group_ids(group_ids) when is_list(group_ids) do
+    from(gs in GroupSession,
+      where: gs.group_id in ^group_ids,
+      join: s in Dbservice.Sessions.Session,
+      on: s.id == gs.session_id,
+      where: s.is_active == true,
+      select: s
+    )
+    |> Repo.all()
+  end
 end
