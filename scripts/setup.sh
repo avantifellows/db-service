@@ -134,24 +134,134 @@ else
     log "Elixir plugin already installed, skipping"
 fi
 
-# Install specific versions (idempotent)
+# Install specific versions (idempotent with retry logic)
 log "Installing Erlang and Elixir versions"
+
+# Function to retry installation with backoff
+retry_install() {
+    local package=$1
+    local version=$2
+    local max_attempts=3
+    local attempt=1
+    
+    while [ $attempt -le $max_attempts ]; do
+        log "Installing $package $version (attempt $attempt/$max_attempts)"
+        
+        # Capture asdf install output and log it
+        log "Starting $package $version installation..."
+        if asdf install $package $version 2>&1 | tee -a /var/log/setup.log; then
+            log "$package $version installation completed successfully"
+            asdf global $package $version
+            log "Set $package $version as global version"
+            return 0
+        else
+            log "Installation attempt $attempt failed for $package $version"
+            if [ $attempt -lt $max_attempts ]; then
+                local wait_time=$((attempt * 30))
+                log "Waiting $wait_time seconds before retry (attempt $((attempt + 1))/$max_attempts)..."
+                
+                # Countdown timer for better visibility in logs
+                local remaining=$wait_time
+                while [ $remaining -gt 0 ]; do
+                    if [ $((remaining % 10)) -eq 0 ] || [ $remaining -le 5 ]; then
+                        log "Retry countdown: $remaining seconds remaining..."
+                    fi
+                    sleep 1
+                    remaining=$((remaining - 1))
+                done
+                
+                # Clean up failed installation
+                log "Cleaning up failed $package $version installation..."
+                asdf uninstall $package $version 2>&1 | tee -a /var/log/setup.log || true
+                log "Cleanup completed, starting retry..."
+            fi
+        fi
+        
+        attempt=$((attempt + 1))
+    done
+    
+    log "ERROR: Failed to install $package $version after $max_attempts attempts"
+    return 1
+}
+
+# Install Erlang with retry logic
 if ! asdf list erlang | grep -q "25.0.4"; then
-    log "Installing Erlang 25.0.4"
-    asdf install erlang 25.0.4
-    asdf global erlang 25.0.4
+    if ! retry_install erlang 25.0.4; then
+        log "CRITICAL ERROR: Erlang installation failed after retries. Attempting alternative installation..."
+        
+        # Alternative: Try updating the plugin and retry once more
+        log "Updating asdf-erlang plugin to get latest version..."
+        if asdf plugin update erlang 2>&1 | tee -a /var/log/setup.log; then
+            log "Plugin update successful, attempting final Erlang installation..."
+        else
+            log "Plugin update failed, but continuing with final installation attempt..."
+        fi
+        
+        log "Final attempt to install Erlang 25.0.4..."
+        if asdf install erlang 25.0.4 2>&1 | tee -a /var/log/setup.log; then
+            log "Final Erlang installation attempt succeeded"
+            asdf global erlang 25.0.4
+            log "Set Erlang 25.0.4 as global version"
+        else
+            log "FATAL: Unable to install Erlang after all attempts. Deployment cannot continue."
+            log "Check /var/log/setup.log for detailed error messages"
+            exit 1
+        fi
+    fi
 else
     log "Erlang 25.0.4 already installed, setting as global"
     asdf global erlang 25.0.4
+    log "Confirmed Erlang 25.0.4 set as global version"
 fi
 
+# Verify Erlang installation
+log "Verifying Erlang installation..."
+if erl -version 2>&1 | tee -a /var/log/setup.log; then
+    log "Erlang installation verification successful"
+else
+    log "ERROR: Erlang installation verification failed"
+    log "Erlang is installed but not functioning correctly"
+    exit 1
+fi
+
+# Install Elixir with retry logic
 if ! asdf list elixir | grep -q "1.18.4"; then
-    log "Installing Elixir 1.18.4"
-    asdf install elixir 1.18.4
-    asdf global elixir 1.18.4
+    if ! retry_install elixir 1.18.4; then
+        log "CRITICAL ERROR: Elixir installation failed after retries. Attempting alternative installation..."
+        
+        # Alternative: Try updating the plugin and retry once more
+        log "Updating asdf-elixir plugin to get latest version..."
+        if asdf plugin update elixir 2>&1 | tee -a /var/log/setup.log; then
+            log "Plugin update successful, attempting final Elixir installation..."
+        else
+            log "Plugin update failed, but continuing with final installation attempt..."
+        fi
+        
+        log "Final attempt to install Elixir 1.18.4..."
+        if asdf install elixir 1.18.4 2>&1 | tee -a /var/log/setup.log; then
+            log "Final Elixir installation attempt succeeded"
+            asdf global elixir 1.18.4
+            log "Set Elixir 1.18.4 as global version"
+        else
+            log "FATAL: Unable to install Elixir after all attempts. Deployment cannot continue."
+            log "Check /var/log/setup.log for detailed error messages"
+            exit 1
+        fi
+    fi
 else
     log "Elixir 1.18.4 already installed, setting as global"
     asdf global elixir 1.18.4
+    log "Confirmed Elixir 1.18.4 set as global version"
+fi
+
+# Verify Elixir installation
+log "Verifying Elixir installation..."
+if elixir --version 2>&1 | tee -a /var/log/setup.log; then
+    log "Elixir installation verification successful"
+else
+    log "ERROR: Elixir installation verification failed"
+    log "Elixir is installed but not functioning correctly"
+    exit 1
 fi
 
 # Make sure asdf binaries are available globally (idempotent)
