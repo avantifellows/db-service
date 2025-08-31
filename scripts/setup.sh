@@ -118,24 +118,37 @@ fi
 export PATH="$HOME/.asdf/bin:$PATH"
 source ~/.asdf/asdf.sh
 
+# Ensure ASDF shims are in PATH for current session
+export PATH="$HOME/.asdf/shims:$PATH"
+
 # Install Erlang and Elixir plugins (idempotent)
 log "Setting up Erlang and Elixir plugins"
 if ! asdf plugin list | grep -q erlang; then
     log "Adding Erlang plugin"
     asdf plugin add erlang https://github.com/asdf-vm/asdf-erlang.git
+    # Update plugin to ensure we have latest version lists
+    log "Updating Erlang plugin to get latest versions"
+    asdf plugin update erlang || log "Warning: Failed to update Erlang plugin, continuing anyway"
 else
-    log "Erlang plugin already installed, skipping"
+    log "Erlang plugin already installed, updating to get latest versions"
+    asdf plugin update erlang || log "Warning: Failed to update Erlang plugin, continuing anyway"
 fi
 
 if ! asdf plugin list | grep -q elixir; then
     log "Adding Elixir plugin"
     asdf plugin add elixir https://github.com/asdf-vm/asdf-elixir.git
+    # Update plugin to ensure we have latest version lists
+    log "Updating Elixir plugin to get latest versions"
+    asdf plugin update elixir || log "Warning: Failed to update Elixir plugin, continuing anyway"
 else
-    log "Elixir plugin already installed, skipping"
+    log "Elixir plugin already installed, updating to get latest versions"
+    asdf plugin update elixir || log "Warning: Failed to update Elixir plugin, continuing anyway"
 fi
 
 # Install specific versions (idempotent with retry logic)
 log "Installing Erlang and Elixir versions"
+log "NOTE: This is typically the longest part of the setup (15-25 minutes total)"
+log "Erlang compilation can take 10-20 minutes, Elixir takes 2-5 minutes"
 
 # Function to retry installation with backoff
 retry_install() {
@@ -148,7 +161,8 @@ retry_install() {
         log "Installing $package $version (attempt $attempt/$max_attempts)"
         
         # Capture asdf install output and log it
-        log "Starting $package $version installation..."
+        log "Starting $package $version installation... (this may take 10-20 minutes for Erlang, 2-5 minutes for Elixir)"
+        log "Progress will be logged to /var/log/setup.log - you can monitor with: tail -f /var/log/setup.log"
         if asdf install $package $version 2>&1 | tee -a /var/log/setup.log; then
             log "$package $version installation completed successfully"
             asdf global $package $version
@@ -216,12 +230,20 @@ fi
 
 # Verify Erlang installation
 log "Verifying Erlang installation..."
-if erl -version 2>&1 | tee -a /var/log/setup.log; then
+# Ensure ASDF environment is properly loaded
+source ~/.asdf/asdf.sh
+asdf reshim erlang
+if command -v erl >/dev/null 2>&1 && erl -version 2>&1 | tee -a /var/log/setup.log; then
     log "Erlang installation verification successful"
 else
-    log "ERROR: Erlang installation verification failed"
-    log "Erlang is installed but not functioning correctly"
-    exit 1
+    log "WARNING: Erlang verification failed, but installation completed. This may resolve after environment reload."
+    log "Attempting to verify with direct path..."
+    if ~/.asdf/shims/erl -version 2>&1 | tee -a /var/log/setup.log; then
+        log "Erlang verification successful via direct shim path"
+    else
+        log "ERROR: Erlang installation verification failed even with direct path"
+        exit 1
+    fi
 fi
 
 # Install Elixir with retry logic
@@ -256,12 +278,20 @@ fi
 
 # Verify Elixir installation
 log "Verifying Elixir installation..."
-if elixir --version 2>&1 | tee -a /var/log/setup.log; then
+# Ensure ASDF environment is properly loaded
+source ~/.asdf/asdf.sh
+asdf reshim elixir
+if command -v elixir >/dev/null 2>&1 && elixir --version 2>&1 | tee -a /var/log/setup.log; then
     log "Elixir installation verification successful"
 else
-    log "ERROR: Elixir installation verification failed"
-    log "Elixir is installed but not functioning correctly"
-    exit 1
+    log "WARNING: Elixir verification failed, but installation completed. This may resolve after environment reload."
+    log "Attempting to verify with direct path..."
+    if ~/.asdf/shims/elixir --version 2>&1 | tee -a /var/log/setup.log; then
+        log "Elixir verification successful via direct shim path"
+    else
+        log "ERROR: Elixir installation verification failed even with direct path"
+        exit 1
+    fi
 fi
 
 # Make sure asdf binaries are available globally (idempotent)
@@ -464,29 +494,63 @@ EOF
 # Only rebuild if we cloned or updated the repository
 if [ "$NEED_CLONE" = true ] || [ "$NEED_UPDATE" = true ]; then
     log "Building application (dependencies changed)"
+    log "NOTE: Application build process typically takes 5-15 minutes depending on dependencies"
+    log "Major steps: Hex/Rebar setup -> Dependency fetch -> Compilation -> Assets -> Migrations"
     export MIX_ENV=prod
     
+    # Ensure ASDF environment is available for mix commands
+    source ~/.asdf/asdf.sh
+    export PATH="$HOME/.asdf/shims:$PATH"
+    
     cd /var/www/html/dbservice-$ENVIRONMENT
+    
+    log "Installing local Hex package manager..."
     mix local.hex --force
+    log "Hex installation completed"
+    
+    log "Installing local Rebar build tool..."
     mix local.rebar --force
+    log "Rebar installation completed"
+    
+    log "Fetching application dependencies... (this may take several minutes)"
     mix deps.get
+    log "Dependencies fetch completed"
+    
+    log "Compiling application dependencies... (this may take several minutes)"
     mix deps.compile
+    log "Dependencies compilation completed"
     
+    log "Deploying frontend assets... (this may take a few minutes)"
     mix assets.deploy
-    mix phx.digest
+    log "Assets deployment completed"
     
+    log "Generating asset digests..."
+    mix phx.digest
+    log "Asset digest generation completed"
+    
+    log "Running database migrations... (checking for new migrations)"
     # Always run migrations (they're idempotent in Ecto)
     mix ecto.migrate
+    log "Database migrations completed"
     
+    log "Generating Swagger documentation..."
     mix phx.swagger.generate
+    log "Swagger documentation generation completed"
     
     RESTART_SERVICE=true
 else
     log "Application code unchanged, skipping build"
     # Still run migrations in case there are new ones
     export MIX_ENV=prod
+    
+    # Ensure ASDF environment is available for mix commands
+    source ~/.asdf/asdf.sh
+    export PATH="$HOME/.asdf/shims:$PATH"
+    
     cd /var/www/html/dbservice-$ENVIRONMENT
+    log "Running database migrations... (checking for new migrations)"
     mix ecto.migrate
+    log "Database migrations completed"
     RESTART_SERVICE=false
 fi
 
@@ -619,3 +683,18 @@ else
 fi
 
 log "Setup script execution completed successfully"
+log "====================================================================================="
+log "DEPLOYMENT SUMMARY:"
+log "- Erlang 25.0.4 and Elixir 1.18.4 installed via ASDF"
+log "- Nginx configured and running on port 80, proxying to application on port $APP_PORT"
+log "- Application deployed to /var/www/html/dbservice-$ENVIRONMENT"
+log "- Systemd service 'dbservice' configured and running"
+log "- CloudWatch agent configured for log collection"
+log "- Database migrations executed"
+log "====================================================================================="
+log "You can monitor the application with:"
+log "  - Service status: systemctl status dbservice"
+log "  - Application logs: journalctl -u dbservice -f"
+log "  - Nginx logs: tail -f /var/log/nginx/access.log"
+log "  - Setup logs: tail -f /var/log/setup.log"
+log "====================================================================================="
