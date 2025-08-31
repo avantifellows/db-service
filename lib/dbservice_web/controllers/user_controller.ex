@@ -1,16 +1,13 @@
 defmodule DbserviceWeb.UserController do
-  alias Dbservice.Groups
   use DbserviceWeb, :controller
 
   import Ecto.Query
   alias Dbservice.Repo
   alias Dbservice.Users
   alias Dbservice.Users.User
-  alias Dbservice.GroupUsers
-  alias Dbservice.GroupSessions
-  alias Dbservice.Sessions
-  alias Dbservice.Groups
-  alias Dbservice.Batches
+  alias Dbservice.Groups.GroupUser
+  alias Dbservice.Groups.Group
+  alias Dbservice.Batches.Batch
 
   action_fallback DbserviceWeb.FallbackController
 
@@ -178,8 +175,7 @@ defmodule DbserviceWeb.UserController do
   end
 
   def get_user_sessions(conn, %{"user_id" => user_id, "quiz" => quiz_flag}) do
-    group_users = GroupUsers.get_group_user_by_user_id(user_id)
-    sessions = Enum.flat_map(group_users, &fetch_group_user_sessions(&1, quiz_flag))
+    sessions = fetch_user_sessions(user_id, quiz_flag)
     render(conn, :user_sessions, session: sessions)
   end
 
@@ -187,52 +183,84 @@ defmodule DbserviceWeb.UserController do
     get_user_sessions(conn, %{"user_id" => user_id, "quiz" => false})
   end
 
-  defp fetch_group_user_sessions(group_user, quiz_flag) do
-    group_id = group_user.group_id
+  # Single optimized query
+  defp fetch_user_sessions(user_id, quiz_flag) do
+    user_batch_data = get_user_batch_data(user_id)
 
-    case Groups.get_group_by_group_id_and_type(group_id, "batch") do
-      nil -> []
-      group -> fetch_group_sessions(group, quiz_flag)
+    if Enum.empty?(user_batch_data) do
+      []
+    else
+      if quiz_flag do
+        get_quiz_sessions(user_batch_data)
+      else
+        get_regular_sessions(user_batch_data)
+      end
     end
   end
 
-  defp fetch_group_sessions(group, quiz_flag) do
-    child_id = group.child_id
-    batch = Batches.get_batch!(child_id)
-    class_batch_id = batch.batch_id
-    quiz_id = batch.parent_id
-    quiz_group = Groups.get_group_by_child_id_and_type(quiz_id, "batch")
-    quiz_group_id = quiz_group.id
-
-    group_id = if quiz_flag, do: quiz_group_id, else: group.id
-    group_sessions = GroupSessions.get_group_session_by_group_id(group_id)
-
-    filter_sessions(group_sessions, quiz_flag, class_batch_id)
-    |> Enum.map(&get_session_by_id/1)
+  # Get user's groups with batch information
+  defp get_user_batch_data(user_id) do
+    from(gu in GroupUser,
+      where: gu.user_id == ^user_id,
+      join: class_group in Group,
+      on: class_group.id == gu.group_id and class_group.type == "batch",
+      join: class_batch in Batch,
+      on: class_batch.id == class_group.child_id,
+      left_join: quiz_group in Group,
+      on: quiz_group.child_id == class_batch.parent_id and quiz_group.type == "batch",
+      select: %{
+        class_group_id: class_group.id,
+        class_batch_id: class_batch.batch_id,
+        quiz_group_id: quiz_group.id,
+        quiz_id: class_batch.parent_id
+      }
+    )
+    |> Repo.all()
   end
 
-  defp filter_sessions(group_sessions, quiz_flag, class_batch_id) do
-    Enum.filter(group_sessions, &should_include_session?(&1, quiz_flag, class_batch_id))
-  end
+  # Get quiz sessions - sessions come from quiz groups, filtered by class batch IDs
+  defp get_quiz_sessions(user_batch_data) do
+    quiz_group_ids =
+      user_batch_data
+      |> Enum.map(& &1.quiz_group_id)
+      |> Enum.reject(&is_nil/1)
+      |> Enum.uniq()
 
-  defp should_include_session?(group_session, quiz_flag, class_batch_id) do
-    case get_session_by_id(group_session) do
-      nil ->
-        false
+    if Enum.empty?(quiz_group_ids) do
+      []
+    else
+      class_batch_ids = Enum.map(user_batch_data, & &1.class_batch_id) |> Enum.uniq()
 
-      session ->
-        session.is_active &&
-          if quiz_flag && session.meta_data["batch_id"] != "" do
-            # Split the comma-separated batch_id and check if class_batch_id is in the list
-            batch_ids = String.split(session.meta_data["batch_id"], ",")
-            class_batch_id in batch_ids and session.platform == "quiz"
-          else
-            true
-          end
+      quiz_sessions = Dbservice.GroupSessions.fetch_sessions_by_group_ids(quiz_group_ids)
+
+      Enum.filter(quiz_sessions, &quiz_session_filter(&1, class_batch_ids))
     end
   end
 
-  defp get_session_by_id(group_session) do
-    Sessions.get_session!(group_session.session_id)
+  defp quiz_session_filter(session, class_batch_ids) do
+    if session.meta_data["batch_id"] != "" do
+      session.platform == "quiz" &&
+        should_include_session?(session.meta_data["batch_id"], class_batch_ids)
+    else
+      true
+    end
   end
+
+  # Get regular sessions - sessions come from class groups, no additional filtering
+  defp get_regular_sessions(user_batch_data) do
+    class_group_ids = Enum.map(user_batch_data, & &1.class_group_id) |> Enum.uniq()
+
+    Dbservice.GroupSessions.fetch_sessions_by_group_ids(class_group_ids)
+  end
+
+  defp should_include_session?(session_batch_id_string, user_class_batch_ids)
+       when is_binary(session_batch_id_string) do
+    # Session's batch_id metadata is comma-separated
+    session_batch_ids = String.split(session_batch_id_string, ",") |> Enum.map(&String.trim/1)
+
+    # Check if any of the session's batch_ids match any of the user's class batch_ids
+    Enum.any?(session_batch_ids, &(&1 in user_class_batch_ids))
+  end
+
+  defp should_include_session?(_, _), do: false
 end
