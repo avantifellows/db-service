@@ -326,7 +326,6 @@ defmodule DbserviceWeb.UserController do
 
   # Get quiz sessions - sessions come from quiz groups, filtered by class batch IDs
   defp get_quiz_sessions_optimized(user_batch_data) do
-    # Get unique quiz group IDs (excluding nils)
     quiz_group_ids =
       user_batch_data
       |> Enum.map(& &1.quiz_group_id)
@@ -336,10 +335,8 @@ defmodule DbserviceWeb.UserController do
     if Enum.empty?(quiz_group_ids) do
       []
     else
-      # Get all class batch IDs for filtering
       class_batch_ids = Enum.map(user_batch_data, & &1.class_batch_id) |> Enum.uniq()
 
-      # Get sessions from quiz groups
       quiz_sessions =
         from(gs in GroupSession,
           where: gs.group_id in ^quiz_group_ids,
@@ -350,19 +347,16 @@ defmodule DbserviceWeb.UserController do
         )
         |> Repo.all()
 
-      # Filter sessions exactly like original logic
-      Enum.filter(quiz_sessions, fn session ->
-        # Original logic: if quiz_flag && session.meta_data["batch_id"] != ""
-        # then check batch_id overlap AND platform == "quiz"
-        # else just return true (session is included if active)
-        if session.meta_data["batch_id"] != "" do
-          session.platform == "quiz" &&
-            batch_ids_overlap_with_user_batches?(session.meta_data["batch_id"], class_batch_ids)
-        else
-          # If batch_id is empty, include the session (original logic goes to else branch)
-          true
-        end
-      end)
+      Enum.filter(quiz_sessions, &quiz_session_filter(&1, class_batch_ids))
+    end
+  end
+
+  defp quiz_session_filter(session, class_batch_ids) do
+    if session.meta_data["batch_id"] != "" do
+      session.platform == "quiz" &&
+        batch_ids_overlap_with_user_batches?(session.meta_data["batch_id"], class_batch_ids)
+    else
+      true
     end
   end
 
