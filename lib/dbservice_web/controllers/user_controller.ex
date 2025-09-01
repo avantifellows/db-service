@@ -6,7 +6,6 @@ defmodule DbserviceWeb.UserController do
   alias Dbservice.Users
   alias Dbservice.Users.User
   alias Dbservice.Groups.GroupUser
-  alias Dbservice.Groups.GroupSession
   alias Dbservice.Groups.Group
   alias Dbservice.Batches.Batch
 
@@ -184,7 +183,7 @@ defmodule DbserviceWeb.UserController do
     get_user_sessions(conn, %{"user_id" => user_id, "quiz" => false})
   end
 
-  # Single optimized query that fetches all required data in one go
+  # Single optimized query
   defp fetch_user_sessions(user_id, quiz_flag) do
     user_batch_data = get_user_batch_data(user_id)
 
@@ -231,19 +230,7 @@ defmodule DbserviceWeb.UserController do
       []
     else
       class_batch_ids = Enum.map(user_batch_data, & &1.class_batch_id) |> Enum.uniq()
-
-      quiz_sessions = Dbservice.GroupSessions.fetch_sessions_by_group_ids(quiz_group_ids)
-
-      Enum.filter(quiz_sessions, &quiz_session_filter(&1, class_batch_ids))
-    end
-  end
-
-  defp quiz_session_filter(session, class_batch_ids) do
-    if session.meta_data["batch_id"] != "" do
-      session.platform == "quiz" &&
-        should_include_session?(session.meta_data["batch_id"], class_batch_ids)
-    else
-      true
+      Dbservice.GroupSessions.fetch_sessions_by_group_ids(quiz_group_ids, class_batch_ids)
     end
   end
 
@@ -252,15 +239,6 @@ defmodule DbserviceWeb.UserController do
     class_group_ids = Enum.map(user_batch_data, & &1.class_group_id) |> Enum.uniq()
 
     Dbservice.GroupSessions.fetch_sessions_by_group_ids(class_group_ids)
-  end
-
-  defp should_include_session?(session_batch_id_string, user_class_batch_ids)
-       when is_binary(session_batch_id_string) do
-    # Session's batch_id metadata is comma-separated
-    session_batch_ids = String.split(session_batch_id_string, ",") |> Enum.map(&String.trim/1)
-
-    # Check if any of the session's batch_ids match any of the user's class batch_ids
-    Enum.any?(session_batch_ids, &(&1 in user_class_batch_ids))
   end
 
   defp should_include_session?(_, _), do: false

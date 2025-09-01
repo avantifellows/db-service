@@ -324,26 +324,35 @@ defmodule Dbservice.DataImport.ImportWorker do
 
   # Record processor functions for each import type
   defp process_student_record(record) do
-    case Users.get_student_by_student_id(record["student_id"]) do
-      nil ->
-        with {:ok, student} <- Users.create_student_with_user(record),
-             student <- Dbservice.Repo.preload(student, [:user]),
-             {:ok, _} <- DataImport.StudentEnrollment.create_enrollments(student.user, record) do
-          {:ok, student}
-        else
-          {:error, _} = error -> error
-        end
+    # Validate that either student_id or apaar_id is present
+    student_id = record["student_id"]
+    apaar_id = record["apaar_id"]
 
-      existing_student ->
-        user = Users.get_user!(existing_student.user_id)
+    if (is_nil(student_id) or student_id == "") and
+         (is_nil(apaar_id) or apaar_id == "") do
+      {:error, "Either student_id or apaar_id is required for student addition"}
+    else
+      case Users.get_student_by_id_or_apaar_id(record) do
+        nil ->
+          with {:ok, student} <- Users.create_student_with_user(record),
+               student <- Dbservice.Repo.preload(student, [:user]),
+               {:ok, _} <- DataImport.StudentEnrollment.create_enrollments(student.user, record) do
+            {:ok, student}
+          else
+            {:error, _} = error -> error
+          end
 
-        with {:ok, updated_student} <-
-               Users.update_student_with_user(existing_student, user, record),
-             {:ok, _} <- DataImport.StudentEnrollment.create_enrollments(user, record) do
-          {:ok, updated_student}
-        else
-          {:error, _} = error -> error
-        end
+        existing_student ->
+          user = Users.get_user!(existing_student.user_id)
+
+          with {:ok, updated_student} <-
+                 Users.update_student_with_user(existing_student, user, record),
+               {:ok, _} <- DataImport.StudentEnrollment.create_enrollments(user, record) do
+            {:ok, updated_student}
+          else
+            {:error, _} = error -> error
+          end
+      end
     end
   end
 

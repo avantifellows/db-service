@@ -150,13 +150,38 @@ defmodule Dbservice.GroupSessions do
   Fetches sessions by a list of group IDs, only returning active sessions.
   Joins GroupSession and Session.
   """
-  def fetch_sessions_by_group_ids(group_ids) when is_list(group_ids) do
-    from(gs in GroupSession,
-      where: gs.group_id in ^group_ids,
-      join: s in Dbservice.Sessions.Session,
-      on: s.id == gs.session_id,
-      where: s.is_active == true,
-      select: s
+  def fetch_sessions_by_group_ids(group_ids, class_batch_ids \\ nil) when is_list(group_ids) do
+    query =
+      from(gs in GroupSession,
+        where: gs.group_id in ^group_ids,
+        join: s in Dbservice.Sessions.Session,
+        on: s.id == gs.session_id,
+        where: s.is_active == true,
+        select: s
+      )
+
+    case class_batch_ids do
+      batch_ids when is_list(batch_ids) and batch_ids != [] ->
+        add_batch_filter(query, batch_ids)
+
+      _ ->
+        Repo.all(query)
+    end
+  end
+
+  defp add_batch_filter(query, batch_ids) do
+    from([gs, s] in query,
+      where:
+        s.platform != "quiz" or
+          is_nil(s.meta_data["batch_id"]) or
+          s.meta_data["batch_id"] == "" or
+          fragment(
+            """
+              string_to_array(trim(?->>'batch_id'), ',') && ?::text[]
+            """,
+            s.meta_data,
+            ^batch_ids
+          )
     )
     |> Repo.all()
   end
