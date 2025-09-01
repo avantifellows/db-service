@@ -3,6 +3,9 @@ set -e
 set -o pipefail
 set -u
 
+# Ensure HOME is set for non-interactive root shell (required by asdf)
+export HOME="/root"
+
 # Comprehensive EC2 Setup Script for DBService
 # This script contains all the deployment logic moved from user_data.sh.tpl
 
