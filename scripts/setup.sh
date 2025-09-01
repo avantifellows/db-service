@@ -709,7 +709,7 @@ fi
 log "Setup script execution completed successfully"
 log "====================================================================================="
 log "DEPLOYMENT SUMMARY:"
-log "- Erlang 25.0.4 and Elixir 1.18.4 installed via ASDF"
+log "- Erlang 26.2.5 and Elixir 1.18.4 installed via ASDF"
 log "- Nginx configured and running on port 80, proxying to application on port $APP_PORT"
 log "- Application deployed to /var/www/html/dbservice-$ENVIRONMENT"
 log "- Systemd service 'dbservice' configured and running"
