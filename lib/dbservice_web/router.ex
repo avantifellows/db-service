@@ -36,7 +36,7 @@ defmodule DbserviceWeb.Router do
     post("/group/:id/update-users", GroupController, :update_users)
     post("/group/:id/update-sessions", GroupController, :update_sessions)
 
-    resources("/user", UserController, only: [:index, :create, :update, :show])
+    resources("/user", UserController, only: [:index, :create, :update, :show, :delete])
     post("/user/:id/update-groups", UserController, :update_group)
     get("/student/get-schema", StudentController, :get_schema)
     resources("/student", StudentController, except: [:new, :edit])
@@ -52,7 +52,7 @@ defmodule DbserviceWeb.Router do
     resources("/language", LanguageController, except: [:new, :edit])
     resources("/skill", SkillController, except: [:new, :edit])
     resources("/enrollment-record", EnrollmentRecordController, except: [:new, :edit])
-    resources("/session", SessionController, only: [:index, :create, :update, :show])
+    resources("/session", SessionController, only: [:index, :create, :update, :show, :delete])
     post("/session/:id/update-groups", SessionController, :update_groups)
     resources("/session-occurrence", SessionOccurrenceController, except: [:new, :edit])
     resources("/user-session", UserSessionController, except: [:new, :edit])

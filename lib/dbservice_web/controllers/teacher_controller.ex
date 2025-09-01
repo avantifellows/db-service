@@ -73,12 +73,18 @@ defmodule DbserviceWeb.TeacherController do
   end
 
   def create(conn, params) do
-    case Users.get_teacher_by_teacher_id(params["teacher_id"]) do
-      nil ->
-        create_teacher_with_user(conn, params)
+    teacher_id = params["teacher_id"]
 
-      existing_teacher ->
-        update_existing_teacher_with_user(conn, existing_teacher, params)
+    if is_nil(teacher_id) do
+      create_teacher_with_user(conn, params)
+    else
+      case Users.get_teacher_by_teacher_id(teacher_id) do
+        nil ->
+          create_teacher_with_user(conn, params)
+
+        existing_teacher ->
+          update_existing_teacher_with_user(conn, existing_teacher, params)
+      end
     end
   end
 
@@ -93,8 +99,16 @@ defmodule DbserviceWeb.TeacherController do
   end
 
   def show(conn, %{"id" => id}) do
-    teacher = Users.get_teacher!(id)
-    render(conn, :show, teacher: teacher)
+    try do
+      teacher = Users.get_teacher!(id)
+      render(conn, :show, teacher: teacher)
+    rescue
+      Ecto.NoResultsError ->
+        conn
+        |> put_status(:not_found)
+        |> put_view(DbserviceWeb.ErrorJSON)
+        |> render(:"404")
+    end
   end
 
   def update(conn, params) do

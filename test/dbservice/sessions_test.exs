@@ -5,8 +5,10 @@ defmodule Dbservice.SessionsTest do
 
   describe "session" do
     alias Dbservice.Sessions.Session
+    alias Dbservice.Sessions.SessionOccurrence
 
     import Dbservice.SessionsFixtures
+    import Dbservice.SessionOccurrenceFixtures
     import Dbservice.UsersFixtures
 
     @invalid_attrs %{
@@ -138,6 +140,7 @@ defmodule Dbservice.SessionsTest do
     alias Dbservice.Sessions.SessionOccurrence
 
     import Dbservice.SessionsFixtures
+    import Dbservice.SessionOccurrenceFixtures
 
     @invalid_attrs %{end_time: nil, start_time: nil, session_id: nil, session_fk: nil}
 

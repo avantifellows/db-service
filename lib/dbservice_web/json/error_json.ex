@@ -29,6 +29,8 @@ defmodule DbserviceWeb.ErrorJSON do
     %{errors: %{detail: Phoenix.Controller.status_message_from_template(template)}}
   end
 
+  def remove_special_chars(nil), do: ""
+
   def remove_special_chars(str) when is_binary(str) do
     str
     |> String.replace("\n", " ")

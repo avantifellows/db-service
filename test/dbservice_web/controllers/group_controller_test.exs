@@ -6,99 +6,97 @@ defmodule DbserviceWeb.GroupControllerTest do
   alias Dbservice.Groups.Group
 
   @create_attrs %{
-    name: "some name",
-    type: "program",
-    program_type: "some program type",
-    program_sub_type: "some program subtype",
-    program_mode: "some program mode",
-    program_start_date: ~U[2022-04-28 13:58:00Z],
-    program_target_outreach: Enum.random(3000..9999),
-    program_donor: "some program donor",
-    program_state: "some program state",
-    batch_contact_hours_per_week: Enum.random(20..48),
-    input_schema: %{},
-    locale: "some locale",
-    locale_data: %{}
+    type: "generic",
+    child_id: 42
   }
   @update_attrs %{
-    input_schema: %{},
-    locale: "some updated locale",
-    locale_data: %{}
+    type: "custom",
+    child_id: 43
   }
   @invalid_attrs %{
-    name: nil,
     type: nil,
-    program_type: nil,
-    program_sub_type: nil,
-    program_mode: nil,
-    program_start_date: nil,
-    program_target_outreach: nil,
-    program_donor: nil,
-    program_state: nil,
-    batch_contact_hours_per_week: nil,
-    group_input_schema: nil,
-    group_locale: nil,
-    group_locale_data: nil
+    child_id: nil
   }
-  @valid_fields [
-    "id",
-    "input_schema",
-    "locale",
-    "locale_data",
-    "name"
-  ]
+
   setup %{conn: conn} do
     {:ok, conn: put_req_header(conn, "accept", "application/json")}
   end
 
   describe "index" do
-    test "lists all group", %{conn: conn} do
-      conn = get(conn, Routes.group_path(conn, :index))
+    test "lists all groups", %{conn: conn} do
+      conn = get(conn, ~p"/api/group")
+      assert json_response(conn, 200) == []
+    end
+
+    test "lists all groups with data", %{conn: conn} do
+      group = group_fixture()
+      conn = get(conn, ~p"/api/group")
       [head | _tail] = json_response(conn, 200)
-      assert Map.keys(head) == @valid_fields
+
+      assert head["id"] == group.id
+      assert head["type"] == group.type
+      assert head["child_id"] == group.child_id
     end
   end
 
   describe "create group" do
     test "renders group when data is valid", %{conn: conn} do
-      conn = post(conn, Routes.group_path(conn, :create), @create_attrs)
+      conn = post(conn, ~p"/api/group", @create_attrs)
       %{"id" => id} = json_response(conn, 201)
 
-      conn = get(conn, Routes.group_path(conn, :show, id))
+      conn = get(conn, ~p"/api/group/#{id}")
 
       assert %{
                "id" => ^id,
-               "input_schema" => %{},
-               "locale" => "some locale",
-               "locale_data" => %{}
+               "type" => "generic",
+               "child_id" => 42
              } = json_response(conn, 200)
     end
 
     test "renders errors when data is invalid", %{conn: conn} do
-      conn = post(conn, Routes.group_path(conn, :create), group: @invalid_attrs)
+      conn = post(conn, ~p"/api/group", @invalid_attrs)
       assert json_response(conn, 422)["errors"] != %{}
+    end
+  end
+
+  describe "show group" do
+    setup [:create_group]
+
+    test "renders group", %{conn: conn, group: %Group{id: id}} do
+      conn = get(conn, ~p"/api/group/#{id}")
+
+      assert %{
+               "id" => ^id,
+               "type" => "some type",
+               "child_id" => 1
+             } = json_response(conn, 200)
+    end
+
+    test "renders 404 when id is nonexistent", %{conn: conn} do
+      assert_error_sent 404, fn ->
+        get(conn, ~p"/api/group/123456")
+      end
     end
   end
 
   describe "update group" do
     setup [:create_group]
 
-    test "renders group when data is valid", %{conn: conn, group: %Group{id: id} = group} do
-      conn = put(conn, Routes.group_path(conn, :update, group), @update_attrs)
+    test "renders group when data is valid", %{conn: conn, group: %Group{id: id}} do
+      conn = put(conn, ~p"/api/group/#{id}", @update_attrs)
       %{"id" => ^id} = json_response(conn, 200)
 
-      conn = get(conn, Routes.group_path(conn, :show, id))
+      conn = get(conn, ~p"/api/group/#{id}")
 
       assert %{
                "id" => ^id,
-               "input_schema" => %{},
-               "locale" => "some updated locale",
-               "locale_data" => %{}
+               "type" => "custom",
+               "child_id" => 43
              } = json_response(conn, 200)
     end
 
-    test "renders errors when data is invalid", %{conn: conn, group: group} do
-      conn = put(conn, Routes.group_path(conn, :update, group), @invalid_attrs)
+    test "renders errors when data is invalid", %{conn: conn, group: %Group{id: id}} do
+      conn = put(conn, ~p"/api/group/#{id}", @invalid_attrs)
       assert json_response(conn, 422)["errors"] != %{}
     end
   end
@@ -106,12 +104,12 @@ defmodule DbserviceWeb.GroupControllerTest do
   describe "delete group" do
     setup [:create_group]
 
-    test "deletes chosen group", %{conn: conn, group: group} do
-      conn = delete(conn, Routes.group_path(conn, :delete, group))
+    test "deletes chosen group", %{conn: conn, group: %Group{id: id}} do
+      conn = delete(conn, ~p"/api/group/#{id}")
       assert response(conn, 204)
 
       assert_error_sent 404, fn ->
-        get(conn, Routes.group_path(conn, :show, group))
+        get(conn, ~p"/api/group/#{id}")
       end
     end
   end

@@ -48,7 +48,7 @@ defmodule Dbservice.Users do
       ** (Ecto.NoResultsError)
   """
   def get_user_by_user_id(user_id) do
-    Repo.get_by(User, user_id: user_id)
+    Repo.get(User, user_id)
   end
 
   @doc """

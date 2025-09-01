@@ -1,6 +1,4 @@
 defmodule Dbservice.SessionsFixtures do
-  alias Dbservice.Sessions
-
   @moduledoc """
   This module defines test helpers for creating
   entities via the `Dbservice.Sessions` context.
@@ -46,24 +44,5 @@ defmodule Dbservice.SessionsFixtures do
       |> Dbservice.Sessions.create_session()
 
     session
-  end
-
-  @doc """
-  Generate a session_occurrence.
-  """
-  def session_occurrence_fixture(attrs \\ %{}) do
-    session = session_fixture()
-
-    {:ok, session_occurrence} =
-      attrs
-      |> Enum.into(%{
-        end_time: ~U[2022-04-28 14:05:00Z],
-        start_time: ~U[2022-04-28 14:05:00Z],
-        session_id: "some_session_id",
-        session_fk: session.id
-      })
-      |> Dbservice.Sessions.create_session_occurrence()
-
-    session_occurrence
   end
 end

@@ -78,12 +78,18 @@ defmodule DbserviceWeb.UserController do
   end
 
   def create(conn, params) do
-    case Users.get_user_by_user_id(params["user_id"]) do
-      nil ->
-        create_new_user(conn, params)
+    user_id = params["user_id"]
 
-      existing_user ->
-        update_existing_user(conn, existing_user, params)
+    if is_nil(user_id) do
+      create_new_user(conn, params)
+    else
+      case Users.get_user_by_user_id(user_id) do
+        nil ->
+          create_new_user(conn, params)
+
+        existing_user ->
+          update_existing_user(conn, existing_user, params)
+      end
     end
   end
 
@@ -98,8 +104,16 @@ defmodule DbserviceWeb.UserController do
   end
 
   def show(conn, %{"id" => id}) do
-    user = Users.get_user!(id)
-    render(conn, :show, user: user)
+    try do
+      user = Users.get_user!(id)
+      render(conn, :show, user: user)
+    rescue
+      Ecto.NoResultsError ->
+        conn
+        |> put_status(:not_found)
+        |> put_view(DbserviceWeb.ErrorJSON)
+        |> render(:"404")
+    end
   end
 
   swagger_path :update do

@@ -10,9 +10,9 @@ defmodule Dbservice.SubjectsFixtures do
   """
   def subject_fixture(attrs \\ %{}) do
     default_attrs = %{
-      name: "Default Subject Name",
+      name: [%{lang_code: "en", subject: "Default Subject Name"}],
       code: "SUB123",
-      tag_id: nil
+      parent_id: nil
     }
 
     {:ok, subject} =
