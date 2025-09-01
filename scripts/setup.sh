@@ -61,65 +61,75 @@ fi
 # Package installations (idempotent)
 log "Installing required packages"
 
+export DEBIAN_FRONTEND=noninteractive
+
+# Ensure apt cache is up to date
+apt-get update -y
+
 # Check if packages are already installed
-if ! rpm -q nginx >/dev/null 2>&1; then
-    log "Installing nginx"
-    yum update -y
-    amazon-linux-extras install -y nginx1
+if ! dpkg -s nginx >/dev/null 2>&1; then
+    log "Installing nginx (Ubuntu)"
+    apt-get install -y nginx
 else
     log "Nginx already installed, skipping"
 fi
 
-if ! rpm -q git >/dev/null 2>&1; then
-    log "Installing git"
-    yum install -y git
+if ! dpkg -s git >/dev/null 2>&1; then
+    log "Installing git (Ubuntu)"
+    apt-get install -y git
 else
     log "Git already installed, skipping"
 fi
 
-if ! rpm -q htop >/dev/null 2>&1; then
-    log "Installing additional packages"
-    yum install -y amazon-linux-extras htop
+if ! dpkg -s htop >/dev/null 2>&1; then
+    log "Installing additional packages (Ubuntu)"
+    apt-get install -y htop ca-certificates curl unzip tar
 else
     log "Additional packages already installed, skipping"
 fi
 
 # Install development tools (idempotent)
 log "Installing development tools"
-if ! yum grouplist installed | grep -q "Development Tools"; then
-    log "Installing Development Tools group"
-    yum groupinstall -y "Development Tools"
+if ! dpkg -s build-essential >/dev/null 2>&1; then
+    log "Installing build-essential"
+    apt-get install -y build-essential
 else
-    log "Development Tools already installed, skipping"
+    log "build-essential already installed, skipping"
 fi
 
-if ! rpm -q openssl-devel >/dev/null 2>&1 || ! rpm -q ncurses-devel >/dev/null 2>&1; then
-    log "Installing development dependencies"
-    yum install -y openssl-devel ncurses-devel
+# Install development dependencies for Erlang/Elixir builds
+if ! dpkg -s libssl-dev >/dev/null 2>&1 || ! dpkg -s libncurses5-dev >/dev/null 2>&1; then
+    log "Installing development dependencies for Erlang/Elixir"
+    apt-get install -y \
+        autoconf m4 libncurses5-dev libncursesw5-dev libssl-dev \
+        libwxgtk3.0-gtk3-dev libgl1-mesa-dev libglu1-mesa-dev libpng-dev \
+        libssh-dev unixodbc-dev xsltproc fop libxml2-utils libreadline-dev \
+        libffi-dev
 else
     log "Development dependencies already installed, skipping"
 fi
 
 # Install ASDF version manager (idempotent)
 log "Setting up ASDF version manager"
-if [ ! -d ~/.asdf ]; then
+if [ ! -d /root/.asdf ]; then
     log "Installing ASDF version manager"
-    git clone https://github.com/asdf-vm/asdf.git ~/.asdf --branch v0.14.0
+    git clone https://github.com/asdf-vm/asdf.git /root/.asdf --branch v0.14.0
     
     # Add to bashrc only if not already present
     if ! grep -q '.asdf/asdf.sh' ~/.bashrc; then
-        echo '. $HOME/.asdf/asdf.sh' >> ~/.bashrc
-        echo '. $HOME/.asdf/completions/asdf.bash' >> ~/.bashrc
+        echo '. /root/.asdf/asdf.sh' >> ~/.bashrc
+        echo '. /root/.asdf/completions/asdf.bash' >> ~/.bashrc
     fi
 else
     log "ASDF already installed, skipping"
 fi
 
-export PATH="$HOME/.asdf/bin:$PATH"
-source ~/.asdf/asdf.sh
+export PATH="/root/.asdf/bin:$PATH"
+source /root/.asdf/asdf.sh
 
 # Ensure ASDF shims are in PATH for current session
-export PATH="$HOME/.asdf/shims:$PATH"
+export PATH="/root/.asdf/shims:$PATH"
+export KERL_CONFIGURE_OPTIONS="--disable-debug --without-javac"
 
 # Install Erlang and Elixir plugins (idempotent)
 log "Setting up Erlang and Elixir plugins"
@@ -231,14 +241,14 @@ fi
 # Verify Erlang installation
 log "Verifying Erlang installation..."
 # Ensure ASDF environment is properly loaded
-source ~/.asdf/asdf.sh
+source /root/.asdf/asdf.sh
 asdf reshim erlang
 if command -v erl >/dev/null 2>&1 && erl -version 2>&1 | tee -a /var/log/setup.log; then
     log "Erlang installation verification successful"
 else
     log "WARNING: Erlang verification failed, but installation completed. This may resolve after environment reload."
     log "Attempting to verify with direct path..."
-    if ~/.asdf/shims/erl -version 2>&1 | tee -a /var/log/setup.log; then
+    if /root/.asdf/shims/erl -version 2>&1 | tee -a /var/log/setup.log; then
         log "Erlang verification successful via direct shim path"
     else
         log "ERROR: Erlang installation verification failed even with direct path"
@@ -279,14 +289,14 @@ fi
 # Verify Elixir installation
 log "Verifying Elixir installation..."
 # Ensure ASDF environment is properly loaded
-source ~/.asdf/asdf.sh
+source /root/.asdf/asdf.sh
 asdf reshim elixir
 if command -v elixir >/dev/null 2>&1 && elixir --version 2>&1 | tee -a /var/log/setup.log; then
     log "Elixir installation verification successful"
 else
     log "WARNING: Elixir verification failed, but installation completed. This may resolve after environment reload."
     log "Attempting to verify with direct path..."
-    if ~/.asdf/shims/elixir --version 2>&1 | tee -a /var/log/setup.log; then
+    if /root/.asdf/shims/elixir --version 2>&1 | tee -a /var/log/setup.log; then
         log "Elixir verification successful via direct shim path"
     else
         log "ERROR: Elixir installation verification failed even with direct path"
@@ -297,13 +307,13 @@ fi
 # Make sure asdf binaries are available globally (idempotent)
 log "Creating global symlinks for ASDF binaries"
 if [ ! -L /usr/local/bin/erl ]; then
-    ln -sf ~/.asdf/shims/erl /usr/local/bin/erl
+    ln -sf /root/.asdf/shims/erl /usr/local/bin/erl
 fi
 if [ ! -L /usr/local/bin/elixir ]; then
-    ln -sf ~/.asdf/shims/elixir /usr/local/bin/elixir
+    ln -sf /root/.asdf/shims/elixir /usr/local/bin/elixir
 fi
 if [ ! -L /usr/local/bin/mix ]; then
-    ln -sf ~/.asdf/shims/mix /usr/local/bin/mix
+    ln -sf /root/.asdf/shims/mix /usr/local/bin/mix
 fi
 
 # Configure Nginx (idempotent)
@@ -313,7 +323,7 @@ log "Configuring Nginx"
 if ! grep -q "worker_rlimit_nofile 65536" /etc/nginx/nginx.conf 2>/dev/null; then
     log "Creating custom nginx.conf"
     cat > /etc/nginx/nginx.conf << 'EOF'
-user nginx;
+user www-data;
 worker_processes auto;
 worker_rlimit_nofile 65536;
 error_log /var/log/nginx/error.log;
@@ -407,7 +417,7 @@ if ! systemctl is-active nginx >/dev/null 2>&1; then
     systemctl start nginx
 else
     # Reload nginx to pick up any configuration changes
-    systemctl reload nginx
+    systemctl reload nginx || systemctl restart nginx
 fi
 
 # Application deployment (idempotent)
@@ -499,8 +509,8 @@ if [ "$NEED_CLONE" = true ] || [ "$NEED_UPDATE" = true ]; then
     export MIX_ENV=prod
     
     # Ensure ASDF environment is available for mix commands
-    source ~/.asdf/asdf.sh
-    export PATH="$HOME/.asdf/shims:$PATH"
+    source /root/.asdf/asdf.sh
+    export PATH="/root/.asdf/shims:$PATH"
     
     cd /var/www/html/dbservice-$ENVIRONMENT
     
@@ -544,8 +554,8 @@ else
     export MIX_ENV=prod
     
     # Ensure ASDF environment is available for mix commands
-    source ~/.asdf/asdf.sh
-    export PATH="$HOME/.asdf/shims:$PATH"
+    source /root/.asdf/asdf.sh
+    export PATH="/root/.asdf/shims:$PATH"
     
     cd /var/www/html/dbservice-$ENVIRONMENT
     log "Running database migrations... (checking for new migrations)"
@@ -625,9 +635,28 @@ fi
 # Install and configure CloudWatch agent (idempotent)
 log "Setting up CloudWatch agent"
 
-if ! rpm -q amazon-cloudwatch-agent >/dev/null 2>&1; then
-    log "Installing CloudWatch agent"
-    yum install -y amazon-cloudwatch-agent
+if ! dpkg -s amazon-cloudwatch-agent >/dev/null 2>&1; then
+    log "Installing CloudWatch agent (Ubuntu)"
+    ARCH=$(dpkg --print-architecture)
+    case "$ARCH" in
+        amd64|arm64)
+            ;;
+        *)
+            log "Unsupported architecture for CloudWatch agent: $ARCH"
+            ARCH="amd64"
+            ;;
+    esac
+    TMP_DEB="/tmp/amazon-cloudwatch-agent.deb"
+    URL="https://s3.amazonaws.com/amazoncloudwatch-agent/ubuntu/${ARCH}/latest/amazon-cloudwatch-agent.deb"
+    log "Downloading CloudWatch agent from $URL"
+    curl -fsSL -o "$TMP_DEB" "$URL"
+    log "Installing CloudWatch agent package"
+    apt-get install -y "$TMP_DEB" || {
+        log "Initial install failed, attempting to fix dependencies"
+        apt-get install -f -y
+        dpkg -i "$TMP_DEB"
+    }
+    rm -f "$TMP_DEB"
 else
     log "CloudWatch agent already installed"
 fi

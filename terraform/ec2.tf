@@ -1,17 +1,37 @@
-data "aws_ami" "amazon_linux_2" {
+data "aws_ami" "ubuntu_amd64" {
   most_recent = true
+
+  owners = ["099720109477"] # Canonical
 
   filter {
     name   = "name"
-    values = ["amzn2-ami-hvm-*-x86_64-gp2"]
+    values = ["ubuntu/images/hvm-ssd/ubuntu-jammy-22.04-amd64-server-*"]
   }
 
   filter {
     name   = "virtualization-type"
     values = ["hvm"]
   }
+}
 
-  owners = ["amazon"]
+data "aws_ami" "ubuntu_arm64" {
+  most_recent = true
+
+  owners = ["099720109477"] # Canonical
+
+  filter {
+    name   = "name"
+    values = ["ubuntu/images/hvm-ssd/ubuntu-jammy-22.04-arm64-server-*"]
+  }
+
+  filter {
+    name   = "virtualization-type"
+    values = ["hvm"]
+  }
+}
+
+locals {
+  is_arm64 = can(regex("^(a1\\.|.*g\\.)", var.instance_type))
 }
 
 locals {
@@ -32,7 +52,7 @@ locals {
 
 resource "aws_launch_template" "main" {
   name_prefix   = "${local.name_prefix}-lt-"
-  image_id      = data.aws_ami.amazon_linux_2.id
+  image_id      = local.is_arm64 ? data.aws_ami.ubuntu_arm64.id : data.aws_ami.ubuntu_amd64.id
   instance_type = var.instance_type
   key_name      = "AvantiFellows"
 

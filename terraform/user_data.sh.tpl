@@ -40,11 +40,12 @@ export WHITELISTED_DOMAINS="${whitelisted_domains}"
 export GOOGLE_CREDENTIALS_JSON="${google_credentials_json}"
 export POOL_SIZE="${pool_size}"
 
-# Install git first if not present
-if ! rpm -q git >/dev/null 2>&1; then
-    log "Installing git"
-    yum update -y
-    yum install -y git
+# Install git first if not present (Ubuntu)
+if ! dpkg -s git >/dev/null 2>&1; then
+    log "Installing git (Ubuntu)"
+    export DEBIAN_FRONTEND=noninteractive
+    apt-get update -y
+    apt-get install -y git ca-certificates curl
 fi
 
 # Create setup directory
