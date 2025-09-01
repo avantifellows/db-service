@@ -240,6 +240,4 @@ defmodule DbserviceWeb.UserController do
 
     Dbservice.GroupSessions.fetch_sessions_by_group_ids(class_group_ids)
   end
-
-  defp should_include_session?(_, _), do: false
 end
