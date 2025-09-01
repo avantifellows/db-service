@@ -1,5 +1,7 @@
 #!/bin/bash
 set -e
+set -o pipefail
+set -u
 
 # Comprehensive EC2 Setup Script for DBService
 # This script contains all the deployment logic moved from user_data.sh.tpl
@@ -98,13 +100,13 @@ else
 fi
 
 # Install development dependencies for Erlang/Elixir builds
-if ! dpkg -s libssl-dev >/dev/null 2>&1 || ! dpkg -s libncurses5-dev >/dev/null 2>&1; then
+if ! dpkg -s libssl-dev >/dev/null 2>&1 || ! dpkg -s libncurses5-dev >/dev/null 2>&1 || ! dpkg -s zlib1g-dev >/dev/null 2>&1; then
     log "Installing development dependencies for Erlang/Elixir"
     apt-get install -y \
         autoconf m4 libncurses5-dev libncursesw5-dev libssl-dev \
         libwxgtk3.0-gtk3-dev libgl1-mesa-dev libglu1-mesa-dev libpng-dev \
         libssh-dev unixodbc-dev xsltproc fop libxml2-utils libreadline-dev \
-        libffi-dev
+        libffi-dev zlib1g-dev
 else
     log "Development dependencies already installed, skipping"
 fi
@@ -129,7 +131,8 @@ source /root/.asdf/asdf.sh
 
 # Ensure ASDF shims are in PATH for current session
 export PATH="/root/.asdf/shims:$PATH"
-export KERL_CONFIGURE_OPTIONS="--disable-debug --without-javac"
+export KERL_CONFIGURE_OPTIONS="--disable-debug --without-javac --without-wx"
+export KERL_BUILD_DOCS=no
 
 # Install Erlang and Elixir plugins (idempotent)
 log "Setting up Erlang and Elixir plugins"
@@ -208,9 +211,11 @@ retry_install() {
     return 1
 }
 
+ERLANG_VERSION="26.2.5"
+
 # Install Erlang with retry logic
-if ! asdf list erlang | grep -q "25.0.4"; then
-    if ! retry_install erlang 25.0.4; then
+if ! asdf list erlang | grep -q "$ERLANG_VERSION"; then
+    if ! retry_install erlang $ERLANG_VERSION; then
         log "CRITICAL ERROR: Erlang installation failed after retries. Attempting alternative installation..."
         
         # Alternative: Try updating the plugin and retry once more
@@ -221,11 +226,11 @@ if ! asdf list erlang | grep -q "25.0.4"; then
             log "Plugin update failed, but continuing with final installation attempt..."
         fi
         
-        log "Final attempt to install Erlang 25.0.4..."
-        if asdf install erlang 25.0.4 2>&1 | tee -a /var/log/setup.log; then
+        log "Final attempt to install Erlang $ERLANG_VERSION..."
+        if asdf install erlang $ERLANG_VERSION 2>&1 | tee -a /var/log/setup.log; then
             log "Final Erlang installation attempt succeeded"
-            asdf global erlang 25.0.4
-            log "Set Erlang 25.0.4 as global version"
+            asdf global erlang $ERLANG_VERSION
+            log "Set Erlang $ERLANG_VERSION as global version"
         else
             log "FATAL: Unable to install Erlang after all attempts. Deployment cannot continue."
             log "Check /var/log/setup.log for detailed error messages"
@@ -233,32 +238,27 @@ if ! asdf list erlang | grep -q "25.0.4"; then
         fi
     fi
 else
-    log "Erlang 25.0.4 already installed, setting as global"
-    asdf global erlang 25.0.4
-    log "Confirmed Erlang 25.0.4 set as global version"
+    log "Erlang $ERLANG_VERSION already installed, setting as global"
+    asdf global erlang $ERLANG_VERSION
+    log "Confirmed Erlang $ERLANG_VERSION set as global version"
 fi
 
-# Verify Erlang installation
 log "Verifying Erlang installation..."
 # Ensure ASDF environment is properly loaded
 source /root/.asdf/asdf.sh
-asdf reshim erlang
-if command -v erl >/dev/null 2>&1 && erl -version 2>&1 | tee -a /var/log/setup.log; then
+asdf reshim erlang || true
+if /root/.asdf/installs/erlang/$ERLANG_VERSION/bin/erl -version 2>&1 | tee -a /var/log/setup.log; then
     log "Erlang installation verification successful"
 else
-    log "WARNING: Erlang verification failed, but installation completed. This may resolve after environment reload."
-    log "Attempting to verify with direct path..."
-    if /root/.asdf/shims/erl -version 2>&1 | tee -a /var/log/setup.log; then
-        log "Erlang verification successful via direct shim path"
-    else
-        log "ERROR: Erlang installation verification failed even with direct path"
-        exit 1
-    fi
+    log "ERROR: Erlang installation verification failed"
+    exit 1
 fi
 
+ELIXIR_VERSION="1.18.4"
+
 # Install Elixir with retry logic
-if ! asdf list elixir | grep -q "1.18.4"; then
-    if ! retry_install elixir 1.18.4; then
+if ! asdf list elixir | grep -q "$ELIXIR_VERSION"; then
+    if ! retry_install elixir $ELIXIR_VERSION; then
         log "CRITICAL ERROR: Elixir installation failed after retries. Attempting alternative installation..."
         
         # Alternative: Try updating the plugin and retry once more
@@ -269,11 +269,11 @@ if ! asdf list elixir | grep -q "1.18.4"; then
             log "Plugin update failed, but continuing with final installation attempt..."
         fi
         
-        log "Final attempt to install Elixir 1.18.4..."
-        if asdf install elixir 1.18.4 2>&1 | tee -a /var/log/setup.log; then
+        log "Final attempt to install Elixir $ELIXIR_VERSION..."
+        if asdf install elixir $ELIXIR_VERSION 2>&1 | tee -a /var/log/setup.log; then
             log "Final Elixir installation attempt succeeded"
-            asdf global elixir 1.18.4
-            log "Set Elixir 1.18.4 as global version"
+            asdf global elixir $ELIXIR_VERSION
+            log "Set Elixir $ELIXIR_VERSION as global version"
         else
             log "FATAL: Unable to install Elixir after all attempts. Deployment cannot continue."
             log "Check /var/log/setup.log for detailed error messages"
@@ -281,27 +281,19 @@ if ! asdf list elixir | grep -q "1.18.4"; then
         fi
     fi
 else
-    log "Elixir 1.18.4 already installed, setting as global"
-    asdf global elixir 1.18.4
-    log "Confirmed Elixir 1.18.4 set as global version"
+    log "Elixir $ELIXIR_VERSION already installed, setting as global"
+    asdf global elixir $ELIXIR_VERSION
+    log "Confirmed Elixir $ELIXIR_VERSION set as global version"
 fi
 
-# Verify Elixir installation
 log "Verifying Elixir installation..."
-# Ensure ASDF environment is properly loaded
 source /root/.asdf/asdf.sh
-asdf reshim elixir
-if command -v elixir >/dev/null 2>&1 && elixir --version 2>&1 | tee -a /var/log/setup.log; then
+asdf reshim elixir || true
+if /root/.asdf/installs/elixir/$ELIXIR_VERSION/bin/elixir --version 2>&1 | tee -a /var/log/setup.log; then
     log "Elixir installation verification successful"
 else
-    log "WARNING: Elixir verification failed, but installation completed. This may resolve after environment reload."
-    log "Attempting to verify with direct path..."
-    if /root/.asdf/shims/elixir --version 2>&1 | tee -a /var/log/setup.log; then
-        log "Elixir verification successful via direct shim path"
-    else
-        log "ERROR: Elixir installation verification failed even with direct path"
-        exit 1
-    fi
+    log "ERROR: Elixir installation verification failed"
+    exit 1
 fi
 
 # Make sure asdf binaries are available globally (idempotent)
