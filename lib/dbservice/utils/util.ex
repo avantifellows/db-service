@@ -11,7 +11,7 @@ defmodule Dbservice.Utils.Util do
 
   @valid_categories ~w(Gen OBC SC ST Gen-EWS PWD-SC PWD-Gen PWD-OBC PWD-EWS PWD-ST)
   @valid_genders ~w(Male Female Others)
-  @valid_streams ~w(engineering medical pcmb pcm pcb foundation)
+  @valid_streams ~w(engineering medical pcmb pcm pcb foundation ca clat)
 
   def invalidate_future_date(changeset, date_field_atom) do
     utc_now = DateTime.utc_now()
