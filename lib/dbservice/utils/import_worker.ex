@@ -16,6 +16,7 @@ defmodule Dbservice.DataImport.ImportWorker do
   alias Dbservice.Users
   alias Dbservice.Grades
   alias Dbservice.Services.StudentUpdateService
+  alias Dbservice.Utils.ChangesetFormatter
 
   @impl Oban.Worker
   def perform(%Oban.Job{args: %{"id" => import_id}}) do
@@ -469,10 +470,20 @@ defmodule Dbservice.DataImport.ImportWorker do
     update_params =
       case status do
         :error ->
+          # Format error message based on error type
+          error_message =
+            case error do
+              %Ecto.Changeset{} = changeset ->
+                ChangesetFormatter.format_errors_with_row(changeset, csv_row_number)
+
+              _ ->
+                "Row #{csv_row_number}: #{inspect(error)}"
+            end
+
           Map.merge(update_params, %{
             error_count: (import_record.error_count || 0) + 1,
             error_details: [
-              %{row: csv_row_number, error: inspect(error)}
+              %{row: csv_row_number, error: error_message}
               | import_record.error_details || []
             ]
           })
