@@ -469,41 +469,8 @@ defmodule Dbservice.DataImport.ImportWorker do
     # Calculate how many data rows we've processed
     processed_rows = index
 
-    update_params = build_base_update_params(processed_rows)
-
     update_params =
-      case status do
-        :error ->
-          # Format error message based on error type
-          error_message =
-            case error do
-              %Ecto.Changeset{} = changeset ->
-                ChangesetFormatter.format_errors_with_row(changeset, csv_row_number)
-
-              _ ->
-                "Row #{csv_row_number}: #{inspect(error)}"
-            end
-
-          Map.merge(update_params, %{
-            error_count: (import_record.error_count || 0) + 1,
-            error_details: [
-              %{row: csv_row_number, error: error_message}
-              | import_record.error_details || []
-            ]
-          })
-
-        :exception ->
-          Map.merge(update_params, %{
-            error_count: (import_record.error_count || 0) + 1,
-            error_details: [
-              %{row: csv_row_number, error: Exception.message(error)}
-              | import_record.error_details || []
-            ]
-          })
-
-        _ ->
-          update_params
-      end
+      build_update_params(status, error, processed_rows, csv_row_number, import_record)
 
     DataImport.update_import(import_record, update_params)
 
@@ -513,6 +480,49 @@ defmodule Dbservice.DataImport.ImportWorker do
       "imports",
       {:import_updated, import_record.id}
     )
+  end
+
+  # Build update parameters based on processing status
+  defp build_update_params(status, error, processed_rows, csv_row_number, import_record) do
+    base_params = build_base_update_params(processed_rows)
+
+    case status do
+      :error -> add_error_details(base_params, error, csv_row_number, import_record)
+      :exception -> add_exception_details(base_params, error, csv_row_number, import_record)
+      _ -> base_params
+    end
+  end
+
+  # Add error details to update parameters
+  defp add_error_details(base_params, error, csv_row_number, import_record) do
+    error_message = format_error_message(error, csv_row_number)
+    add_error_to_params(base_params, error_message, csv_row_number, import_record)
+  end
+
+  # Add exception details to update parameters
+  defp add_exception_details(base_params, error, csv_row_number, import_record) do
+    error_message = Exception.message(error)
+    add_error_to_params(base_params, error_message, csv_row_number, import_record)
+  end
+
+  # Format error message based on error type
+  defp format_error_message(%Ecto.Changeset{} = changeset, csv_row_number) do
+    ChangesetFormatter.format_errors_with_row(changeset, csv_row_number)
+  end
+
+  defp format_error_message(error, csv_row_number) do
+    "Row #{csv_row_number}: #{inspect(error)}"
+  end
+
+  # Add error information to update parameters
+  defp add_error_to_params(base_params, error_message, csv_row_number, import_record) do
+    Map.merge(base_params, %{
+      error_count: (import_record.error_count || 0) + 1,
+      error_details: [
+        %{row: csv_row_number, error: error_message}
+        | import_record.error_details || []
+      ]
+    })
   end
 
   # Extract base update params creation
