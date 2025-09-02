@@ -208,7 +208,6 @@ defmodule Dbservice.DataImport.ImportWorker do
         |> Stream.filter(fn {_record, index} -> index >= start_row - 1 end)
         |> Stream.map(fn {record, index} ->
           # Compute actual CSV row number (header is row 1)
-          IO.inspect("Processing row #{index}")
           csv_row_number = index + 1
 
           try do
@@ -469,7 +468,6 @@ defmodule Dbservice.DataImport.ImportWorker do
     csv_row_number = index + start_row - 1
     # Calculate how many data rows we've processed
     processed_rows = index
-    IO.inspect("Processed rows so far: #{processed_rows}")
 
     update_params = build_base_update_params(processed_rows)
 
