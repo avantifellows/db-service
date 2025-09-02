@@ -157,6 +157,21 @@ defmodule DbserviceWeb.Router do
     end
   end
 
+  if Mix.env() == :prod do
+    import Phoenix.LiveDashboard.Router
+
+    @dashboard_path "a3f4b2d6-6f5b-4c1e-9a78-2d3c4b5a6e7f"
+
+    scope "/" do
+      pipe_through([:fetch_session, :protect_from_forgery])
+
+      live_dashboard("/dashboard/" <> @dashboard_path,
+        metrics: DbserviceWeb.Telemetry,
+        ecto_repos: [Dbservice.Repo]
+      )
+    end
+  end
+
   # Enables the Swoosh mailbox preview in development.
   #
   # Note that preview only shows emails that were sent by the same
