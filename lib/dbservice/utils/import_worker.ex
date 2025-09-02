@@ -208,6 +208,7 @@ defmodule Dbservice.DataImport.ImportWorker do
         |> Stream.filter(fn {_record, index} -> index >= start_row - 1 end)
         |> Stream.map(fn {record, index} ->
           # Compute actual CSV row number (header is row 1)
+          IO.inspect("Processing row #{index}")
           csv_row_number = index + 1
 
           try do
@@ -278,14 +279,16 @@ defmodule Dbservice.DataImport.ImportWorker do
         {:cont, {:ok, [result | processed_records]}}
 
       {:error, reason} ->
-        handle_record_error(index - 1, reason, import_record, processed_records)
+        handle_record_error(index, reason, import_record, processed_records)
     end
   end
 
   # Helper function to handle errors during record processing
   defp handle_record_error(index, reason, import_record, _processed_records) do
-    # Calculate actual CSV row number: index is 1-based for data rows, so CSV row = index + 1 (accounting for header)
-    csv_row_number = index + 1
+    # Calculate actual CSV row number: index is 1-based for filtered data rows
+    # CSV row = index + start_row - 1 (since index 1 = first data row = start_row)
+    start_row = import_record.start_row || 2
+    csv_row_number = index + start_row - 1
 
     # Update import record with error details before halting
     update_params = %{
@@ -460,10 +463,13 @@ defmodule Dbservice.DataImport.ImportWorker do
   end
 
   defp update_import_progress(import_record, index, status, error \\ nil) do
-    # Calculate actual CSV row number: index is 1-based for data rows, so CSV row = index + 1 (accounting for header)
-    csv_row_number = index + 1
+    # Calculate actual CSV row number: index is 1-based for filtered data rows
+    # CSV row = index + start_row - 1 (since index 1 = first data row = start_row)
+    start_row = import_record.start_row || 2
+    csv_row_number = index + start_row - 1
     # Calculate how many data rows we've processed
-    processed_rows = csv_row_number - (import_record.start_row || 2)
+    processed_rows = index
+    IO.inspect("Processed rows so far: #{processed_rows}")
 
     update_params = build_base_update_params(processed_rows)
 
