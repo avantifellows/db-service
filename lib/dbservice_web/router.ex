@@ -4,6 +4,7 @@ defmodule DbserviceWeb.Router do
 
   import Dotenvy
   import Phoenix.LiveView.Router
+  import Plug.Conn
 
   pipeline :api do
     plug(:accepts, ["json"])
@@ -16,6 +17,10 @@ defmodule DbserviceWeb.Router do
     plug(:put_root_layout, {DbserviceWeb.Layouts, :root})
     plug(:protect_from_forgery)
     plug(:put_secure_browser_headers)
+  end
+
+  pipeline :dashboard_auth do
+    plug :admin_basic_auth
   end
 
   scope "/", DbserviceWeb do
@@ -155,6 +160,22 @@ defmodule DbserviceWeb.Router do
 
       live_dashboard("/dashboard", metrics: DbserviceWeb.Telemetry)
     end
+  end
+
+  if Mix.env() == :prod do
+    import Phoenix.LiveDashboard.Router
+
+    scope "/" do
+      pipe_through([:fetch_session, :protect_from_forgery, :dashboard_auth])
+
+      live_dashboard("/dashboard", metrics: DbserviceWeb.Telemetry, ecto_repos: [Dbservice.Repo])
+    end
+  end
+
+  defp admin_basic_auth(conn, _opts) do
+    username = env!("DASHBOARD_USER", :string!)
+    password = env!("DASHBOARD_PASS", :string!)
+    Plug.BasicAuth.basic_auth(conn, username: username, password: password)
   end
 
   # Enables the Swoosh mailbox preview in development.
