@@ -198,28 +198,66 @@ defmodule DbserviceWeb.UserController do
     end
   end
 
-  # Get user's groups with batch information
+  # Get user's groups with batch information(support multi-level hierarchy)
   defp get_user_batch_data(user_id) do
-    from(gu in GroupUser,
-      where: gu.user_id == ^user_id,
-      join: class_group in Group,
-      on: class_group.id == gu.group_id and class_group.type == "batch",
-      join: class_batch in Batch,
-      on: class_batch.id == class_group.child_id,
-      left_join: quiz_group in Group,
-      on: quiz_group.child_id == class_batch.parent_id and quiz_group.type == "batch",
-      select: %{
-        class_group_id: class_group.id,
-        class_batch_id: class_batch.batch_id,
-        quiz_group_id: quiz_group.id,
-        quiz_id: class_batch.parent_id
-      }
+    user_id = if is_binary(user_id), do: String.to_integer(user_id), else: user_id
+    # First, get all batches in the hierarchy using recursive CTE
+    batch_hierarchy_query = """
+    WITH RECURSIVE batch_hierarchy AS (
+      -- Base case: Get immediate class batches for the user
+      SELECT DISTINCT
+        cb.id as batch_id,
+        cb.batch_id as batch_name,
+        cb.parent_id,
+        cg.id as class_group_id,
+        0 as level
+      FROM group_user gu
+      JOIN "group" cg ON cg.id = gu.group_id AND cg.type = 'batch'
+      JOIN batch cb ON cb.id = cg.child_id
+      WHERE gu.user_id = $1
+
+      UNION ALL
+
+      -- Recursive case: Get parent batches
+      SELECT
+        pb.id as batch_id,
+        pb.batch_id as batch_name,
+        pb.parent_id,
+        NULL as class_group_id,
+        bh.level + 1 as level
+      FROM batch_hierarchy bh
+      JOIN batch pb ON pb.id = bh.parent_id
+      WHERE bh.parent_id IS NOT NULL
     )
-    |> Repo.all()
+    SELECT
+      bh.batch_id,
+      bh.batch_name,
+      bh.parent_id,
+      bh.class_group_id,
+      bh.level,
+      qg.id as quiz_group_id
+    FROM batch_hierarchy bh
+    LEFT JOIN "group" qg ON qg.child_id = bh.batch_id AND qg.type = 'batch'
+    ORDER BY bh.level ASC
+    """
+
+    Ecto.Adapters.SQL.query!(Repo, batch_hierarchy_query, [user_id])
+    |> transform_hierarchy_result()
   end
 
-  # Get quiz sessions - sessions come from quiz groups, filtered by class batch IDs
+  # Transform the raw SQL result into the expected format
+  defp transform_hierarchy_result(%{rows: rows, columns: columns}) do
+    Enum.map(rows, fn row ->
+      columns
+      |> Enum.zip(row)
+      |> Enum.into(%{})
+      |> Map.new(fn {k, v} -> {String.to_atom(k), v} end)
+    end)
+  end
+
+  # Updated quiz sessions to work with multi-level hierarchy
   defp get_quiz_sessions(user_batch_data) do
+    # Get all quiz group IDs from the hierarchy
     quiz_group_ids =
       user_batch_data
       |> Enum.map(& &1.quiz_group_id)
@@ -229,15 +267,30 @@ defmodule DbserviceWeb.UserController do
     if Enum.empty?(quiz_group_ids) do
       []
     else
-      class_batch_ids = Enum.map(user_batch_data, & &1.class_batch_id) |> Enum.uniq()
-      Dbservice.GroupSessions.fetch_sessions_by_group_ids(quiz_group_ids, class_batch_ids)
+      # Get all batch IDs in the hierarchy for filtering
+      all_batch_ids =
+        user_batch_data
+        |> Enum.map(& &1.batch_name)
+        |> Enum.reject(&is_nil/1)
+        |> Enum.uniq()
+
+      Dbservice.GroupSessions.fetch_sessions_by_group_ids(quiz_group_ids, all_batch_ids)
     end
   end
 
-  # Get regular sessions - sessions come from class groups, no additional filtering
+  # Updated regular sessions to work with multi-level hierarchy
   defp get_regular_sessions(user_batch_data) do
-    class_group_ids = Enum.map(user_batch_data, & &1.class_group_id) |> Enum.uniq()
+    # Get class group IDs (only level 0 - direct class groups)
+    class_group_ids =
+      user_batch_data
+      |> Enum.filter(&(&1.level == 0 && !is_nil(&1.class_group_id)))
+      |> Enum.map(& &1.class_group_id)
+      |> Enum.uniq()
 
-    Dbservice.GroupSessions.fetch_sessions_by_group_ids(class_group_ids)
+    if Enum.empty?(class_group_ids) do
+      []
+    else
+      Dbservice.GroupSessions.fetch_sessions_by_group_ids(class_group_ids)
+    end
   end
 end
