@@ -195,7 +195,7 @@ defmodule DbserviceWeb.UserController do
     end
   end
 
-  # Get user's groups with batch information(support multi-level hierarchy)
+  # Get user's groups with batch information (supports multi-level hierarchy)
   defp get_user_batch_data(user_id) do
     user_id = if is_binary(user_id), do: String.to_integer(user_id), else: user_id
     # First, get all batches in the hierarchy using recursive CTE
