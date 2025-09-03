@@ -5,9 +5,6 @@ defmodule DbserviceWeb.UserController do
   alias Dbservice.Repo
   alias Dbservice.Users
   alias Dbservice.Users.User
-  alias Dbservice.Groups.GroupUser
-  alias Dbservice.Groups.Group
-  alias Dbservice.Batches.Batch
 
   action_fallback DbserviceWeb.FallbackController
 
