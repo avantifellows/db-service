@@ -203,8 +203,8 @@ defmodule DbserviceWeb.UserController do
     WITH RECURSIVE batch_hierarchy AS (
       -- Base case: Get immediate class batches for the user
       SELECT DISTINCT
-        cb.id as batch_id,
-        cb.batch_id as batch_name,
+        cb.id as batch_pk,
+        cb.batch_id as batch_id,
         cb.parent_id,
         cg.id as class_group_id,
         0 as level
@@ -217,8 +217,8 @@ defmodule DbserviceWeb.UserController do
 
       -- Recursive case: Get parent batches
       SELECT
-        pb.id as batch_id,
-        pb.batch_id as batch_name,
+        pb.id as batch_pk,
+        pb.batch_id as batch_id,
         pb.parent_id,
         NULL as class_group_id,
         bh.level + 1 as level
@@ -227,14 +227,14 @@ defmodule DbserviceWeb.UserController do
       WHERE bh.parent_id IS NOT NULL
     )
     SELECT
+      bh.batch_pk,
       bh.batch_id,
-      bh.batch_name,
       bh.parent_id,
       bh.class_group_id,
       bh.level,
       qg.id as quiz_group_id
     FROM batch_hierarchy bh
-    LEFT JOIN "group" qg ON qg.child_id = bh.batch_id AND qg.type = 'batch'
+    LEFT JOIN "group" qg ON qg.child_id = bh.batch_pk AND qg.type = 'batch'
     ORDER BY bh.level ASC
     """
 
@@ -267,7 +267,7 @@ defmodule DbserviceWeb.UserController do
       # Get all batch IDs in the hierarchy for filtering
       all_batch_ids =
         user_batch_data
-        |> Enum.map(& &1.batch_name)
+        |> Enum.map(& &1.batch_id)
         |> Enum.reject(&is_nil/1)
         |> Enum.uniq()
 
