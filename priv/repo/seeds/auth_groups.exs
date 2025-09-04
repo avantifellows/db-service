@@ -6,11 +6,11 @@ IO.puts("  → Seeding auth groups...")
 # Auth group data - creating auth groups for all Indian states
 # Each state will have both teacher and student auth groups
 indian_states = [
-  "Andhra Pradesh", "Arunachal Pradesh", "Assam", "Bihar", "Chhattisgarh", "Goa", "Gujarat",
-  "Haryana", "Himachal Pradesh", "Jharkhand", "Karnataka", "Kerala", "Madhya Pradesh",
+  "Assam", "Bihar", "Chhattisgarh", "Goa", "Gujarat",
+  "Haryana", "Jharkhand", "Karnataka", "Kerala",
   "Maharashtra", "Manipur", "Meghalaya", "Mizoram", "Nagaland", "Odisha", "Punjab",
-  "Rajasthan", "Sikkim", "Tamil Nadu", "Telangana", "Tripura", "Uttar Pradesh",
-  "Uttarakhand", "West Bengal"
+  "Rajasthan", "Sikkim", "Telangana", "Tripura",
+  "Uttarakhand"
 ]
 
 # Common input schema for students

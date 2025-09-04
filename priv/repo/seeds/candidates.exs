@@ -2,6 +2,10 @@ alias Dbservice.Repo
 alias Dbservice.Users.Candidate
 alias Dbservice.Subjects.Subject
 
+# Load college data from shared data file
+Code.require_file("data/college_data.exs", __DIR__)
+alias SeedData.CollegeData
+
 IO.puts("  → Seeding candidates...")
 
 # Get existing subjects from database
@@ -19,13 +23,8 @@ else
     "Education", "Psychology", "Sociology"
   ]
 
-  colleges = [
-    "Indian Institute of Technology", "Indian Institute of Science",
-    "Delhi University", "Jawaharlal Nehru University", "Banaras Hindu University",
-    "Jamia Millia Islamia", "Aligarh Muslim University", "University of Mumbai",
-    "University of Calcutta", "Madras University", "University of Pune",
-    "Bangalore University", "Hyderabad University", "Cochin University"
-  ]
+  # Get college names from the common source
+  colleges = CollegeData.get_college_names()
 
   # Create 6 candidates
   candidates_created = for i <- 1..6 do
