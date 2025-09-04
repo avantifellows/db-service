@@ -8,7 +8,7 @@ IO.puts("→ Seeding candidates...")
 subjects = Repo.all(Subject)
 
 if Enum.empty?(subjects) do
-  IO.puts("    ⚠️  No subjects found. Skipping candidate seeding.")
+  IO.puts("⚠️  No subjects found. Skipping candidate seeding.")
 else
   # Degrees and branches for candidates
   degrees = ["B.Tech", "B.Sc", "M.Tech", "M.Sc", "B.A", "M.A", "B.Com", "M.Com", "B.Ed", "M.Ed", "PhD"]
