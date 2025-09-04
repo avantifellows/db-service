@@ -2,7 +2,7 @@ alias Dbservice.Repo
 alias Dbservice.Users.Candidate
 alias Dbservice.Subjects.Subject
 
-IO.puts("  → Seeding candidates...")
+IO.puts("→ Seeding candidates...")
 
 # Get existing subjects from database
 subjects = Repo.all(Subject)
