@@ -54,5 +54,5 @@ else
   end
 
   actual_candidates_created = Enum.count(candidates_created, &(&1 != nil))
-  IO.puts("    ✅ Candidates seeded (6 users created, #{actual_candidates_created} new candidates)")
+  IO.puts("✅ Candidates seeded (6 users created, #{actual_candidates_created} new candidates)")
 end
