@@ -15,7 +15,7 @@ defmodule Dbservice.Demographics.DemographicProfile do
     field :nationality, :string
     field :ews_ward, :string
     field :language, :string
-    field :urban_rural, :string
+    field :urban_rural, :boolean, default: false
     field :region, :string
 
     has_many :cutoffs, Dbservice.Cutoffs.Cutoff, foreign_key: :category_id

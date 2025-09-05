@@ -21,7 +21,7 @@ defmodule DbserviceWeb.SwaggerSchema.DemographicProfile do
             nationality(:string, "Nationality")
             ews_ward(:string, "Economically Weaker Section ward")
             language(:string, "Language")
-            urban_rural(:string, "Urban or Rural")
+            urban_rural(:boolean, "Urban (true) or Rural (false)")
             region(:string, "Region")
           end
 
@@ -36,7 +36,7 @@ defmodule DbserviceWeb.SwaggerSchema.DemographicProfile do
             nationality: "Indian",
             ews_ward: "No",
             language: "English",
-            urban_rural: "Urban",
+            urban_rural: true,
             region: "North"
           })
         end
