@@ -5,7 +5,7 @@ defmodule Dbservice.Exams.Exam do
   import Ecto.Changeset
 
   schema "exam" do
-    field :exam_name, :string
+    field :name, :string
     field :counselling_body, :string
     field :type, :string
 
@@ -18,10 +18,10 @@ defmodule Dbservice.Exams.Exam do
   def changeset(exam, attrs) do
     exam
     |> cast(attrs, [
-      :exam_name,
+      :name,
       :counselling_body,
       :type
     ])
-    |> validate_required([:exam_name])
+    |> validate_required([:name])
   end
 end

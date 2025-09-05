@@ -11,13 +11,13 @@ defmodule DbserviceWeb.SwaggerSchema.Exam do
           description("An exam in application")
 
           properties do
-            exam_name(:string, "The name of an exam")
+            name(:string, "The name of an exam")
             counselling_body(:string, "The counselling body of the exam")
             type(:string, "The type of the exam")
           end
 
           example(%{
-            exam_name: "NEET",
+            name: "NEET",
             counselling_body: "NTA",
             type: "Medical"
           })

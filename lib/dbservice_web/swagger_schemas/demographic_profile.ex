@@ -14,8 +14,8 @@ defmodule DbserviceWeb.SwaggerSchema.DemographicProfile do
             category_id(:integer, "The category ID")
             gender(:string, "Gender")
             caste(:string, "Caste")
-            pwd(:string, "Person with Disability")
-            income(:string, "Income level")
+            physically_handicapped(:boolean, "Person with Disability")
+            family_income(:string, "Family income level")
             religion(:string, "Religion")
             defence_ward(:string, "Defence ward")
             nationality(:string, "Nationality")
@@ -29,8 +29,8 @@ defmodule DbserviceWeb.SwaggerSchema.DemographicProfile do
             category_id: 1,
             gender: "Male",
             caste: "General",
-            pwd: "No",
-            income: "5-10 Lakhs",
+            physically_handicapped: false,
+            family_income: "5-10 Lakhs",
             religion: "Hindu",
             defence_ward: "No",
             nationality: "Indian",

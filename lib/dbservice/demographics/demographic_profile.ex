@@ -8,8 +8,8 @@ defmodule Dbservice.Demographics.DemographicProfile do
     field :category_id, :integer
     field :gender, :string
     field :caste, :string
-    field :pwd, :string
-    field :income, :string
+    field :physically_handicapped, :boolean, default: false
+    field :family_income, :string
     field :religion, :string
     field :defence_ward, :string
     field :nationality, :string
@@ -30,8 +30,8 @@ defmodule Dbservice.Demographics.DemographicProfile do
       :category_id,
       :gender,
       :caste,
-      :pwd,
-      :income,
+      :physically_handicapped,
+      :family_income,
       :religion,
       :defence_ward,
       :nationality,

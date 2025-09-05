@@ -48,7 +48,7 @@ defmodule Dbservice.Exams do
   end
 
   @doc """
-  Gets a Exam by exam_name.
+  Gets a Exam by name.
   Raises `Ecto.NoResultsError` if the Exam does not exist.
   ## Examples
       iex> get_exam_by_name("NEET")
@@ -56,8 +56,8 @@ defmodule Dbservice.Exams do
       iex> get_exam_by_name("Non-existent")
       nil
   """
-  def get_exam_by_name(exam_name) do
-    Repo.get_by(Exam, exam_name: exam_name)
+  def get_exam_by_name(name) do
+    Repo.get_by(Exam, name: name)
   end
 
   @doc """

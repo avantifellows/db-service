@@ -10,7 +10,7 @@ defmodule DbserviceWeb.ExamJSON do
   def render(exam) do
     base_exam = %{
       id: exam.id,
-      exam_name: exam.exam_name,
+      name: exam.name,
       counselling_body: exam.counselling_body,
       type: exam.type
     }
