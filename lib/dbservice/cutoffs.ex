@@ -50,11 +50,11 @@ defmodule Dbservice.Cutoffs do
   end
 
   @doc """
-  Gets cutoffs by category_id.
+  Gets cutoffs by category.
   """
-  def get_cutoffs_by_category_id(category_id) do
+  def get_cutoffs_by_category(category) do
     Cutoff
-    |> where([c], c.category_id == ^category_id)
+    |> where([c], c.category == ^category)
     |> Repo.all()
   end
 

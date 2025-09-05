@@ -10,7 +10,7 @@ defmodule DbserviceWeb.DemographicProfileJSON do
   def render(demographic_profile) do
     %{
       id: demographic_profile.id,
-      category_id: demographic_profile.category_id,
+      category: demographic_profile.category,
       gender: demographic_profile.gender,
       caste: demographic_profile.caste,
       physically_handicapped: demographic_profile.physically_handicapped,

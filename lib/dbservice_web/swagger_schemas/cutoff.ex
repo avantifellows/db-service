@@ -16,7 +16,7 @@ defmodule DbserviceWeb.SwaggerSchema.Cutoff do
             college_id(:integer, "The college ID")
             degree(:string, "The degree type")
             branch_id(:integer, "The branch ID")
-            category_id(:integer, "The category ID")
+            category(:integer, "The category")
             state_quota(:string, "State quota type")
             opening_rank(:integer, "Opening rank")
             closing_rank(:integer, "Closing rank")
@@ -28,7 +28,7 @@ defmodule DbserviceWeb.SwaggerSchema.Cutoff do
             college_id: 1,
             degree: "B.Tech",
             branch_id: 1,
-            category_id: 1,
+            category: 1,
             state_quota: "All India",
             opening_rank: 1000,
             closing_rank: 5000

@@ -5,7 +5,7 @@ defmodule Dbservice.Demographics.DemographicProfile do
   import Ecto.Changeset
 
   schema "demographic_profile" do
-    field :category_id, :integer
+    field :category, :integer
     field :gender, :string
     field :caste, :string
     field :physically_handicapped, :boolean, default: false
@@ -18,7 +18,7 @@ defmodule Dbservice.Demographics.DemographicProfile do
     field :urban_rural, :boolean, default: false
     field :region, :string
 
-    has_many :cutoffs, Dbservice.Cutoffs.Cutoff, foreign_key: :category_id
+    has_many :cutoffs, Dbservice.Cutoffs.Cutoff, foreign_key: :category
 
     timestamps()
   end
@@ -27,7 +27,7 @@ defmodule Dbservice.Demographics.DemographicProfile do
   def changeset(demographic_profile, attrs) do
     demographic_profile
     |> cast(attrs, [
-      :category_id,
+      :category,
       :gender,
       :caste,
       :physically_handicapped,
@@ -40,6 +40,6 @@ defmodule Dbservice.Demographics.DemographicProfile do
       :urban_rural,
       :region
     ])
-    |> validate_required([:category_id])
+    |> validate_required([:category])
   end
 end

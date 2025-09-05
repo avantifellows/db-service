@@ -7,7 +7,7 @@ defmodule Dbservice.Cutoffs.Cutoff do
   schema "cutoffs" do
     field :cutoff_year, :integer
     field :degree, :string
-    field :category_id, :integer
+    field :category, :integer
     field :state_quota, :string
     field :opening_rank, :integer
     field :closing_rank, :integer
@@ -28,7 +28,7 @@ defmodule Dbservice.Cutoffs.Cutoff do
       :college_id,
       :degree,
       :branch_id,
-      :category_id,
+      :category,
       :state_quota,
       :opening_rank,
       :closing_rank
@@ -38,7 +38,7 @@ defmodule Dbservice.Cutoffs.Cutoff do
       :exam_occurrence_id,
       :college_id,
       :branch_id,
-      :category_id
+      :category
     ])
     |> foreign_key_constraint(:exam_occurrence_id)
     |> foreign_key_constraint(:college_id)

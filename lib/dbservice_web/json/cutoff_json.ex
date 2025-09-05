@@ -15,7 +15,7 @@ defmodule DbserviceWeb.CutoffJSON do
       college_id: cutoff.college_id,
       degree: cutoff.degree,
       branch_id: cutoff.branch_id,
-      category_id: cutoff.category_id,
+      category: cutoff.category,
       state_quota: cutoff.state_quota,
       opening_rank: cutoff.opening_rank,
       closing_rank: cutoff.closing_rank

@@ -32,14 +32,14 @@ defmodule Dbservice.Demographics do
   end
 
   @doc """
-  Gets demographic profiles by category_id.
+  Gets demographic profiles by category.
   ## Examples
-      iex> get_demographic_profiles_by_category_id(1)
+      iex> get_demographic_profiles_by_category(1)
       [%DemographicProfile{}, ...]
   """
-  def get_demographic_profiles_by_category_id(category_id) do
+  def get_demographic_profiles_by_category(category) do
     DemographicProfile
-    |> where([dp], dp.category_id == ^category_id)
+    |> where([dp], dp.category == ^category)
     |> Repo.all()
   end
 
