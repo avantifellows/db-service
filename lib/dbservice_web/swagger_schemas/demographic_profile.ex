@@ -11,7 +11,7 @@ defmodule DbserviceWeb.SwaggerSchema.DemographicProfile do
           description("A demographic profile in the application")
 
           properties do
-            category(:integer, "The category")
+            category(:string, "The category")
             gender(:string, "Gender")
             caste(:string, "Caste")
             physically_handicapped(:boolean, "Person with Disability")
@@ -26,7 +26,7 @@ defmodule DbserviceWeb.SwaggerSchema.DemographicProfile do
           end
 
           example(%{
-            category: 1,
+            category: "General",
             gender: "Male",
             caste: "General",
             physically_handicapped: false,

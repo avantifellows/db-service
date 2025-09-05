@@ -7,7 +7,7 @@ defmodule Dbservice.Cutoffs.Cutoff do
   schema "cutoffs" do
     field :cutoff_year, :integer
     field :degree, :string
-    field :category, :integer
+    field :category, :string
     field :state_quota, :string
     field :opening_rank, :integer
     field :closing_rank, :integer

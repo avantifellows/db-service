@@ -5,7 +5,7 @@ defmodule Dbservice.Demographics.DemographicProfile do
   import Ecto.Changeset
 
   schema "demographic_profile" do
-    field :category, :integer
+    field :category, :string
     field :gender, :string
     field :caste, :string
     field :physically_handicapped, :boolean, default: false
