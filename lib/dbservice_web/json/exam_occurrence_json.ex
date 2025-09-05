@@ -12,7 +12,7 @@ defmodule DbserviceWeb.ExamOccurrenceJSON do
       id: exam_occurrence.id,
       exam_id: exam_occurrence.exam_id,
       year: exam_occurrence.year,
-      session: exam_occurrence.session,
+      exam_session: exam_occurrence.exam_session,
       registration_end_date: exam_occurrence.registration_end_date,
       session_date: exam_occurrence.session_date
     }

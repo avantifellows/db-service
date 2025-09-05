@@ -13,7 +13,7 @@ defmodule DbserviceWeb.SwaggerSchema.ExamOccurrence do
           properties do
             exam_id(:integer, "The ID of the exam")
             year(:integer, "The year of the exam occurrence")
-            session(:integer, "The session number")
+            exam_session(:integer, "The session number")
             registration_end_date(:string, "Registration end date")
             session_date(:string, "Session date")
           end
@@ -21,7 +21,7 @@ defmodule DbserviceWeb.SwaggerSchema.ExamOccurrence do
           example(%{
             exam_id: 1,
             year: 2024,
-            session: 1,
+            exam_session: 1,
             registration_end_date: "2024-01-31",
             session_date: "2024-02-15"
           })

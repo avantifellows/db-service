@@ -6,7 +6,7 @@ defmodule Dbservice.Exams.ExamOccurrence do
 
   schema "exam_occurrence" do
     field :year, :integer
-    field :session, :integer
+    field :exam_session, :integer
     field :registration_end_date, :string
     field :session_date, :string
 
@@ -22,7 +22,7 @@ defmodule Dbservice.Exams.ExamOccurrence do
     |> cast(attrs, [
       :exam_id,
       :year,
-      :session,
+      :exam_session,
       :registration_end_date,
       :session_date
     ])
