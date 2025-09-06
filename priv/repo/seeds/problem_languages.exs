@@ -291,7 +291,6 @@ existing_combinations =
 
 # Generate random resource-language combinations that don't exist
 target_count = min(50, length(all_resources) * length(all_languages))
-combinations_to_create = []
 
 combinations_to_create =
   for _i <- 1..target_count, reduce: [] do
