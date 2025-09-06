@@ -19,7 +19,7 @@ defmodule Dbservice.MixProject do
   def application do
     [
       mod: {Dbservice.Application, []},
-      extra_applications: [:logger, :runtime_tools]
+      extra_applications: [:logger, :runtime_tools, :os_mon]
     ]
   end
 
@@ -63,7 +63,8 @@ defmodule Dbservice.MixProject do
       {:hackney, "~> 1.24.1"},
       {:google_api_sheets, "~> 0.35.0"},
       {:goth, "~> 1.4.5"},
-      {:phoenix_html, "~> 4.1"}
+      {:phoenix_html, "~> 4.1"},
+      {:ecto_psql_extras, "~> 0.6"}
     ]
   end
 
