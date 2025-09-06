@@ -6,13 +6,13 @@ alias Dbservice.Subjects.Subject
 Code.require_file("data/college_data.exs", __DIR__)
 alias SeedData.CollegeData
 
-IO.puts("  → Seeding candidates...")
+IO.puts("→ Seeding candidates...")
 
 # Get existing subjects from database
 subjects = Repo.all(Subject)
 
 if Enum.empty?(subjects) do
-  IO.puts("    ⚠️  No subjects found. Skipping candidate seeding.")
+  IO.puts("⚠️  No subjects found. Skipping candidate seeding.")
 else
   # Degrees and branches for candidates
   degrees = ["B.Tech", "B.Sc", "M.Tech", "M.Sc", "B.A", "M.A", "B.Com", "M.Com", "B.Ed", "M.Ed", "PhD"]
@@ -53,5 +53,5 @@ else
   end
 
   actual_candidates_created = Enum.count(candidates_created, &(&1 != nil))
-  IO.puts("    ✅ Candidates seeded (6 users created, #{actual_candidates_created} new candidates)")
+  IO.puts("✅ Candidates seeded (6 users created, #{actual_candidates_created} new candidates)")
 end

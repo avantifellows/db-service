@@ -97,4 +97,4 @@ auth_groups_created = for auth_group_attrs <- auth_groups_data do
 end
 
 actual_auth_groups_created = Enum.count(auth_groups_created, &(&1 != nil))
-IO.puts("    ✅ Auth groups seeded (#{length(auth_groups_data)} total, #{actual_auth_groups_created} new auth groups)")
+IO.puts("✅ Auth groups seeded (#{length(auth_groups_data)} total, #{actual_auth_groups_created} new auth groups)")
