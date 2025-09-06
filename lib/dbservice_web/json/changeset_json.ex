@@ -1,5 +1,6 @@
 defmodule DbserviceWeb.ChangesetJSON do
   alias DbserviceWeb.ErrorHelpers
+  alias Dbservice.Utils.ChangesetFormatter
 
   @doc """
   Traverses and translates changeset errors.
@@ -17,6 +18,9 @@ defmodule DbserviceWeb.ChangesetJSON do
     # Phoenix.HTML.Form.input_validations/2 for more examples
     # of error message formatting.
 
-    %{errors: translate_errors(changeset)}
+    %{
+      errors: ChangesetFormatter.map_errors(changeset),
+      message: ChangesetFormatter.format_errors(changeset)
+    }
   end
 end
