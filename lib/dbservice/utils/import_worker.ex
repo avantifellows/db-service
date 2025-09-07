@@ -388,12 +388,21 @@ defmodule Dbservice.DataImport.ImportWorker do
   end
 
   defp process_student_update_record(record) do
+    # Accept either student_id or apaar_id (like addition and batch movement)
     student_id = record["student_id"]
+    apaar_id = record["apaar_id"]
 
-    if is_nil(student_id) or student_id == "" do
-      {:error, "student_id is required for student updates"}
+    if (is_nil(student_id) or student_id == "") and (is_nil(apaar_id) or apaar_id == "") do
+      {:error, "Either student_id or apaar_id is required for student updates"}
     else
-      StudentUpdateService.update_student_by_student_id(student_id, record)
+      case Users.get_student_by_id_or_apaar_id(record) do
+        nil ->
+          {:error,
+           "Student not found. student_id: #{record["student_id"]}, apaar_id: #{record["apaar_id"]}"}
+
+        student ->
+          StudentUpdateService.update_student_with_user_data(student, record)
+      end
     end
   end
 
