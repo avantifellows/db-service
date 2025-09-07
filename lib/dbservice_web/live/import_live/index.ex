@@ -141,14 +141,6 @@ defmodule DbserviceWeb.ImportLive.Index do
      )}
   end
 
-  defp apply_action(socket, :index, _params) do
-    assign(socket, :page_title, "Data Imports")
-  end
-
-  defp apply_action(socket, _action, _params) do
-    assign(socket, :page_title, "Data Imports")
-  end
-
   @impl true
   def render(assigns) do
     ~H"""
