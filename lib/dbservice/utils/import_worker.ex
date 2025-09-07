@@ -315,14 +315,42 @@ defmodule Dbservice.DataImport.ImportWorker do
           result
 
         {:error, reason} = error ->
-          update_import_progress(import_record, index, :error, reason)
+          # Don't update progress for errors - only log the error
+          log_import_error(import_record, index, reason)
           error
       end
     rescue
       e ->
-        update_import_progress(import_record, index, :exception, e)
+        # Don't update progress for exceptions - only log the error
+        log_import_error(import_record, index, Exception.message(e))
         {:error, Exception.message(e)}
     end
+  end
+
+  # Log import error without updating processed rows count
+  defp log_import_error(import_record, index, error) do
+    # Calculate actual CSV row number
+    start_row = import_record.start_row || 2
+    csv_row_number = index + start_row - 1
+
+    error_message = format_error_message(error, csv_row_number)
+
+    update_params = %{
+      error_count: (import_record.error_count || 0) + 1,
+      error_details: [
+        %{row: csv_row_number, error: error_message}
+        | import_record.error_details || []
+      ]
+    }
+
+    DataImport.update_import(import_record, update_params)
+
+    # Broadcast error update
+    Phoenix.PubSub.broadcast(
+      Dbservice.PubSub,
+      "imports",
+      {:import_updated, import_record.id}
+    )
   end
 
   # Record processor functions for each import type
@@ -461,48 +489,23 @@ defmodule Dbservice.DataImport.ImportWorker do
     end
   end
 
-  defp update_import_progress(import_record, index, status, error \\ nil) do
-    # Calculate actual CSV row number: index is 1-based for filtered data rows
-    # CSV row = index + start_row - 1 (since index 1 = first data row = start_row)
-    start_row = import_record.start_row || 2
-    csv_row_number = index + start_row - 1
-    # Calculate how many data rows we've processed
-    processed_rows = index
+  defp update_import_progress(import_record, index, status) do
+    # Only update progress for successful records
+    if status == :success do
+      # Calculate how many data rows we've processed successfully
+      processed_rows = index
 
-    update_params =
-      build_update_params(status, error, processed_rows, csv_row_number, import_record)
+      update_params = %{processed_rows: processed_rows}
 
-    DataImport.update_import(import_record, update_params)
+      DataImport.update_import(import_record, update_params)
 
-    # Broadcast progress update
-    Phoenix.PubSub.broadcast(
-      Dbservice.PubSub,
-      "imports",
-      {:import_updated, import_record.id}
-    )
-  end
-
-  # Build update parameters based on processing status
-  defp build_update_params(status, error, processed_rows, csv_row_number, import_record) do
-    base_params = build_base_update_params(processed_rows)
-
-    case status do
-      :error -> add_error_details(base_params, error, csv_row_number, import_record)
-      :exception -> add_exception_details(base_params, error, csv_row_number, import_record)
-      _ -> base_params
+      # Broadcast progress update
+      Phoenix.PubSub.broadcast(
+        Dbservice.PubSub,
+        "imports",
+        {:import_updated, import_record.id}
+      )
     end
-  end
-
-  # Add error details to update parameters
-  defp add_error_details(base_params, error, csv_row_number, import_record) do
-    error_message = format_error_message(error, csv_row_number)
-    add_error_to_params(base_params, error_message, csv_row_number, import_record)
-  end
-
-  # Add exception details to update parameters
-  defp add_exception_details(base_params, error, csv_row_number, import_record) do
-    error_message = Exception.message(error)
-    add_error_to_params(base_params, error_message, csv_row_number, import_record)
   end
 
   # Format error message based on error type
@@ -512,22 +515,6 @@ defmodule Dbservice.DataImport.ImportWorker do
 
   defp format_error_message(error, csv_row_number) do
     "Row #{csv_row_number}: #{inspect(error)}"
-  end
-
-  # Add error information to update parameters
-  defp add_error_to_params(base_params, error_message, csv_row_number, import_record) do
-    Map.merge(base_params, %{
-      error_count: (import_record.error_count || 0) + 1,
-      error_details: [
-        %{row: csv_row_number, error: error_message}
-        | import_record.error_details || []
-      ]
-    })
-  end
-
-  # Extract base update params creation
-  defp build_base_update_params(processed_rows) do
-    %{processed_rows: processed_rows}
   end
 
   defp finalize_import(import_record, records) do
