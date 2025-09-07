@@ -92,7 +92,22 @@ defmodule DbserviceWeb.ImportLive.Index do
         socket.assigns.import_statuses
       end
 
-    {:noreply, assign(socket, imports: imports, import_statuses: new_import_statuses)}
+    # Update selected_import if it's the one being updated and modal is open
+    updated_selected_import =
+      if socket.assigns.show_stop_modal &&
+           socket.assigns.selected_import &&
+           socket.assigns.selected_import.id == import_id do
+        updated_import
+      else
+        socket.assigns.selected_import
+      end
+
+    {:noreply,
+     assign(socket,
+       imports: imports,
+       import_statuses: new_import_statuses,
+       selected_import: updated_selected_import
+     )}
   end
 
   defp apply_action(socket, :index, _params) do
