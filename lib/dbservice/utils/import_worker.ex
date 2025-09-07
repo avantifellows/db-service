@@ -311,7 +311,7 @@ defmodule Dbservice.DataImport.ImportWorker do
     try do
       case record_processor_fn.(record) do
         {:ok, _} = result ->
-          update_import_progress(import_record, index, :success)
+          update_import_progress(import_record, index)
           result
 
         {:error, reason} = error ->
@@ -489,23 +489,20 @@ defmodule Dbservice.DataImport.ImportWorker do
     end
   end
 
-  defp update_import_progress(import_record, index, status) do
-    # Only update progress for successful records
-    if status == :success do
-      # Calculate how many data rows we've processed successfully
-      processed_rows = index
+  defp update_import_progress(import_record, index) do
+    # Calculate how many data rows we've processed successfully
+    processed_rows = index
 
-      update_params = %{processed_rows: processed_rows}
+    update_params = %{processed_rows: processed_rows}
 
-      DataImport.update_import(import_record, update_params)
+    DataImport.update_import(import_record, update_params)
 
-      # Broadcast progress update
-      Phoenix.PubSub.broadcast(
-        Dbservice.PubSub,
-        "imports",
-        {:import_updated, import_record.id}
-      )
-    end
+    # Broadcast progress update
+    Phoenix.PubSub.broadcast(
+      Dbservice.PubSub,
+      "imports",
+      {:import_updated, import_record.id}
+    )
   end
 
   # Format error message based on error type
