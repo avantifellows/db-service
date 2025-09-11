@@ -83,7 +83,7 @@ defmodule DbserviceWeb.ExamOccurrenceController do
   def create(conn, params) do
     # Extract exam_occurrence parameters - handle both nested and direct parameter formats
     exam_occurrence_params = params["exam_occurrence"] || params
-    
+
     case Exams.create_exam_occurrence(exam_occurrence_params) do
       {:ok, exam_occurrence} ->
         conn

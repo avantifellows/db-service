@@ -8,7 +8,7 @@ defmodule DbserviceWeb.CutoffJSON do
   end
 
   def render(cutoff) do
-    base_cutoff = %{
+    %{
       id: cutoff.id,
       cutoff_year: cutoff.cutoff_year,
       exam_occurrence_id: cutoff.exam_occurrence_id,
@@ -18,56 +18,14 @@ defmodule DbserviceWeb.CutoffJSON do
       category: cutoff.category,
       state_quota: cutoff.state_quota,
       opening_rank: cutoff.opening_rank,
-      closing_rank: cutoff.closing_rank
+      closing_rank: cutoff.closing_rank,
+      exam_occurrence: render_association(cutoff.exam_occurrence, &DbserviceWeb.ExamOccurrenceJSON.render/1),
+      college: render_association(cutoff.college, &DbserviceWeb.CollegeJSON.render/1),
+      branch: render_association(cutoff.branch, &DbserviceWeb.BranchJSON.render/1)
     }
-
-    # Include associations if they are loaded
-    base_cutoff
-    |> maybe_include_exam_occurrence(cutoff)
-    |> maybe_include_college(cutoff)
-    |> maybe_include_branch(cutoff)
   end
 
-  defp maybe_include_exam_occurrence(cutoff_data, cutoff) do
-    case Map.get(cutoff, :exam_occurrence) do
-      %Ecto.Association.NotLoaded{} ->
-        cutoff_data
-
-      nil ->
-        cutoff_data
-
-      exam_occurrence ->
-        Map.put(
-          cutoff_data,
-          :exam_occurrence,
-          DbserviceWeb.ExamOccurrenceJSON.render(exam_occurrence)
-        )
-    end
-  end
-
-  defp maybe_include_college(cutoff_data, cutoff) do
-    case Map.get(cutoff, :college) do
-      %Ecto.Association.NotLoaded{} ->
-        cutoff_data
-
-      nil ->
-        cutoff_data
-
-      college ->
-        Map.put(cutoff_data, :college, DbserviceWeb.CollegeJSON.render(college))
-    end
-  end
-
-  defp maybe_include_branch(cutoff_data, cutoff) do
-    case Map.get(cutoff, :branch) do
-      %Ecto.Association.NotLoaded{} ->
-        cutoff_data
-
-      nil ->
-        cutoff_data
-
-      branch ->
-        Map.put(cutoff_data, :branch, DbserviceWeb.BranchJSON.render(branch))
-    end
-  end
+  defp render_association(%Ecto.Association.NotLoaded{}, _render_fn), do: nil
+  defp render_association(nil, _render_fn), do: nil
+  defp render_association(association, render_fn), do: render_fn.(association)
 end

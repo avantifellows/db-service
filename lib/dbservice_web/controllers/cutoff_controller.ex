@@ -38,7 +38,8 @@ defmodule DbserviceWeb.CutoffController do
       from(c in Cutoff,
         order_by: [asc: c.id],
         offset: ^params["offset"],
-        limit: ^params["limit"]
+        limit: ^params["limit"],
+        preload: [:exam_occurrence, :college, :branch]
       )
 
     query =
@@ -84,7 +85,7 @@ defmodule DbserviceWeb.CutoffController do
   def create(conn, params) do
     # Extract cutoff parameters - handle both nested and direct parameter formats
     cutoff_params = params["cutoff"] || params
-    
+
     case Cutoffs.create_cutoff(cutoff_params) do
       {:ok, cutoff} ->
         conn
