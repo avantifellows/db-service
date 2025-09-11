@@ -25,6 +25,8 @@ defmodule Dbservice.Colleges.College do
     field :nirf_ranking, :integer
     field :top_200_nirf, :boolean
 
+    has_many :cutoffs, Dbservice.Cutoffs.Cutoff
+
     timestamps()
   end
 

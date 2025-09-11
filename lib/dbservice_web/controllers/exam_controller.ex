@@ -34,7 +34,8 @@ defmodule DbserviceWeb.ExamController do
       from(m in Exam,
         order_by: [asc: m.id],
         offset: ^params["offset"],
-        limit: ^params["limit"]
+        limit: ^params["limit"],
+        preload: [:exam_occurrences]
       )
 
     query =
@@ -81,7 +82,7 @@ defmodule DbserviceWeb.ExamController do
   end
 
   def show(conn, %{"id" => id}) do
-    exam = Exams.get_exam!(id)
+    exam = Exams.get_exam!(id) |> Repo.preload(:exam_occurrences)
     render(conn, :show, exam: exam)
   end
 
