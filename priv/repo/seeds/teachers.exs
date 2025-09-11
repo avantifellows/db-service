@@ -3,7 +3,7 @@ alias Dbservice.Users.Teacher
 alias Dbservice.Subjects.Subject
 alias Dbservice.Profiles.{UserProfile, TeacherProfile}
 
-IO.puts("  → Seeding teachers...")
+IO.puts("→ Seeding teachers...")
 
 # Get existing subjects from database
 subjects = Repo.all(Subject)

@@ -2,7 +2,7 @@ alias Dbservice.Repo
 alias Dbservice.Concepts.Concept
 alias Dbservice.Topics.Topic
 
-IO.puts("  → Seeding concepts...")
+IO.puts("→ Seeding concepts...")
 
 # Comprehensive concept data with multilingual support (English and Hindi)
 concepts_data = [

@@ -1,6 +1,6 @@
 alias Dbservice.Repo
 
-IO.puts("  → Seeding languages...")
+IO.puts("→ Seeding languages...")
 
 # Language data from dump
 languages_data = [

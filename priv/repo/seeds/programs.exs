@@ -2,7 +2,7 @@ alias Dbservice.Repo
 alias Dbservice.Programs.Program
 import Ecto.Query
 
-IO.puts("  → Seeding programs...")
+IO.puts("→ Seeding programs...")
 
 # Fetch actual product IDs from database
 product_ids = Repo.all(from p in Dbservice.Products.Product, select: p.id)

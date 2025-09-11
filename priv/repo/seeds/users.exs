@@ -2,7 +2,7 @@ alias Dbservice.Repo
 alias Dbservice.Users.User
 alias Dbservice.Profiles.UserProfile
 
-IO.puts("  → Seeding users...")
+IO.puts("→ Seeding users...")
 
 defmodule UserSeeder do
   def create_user_with_role(role, email) do

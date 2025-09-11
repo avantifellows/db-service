@@ -4,13 +4,13 @@ alias Dbservice.Resources.Resource
 alias Dbservice.Topics.Topic
 import Ecto.Query
 
-IO.puts("  → Seeding resource topics...")
+IO.puts("→ Seeding resource topics...")
 
 # Fetch all available resources and topics from database
 all_resources = Repo.all(Resource)
 all_topics = Repo.all(Topic)
 
-IO.puts("  → Found #{length(all_resources)} resources and #{length(all_topics)} topics")
+IO.puts("→ Found #{length(all_resources)} resources and #{length(all_topics)} topics")
 
 # Skip if no resources or topics exist
 if length(all_resources) == 0 or length(all_topics) == 0 do
@@ -44,7 +44,7 @@ else
         end
     end
 
-  IO.puts("  → Will create #{length(combinations_to_create)} new resource topic records")
+  IO.puts("→ Will create #{length(combinations_to_create)} new resource topic records")
 
   # Create resource topic records
   resource_topics_created =

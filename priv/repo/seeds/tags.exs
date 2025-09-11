@@ -1,6 +1,6 @@
 alias Dbservice.Repo
 
-IO.puts("  → Seeding tags...")
+IO.puts("→ Seeding tags...")
 
 # Tag data
 tags_data = [

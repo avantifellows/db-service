@@ -1,7 +1,7 @@
 alias Dbservice.Repo
 alias Dbservice.Subjects.Subject
 
-IO.puts("  → Seeding subjects...")
+IO.puts("→ Seeding subjects...")
 
 # Common subjects in Indian education system with support for English (en) and Hindi (hi)
 subjects_data = [

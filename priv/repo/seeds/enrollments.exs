@@ -65,7 +65,7 @@ create_enrollment_and_group_user = fn user_id, entity, group, group_type, academ
   enrollment_created + group_user_created
 end
 
-IO.puts("  → Seeding enrollments...")
+IO.puts("→ Seeding enrollments...")
 
 # Get all students for enrollment
 students = Repo.all(Student)

@@ -1,7 +1,7 @@
 alias Dbservice.Repo
 alias Dbservice.Grades.Grade
 
-IO.puts("  → Seeding grades...")
+IO.puts("→ Seeding grades...")
 
 # Indian education system grades (Classes 1-12)
 grades_data = for grade_number <- 8..13 do

@@ -2,7 +2,7 @@ alias Dbservice.Repo
 alias Dbservice.Batches.Batch
 import Ecto.Query
 
-IO.puts("  → Seeding batches...")
+IO.puts("→ Seeding batches...")
 
 auth_group_ids = Repo.all(from ag in Dbservice.Groups.AuthGroup, select: ag.id)
 program_ids = Repo.all(from p in Dbservice.Programs.Program, select: p.id)

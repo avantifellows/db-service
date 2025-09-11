@@ -1,7 +1,7 @@
 import Ecto.Query
 alias Dbservice.Repo
 
-IO.puts("  → Seeding learning objectives...")
+IO.puts("→ Seeding learning objectives...")
 
 # Learning objectives data with multilingual support (English and Hindi)
 learning_objectives_data = [
@@ -227,7 +227,7 @@ learning_objectives_data = [
 # Fetch all available concepts to assign randomly
 all_concepts = Repo.all(from c in "concept", select: %{id: c.id})
 
-IO.puts("  → Found #{length(all_concepts)} concepts")
+IO.puts("→ Found #{length(all_concepts)} concepts")
 
 if length(all_concepts) == 0 do
   IO.puts("  ⚠️  No concepts found. Skipping learning objectives seeding.")
@@ -279,6 +279,6 @@ else
         IO.puts("  ✅ Created #{learning_objectives_created} learning objective records (individual inserts)")
     end
   else
-    IO.puts("  → All learning objectives already exist")
+    IO.puts("→ All learning objectives already exist")
   end
 end

@@ -2,7 +2,7 @@ alias Dbservice.Repo
 alias Dbservice.Topics.Topic
 alias Dbservice.Chapters.Chapter
 
-IO.puts("  → Seeding topics...")
+IO.puts("→ Seeding topics...")
 
 # Get all chapters
 chapters = Repo.all(Chapter)

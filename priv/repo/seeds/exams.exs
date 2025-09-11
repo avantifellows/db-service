@@ -1,7 +1,7 @@
 alias Dbservice.Repo
 alias Dbservice.Exams.Exam
 
-IO.puts("  → Seeding exams...")
+IO.puts("→ Seeding exams...")
 
 exam_names = [
   "State CET",

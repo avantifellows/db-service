@@ -1,7 +1,7 @@
 alias Dbservice.Repo
 alias Dbservice.Curriculums.Curriculum
 
-IO.puts("  → Seeding curriculums...")
+IO.puts("→ Seeding curriculums...")
 
 # Curriculum data from dump
 curriculums_data = [

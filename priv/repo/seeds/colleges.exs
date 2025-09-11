@@ -4,7 +4,7 @@ alias Dbservice.Repo
 Code.require_file("data/college_data.exs", __DIR__)
 alias SeedData.CollegeData
 
-IO.puts("  → Seeding colleges...")
+IO.puts("→ Seeding colleges...")
 
 # Get college data from the common source
 colleges_data = CollegeData.get_colleges_data()

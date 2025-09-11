@@ -6,7 +6,7 @@ alias Dbservice.Schools.School
 alias Dbservice.Batches.Batch
 alias Dbservice.Statuses.Status
 
-IO.puts("  → Seeding groups...")
+IO.puts("→ Seeding groups...")
 
 # Get all the entities that need group records
 products = Repo.all(Product)

@@ -3,7 +3,7 @@ alias Dbservice.Exams.StudentExamRecord
 alias Dbservice.Exams.Exam
 alias Dbservice.Users.Student
 
-IO.puts("  → Seeding student exam records...")
+IO.puts("→ Seeding student exam records...")
 
 students = Repo.all(Student)
 exams = Repo.all(Exam)

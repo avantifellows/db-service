@@ -1,13 +1,13 @@
 import Ecto.Query
 alias Dbservice.Repo
 
-IO.puts("  → Seeding resource chapter...")
+IO.puts("→ Seeding resource chapter...")
 
 # Fetch all available resources and chapters from database
 all_resources = Repo.all(from r in "resource", select: %{id: r.id})
 all_chapters = Repo.all(from c in "chapter", select: %{id: c.id})
 
-IO.puts("  → Found #{length(all_resources)} resources and #{length(all_chapters)} chapters")
+IO.puts("→ Found #{length(all_resources)} resources and #{length(all_chapters)} chapters")
 
 # Skip if no resources or chapters exist
 if length(all_resources) == 0 or length(all_chapters) == 0 do
@@ -19,7 +19,7 @@ else
     |> Repo.all()
     |> MapSet.new()
 
-  IO.puts("  → Found #{MapSet.size(existing_combinations)} existing resource-chapter associations")
+  IO.puts("→ Found #{MapSet.size(existing_combinations)} existing resource-chapter associations")
 
   # Generate random resource-chapter combinations that don't exist
   target_count = min(250, length(all_resources) * length(all_chapters))
@@ -48,7 +48,7 @@ else
         end
     end
 
-  IO.puts("  → Will create #{length(combinations_to_create)} new resource chapter records")
+  IO.puts("→ Will create #{length(combinations_to_create)} new resource chapter records")
 
   # Insert resource chapter records in batches
   if length(combinations_to_create) > 0 do
@@ -74,6 +74,6 @@ else
         IO.puts("  ✅ Created #{resource_chapters_created} resource chapter records (individual inserts)")
     end
   else
-    IO.puts("  → No new resource chapter combinations to create")
+    IO.puts("→ No new resource chapter combinations to create")
   end
 end

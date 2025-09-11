@@ -1,7 +1,7 @@
 alias Dbservice.Repo
 alias Dbservice.FormSchemas.FormSchema
 
-IO.puts("  → Seeding form schemas...")
+IO.puts("→ Seeding form schemas...")
 
 form_schemas_data = [
   %{

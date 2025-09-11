@@ -2,7 +2,7 @@ alias Dbservice.Repo
 alias Dbservice.SchoolBatches.SchoolBatch
 import Ecto.Query
 
-IO.puts("  → Seeding school batches...")
+IO.puts("→ Seeding school batches...")
 
 # Fetch actual school IDs and batch IDs from database
 school_ids = Repo.all(from s in Dbservice.Schools.School, select: s.id)

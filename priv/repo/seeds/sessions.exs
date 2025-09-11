@@ -3,7 +3,7 @@ alias Dbservice.Sessions.Session
 alias Dbservice.FormSchemas.FormSchema
 alias Dbservice.Users.User
 
-IO.puts("  → Seeding sessions...")
+IO.puts("→ Seeding sessions...")
 
 # Get dependencies
 _form_schemas = Repo.all(FormSchema)

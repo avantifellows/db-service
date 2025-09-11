@@ -1,13 +1,13 @@
 import Ecto.Query
 alias Dbservice.Repo
 
-IO.puts("  → Seeding topic curriculum...")
+IO.puts("→ Seeding topic curriculum...")
 
 # Fetch all available topics and curriculums from database
 all_topics = Repo.all(from t in "topic", select: %{id: t.id})
 all_curriculums = Repo.all(from c in "curriculum", select: %{id: c.id})
 
-IO.puts("  → Found #{length(all_topics)} topics and #{length(all_curriculums)} curriculums")
+IO.puts("→ Found #{length(all_topics)} topics and #{length(all_curriculums)} curriculums")
 
 # Skip if no topics or curriculums exist
 if length(all_topics) == 0 or length(all_curriculums) == 0 do
@@ -19,7 +19,7 @@ else
     |> Repo.all()
     |> MapSet.new()
 
-  IO.puts("  → Found #{MapSet.size(existing_combinations)} existing topic-curriculum associations")
+  IO.puts("→ Found #{MapSet.size(existing_combinations)} existing topic-curriculum associations")
 
   # Priority levels and text
   priority_options = [
@@ -60,7 +60,7 @@ else
         end
     end
 
-  IO.puts("  → Will create #{length(combinations_to_create)} new topic curriculum records")
+  IO.puts("→ Will create #{length(combinations_to_create)} new topic curriculum records")
 
   # Insert topic curriculum records in batches
   if length(combinations_to_create) > 0 do
@@ -86,6 +86,6 @@ else
         IO.puts("  ✅ Created #{topic_curriculums_created} topic curriculum records (individual inserts)")
     end
   else
-    IO.puts("  → No new topic curriculum combinations to create")
+    IO.puts("→ No new topic curriculum combinations to create")
   end
 end

@@ -4,13 +4,13 @@ alias Dbservice.Resources.Resource
 alias Dbservice.Languages.Language
 import Ecto.Query
 
-IO.puts("  → Seeding problem languages...")
+IO.puts("→ Seeding problem languages...")
 
 # Fetch all available languages and resources from database
 all_languages = Repo.all(Language)
 all_resources = Repo.all(Resource)
 
-IO.puts("  → Found #{length(all_languages)} languages and #{length(all_resources)} resources")
+IO.puts("→ Found #{length(all_languages)} languages and #{length(all_resources)} resources")
 
 # Sample problem metadata templates by subject and difficulty
 problem_templates = [
@@ -312,7 +312,7 @@ combinations_to_create =
       end
   end
 
-IO.puts("  → Will create #{length(combinations_to_create)} new problem language records")
+IO.puts("→ Will create #{length(combinations_to_create)} new problem language records")
 
 # Create problem language records
 problem_langs_created =

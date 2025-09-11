@@ -1,7 +1,7 @@
 alias Dbservice.Repo
 alias Dbservice.Schools.School
 
-IO.puts("  → Seeding schools...")
+IO.puts("→ Seeding schools...")
 
 # Generate 20 schools with random data
 school_categories = ["GBSSS", "GIC", "GHS", "GSSS", "GGHSS", "GGSS", "GHSS", "GPS", "GMS", "GUPS"]

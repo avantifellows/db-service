@@ -2,7 +2,7 @@ alias Dbservice.Repo
 alias Dbservice.TestRules.TestRule
 alias Dbservice.Exams.Exam
 
-IO.puts("  → Seeding test rules...")
+IO.puts("→ Seeding test rules...")
 
 # Get all exams
 exams = Repo.all(Exam)

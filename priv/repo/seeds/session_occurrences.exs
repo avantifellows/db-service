@@ -2,7 +2,7 @@ alias Dbservice.Repo
 alias Dbservice.Sessions.SessionOccurrence
 alias Dbservice.Sessions.Session
 
-IO.puts("  → Seeding session occurrences...")
+IO.puts("→ Seeding session occurrences...")
 
 # Get all sessions
 sessions = Repo.all(Session)

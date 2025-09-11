@@ -1,6 +1,6 @@
 alias Dbservice.Repo
 
-IO.puts("  → Seeding skills...")
+IO.puts("→ Seeding skills...")
 
 # Student-related skills data
 skills_data = [

@@ -3,7 +3,7 @@ alias Dbservice.Users.Student
 alias Dbservice.Grades.Grade
 alias Dbservice.Profiles.{UserProfile, StudentProfile}
 
-IO.puts("  → Seeding students...")
+IO.puts("→ Seeding students...")
 
 # Get existing grades from database
 grades = Repo.all(Grade)

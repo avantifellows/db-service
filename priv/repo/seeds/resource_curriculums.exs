@@ -1,7 +1,7 @@
 import Ecto.Query
 alias Dbservice.Repo
 
-IO.puts("  → Seeding resource curriculum...")
+IO.puts("→ Seeding resource curriculum...")
 
 # Fetch all available entities from database
 all_resources = Repo.all(from r in "resource", select: %{id: r.id})
@@ -9,7 +9,7 @@ all_curriculums = Repo.all(from c in "curriculum", select: %{id: c.id})
 all_grades = Repo.all(from g in "grade", select: %{id: g.id})
 all_subjects = Repo.all(from s in "subject", select: %{id: s.id})
 
-IO.puts("  → Found #{length(all_resources)} resources, #{length(all_curriculums)} curriculums, #{length(all_grades)} grades, #{length(all_subjects)} subjects")
+IO.puts("→ Found #{length(all_resources)} resources, #{length(all_curriculums)} curriculums, #{length(all_grades)} grades, #{length(all_subjects)} subjects")
 
 # Skip if any required entities don't exist
 if length(all_resources) == 0 or length(all_curriculums) == 0 or length(all_grades) == 0 or length(all_subjects) == 0 do
@@ -21,7 +21,7 @@ else
     |> Repo.all()
     |> MapSet.new()
 
-  IO.puts("  → Found #{MapSet.size(existing_combinations)} existing resource-curriculum associations")
+  IO.puts("→ Found #{MapSet.size(existing_combinations)} existing resource-curriculum associations")
 
   # Difficulty levels
   difficulty_levels = ["easy", "medium", "hard", nil]
@@ -62,7 +62,7 @@ else
         end
     end
 
-  IO.puts("  → Will create #{length(combinations_to_create)} new resource curriculum records")
+  IO.puts("→ Will create #{length(combinations_to_create)} new resource curriculum records")
 
   # Insert resource curriculum records in batches
   if length(combinations_to_create) > 0 do
@@ -88,6 +88,6 @@ else
         IO.puts("  ✅ Created #{resource_curriculums_created} resource curriculum records (individual inserts)")
     end
   else
-    IO.puts("  → No new resource curriculum combinations to create")
+    IO.puts("→ No new resource curriculum combinations to create")
   end
 end

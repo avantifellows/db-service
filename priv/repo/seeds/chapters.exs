@@ -1,13 +1,13 @@
 import Ecto.Query
 alias Dbservice.Repo
 
-IO.puts("  → Seeding chapters...")
+IO.puts("→ Seeding chapters...")
 
 # Fetch all grades and subjects from database
 all_grades = Repo.all(from g in "grade", select: %{id: g.id, number: g.number})
 all_subjects = Repo.all(from s in "subject", select: %{id: s.id, name: s.name})
 
-IO.puts("  → Found #{length(all_grades)} grades and #{length(all_subjects)} subjects")
+IO.puts("→ Found #{length(all_grades)} grades and #{length(all_subjects)} subjects")
 
 if length(all_grades) == 0 or length(all_subjects) == 0 do
   IO.puts("  ⚠️  No grades or subjects found. Skipping chapters seeding.")
@@ -71,7 +71,7 @@ else
     end)
     |> Enum.filter(fn c -> c.grade_id != nil and c.subject_id != nil end)
 
-  IO.puts("  → Will create #{length(chapters_data)} chapters (with random existing grade/subject pairs)")
+  IO.puts("→ Will create #{length(chapters_data)} chapters (with random existing grade/subject pairs)")
 
   # Get existing chapters to avoid duplicates
   existing_codes =
@@ -79,7 +79,7 @@ else
     |> Repo.all()
     |> MapSet.new()
 
-  IO.puts("  → Found #{MapSet.size(existing_codes)} existing chapters")
+  IO.puts("→ Found #{MapSet.size(existing_codes)} existing chapters")
 
   # Filter out chapters that already exist
   chapters_to_insert =
@@ -114,6 +114,6 @@ else
         IO.puts("  ✅ Created #{chapters_created} chapters (individual inserts)")
     end
   else
-    IO.puts("  → All chapters already exist")
+    IO.puts("→ All chapters already exist")
   end
 end

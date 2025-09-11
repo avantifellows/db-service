@@ -5,7 +5,7 @@ alias Dbservice.Curriculums.Curriculum
 
 import Ecto.Query
 
-IO.puts("  → Seeding chapter curriculums...")
+IO.puts("→ Seeding chapter curriculums...")
 
 # Get all chapters and curriculums
 chapters = Repo.all(Chapter)

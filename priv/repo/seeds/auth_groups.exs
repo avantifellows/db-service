@@ -1,7 +1,7 @@
 alias Dbservice.Repo
 alias Dbservice.Groups.AuthGroup
 
-IO.puts("  → Seeding auth groups...")
+IO.puts(" → Seeding auth groups...")
 
 # Auth group data - creating auth groups for all Indian states
 # Each state will have both teacher and student auth groups

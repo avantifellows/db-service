@@ -1,6 +1,6 @@
 alias Dbservice.Repo
 
-IO.puts("  → Seeding purposes...")
+IO.puts("→ Seeding purposes...")
 
 # Purpose data from dump
 purposes_data = [

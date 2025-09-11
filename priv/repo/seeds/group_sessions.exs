@@ -3,7 +3,7 @@ alias Dbservice.Groups.GroupSession
 alias Dbservice.Sessions.Session
 alias Dbservice.Groups.Group
 
-IO.puts("  → Seeding group sessions...")
+IO.puts("→ Seeding group sessions...")
 
 # Get all sessions and groups
 sessions = Repo.all(Session)

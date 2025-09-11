@@ -1,7 +1,7 @@
 alias Dbservice.Repo
 alias Dbservice.Products.Product
 
-IO.puts("  → Seeding products...")
+IO.puts("→ Seeding products...")
 
 # Product data based on the examples from dump.sql
 products_data = [

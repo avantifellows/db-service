@@ -1,7 +1,7 @@
 alias Dbservice.Repo
 alias Dbservice.Statuses.Status
 
-IO.puts("  → Seeding status...")
+IO.puts("→ Seeding status...")
 
 status_data = [
   %{

@@ -4,7 +4,7 @@ alias Dbservice.Sessions.SessionOccurrence
 alias Dbservice.Sessions.Session
 alias Dbservice.Users.User
 
-IO.puts("  → Seeding user sessions...")
+IO.puts("→ Seeding user sessions...")
 
 session_occurrences = Repo.all(SessionOccurrence)
 users = Repo.all(User)
