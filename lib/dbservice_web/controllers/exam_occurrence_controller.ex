@@ -80,23 +80,10 @@ defmodule DbserviceWeb.ExamOccurrenceController do
     response(422, "Unprocessable Entity")
   end
 
-  def create(conn, %{"exam_occurrence" => exam_occurrence_params}) do
-    case Exams.create_exam_occurrence(exam_occurrence_params) do
-      {:ok, exam_occurrence} ->
-        conn
-        |> put_status(:created)
-        |> render(:show, exam_occurrence: exam_occurrence)
-
-      {:error, changeset} ->
-        conn
-        |> put_status(:unprocessable_entity)
-        |> put_view(DbserviceWeb.ChangesetJSON)
-        |> render(:error, changeset: changeset)
-    end
-  end
-
-  # Handle direct parameters (for Swagger/API calls without nested structure)
-  def create(conn, exam_occurrence_params) when is_map(exam_occurrence_params) do
+  def create(conn, params) do
+    # Extract exam_occurrence parameters - handle both nested and direct parameter formats
+    exam_occurrence_params = params["exam_occurrence"] || params
+    
     case Exams.create_exam_occurrence(exam_occurrence_params) do
       {:ok, exam_occurrence} ->
         conn
@@ -127,26 +114,10 @@ defmodule DbserviceWeb.ExamOccurrenceController do
     response(422, "Unprocessable Entity")
   end
 
-  def update(conn, %{"id" => id, "exam_occurrence" => exam_occurrence_params}) do
-    exam_occurrence = Exams.get_exam_occurrence!(id)
-
-    case Exams.update_exam_occurrence(exam_occurrence, exam_occurrence_params) do
-      {:ok, exam_occurrence} ->
-        render(conn, :show, exam_occurrence: exam_occurrence)
-
-      {:error, changeset} ->
-        conn
-        |> put_status(:unprocessable_entity)
-        |> put_view(DbserviceWeb.ChangesetJSON)
-        |> render(:error, changeset: changeset)
-    end
-  end
-
-  # Handle direct parameters (for Swagger/API calls without nested structure)
   def update(conn, %{"id" => id} = params) do
+    # Extract exam_occurrence parameters - handle both nested and direct parameter formats
+    exam_occurrence_params = params["exam_occurrence"] || Map.delete(params, "id")
     exam_occurrence = Exams.get_exam_occurrence!(id)
-    # Remove the id from params to get just the exam_occurrence attributes
-    exam_occurrence_params = Map.delete(params, "id")
 
     case Exams.update_exam_occurrence(exam_occurrence, exam_occurrence_params) do
       {:ok, exam_occurrence} ->
