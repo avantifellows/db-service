@@ -71,41 +71,44 @@ defmodule DbserviceWeb.BranchController do
     post("/api/branch")
 
     parameters do
-      branch(:body, Schema.ref(:Branch), "The branch to create", required: true)
+      branch(:body, Schema.ref(:Branch), "The branch to create or update", required: true)
     end
 
     response(201, "Created", Schema.ref(:Branch))
+    response(200, "Updated (if branch_id already exists)", Schema.ref(:Branch))
     response(422, "Unprocessable Entity")
   end
 
   def create(conn, %{"branch" => branch_params}) do
-    case Branches.create_branch(branch_params) do
-      {:ok, branch} ->
-        conn
-        |> put_status(:created)
-        |> render(:show, branch: branch)
+    case branch_params["branch_id"] do
+      nil ->
+        create_new_branch(conn, branch_params)
 
-      {:error, changeset} ->
-        conn
-        |> put_status(:unprocessable_entity)
-        |> put_view(DbserviceWeb.ChangesetJSON)
-        |> render(:error, changeset: changeset)
+      branch_id ->
+        case Branches.get_branch_by_branch_id(branch_id) do
+          nil ->
+            create_new_branch(conn, branch_params)
+
+          existing_branch ->
+            update_existing_branch(conn, existing_branch, branch_params)
+        end
     end
   end
 
   # Handle direct parameters
   def create(conn, branch_params) when is_map(branch_params) do
-    case Branches.create_branch(branch_params) do
-      {:ok, branch} ->
-        conn
-        |> put_status(:created)
-        |> render(:show, branch: branch)
+    case branch_params["branch_id"] do
+      nil ->
+        create_new_branch(conn, branch_params)
 
-      {:error, changeset} ->
-        conn
-        |> put_status(:unprocessable_entity)
-        |> put_view(DbserviceWeb.ChangesetJSON)
-        |> render(:error, changeset: changeset)
+      branch_id ->
+        case Branches.get_branch_by_branch_id(branch_id) do
+          nil ->
+            create_new_branch(conn, branch_params)
+
+          existing_branch ->
+            update_existing_branch(conn, existing_branch, branch_params)
+        end
     end
   end
 
@@ -170,5 +173,35 @@ defmodule DbserviceWeb.BranchController do
     {:ok, _branch} = Branches.delete_branch(branch)
 
     send_resp(conn, :no_content, "")
+  end
+
+  defp create_new_branch(conn, branch_params) do
+    case Branches.create_branch(branch_params) do
+      {:ok, branch} ->
+        conn
+        |> put_status(:created)
+        |> render(:show, branch: branch)
+
+      {:error, changeset} ->
+        conn
+        |> put_status(:unprocessable_entity)
+        |> put_view(DbserviceWeb.ChangesetJSON)
+        |> render(:error, changeset: changeset)
+    end
+  end
+
+  defp update_existing_branch(conn, existing_branch, branch_params) do
+    case Branches.update_branch(existing_branch, branch_params) do
+      {:ok, branch} ->
+        conn
+        |> put_status(:ok)
+        |> render(:show, branch: branch)
+
+      {:error, changeset} ->
+        conn
+        |> put_status(:unprocessable_entity)
+        |> put_view(DbserviceWeb.ChangesetJSON)
+        |> render(:error, changeset: changeset)
+    end
   end
 end
