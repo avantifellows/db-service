@@ -79,24 +79,10 @@ defmodule DbserviceWeb.BranchController do
     response(422, "Unprocessable Entity")
   end
 
-  def create(conn, %{"branch" => branch_params}) do
-    case branch_params["branch_id"] do
-      nil ->
-        create_new_branch(conn, branch_params)
+  def create(conn, params) do
+    # Extract branch parameters - handle both nested and direct parameter formats
+    branch_params = params["branch"] || params
 
-      branch_id ->
-        case Branches.get_branch_by_branch_id(branch_id) do
-          nil ->
-            create_new_branch(conn, branch_params)
-
-          existing_branch ->
-            update_existing_branch(conn, existing_branch, branch_params)
-        end
-    end
-  end
-
-  # Handle direct parameters
-  def create(conn, branch_params) when is_map(branch_params) do
     case branch_params["branch_id"] do
       nil ->
         create_new_branch(conn, branch_params)
@@ -125,25 +111,10 @@ defmodule DbserviceWeb.BranchController do
     response(422, "Unprocessable Entity")
   end
 
-  def update(conn, %{"id" => id, "branch" => branch_params}) do
-    branch = Branches.get_branch!(id)
-
-    case Branches.update_branch(branch, branch_params) do
-      {:ok, branch} ->
-        render(conn, :show, branch: branch)
-
-      {:error, changeset} ->
-        conn
-        |> put_status(:unprocessable_entity)
-        |> put_view(DbserviceWeb.ChangesetJSON)
-        |> render(:error, changeset: changeset)
-    end
-  end
-
-  # Handle direct parameters
   def update(conn, %{"id" => id} = params) do
+    # Extract branch parameters - handle both nested and direct parameter formats
+    branch_params = params["branch"] || Map.delete(params, "id")
     branch = Branches.get_branch!(id)
-    branch_params = Map.delete(params, "id")
 
     case Branches.update_branch(branch, branch_params) do
       {:ok, branch} ->
