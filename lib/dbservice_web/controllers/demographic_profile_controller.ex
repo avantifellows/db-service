@@ -86,7 +86,7 @@ defmodule DbserviceWeb.DemographicProfileController do
   def create(conn, params) do
     # Extract demographic_profile parameters - handle both nested and direct parameter formats
     demographic_profile_params = params["demographic_profile"] || params
-    
+
     case Demographics.create_demographic_profile(demographic_profile_params) do
       {:ok, demographic_profile} ->
         conn
