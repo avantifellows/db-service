@@ -23,7 +23,7 @@ defmodule DbserviceWeb.DemographicProfileController do
     get("/api/demographic_profile")
 
     parameters do
-      category_id(:query, :integer, "The category ID", required: false)
+      category(:query, :string, "The category", required: false)
       gender(:query, :string, "Gender", required: false)
     end
 
@@ -83,23 +83,10 @@ defmodule DbserviceWeb.DemographicProfileController do
     response(422, "Unprocessable Entity")
   end
 
-  def create(conn, %{"demographic_profile" => demographic_profile_params}) do
-    case Demographics.create_demographic_profile(demographic_profile_params) do
-      {:ok, demographic_profile} ->
-        conn
-        |> put_status(:created)
-        |> render(:show, demographic_profile: demographic_profile)
-
-      {:error, changeset} ->
-        conn
-        |> put_status(:unprocessable_entity)
-        |> put_view(DbserviceWeb.ChangesetJSON)
-        |> render(:error, changeset: changeset)
-    end
-  end
-
-  # Handle direct parameters (for Swagger/API calls without nested structure)
-  def create(conn, demographic_profile_params) when is_map(demographic_profile_params) do
+  def create(conn, params) do
+    # Extract demographic_profile parameters - handle both nested and direct parameter formats
+    demographic_profile_params = params["demographic_profile"] || params
+    
     case Demographics.create_demographic_profile(demographic_profile_params) do
       {:ok, demographic_profile} ->
         conn
@@ -133,26 +120,10 @@ defmodule DbserviceWeb.DemographicProfileController do
     response(422, "Unprocessable Entity")
   end
 
-  def update(conn, %{"id" => id, "demographic_profile" => demographic_profile_params}) do
-    demographic_profile = Demographics.get_demographic_profile!(id)
-
-    case Demographics.update_demographic_profile(demographic_profile, demographic_profile_params) do
-      {:ok, demographic_profile} ->
-        render(conn, :show, demographic_profile: demographic_profile)
-
-      {:error, changeset} ->
-        conn
-        |> put_status(:unprocessable_entity)
-        |> put_view(DbserviceWeb.ChangesetJSON)
-        |> render(:error, changeset: changeset)
-    end
-  end
-
-  # Handle direct parameters (for Swagger/API calls without nested structure)
   def update(conn, %{"id" => id} = params) do
+    # Extract demographic_profile parameters - handle both nested and direct parameter formats
+    demographic_profile_params = params["demographic_profile"] || Map.delete(params, "id")
     demographic_profile = Demographics.get_demographic_profile!(id)
-    # Remove the id from params to get just the demographic_profile attributes
-    demographic_profile_params = Map.delete(params, "id")
 
     case Demographics.update_demographic_profile(demographic_profile, demographic_profile_params) do
       {:ok, demographic_profile} ->
