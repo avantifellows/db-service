@@ -81,23 +81,10 @@ defmodule DbserviceWeb.CutoffController do
     response(422, "Unprocessable Entity")
   end
 
-  def create(conn, %{"cutoff" => cutoff_params}) do
-    case Cutoffs.create_cutoff(cutoff_params) do
-      {:ok, cutoff} ->
-        conn
-        |> put_status(:created)
-        |> render(:show, cutoff: cutoff)
-
-      {:error, changeset} ->
-        conn
-        |> put_status(:unprocessable_entity)
-        |> put_view(DbserviceWeb.ChangesetJSON)
-        |> render(:error, changeset: changeset)
-    end
-  end
-
-  # Handle direct parameters
-  def create(conn, cutoff_params) when is_map(cutoff_params) do
+  def create(conn, params) do
+    # Extract cutoff parameters - handle both nested and direct parameter formats
+    cutoff_params = params["cutoff"] || params
+    
     case Cutoffs.create_cutoff(cutoff_params) do
       {:ok, cutoff} ->
         conn
@@ -125,25 +112,10 @@ defmodule DbserviceWeb.CutoffController do
     response(422, "Unprocessable Entity")
   end
 
-  def update(conn, %{"id" => id, "cutoff" => cutoff_params}) do
-    cutoff = Cutoffs.get_cutoff!(id)
-
-    case Cutoffs.update_cutoff(cutoff, cutoff_params) do
-      {:ok, cutoff} ->
-        render(conn, :show, cutoff: cutoff)
-
-      {:error, changeset} ->
-        conn
-        |> put_status(:unprocessable_entity)
-        |> put_view(DbserviceWeb.ChangesetJSON)
-        |> render(:error, changeset: changeset)
-    end
-  end
-
-  # Handle direct parameters
   def update(conn, %{"id" => id} = params) do
+    # Extract cutoff parameters - handle both nested and direct parameter formats
+    cutoff_params = params["cutoff"] || Map.delete(params, "id")
     cutoff = Cutoffs.get_cutoff!(id)
-    cutoff_params = Map.delete(params, "id")
 
     case Cutoffs.update_cutoff(cutoff, cutoff_params) do
       {:ok, cutoff} ->
