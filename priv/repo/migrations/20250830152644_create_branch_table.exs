@@ -11,8 +11,6 @@ defmodule Dbservice.Repo.Migrations.CreateBranchTable do
       timestamps()
     end
 
-    create unique_index(:branch, [:branch_id])
     create index(:branch, [:name])
-    create index(:branch, [:parent_branch])
   end
 end
