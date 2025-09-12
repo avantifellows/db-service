@@ -74,17 +74,29 @@ defmodule DbserviceWeb.EnrollmentRecordController do
   end
 
   def create(conn, params) do
-    case EnrollmentRecords.get_enrollment_record_by_params(
-           params["user_id"],
-           params["group_id"],
-           params["group_type"],
-           params["academic_year"]
-         ) do
-      nil ->
-        create_new_enrollment_record(conn, params)
+    required = ["user_id", "group_id", "group_type", "academic_year"]
 
-      existing_enrollment_record ->
-        update_existing_enrollment_record(conn, existing_enrollment_record, params)
+    missing =
+      required
+      |> Enum.filter(fn k -> not Map.has_key?(params, k) or params[k] in [nil, ""] end)
+
+    if missing != [] do
+      conn
+      |> put_status(422)
+      |> json(%{error: "missing required parameter(s)", missing: missing})
+    else
+      case EnrollmentRecords.get_enrollment_record_by_params(
+             params["user_id"],
+             params["group_id"],
+             params["group_type"],
+             params["academic_year"]
+           ) do
+        nil ->
+          create_new_enrollment_record(conn, params)
+
+        existing_enrollment_record ->
+          update_existing_enrollment_record(conn, existing_enrollment_record, params)
+      end
     end
   end
 

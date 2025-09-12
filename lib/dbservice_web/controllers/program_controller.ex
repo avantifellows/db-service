@@ -63,12 +63,20 @@ defmodule DbserviceWeb.ProgramController do
   end
 
   def create(conn, params) do
-    case Programs.get_program_by_name(params["name"]) do
-      nil ->
-        create_new_program(conn, params)
+    name = params["name"]
 
-      existing_program ->
-        update_existing_program(conn, existing_program, params)
+    if is_nil(name) do
+      conn
+      |> put_status(:bad_request)
+      |> json(%{error: "Program name is required"})
+    else
+      case Programs.get_program_by_name(name) do
+        nil ->
+          create_new_program(conn, params)
+
+        existing_program ->
+          update_existing_program(conn, existing_program, params)
+      end
     end
   end
 

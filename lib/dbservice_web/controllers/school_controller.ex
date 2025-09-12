@@ -74,12 +74,20 @@ defmodule DbserviceWeb.SchoolController do
   end
 
   def create(conn, params) do
-    case Schools.get_school_by_code(params["code"]) do
-      nil ->
-        create_new_school(conn, params)
+    code = params["code"]
 
-      existing_school ->
-        update_existing_school(conn, existing_school, params)
+    if is_nil(code) do
+      conn
+      |> put_status(422)
+      |> json(%{error: "School code is required"})
+    else
+      case Schools.get_school_by_code(code) do
+        nil ->
+          create_new_school(conn, params)
+
+        existing_school ->
+          update_existing_school(conn, existing_school, params)
+      end
     end
   end
 
@@ -154,12 +162,20 @@ defmodule DbserviceWeb.SchoolController do
   end
 
   def create_school_with_user(conn, params) do
-    case Schools.get_school_by_code(params["code"]) do
-      nil ->
-        create_school_and_user(conn, params)
+    code = params["code"]
 
-      existing_school ->
-        update_existing_school_with_user(conn, existing_school, params)
+    if is_nil(code) do
+      conn
+      |> put_status(:bad_request)
+      |> json(%{error: "School code is required"})
+    else
+      case Schools.get_school_by_code(params["code"]) do
+        nil ->
+          create_school_and_user(conn, params)
+
+        existing_school ->
+          update_existing_school_with_user(conn, existing_school, params)
+      end
     end
   end
 

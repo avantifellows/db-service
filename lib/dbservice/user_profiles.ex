@@ -229,7 +229,7 @@ defmodule Dbservice.Profiles do
     with {:ok, %UserProfile{} = user_profile} <- Profiles.create_user_profile(attrs),
          {:ok, %StudentProfile{} = student_profile} <-
            Profiles.create_student_profile(
-             Map.merge(attrs, %{"user_profile_id" => user_profile.id})
+             Map.merge(stringify_keys(attrs), %{"user_profile_id" => user_profile.id})
            ) do
       {:ok, student_profile}
     end
@@ -255,7 +255,7 @@ defmodule Dbservice.Profiles do
          {:ok, %StudentProfile{} = student_profile} <-
            Profiles.update_student_profile(
              student_profile,
-             Map.merge(attrs, %{"user_profile_id" => user_profile.id})
+             Map.merge(stringify_keys(attrs), %{"user_profile_id" => user_profile.id})
            ) do
       {:ok, student_profile}
     end
@@ -388,7 +388,7 @@ defmodule Dbservice.Profiles do
     with {:ok, %UserProfile{} = user_profile} <- Profiles.create_user_profile(attrs),
          {:ok, %TeacherProfile{} = teacher_profile} <-
            Profiles.create_teacher_profile(
-             Map.merge(attrs, %{"user_profile_id" => user_profile.id})
+             Map.merge(stringify_keys(attrs), %{"user_profile_id" => user_profile.id})
            ) do
       {:ok, teacher_profile}
     end
@@ -414,7 +414,7 @@ defmodule Dbservice.Profiles do
          {:ok, %TeacherProfile{} = teacher_profile} <-
            Profiles.update_teacher_profile(
              teacher_profile,
-             Map.merge(attrs, %{"user_profile_id" => user_profile.id})
+             Map.merge(stringify_keys(attrs), %{"user_profile_id" => user_profile.id})
            ) do
       {:ok, teacher_profile}
     end
@@ -431,5 +431,11 @@ defmodule Dbservice.Profiles do
   """
   def change_teacher_profile(%TeacherProfile{} = teacher_profile, attrs \\ %{}) do
     TeacherProfile.changeset(teacher_profile, attrs)
+  end
+
+  defp stringify_keys(map) do
+    map
+    |> Enum.map(fn {key, value} -> {to_string(key), value} end)
+    |> Enum.into(%{})
   end
 end

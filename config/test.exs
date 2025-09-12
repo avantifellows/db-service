@@ -28,3 +28,6 @@ config :logger, level: :warn
 
 # Initialize plugs at runtime for faster test compilation
 config :phoenix, :plug_init_mode, :runtime
+
+# Disable Oban queues and plugins during tests to avoid DB usage
+config :dbservice, Oban, testing: :manual, queues: false, plugins: false

@@ -3,39 +3,22 @@ defmodule DbserviceWeb.TeacherControllerTest do
 
   import Dbservice.UsersFixtures
 
-  alias Dbservice.Users.Teacher
-
   @create_attrs %{
     designation: "some designation",
-    grade: "some grade",
-    subject: "some subject",
-    uuid: "some uuid"
+    teacher_id: "some teacher id",
+    is_af_teacher: false
   }
   @update_attrs %{
     designation: "some updated designation",
-    grade: "some updated grade",
-    subject: "some updated subject",
-    uuid: "some updated uuid"
+    teacher_id: "some updated teacher id",
+    is_af_teacher: true
   }
   @invalid_attrs %{
     designation: nil,
-    grade: nil,
-    subject: nil,
-    uuid: nil,
-    user_id: nil,
-    school_id: nil,
-    program_manager_id: nil
+    teacher_id: nil,
+    is_af_teacher: nil,
+    user_id: nil
   }
-  @valid_fields [
-    "designation",
-    "grade",
-    "id",
-    "program_manager_id",
-    "school_id",
-    "subject",
-    "user",
-    "uuid"
-  ]
 
   setup %{conn: conn} do
     {:ok, conn: put_req_header(conn, "accept", "application/json")}
@@ -43,52 +26,68 @@ defmodule DbserviceWeb.TeacherControllerTest do
 
   describe "index" do
     test "lists all teacher", %{conn: conn} do
-      conn = get(conn, Routes.teacher_path(conn, :index))
-      [head | _tail] = json_response(conn, 200)
-      assert Map.keys(head) == @valid_fields
+      {_user, teacher} = teacher_fixture()
+      conn = get(conn, ~p"/api/teacher")
+      resp = json_response(conn, 200)
+      assert is_list(resp)
+      [head | _] = resp
+      assert head["id"] == teacher.id
     end
   end
 
   describe "create teacher" do
     test "renders teacher when data is valid", %{conn: conn} do
-      conn = post(conn, Routes.teacher_path(conn, :create), get_ids_create_attrs())
+      user = user_fixture()
+      attrs = Map.put(@create_attrs, :user_id, user.id)
+
+      conn = post(conn, ~p"/api/teacher", attrs)
       %{"id" => id} = json_response(conn, 201)
 
-      conn = get(conn, Routes.teacher_path(conn, :show, id))
+      conn = get(conn, ~p"/api/teacher/#{id}")
 
       assert %{
                "id" => ^id,
                "designation" => "some designation",
-               "grade" => "some grade",
-               "subject" => "some subject"
+               "teacher_id" => "some teacher id"
              } = json_response(conn, 200)
     end
 
     test "renders errors when data is invalid", %{conn: conn} do
-      conn = post(conn, Routes.teacher_path(conn, :create), teacher: @invalid_attrs)
+      conn = post(conn, ~p"/api/teacher", @invalid_attrs)
       assert json_response(conn, 422)["errors"] != %{}
+    end
+  end
+
+  describe "show teacher" do
+    setup [:create_teacher]
+
+    test "shows chosen teacher", %{conn: conn, teacher: teacher} do
+      conn = get(conn, ~p"/api/teacher/#{teacher.id}")
+      assert json_response(conn, 200)["id"] == teacher.id
     end
   end
 
   describe "update teacher" do
     setup [:create_teacher]
 
-    test "renders teacher when data is valid", %{conn: conn, teacher: %Teacher{id: id} = teacher} do
-      conn = put(conn, Routes.teacher_path(conn, :update, teacher), get_ids_update_attrs())
-      %{"id" => ^id} = json_response(conn, 200)
+    test "renders teacher when data is valid", %{conn: conn, teacher: teacher} do
+      user = user_fixture()
+      attrs = Map.put(@update_attrs, :user_id, user.id)
 
-      conn = get(conn, Routes.teacher_path(conn, :show, id))
+      conn = put(conn, ~p"/api/teacher/#{teacher.id}", attrs)
+      %{"id" => id} = json_response(conn, 200)
+
+      conn = get(conn, ~p"/api/teacher/#{id}")
 
       assert %{
                "id" => ^id,
                "designation" => "some updated designation",
-               "grade" => "some updated grade",
-               "subject" => "some updated subject"
+               "teacher_id" => "some updated teacher id"
              } = json_response(conn, 200)
     end
 
     test "renders errors when data is invalid", %{conn: conn, teacher: teacher} do
-      conn = put(conn, Routes.teacher_path(conn, :update, teacher), @invalid_attrs)
+      conn = put(conn, ~p"/api/teacher/#{teacher.id}", @invalid_attrs)
       assert json_response(conn, 422)["errors"] != %{}
     end
   end
@@ -97,43 +96,17 @@ defmodule DbserviceWeb.TeacherControllerTest do
     setup [:create_teacher]
 
     test "deletes chosen teacher", %{conn: conn, teacher: teacher} do
-      conn = delete(conn, Routes.teacher_path(conn, :delete, teacher))
+      conn = delete(conn, ~p"/api/teacher/#{teacher.id}")
       assert response(conn, 204)
 
-      assert_error_sent 404, fn ->
-        get(conn, Routes.teacher_path(conn, :show, teacher))
-      end
+      # Verify teacher is actually deleted
+      conn = get(conn, ~p"/api/teacher/#{teacher.id}")
+      assert json_response(conn, 404)["errors"] != %{}
     end
   end
 
   defp create_teacher(_) do
-    teacher = teacher_fixture()
+    {_user, teacher} = teacher_fixture()
     %{teacher: teacher}
-  end
-
-  defp get_ids_create_attrs do
-    teacher_fixture = teacher_fixture()
-    user_id = teacher_fixture.user_id
-    school_id = teacher_fixture.school_id
-    program_manager_id = teacher_fixture.program_manager_id
-
-    Map.merge(@create_attrs, %{
-      user_id: user_id,
-      school_id: school_id,
-      program_manager_id: program_manager_id
-    })
-  end
-
-  defp get_ids_update_attrs do
-    teacher_fixture = teacher_fixture()
-    user_id = teacher_fixture.user_id
-    school_id = teacher_fixture.school_id
-    program_manager_id = teacher_fixture.program_manager_id
-
-    Map.merge(@update_attrs, %{
-      user_id: user_id,
-      school_id: school_id,
-      program_manager_id: program_manager_id
-    })
   end
 end
