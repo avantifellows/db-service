@@ -23,18 +23,22 @@ defmodule Dbservice.DataImport.BatchMovement do
          "Student not found. student_id: #{record["student_id"]}, apaar_id: #{record["apaar_id"]}"}
 
       student ->
-        case BatchEnrollmentService.get_batch_info(record["batch_id"]) do
-          nil ->
-            {:error, "Batch not found with ID: #{record["batch_id"]}"}
+        process_student_with_batch(student, record)
+    end
+  end
 
-          {batch_group_id, batch_id, batch_group_type} ->
-            case handle_batch_movement(
-                   student,
-                   {batch_group_id, batch_id, batch_group_type},
-                   record
-                 ) do
-              {:ok, _} -> {:ok, "Batch movement processed successfully"}
-            end
+  defp process_student_with_batch(student, record) do
+    case BatchEnrollmentService.get_batch_info(record["batch_id"]) do
+      nil ->
+        {:error, "Batch not found with ID: #{record["batch_id"]}"}
+
+      {batch_group_id, batch_id, batch_group_type} ->
+        case handle_batch_movement(
+               student,
+               {batch_group_id, batch_id, batch_group_type},
+               record
+             ) do
+          {:ok, _} -> {:ok, "Batch movement processed successfully"}
         end
     end
   end
