@@ -20,8 +20,6 @@ defmodule Dbservice.Sessions.SessionOccurrence do
 
   @doc false
   def changeset(session_occurrence, attrs) do
-    IO.inspect(attrs, label: "Attrs in session_occurrence changeset")
-
     session_occurrence
     |> cast(attrs, [:session_id, :start_time, :end_time, :session_fk])
     |> validate_required([:session_id])

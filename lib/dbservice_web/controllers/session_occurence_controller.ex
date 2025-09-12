@@ -97,8 +97,6 @@ defmodule DbserviceWeb.SessionOccurrenceController do
   end
 
   def create(conn, params) do
-    IO.inspect(params, label: "Params in session_occurrence test")
-
     with {:ok, %SessionOccurrence{} = session_occurrence} <-
            Sessions.create_session_occurrence(params) do
       conn

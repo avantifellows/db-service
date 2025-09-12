@@ -46,10 +46,9 @@ defmodule DbserviceWeb.SessionOccurrenceControllerTest do
   describe "create session_occurrence" do
     test "renders session_occurrence when data is valid", %{conn: conn} do
       session = session_fixture()
-      IO.inspect(session, label: "Session in session_occurrence test")
+
       attrs = Map.put(@create_attrs, :session_id, session.session_id)
       attrs = Map.put(attrs, :session_fk, session.id)
-      IO.inspect(attrs, label: "Session Occurrence Attributes")
 
       conn = post(conn, ~p"/api/session-occurrence", attrs)
 

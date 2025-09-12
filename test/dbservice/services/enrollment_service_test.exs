@@ -76,7 +76,6 @@ defmodule Dbservice.Services.EnrollmentServiceTest do
       }
 
       result = EnrollmentService.process_enrollment(enrollment_data)
-      IO.inspect(result, label: "Grade Enrollment Result")
 
       assert {:error, error_msg} = result
 
