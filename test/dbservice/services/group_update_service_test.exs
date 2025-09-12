@@ -96,7 +96,7 @@ defmodule Dbservice.Services.GroupUpdateServiceTest do
       params = %{
         "user_id" => user.id,
         # Non-existent group ID
-        "group_id" => 99999,
+        "group_id" => 99_999,
         "type" => "school"
       }
 

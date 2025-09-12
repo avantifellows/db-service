@@ -126,7 +126,7 @@ defmodule Dbservice.DataImport.ImportWorkerTest do
     end
 
     test "fails gracefully with non-existent import" do
-      job = %Oban.Job{args: %{"id" => 99999}}
+      job = %Oban.Job{args: %{"id" => 99_999}}
 
       assert_raise Ecto.NoResultsError, fn ->
         perform_job(ImportWorker, job.args)

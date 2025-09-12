@@ -89,7 +89,7 @@ defmodule Dbservice.DataImport.TeacherEnrollmentTest do
       params = %{
         "batch_id" => batch.batch_id,
         # Invalid grade ID
-        "grade_id" => 99999,
+        "grade_id" => 99_999,
         "academic_year" => "2023-2024",
         "start_date" => ~D[2023-06-01]
       }
