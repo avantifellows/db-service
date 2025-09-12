@@ -168,7 +168,7 @@ defmodule Dbservice.Services.EnrollmentService do
   Gets the group ID for a grade by grade ID.
   """
   def get_grade_group_id(grade_id) do
-    case Grades.get_grade!(grade_id) do
+    case Grades.get_grade(grade_id) do
       nil ->
         {:error, "Grade not found"}
 

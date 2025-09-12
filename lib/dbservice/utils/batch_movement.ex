@@ -23,18 +23,19 @@ defmodule Dbservice.DataImport.BatchMovement do
          "Student not found. student_id: #{record["student_id"]}, apaar_id: #{record["apaar_id"]}"}
 
       student ->
-        with {batch_group_id, batch_id, batch_group_type} <-
-               BatchEnrollmentService.get_batch_info(record["batch_id"]),
-             {:ok, _} <-
-               handle_batch_movement(
-                 student,
-                 {batch_group_id, batch_id, batch_group_type},
-                 record
-               ) do
-          {:ok, "Batch movement processed successfully"}
-        else
-          {:error, reason} ->
-            {:error, reason}
+        case BatchEnrollmentService.get_batch_info(record["batch_id"]) do
+          nil ->
+            {:error, "Batch not found with ID: #{record["batch_id"]}"}
+
+          {batch_group_id, batch_id, batch_group_type} ->
+            case handle_batch_movement(
+                   student,
+                   {batch_group_id, batch_id, batch_group_type},
+                   record
+                 ) do
+              {:ok, _} -> {:ok, "Batch movement processed successfully"}
+              {:error, reason} -> {:error, reason}
+            end
         end
     end
   end
@@ -119,6 +120,9 @@ defmodule Dbservice.DataImport.BatchMovement do
 
   defp process_grade_change(student, grade, user_id, academic_year, start_date, group_users) do
     case BatchEnrollmentService.get_grade_info(grade) do
+      nil ->
+        :grade_not_found
+
       {grade_group_id, grade_id, grade_group_type} ->
         handle_grade_enrollment_if_changed(
           student,
@@ -130,9 +134,6 @@ defmodule Dbservice.DataImport.BatchMovement do
           start_date,
           group_users
         )
-
-      nil ->
-        :grade_not_found
     end
   end
 

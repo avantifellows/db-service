@@ -86,6 +86,22 @@ defmodule Dbservice.DataImport do
     |> Repo.update()
   end
 
+  def start_import(params) when not is_map_key(params, "sheet_url") do
+    {:error, "URL is required for starting an import"}
+  end
+
+  def start_import(%{"sheet_url" => url}) when url == "" do
+    {:error, "URL cannot be empty"}
+  end
+
+  def start_import(params) when not is_map_key(params, "type") do
+    {:error, "Import type is required"}
+  end
+
+  def start_import(params) when not is_map_key(params, "start_row") do
+    {:error, "Start row is required"}
+  end
+
   def start_import(%{
         "sheet_url" => url,
         "type" => type,

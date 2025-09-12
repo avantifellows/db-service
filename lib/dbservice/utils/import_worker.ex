@@ -23,7 +23,10 @@ defmodule Dbservice.DataImport.ImportWorker do
 
     with {:ok, updated_import} <- initialize_import_processing(import_record),
          {:ok, processor_fn} <- get_record_processor(updated_import.type) do
-      process_import(updated_import, processor_fn)
+      case process_import(updated_import, processor_fn) do
+        {:ok, _processed_records} -> :ok
+        {:error, reason} -> {:error, reason}
+      end
     else
       {:error, reason} -> {:error, reason}
     end
