@@ -34,7 +34,6 @@ defmodule Dbservice.DataImport.BatchMovement do
                    record
                  ) do
               {:ok, _} -> {:ok, "Batch movement processed successfully"}
-              {:error, reason} -> {:error, reason}
             end
         end
     end

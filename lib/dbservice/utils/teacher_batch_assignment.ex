@@ -30,7 +30,6 @@ defmodule Dbservice.DataImport.TeacherBatchAssignment do
                    record
                  ) do
               {:ok, _} -> {:ok, "Teacher batch assignment processed successfully"}
-              {:error, reason} -> {:error, reason}
             end
         end
     end
