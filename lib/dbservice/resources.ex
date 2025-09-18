@@ -375,12 +375,19 @@ defmodule Dbservice.Resources do
     end
 
     # Add new concepts
-    Enum.each(concepts_to_add, fn concept_id ->
-      Dbservice.ResourceConcepts.create_resource_concept(%{
-        resource_id: resource.id,
-        concept_id: concept_id
-      })
-    end)
+    if length(concepts_to_add) > 0 do
+      resource_concepts_to_insert =
+        Enum.map(concepts_to_add, fn concept_id ->
+          %{
+            resource_id: resource.id,
+            concept_id: concept_id,
+            inserted_at: NaiveDateTime.utc_now() |> NaiveDateTime.truncate(:second),
+            updated_at: NaiveDateTime.utc_now() |> NaiveDateTime.truncate(:second)
+          }
+        end)
+
+      Repo.insert_all(ResourceConcept, resource_concepts_to_insert)
+    end
   end
 
   defp update_resource_concepts(_, _), do: :ok
