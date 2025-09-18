@@ -429,8 +429,7 @@ defmodule Dbservice.Resources do
     )
   end
 
-  defp apply_filter({key, value}, query) when key in ["offset", "limit", "lang_code"] do
-    # Skip these - handled elsewhere
+  defp apply_filter({key, _value}, query) when key in ["offset", "limit", "lang_code"] do
     query
   end
 
