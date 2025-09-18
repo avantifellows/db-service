@@ -63,6 +63,19 @@ defmodule DbserviceWeb.ResourceController do
             where: rc.chapter_id == ^value
           )
 
+        {"search", value}, acc when not is_nil(value) and value != "" ->
+          search_term = "%#{value}%"
+
+          from(u in acc,
+            where:
+              ilike(u.code, ^search_term) or
+                fragment(
+                  "EXISTS (SELECT 1 FROM JSONB_ARRAY_ELEMENTS(?) obj WHERE LOWER(obj->>'resource') LIKE LOWER(?))",
+                  u.name,
+                  ^search_term
+                )
+          )
+
         {key, value}, acc ->
           case String.to_existing_atom(key) do
             :offset ->
@@ -72,6 +85,9 @@ defmodule DbserviceWeb.ResourceController do
               acc
 
             :lang_code ->
+              acc
+
+            :search ->
               acc
 
             :name ->
