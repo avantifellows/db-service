@@ -9,6 +9,8 @@ defmodule Dbservice.Resources do
   alias Dbservice.Resources.Resource
   alias Dbservice.Resources.ProblemLanguage
   alias Dbservice.Languages.Language
+  alias Dbservice.{ResourceTopic, ResourceChapter}
+  alias Dbservice.Utils.Util
 
   @doc """
   Returns the list of resource.
@@ -352,4 +354,123 @@ defmodule Dbservice.Resources do
   end
 
   def resolve_tag_id(tag), do: tag
+
+  @doc """
+  Lists resources with optional filtering and pagination.
+
+  ## Examples
+
+      iex> list_resources(%{})
+      [%Resource{}, ...]
+
+      iex> list_resources(%{"search" => "elixir", "limit" => 10})
+      [%Resource{}, ...]
+  """
+  def list_resources(params \\ %{}) do
+    Resource
+    |> build_base_query(params)
+    |> apply_filters(params)
+    |> apply_language_filter(params)
+    |> Repo.all()
+  end
+
+  @doc """
+  Counts resources matching the given filters.
+  """
+  def count_resources(params \\ %{}) do
+    Resource
+    |> apply_filters(params)
+    |> apply_language_filter(params)
+    |> select([r], count(r.id))
+    |> Repo.one()
+  end
+
+  # Private query building functions
+
+  defp build_base_query(queryable, params) do
+    from(r in queryable,
+      order_by: [asc: r.id],
+      offset: ^get_offset(params),
+      limit: ^get_limit(params)
+    )
+  end
+
+  defp apply_filters(query, params) do
+    Enum.reduce(params, query, &apply_filter/2)
+  end
+
+  defp apply_filter({"topic_id", value}, query) when not is_nil(value) do
+    from(r in query,
+      join: rt in ResourceTopic,
+      on: rt.resource_id == r.id,
+      where: rt.topic_id == ^value
+    )
+  end
+
+  defp apply_filter({"chapter_id", value}, query) when not is_nil(value) do
+    from(r in query,
+      join: rc in ResourceChapter,
+      on: rc.resource_id == r.id,
+      where: rc.chapter_id == ^value
+    )
+  end
+
+  defp apply_filter({"search", value}, query) when not is_nil(value) and value != "" do
+    search_term = "%#{value}%"
+
+    from(r in query,
+      where:
+        ilike(r.code, ^search_term) or
+          fragment(
+            "EXISTS (SELECT 1 FROM JSONB_ARRAY_ELEMENTS(?) obj WHERE LOWER(obj->>'resource') LIKE LOWER(?))",
+            r.name,
+            ^search_term
+          )
+    )
+  end
+
+  defp apply_filter({key, value}, query) when key in ["offset", "limit", "lang_code"] do
+    # Skip these - handled elsewhere
+    query
+  end
+
+  defp apply_filter({key, value}, query) do
+    apply_field_filter(query, key, value)
+  end
+
+  defp apply_field_filter(query, "name", value) when not is_nil(value) do
+    from(r in query,
+      where:
+        fragment(
+          "EXISTS (SELECT 1 FROM JSONB_ARRAY_ELEMENTS(?) obj WHERE obj->>'resource' = ?)",
+          r.name,
+          ^value
+        )
+    )
+  end
+
+  defp apply_field_filter(query, "resource_type", value) when not is_nil(value) do
+    from(r in query,
+      where: fragment("?->>'resource_type' = ?", r.type_params, ^value)
+    )
+  end
+
+  defp apply_field_filter(query, key, value) when not is_nil(value) do
+    try do
+      field_atom = String.to_existing_atom(key)
+      from(r in query, where: field(r, ^field_atom) == ^value)
+    rescue
+      # Invalid field, ignore
+      ArgumentError -> query
+    end
+  end
+
+  defp apply_field_filter(query, _key, _value), do: query
+
+  defp apply_language_filter(query, params) do
+    Util.filter_by_lang(query, params)
+  end
+
+  defp get_offset(params), do: params["offset"] || 0
+  defp get_limit(params), do: params["limit"] || 50
 end
