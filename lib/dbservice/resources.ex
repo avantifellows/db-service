@@ -58,13 +58,16 @@ defmodule Dbservice.Resources do
              true <- test_resource.type == "test" do
           problem_ids = extract_problem_ids_from_test(test_resource.type_params)
 
-          # Query for all problems with those IDs, including ALL resource_curriculum data
+          # Query for all problems with those IDs, including ALL resource_curriculum data and chapter data
           problems =
             from(r in Resource,
               where: r.id in ^problem_ids and r.type == "problem",
               preload: [
                 # preload all curriculum mappings
                 :resource_curriculum,
+                # preload chapters via the many_to_many association
+                :chapter,
+                # keyword preload must come last in the list
                 problem_language: ^from(pl in ProblemLanguage, where: pl.lang_id == ^lang_id)
               ]
             )
