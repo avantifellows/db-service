@@ -9,7 +9,7 @@ defmodule Dbservice.Resources do
   alias Dbservice.Resources.Resource
   alias Dbservice.Resources.ProblemLanguage
   alias Dbservice.Languages.Language
-  alias Dbservice.{ResourceTopic, ResourceChapter}
+  alias Dbservice.Resources.{ResourceTopic, ResourceChapter, ResourceConcept}
   alias Dbservice.Utils.Util
 
   @doc """
@@ -303,6 +303,7 @@ defmodule Dbservice.Resources do
 
   defp update_resource_associations(resource, params) do
     update_resource_curriculums(resource, params)
+    update_resource_concepts(resource, params)
 
     if resource.type == "problem" do
       update_problem_language(resource, params)
@@ -354,6 +355,43 @@ defmodule Dbservice.Resources do
   end
 
   def resolve_tag_id(tag), do: tag
+
+  defp update_resource_concepts(resource, %{"concept_ids" => new_concept_ids})
+       when is_list(new_concept_ids) do
+    # Get current concept IDs
+    current_concept_ids =
+      from(rc in ResourceConcept, where: rc.resource_id == ^resource.id, select: rc.concept_id)
+      |> Repo.all()
+
+    # Find concepts to add and remove
+    concepts_to_add = new_concept_ids -- current_concept_ids
+    concepts_to_remove = current_concept_ids -- new_concept_ids
+
+    # Remove concepts
+    if length(concepts_to_remove) > 0 do
+      from(rc in ResourceConcept,
+        where: rc.resource_id == ^resource.id and rc.concept_id in ^concepts_to_remove
+      )
+      |> Repo.delete_all()
+    end
+
+    # Add new concepts
+    if length(concepts_to_add) > 0 do
+      resource_concepts_to_insert =
+        Enum.map(concepts_to_add, fn concept_id ->
+          %{
+            resource_id: resource.id,
+            concept_id: concept_id,
+            inserted_at: NaiveDateTime.utc_now() |> NaiveDateTime.truncate(:second),
+            updated_at: NaiveDateTime.utc_now() |> NaiveDateTime.truncate(:second)
+          }
+        end)
+
+      Repo.insert_all(ResourceConcept, resource_concepts_to_insert)
+    end
+  end
+
+  defp update_resource_concepts(_, _), do: :ok
 
   @doc """
   Lists resources with optional filtering and pagination.
