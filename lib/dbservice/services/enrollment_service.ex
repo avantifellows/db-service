@@ -122,11 +122,11 @@ defmodule Dbservice.Services.EnrollmentService do
   def get_auth_group_id(auth_group_name) do
     case AuthGroups.get_auth_group_by_name(auth_group_name) do
       nil ->
-        {:error, "Auth group not found"}
+        {:error, "Auth group not found with name: #{auth_group_name}"}
 
       auth_group ->
         case Groups.get_group_by_child_id_and_type(auth_group.id, "auth_group") do
-          nil -> {:error, "Auth group not found"}
+          nil -> {:error, "Auth group not found with name: #{auth_group_name}"}
           group -> group.id
         end
     end
@@ -138,11 +138,11 @@ defmodule Dbservice.Services.EnrollmentService do
   def get_school_group_id(school_code) do
     case Schools.get_school_by_code(school_code) do
       nil ->
-        {:error, "School not found"}
+        {:error, "School not found with code: #{school_code}"}
 
       school ->
         case Groups.get_group_by_child_id_and_type(school.id, "school") do
-          nil -> {:error, "School group not found"}
+          nil -> {:error, "School group not found with code: #{school_code}"}
           group -> group.id
         end
     end
@@ -154,11 +154,11 @@ defmodule Dbservice.Services.EnrollmentService do
   def get_batch_group_id(batch_id) do
     case Batches.get_batch_by_batch_id(batch_id) do
       nil ->
-        {:error, "Batch not found"}
+        {:error, "Batch not found with id: #{batch_id}"}
 
       batch ->
         case Groups.get_group_by_child_id_and_type(batch.id, "batch") do
-          nil -> {:error, "Batch group not found"}
+          nil -> {:error, "Batch group not found with id: #{batch_id}"}
           group -> group.id
         end
     end
@@ -170,11 +170,11 @@ defmodule Dbservice.Services.EnrollmentService do
   def get_grade_group_id(grade_id) do
     case Grades.get_grade(grade_id) do
       nil ->
-        {:error, "Grade not found"}
+        {:error, "Grade not found with id: #{grade_id}"}
 
       grade ->
         case Groups.get_group_by_child_id_and_type(grade.id, "grade") do
-          nil -> {:error, "Grade group not found"}
+          nil -> {:error, "Grade group not found with id: #{grade_id}"}
           group -> group.id
         end
     end
