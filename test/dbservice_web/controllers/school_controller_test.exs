@@ -53,24 +53,6 @@ defmodule DbserviceWeb.SchoolControllerTest do
     board: nil,
     user_id: nil
   }
-  @valid_fields [
-    "af_school_category",
-    "block_code",
-    "block_name",
-    "board",
-    "code",
-    "district",
-    "district_code",
-    "gender_type",
-    "id",
-    "name",
-    "region",
-    "state",
-    "state_code",
-    "udise_code",
-    "user_id",
-    "user"
-  ]
 
   setup %{conn: conn} do
     {:ok, conn: put_req_header(conn, "accept", "application/json")}

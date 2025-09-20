@@ -53,24 +53,6 @@ defmodule DbserviceWeb.UserControllerTest do
     whatsapp_phone: nil,
     date_of_birth: nil
   }
-  @valid_fields [
-    "first_name",
-    "last_name",
-    "address",
-    "city",
-    "country",
-    "date_of_birth",
-    "district",
-    "email",
-    "gender",
-    "id",
-    "phone",
-    "pincode",
-    "region",
-    "role",
-    "state",
-    "whatsapp_phone"
-  ]
 
   describe "index" do
     test "lists all user", %{conn: conn} do

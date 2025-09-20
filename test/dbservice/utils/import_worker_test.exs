@@ -6,7 +6,6 @@ defmodule Dbservice.DataImport.ImportWorkerTest do
   alias Dbservice.DataImport
   alias Dbservice.Users
   import Dbservice.DataImportFixtures
-  import Dbservice.UsersFixtures
 
   setup do
     # Create required entities for the test
@@ -109,7 +108,7 @@ defmodule Dbservice.DataImport.ImportWorkerTest do
       job = %Oban.Job{args: %{"id" => import_record.id}}
 
       # Execute the worker
-      result = perform_job(ImportWorker, job.args)
+      _result = perform_job(ImportWorker, job.args)
 
       # Verify import handled errors
       updated_import = DataImport.get_import!(import_record.id)

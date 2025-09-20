@@ -7,7 +7,6 @@ defmodule Dbservice.Services.EnrollmentServiceTest do
   import Dbservice.AuthGroupsFixtures
   import Dbservice.BatchesFixtures
   import Dbservice.GradesFixtures
-  import Dbservice.EnrollmentRecordFixtures
 
   describe "process_enrollment/1" do
     test "processes auth_group enrollment successfully" do

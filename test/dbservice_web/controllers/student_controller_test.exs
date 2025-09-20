@@ -3,8 +3,6 @@ defmodule DbserviceWeb.StudentControllerTest do
 
   import Dbservice.UsersFixtures
 
-  alias Dbservice.Users.Student
-
   @create_attrs %{
     category: "Gen",
     father_name: "some father_name",
@@ -61,29 +59,6 @@ defmodule DbserviceWeb.StudentControllerTest do
     user_id: nil,
     phone: "invalid phone number"
   }
-  @valid_fields [
-    "category",
-    "contact_hours_per_week",
-    "annual_family_income",
-    "father_education_level",
-    "father_name",
-    "father_phone",
-    "father_profession",
-    "has_internet_access",
-    "id",
-    "is_dropper",
-    "mother_education_level",
-    "mother_name",
-    "mother_phone",
-    "mother_profession",
-    "physically_handicapped",
-    "primary_smartphone_owner",
-    "primary_smartphone_owner_profession",
-    "stream",
-    "student_id",
-    "time_of_device_availability",
-    "user"
-  ]
 
   setup %{conn: conn} do
     {:ok, conn: put_req_header(conn, "accept", "application/json")}

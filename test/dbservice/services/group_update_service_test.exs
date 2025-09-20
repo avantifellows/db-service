@@ -3,10 +3,8 @@ defmodule Dbservice.Services.GroupUpdateServiceTest do
 
   alias Dbservice.Services.GroupUpdateService
   import Dbservice.UsersFixtures
-  import Dbservice.GroupsFixtures
   import Dbservice.BatchesFixtures
   import Dbservice.SchoolsFixtures
-  import Dbservice.EnrollmentRecordFixtures
 
   describe "update_user_group_by_type/1" do
     test "successfully updates school group membership" do
@@ -19,14 +17,14 @@ defmodule Dbservice.Services.GroupUpdateServiceTest do
       new_group = Dbservice.Groups.get_group_by_child_id_and_type(new_school.id, "school")
 
       # Create group user
-      {:ok, group_user} =
+      {:ok, _group_user} =
         Dbservice.GroupUsers.create_group_user(%{
           user_id: user.id,
           group_id: old_group.id
         })
 
       # Create enrollment record
-      {:ok, enrollment_record} =
+      {:ok, _enrollment_record} =
         Dbservice.EnrollmentRecords.create_enrollment_record(%{
           user_id: user.id,
           group_id: old_school.id,
@@ -59,14 +57,14 @@ defmodule Dbservice.Services.GroupUpdateServiceTest do
       new_group = Dbservice.Groups.get_group_by_child_id_and_type(new_batch.id, "batch")
 
       # Create group user
-      {:ok, group_user} =
+      {:ok, _group_user} =
         Dbservice.GroupUsers.create_group_user(%{
           user_id: user.id,
           group_id: old_group.id
         })
 
       # Create enrollment record
-      {:ok, enrollment_record} =
+      {:ok, _enrollment_record} =
         Dbservice.EnrollmentRecords.create_enrollment_record(%{
           user_id: user.id,
           group_id: old_batch.id,
@@ -107,7 +105,7 @@ defmodule Dbservice.Services.GroupUpdateServiceTest do
 
     test "returns error when no group user exists for user and type" do
       user = user_fixture()
-      school = school_fixture()
+      _school = school_fixture()
       new_school = school_fixture()
 
       # Get the group that was automatically created when the new school was created
@@ -134,7 +132,7 @@ defmodule Dbservice.Services.GroupUpdateServiceTest do
       new_group = Dbservice.Groups.get_group_by_child_id_and_type(new_school.id, "school")
 
       # Create group user but no enrollment record
-      {:ok, group_user} =
+      {:ok, _group_user} =
         Dbservice.GroupUsers.create_group_user(%{
           user_id: user.id,
           group_id: old_group.id

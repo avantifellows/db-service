@@ -6,7 +6,7 @@ defmodule Dbservice.Services.StudentUpdateServiceTest do
 
   describe "update_student_by_student_id/2" do
     test "successfully updates student with valid student_id" do
-      {user, student} = student_fixture()
+      {_user, student} = student_fixture()
 
       update_params = %{
         "first_name" => "Updated First Name",
@@ -44,7 +44,7 @@ defmodule Dbservice.Services.StudentUpdateServiceTest do
 
   describe "update_student_with_user_data/2" do
     test "successfully updates student and user data" do
-      {user, student} = student_fixture()
+      {_user, student} = student_fixture()
 
       update_params = %{
         "first_name" => "Updated First Name",

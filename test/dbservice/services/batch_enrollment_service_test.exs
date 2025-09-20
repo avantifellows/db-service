@@ -7,7 +7,6 @@ defmodule Dbservice.Services.BatchEnrollmentServiceTest do
   import Dbservice.UsersFixtures
   import Dbservice.EnrollmentRecordFixtures
   import Dbservice.GradesFixtures
-  import Dbservice.GroupsFixtures
   import Dbservice.SchoolsFixtures
 
   describe "get_batch_info/1" do
@@ -17,7 +16,7 @@ defmodule Dbservice.Services.BatchEnrollmentServiceTest do
       result = BatchEnrollmentService.get_batch_info(batch.batch_id)
 
       assert result != nil
-      {group_id, child_id, group_type} = result
+      {_group_id, child_id, group_type} = result
       assert child_id == batch.id
       assert group_type == "batch"
     end
@@ -161,7 +160,7 @@ defmodule Dbservice.Services.BatchEnrollmentServiceTest do
       result = BatchEnrollmentService.get_grade_info(10)
 
       assert result != nil
-      {group_id, child_id, group_type} = result
+      {_group_id, child_id, group_type} = result
       assert child_id == grade.id
       assert group_type == "grade"
     end
@@ -221,7 +220,7 @@ defmodule Dbservice.Services.BatchEnrollmentServiceTest do
 
   describe "update_student_grade/2" do
     test "successfully updates student grade" do
-      {user, student} = student_fixture()
+      {_user, student} = student_fixture()
       grade = grade_fixture(%{number: 10})
 
       result = BatchEnrollmentService.update_student_grade(student, grade.id)

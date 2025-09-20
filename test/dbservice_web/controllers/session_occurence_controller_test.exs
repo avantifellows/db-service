@@ -20,13 +20,6 @@ defmodule DbserviceWeb.SessionOccurrenceControllerTest do
     start_time: nil,
     session_id: nil
   }
-  @valid_fields [
-    "end_time",
-    "id",
-    "session_fk",
-    "session_id",
-    "start_time"
-  ]
 
   setup %{conn: conn} do
     {:ok, conn: put_req_header(conn, "accept", "application/json")}
