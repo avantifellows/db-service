@@ -29,7 +29,7 @@ defmodule Dbservice.Grades do
       iex> get_grade!(456)
       ** (Ecto.NoResultsError)
   """
-  def get_grade!(id), do: Repo.get!(Grade, id)
+  def get_grade(id), do: Repo.get(Grade, id)
 
   @doc """
   Gets a grade by number.

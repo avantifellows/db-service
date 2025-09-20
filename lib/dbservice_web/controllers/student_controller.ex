@@ -107,12 +107,18 @@ defmodule DbserviceWeb.StudentController do
   end
 
   def create(conn, params) do
-    case Users.get_student_by_student_id(params["student_id"]) do
-      nil ->
-        create_student_with_user(conn, params)
+    student_id = params["student_id"]
 
-      existing_student ->
-        update_existing_student_with_user(conn, existing_student, params)
+    if is_nil(student_id) do
+      create_student_with_user(conn, params)
+    else
+      case Users.get_student_by_student_id(student_id) do
+        nil ->
+          create_student_with_user(conn, params)
+
+        existing_student ->
+          update_existing_student_with_user(conn, existing_student, params)
+      end
     end
   end
 
@@ -127,8 +133,16 @@ defmodule DbserviceWeb.StudentController do
   end
 
   def show(conn, %{"id" => id}) do
-    student = Users.get_student!(id)
-    render(conn, :show, student: student)
+    try do
+      student = Users.get_student!(String.to_integer(id))
+      render(conn, :show, student: student)
+    rescue
+      Ecto.NoResultsError ->
+        conn
+        |> put_status(:not_found)
+        |> put_view(DbserviceWeb.ErrorJSON)
+        |> render(:"404")
+    end
   end
 
   swagger_path :update do
