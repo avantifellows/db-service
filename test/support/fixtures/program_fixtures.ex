@@ -1,26 +1,26 @@
 defmodule Dbservice.ProgramsFixtures do
   @moduledoc """
   This module defines test helpers for creating
-  entities via the `Dbservice.program` context.
+  entities via the `Dbservice.Programs` context.
   """
 
   @doc """
   Generate a program.
   """
   def program_fixture(attrs \\ %{}) do
+    # Create a product first since program belongs_to product
+    product = Dbservice.ProductsFixtures.product_fixture()
+
     {:ok, program} =
       attrs
       |> Enum.into(%{
         name: "some name",
-        type: "some type",
-        sub_type: "some subtype",
-        mode: "some mode",
-        start_date: ~D[2022-04-28],
-        target_outreach: Enum.random(3000..9999),
-        product_used: "some product used",
+        target_outreach: 5000,
         donor: "some donor",
         state: "some state",
-        model: "some model"
+        model: "some model",
+        is_current: true,
+        product_id: product.id
       })
       |> Dbservice.Programs.create_program()
 

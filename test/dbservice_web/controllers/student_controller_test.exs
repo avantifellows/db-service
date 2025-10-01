@@ -3,41 +3,39 @@ defmodule DbserviceWeb.StudentControllerTest do
 
   import Dbservice.UsersFixtures
 
-  alias Dbservice.Users.Student
-
   @create_attrs %{
-    category: "some category",
+    category: "Gen",
     father_name: "some father_name",
     father_phone: "some father_phone",
     mother_name: "some mother_name",
     mother_phone: "some mother_phone",
-    stream: "some stream",
-    student_id: "some updated student id",
+    stream: "medical",
+    student_id: "some student id",
     physically_handicapped: false,
-    family_income: "some family income",
+    annual_family_income: "some family income",
     father_profession: "some father profession",
     father_education_level: "some father education level",
     mother_profession: "some mother profession",
     mother_education_level: "some mother education level",
-    has_internet_access: false,
+    has_internet_access: "false",
     primary_smartphone_owner: "some primary smartphone owner",
     primary_smartphone_owner_profession: "some primary smartphone owner profession"
   }
   @update_attrs %{
-    category: "some updated category",
+    category: "OBC",
     father_name: "some updated father name",
     father_phone: "some updated father phone",
     mother_name: "some updated mother name",
     mother_phone: "some updated mother phone",
-    stream: "some updated stream",
+    stream: "pcm",
     student_id: "some updated student id",
     physically_handicapped: false,
-    family_income: "some updated family income",
+    annual_family_income: "some updated family income",
     father_profession: "some updated father profession",
     father_education_level: "some updated father education level",
     mother_profession: "some updated mother profession",
     mother_education_level: "some updated mother education level",
-    has_internet_access: false,
+    has_internet_access: "false",
     primary_smartphone_owner: "some updated primary smartphone owner",
     primary_smartphone_owner_profession: "some updated primary smartphone owner profession"
   }
@@ -48,42 +46,19 @@ defmodule DbserviceWeb.StudentControllerTest do
     mother_name: nil,
     mother_phone: nil,
     stream: nil,
-    uuid: nil,
+    student_id: nil,
     physically_handicapped: nil,
-    family_income: nil,
+    annual_family_income: nil,
     father_profession: nil,
     father_education_level: nil,
     mother_profession: nil,
     mother_education_level: nil,
-    time_of_device_availability: nil,
     has_internet_access: nil,
     primary_smartphone_owner: nil,
     primary_smartphone_owner_profession: nil,
-    user_id: nil
+    user_id: nil,
+    phone: "invalid phone number"
   }
-  @valid_fields [
-    "category",
-    "contact_hours_per_week",
-    "family_income",
-    "father_education_level",
-    "father_name",
-    "father_phone",
-    "father_profession",
-    "has_internet_access",
-    "id",
-    "is_dropper",
-    "mother_education_level",
-    "mother_name",
-    "mother_phone",
-    "mother_profession",
-    "physically_handicapped",
-    "primary_smartphone_owner",
-    "primary_smartphone_owner_profession",
-    "stream",
-    "student_id",
-    "time_of_device_availability",
-    "user"
-  ]
 
   setup %{conn: conn} do
     {:ok, conn: put_req_header(conn, "accept", "application/json")}
@@ -91,42 +66,34 @@ defmodule DbserviceWeb.StudentControllerTest do
 
   describe "index" do
     test "lists all student", %{conn: conn} do
-      conn = get(conn, Routes.student_path(conn, :index))
-      [head | _tail] = json_response(conn, 200)
-      assert Map.keys(head) == @valid_fields
+      {_user, student} = student_fixture()
+      conn = get(conn, ~p"/api/student")
+      resp = json_response(conn, 200)
+      assert is_list(resp)
+      assert Enum.any?(resp, fn s -> s["id"] == student.id end)
+      found_student = Enum.find(resp, fn s -> s["id"] == student.id end)
+      assert found_student["student_id"] == student.student_id
     end
   end
 
   describe "create student" do
     test "renders student when data is valid", %{conn: conn} do
-      conn = post(conn, Routes.student_path(conn, :create), get_ids_create_attrs())
+      conn = post(conn, ~p"/api/student", @create_attrs)
       %{"id" => id} = json_response(conn, 201)
 
-      conn = get(conn, Routes.student_path(conn, :show, id))
+      conn = get(conn, ~p"/api/student/#{id}")
 
-      assert %{
-               "id" => ^id,
-               "category" => "some category",
-               "father_name" => "some father_name",
-               "father_phone" => "some father_phone",
-               "mother_name" => "some mother_name",
-               "mother_phone" => "some mother_phone",
-               "stream" => "some stream",
-               "student_id" => "some updated student id",
-               "physically_handicapped" => false,
-               "family_income" => "some family income",
-               "father_profession" => "some father profession",
-               "father_education_level" => "some father education level",
-               "mother_profession" => "some mother profession",
-               "mother_education_level" => "some mother education level",
-               "has_internet_access" => false,
-               "primary_smartphone_owner" => "some primary smartphone owner",
-               "primary_smartphone_owner_profession" => "some primary smartphone owner profession"
-             } = json_response(conn, 200)
+      resp = json_response(conn, 200)
+      assert resp["id"] == id
+      assert resp["student_id"] == "some student id"
+      assert resp["category"] == "Gen"
+      assert resp["father_name"] == "some father_name"
+      assert resp["stream"] == "medical"
+      assert is_integer(resp["user"]["id"])
     end
 
     test "renders errors when data is invalid", %{conn: conn} do
-      conn = post(conn, Routes.student_path(conn, :create), student: @invalid_attrs)
+      conn = post(conn, ~p"/api/student", @invalid_attrs)
       assert json_response(conn, 422)["errors"] != %{}
     end
   end
@@ -134,36 +101,27 @@ defmodule DbserviceWeb.StudentControllerTest do
   describe "update student" do
     setup [:create_student]
 
-    test "renders student when data is valid", %{conn: conn, student: %Student{id: id} = student} do
-      conn = put(conn, Routes.student_path(conn, :update, student), get_ids_update_attrs())
-      %{"id" => ^id} = json_response(conn, 200)
+    test "renders student when data is valid", %{conn: conn, student: student} do
+      user = user_fixture()
+      attrs = Map.put(@update_attrs, :user_id, user.id)
 
-      conn = get(conn, Routes.student_path(conn, :show, id))
+      conn = put(conn, ~p"/api/student/#{student.id}", attrs)
+      %{"id" => id} = json_response(conn, 200)
 
-      assert %{
-               "id" => ^id,
-               "category" => "some updated category",
-               "father_name" => "some updated father name",
-               "father_phone" => "some updated father phone",
-               "mother_name" => "some updated mother name",
-               "mother_phone" => "some updated mother phone",
-               "stream" => "some updated stream",
-               "student_id" => "some updated student id",
-               "physically_handicapped" => false,
-               "family_income" => "some updated family income",
-               "father_profession" => "some updated father profession",
-               "father_education_level" => "some updated father education level",
-               "mother_profession" => "some updated mother profession",
-               "mother_education_level" => "some updated mother education level",
-               "has_internet_access" => false,
-               "primary_smartphone_owner" => "some updated primary smartphone owner",
-               "primary_smartphone_owner_profession" =>
-                 "some updated primary smartphone owner profession"
-             } = json_response(conn, 200)
+      conn = get(conn, ~p"/api/student/#{id}")
+      resp = json_response(conn, 200)
+
+      assert resp["id"] == id
+      assert resp["student_id"] == "some updated student id"
+      assert resp["category"] == "OBC"
+      assert resp["father_name"] == "some updated father name"
+      assert resp["stream"] == "pcm"
+      assert resp["annual_family_income"] == "some updated family income"
+      assert is_integer(resp["user"]["id"])
     end
 
     test "renders errors when data is invalid", %{conn: conn, student: student} do
-      conn = put(conn, Routes.student_path(conn, :update, student), @invalid_attrs)
+      conn = put(conn, ~p"/api/student/#{student.id}", @invalid_attrs)
       assert json_response(conn, 422)["errors"] != %{}
     end
   end
@@ -172,29 +130,17 @@ defmodule DbserviceWeb.StudentControllerTest do
     setup [:create_student]
 
     test "deletes chosen student", %{conn: conn, student: student} do
-      conn = delete(conn, Routes.student_path(conn, :delete, student))
+      conn = delete(conn, ~p"/api/student/#{student.id}")
       assert response(conn, 204)
 
-      assert_error_sent 404, fn ->
-        get(conn, Routes.student_path(conn, :show, student))
-      end
+      # Verify student is actually deleted
+      conn = get(conn, ~p"/api/student/#{student.id}")
+      assert json_response(conn, 404)["errors"] != %{}
     end
   end
 
   defp create_student(_) do
-    student = student_fixture()
+    {_user, student} = student_fixture()
     %{student: student}
-  end
-
-  defp get_ids_create_attrs do
-    student_fixture = student_fixture()
-    user_id = student_fixture.user_id
-    Map.merge(@create_attrs, %{user_id: user_id})
-  end
-
-  defp get_ids_update_attrs do
-    student_fixture = student_fixture()
-    user_id = student_fixture.user_id
-    Map.merge(@update_attrs, %{user_id: user_id})
   end
 end

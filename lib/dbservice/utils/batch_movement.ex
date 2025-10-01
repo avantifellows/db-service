@@ -23,18 +23,22 @@ defmodule Dbservice.DataImport.BatchMovement do
          "Student not found. student_id: #{record["student_id"]}, apaar_id: #{record["apaar_id"]}"}
 
       student ->
-        with {batch_group_id, batch_id, batch_group_type} <-
-               BatchEnrollmentService.get_batch_info(record["batch_id"]),
-             {:ok, _} <-
-               handle_batch_movement(
-                 student,
-                 {batch_group_id, batch_id, batch_group_type},
-                 record
-               ) do
-          {:ok, "Batch movement processed successfully"}
-        else
-          {:error, reason} ->
-            {:error, reason}
+        process_student_with_batch(student, record)
+    end
+  end
+
+  defp process_student_with_batch(student, record) do
+    case BatchEnrollmentService.get_batch_info(record["batch_id"]) do
+      nil ->
+        {:error, "Batch not found with ID: #{record["batch_id"]}"}
+
+      {batch_group_id, batch_id, batch_group_type} ->
+        case handle_batch_movement(
+               student,
+               {batch_group_id, batch_id, batch_group_type},
+               record
+             ) do
+          {:ok, _} -> {:ok, "Batch movement processed successfully"}
         end
     end
   end
@@ -101,7 +105,7 @@ defmodule Dbservice.DataImport.BatchMovement do
   end
 
   defp handle_grade_movement(student, record, user_id, academic_year, start_date, group_users) do
-    has_grade = Map.has_key?(record, "grade") && record["grade"] != ""
+    has_grade = Map.has_key?(record, "grade") && record["grade"] != nil && record["grade"] != ""
 
     if has_grade do
       process_grade_change(
@@ -119,6 +123,9 @@ defmodule Dbservice.DataImport.BatchMovement do
 
   defp process_grade_change(student, grade, user_id, academic_year, start_date, group_users) do
     case BatchEnrollmentService.get_grade_info(grade) do
+      nil ->
+        :grade_not_found
+
       {grade_group_id, grade_id, grade_group_type} ->
         handle_grade_enrollment_if_changed(
           student,
@@ -130,9 +137,6 @@ defmodule Dbservice.DataImport.BatchMovement do
           start_date,
           group_users
         )
-
-      nil ->
-        :grade_not_found
     end
   end
 
