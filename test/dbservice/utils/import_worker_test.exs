@@ -275,7 +275,7 @@ defmodule Dbservice.DataImport.ImportWorkerTest do
   defp create_test_grade do
     {:ok, grade} =
       Dbservice.Grades.create_grade(%{
-        number: 11
+        number: 9997
       })
 
     grade

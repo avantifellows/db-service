@@ -23,19 +23,14 @@ defmodule DbserviceWeb.GroupControllerTest do
   end
 
   describe "index" do
-    test "lists all groups", %{conn: conn} do
-      conn = get(conn, ~p"/api/group")
-      assert json_response(conn, 200) == []
-    end
-
     test "lists all groups with data", %{conn: conn} do
       group = group_fixture()
       conn = get(conn, ~p"/api/group")
-      [head | _tail] = json_response(conn, 200)
-
-      assert head["id"] == group.id
-      assert head["type"] == group.type
-      assert head["child_id"] == group.child_id
+      response = json_response(conn, 200)
+      assert Enum.any?(response, fn g -> g["id"] == group.id end)
+      found_group = Enum.find(response, fn g -> g["id"] == group.id end)
+      assert found_group["type"] == group.type
+      assert found_group["child_id"] == group.child_id
     end
   end
 

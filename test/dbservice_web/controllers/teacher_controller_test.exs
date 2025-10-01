@@ -30,8 +30,9 @@ defmodule DbserviceWeb.TeacherControllerTest do
       conn = get(conn, ~p"/api/teacher")
       resp = json_response(conn, 200)
       assert is_list(resp)
-      [head | _] = resp
-      assert head["id"] == teacher.id
+      assert Enum.any?(resp, fn t -> t["id"] == teacher.id end)
+      found_teacher = Enum.find(resp, fn t -> t["id"] == teacher.id end)
+      assert found_teacher["teacher_id"] == teacher.teacher_id
     end
   end
 

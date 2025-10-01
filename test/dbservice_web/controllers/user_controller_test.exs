@@ -59,13 +59,14 @@ defmodule DbserviceWeb.UserControllerTest do
       user = user_fixture()
       conn = get(conn, ~p"/api/user")
 
-      [head | _tail] = json_response(conn, 200)
-      assert head["id"] == user.id
-      assert head["first_name"] == user.first_name
-      assert head["last_name"] == user.last_name
-      assert head["email"] == user.email
-      assert head["phone"] == user.phone
-      assert head["role"] == user.role
+      resp = json_response(conn, 200)
+      assert Enum.any?(resp, fn u -> u["id"] == user.id end)
+      found_user = Enum.find(resp, fn u -> u["id"] == user.id end)
+      assert found_user["first_name"] == user.first_name
+      assert found_user["last_name"] == user.last_name
+      assert found_user["email"] == user.email
+      assert found_user["phone"] == user.phone
+      assert found_user["role"] == user.role
     end
   end
 

@@ -29,10 +29,11 @@ defmodule DbserviceWeb.SessionOccurrenceControllerTest do
     test "lists all session_occurrence and includes newly created one", %{conn: conn} do
       session_occurrence = session_occurrence_fixture()
       conn = get(conn, ~p"/api/session-occurrence")
-      [head | _tail] = json_response(conn, 200)
-      assert head["id"] == session_occurrence.id
-      assert head["start_time"] == DateTime.to_iso8601(session_occurrence.start_time)
-      assert head["end_time"] == DateTime.to_iso8601(session_occurrence.end_time)
+      resp = json_response(conn, 200)
+      assert Enum.any?(resp, fn so -> so["id"] == session_occurrence.id end)
+      found_record = Enum.find(resp, fn so -> so["id"] == session_occurrence.id end)
+      assert found_record["start_time"] == DateTime.to_iso8601(session_occurrence.start_time)
+      assert found_record["end_time"] == DateTime.to_iso8601(session_occurrence.end_time)
     end
   end
 

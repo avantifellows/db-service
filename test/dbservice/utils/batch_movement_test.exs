@@ -9,17 +9,20 @@ defmodule Dbservice.DataImport.BatchMovementTest do
 
   describe "process_batch_movement/1" do
     test "successfully processes batch movement with valid data" do
+      # Clean up any existing enrolled statuses first
+      from(s in Dbservice.Statuses.Status, where: s.title == :enrolled)
+      |> Dbservice.Repo.delete_all()
+
       # Create fixtures
       {_user, student} = student_fixture(%{student_id: "STUDENT001"})
       batch = batch_fixture(%{batch_id: "BATCH001"})
-      grade = grade_fixture(%{number: 10})
       _enrolled_status = status_fixture(%{title: :enrolled})
 
       record = %{
         "student_id" => student.student_id,
         "apaar_id" => nil,
         "batch_id" => batch.batch_id,
-        "grade" => grade.number,
+        "grade" => 10,
         "start_date" => "2024-01-01",
         "academic_year" => "2024-25"
       }
@@ -30,6 +33,10 @@ defmodule Dbservice.DataImport.BatchMovementTest do
     end
 
     test "successfully processes batch movement without grade change" do
+      # Clean up any existing enrolled statuses first
+      from(s in Dbservice.Statuses.Status, where: s.title == :enrolled)
+      |> Dbservice.Repo.delete_all()
+
       # Create fixtures
       {_user, student} = student_fixture(%{student_id: "STUDENT002"})
       batch = batch_fixture(%{batch_id: "BATCH002"})
@@ -39,6 +46,7 @@ defmodule Dbservice.DataImport.BatchMovementTest do
         "student_id" => student.student_id,
         "apaar_id" => nil,
         "batch_id" => batch.batch_id,
+        "grade" => nil,
         "start_date" => "2024-01-01",
         "academic_year" => "2024-25"
       }
@@ -49,6 +57,10 @@ defmodule Dbservice.DataImport.BatchMovementTest do
     end
 
     test "successfully processes batch movement with empty grade" do
+      # Clean up any existing enrolled statuses first
+      from(s in Dbservice.Statuses.Status, where: s.title == :enrolled)
+      |> Dbservice.Repo.delete_all()
+
       # Create fixtures
       {_user, student} = student_fixture(%{student_id: "STUDENT003"})
       batch = batch_fixture(%{batch_id: "BATCH003"})
@@ -85,6 +97,10 @@ defmodule Dbservice.DataImport.BatchMovementTest do
     end
 
     test "returns error when batch is not found" do
+      # Clean up any existing enrolled statuses first
+      from(s in Dbservice.Statuses.Status, where: s.title == :enrolled)
+      |> Dbservice.Repo.delete_all()
+
       # Create fixtures
       {_user, student} = student_fixture(%{student_id: "STUDENT005"})
       _enrolled_status = status_fixture(%{title: :enrolled})
@@ -103,6 +119,10 @@ defmodule Dbservice.DataImport.BatchMovementTest do
     end
 
     test "returns error when grade is not found" do
+      # Clean up any existing enrolled statuses first
+      from(s in Dbservice.Statuses.Status, where: s.title == :enrolled)
+      |> Dbservice.Repo.delete_all()
+
       # Create fixtures
       {_user, student} = student_fixture(%{student_id: "STUDENT006"})
       batch = batch_fixture(%{batch_id: "BATCH006"})
@@ -123,6 +143,10 @@ defmodule Dbservice.DataImport.BatchMovementTest do
     end
 
     test "handles case when student is already enrolled in the batch" do
+      # Clean up any existing enrolled statuses first
+      from(s in Dbservice.Statuses.Status, where: s.title == :enrolled)
+      |> Dbservice.Repo.delete_all()
+
       # Create fixtures
       {_user, student} = student_fixture(%{student_id: "STUDENT007"})
       batch = batch_fixture(%{batch_id: "BATCH007"})
@@ -155,6 +179,10 @@ defmodule Dbservice.DataImport.BatchMovementTest do
     end
 
     test "handles grade change correctly" do
+      # Clean up any existing enrolled statuses first
+      from(s in Dbservice.Statuses.Status, where: s.title == :enrolled)
+      |> Dbservice.Repo.delete_all()
+
       # Create fixtures
       {_user, student} = student_fixture(%{student_id: "STUDENT008"})
       batch = batch_fixture(%{batch_id: "BATCH008"})
@@ -190,6 +218,10 @@ defmodule Dbservice.DataImport.BatchMovementTest do
     end
 
     test "handles missing start_date gracefully" do
+      # Clean up any existing enrolled statuses first
+      from(s in Dbservice.Statuses.Status, where: s.title == :enrolled)
+      |> Dbservice.Repo.delete_all()
+
       # Create fixtures
       {_user, student} = student_fixture(%{student_id: "STUDENT009"})
       batch = batch_fixture(%{batch_id: "BATCH009"})
@@ -208,6 +240,10 @@ defmodule Dbservice.DataImport.BatchMovementTest do
     end
 
     test "handles missing academic_year gracefully" do
+      # Clean up any existing enrolled statuses first
+      from(s in Dbservice.Statuses.Status, where: s.title == :enrolled)
+      |> Dbservice.Repo.delete_all()
+
       # Create fixtures
       {_user, student} = student_fixture(%{student_id: "STUDENT010"})
       batch = batch_fixture(%{batch_id: "BATCH010"})

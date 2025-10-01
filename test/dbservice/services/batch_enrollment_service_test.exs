@@ -30,6 +30,10 @@ defmodule Dbservice.Services.BatchEnrollmentServiceTest do
 
   describe "get_enrolled_status_info/0" do
     test "returns enrolled status info when enrolled status exists" do
+      # Clean up any existing enrolled statuses first
+      from(s in Dbservice.Statuses.Status, where: s.title == :enrolled)
+      |> Dbservice.Repo.delete_all()
+
       # Create an enrolled status
       status = status_fixture(%{title: "enrolled"})
 
@@ -42,7 +46,10 @@ defmodule Dbservice.Services.BatchEnrollmentServiceTest do
     end
 
     test "returns nil when enrolled status does not exist" do
-      # Don't create any status with title "enrolled"
+      # Ensure no enrolled status exists
+      from(s in Dbservice.Statuses.Status, where: s.title == :enrolled)
+      |> Dbservice.Repo.delete_all()
+
       result = BatchEnrollmentService.get_enrolled_status_info()
 
       assert is_nil(result)

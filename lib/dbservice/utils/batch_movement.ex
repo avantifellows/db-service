@@ -105,7 +105,7 @@ defmodule Dbservice.DataImport.BatchMovement do
   end
 
   defp handle_grade_movement(student, record, user_id, academic_year, start_date, group_users) do
-    has_grade = Map.has_key?(record, "grade") && record["grade"] != ""
+    has_grade = Map.has_key?(record, "grade") && record["grade"] != nil && record["grade"] != ""
 
     if has_grade do
       process_grade_change(

@@ -44,10 +44,11 @@ defmodule DbserviceWeb.EnrollmentRecordControllerTest do
     test "lists all enrollment_record", %{conn: conn} do
       enrollment_record = enrollment_record_fixture()
       conn = get(conn, ~p"/api/enrollment-record")
-      [head | _tail] = json_response(conn, 200)
-      assert head["id"] == enrollment_record.id
-      assert head["academic_year"] == enrollment_record.academic_year
-      assert head["start_date"] == Date.to_iso8601(enrollment_record.start_date)
+      resp = json_response(conn, 200)
+      assert Enum.any?(resp, fn er -> er["id"] == enrollment_record.id end)
+      found_record = Enum.find(resp, fn er -> er["id"] == enrollment_record.id end)
+      assert found_record["academic_year"] == enrollment_record.academic_year
+      assert found_record["start_date"] == Date.to_iso8601(enrollment_record.start_date)
     end
   end
 

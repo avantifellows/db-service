@@ -70,8 +70,9 @@ defmodule DbserviceWeb.StudentControllerTest do
       conn = get(conn, ~p"/api/student")
       resp = json_response(conn, 200)
       assert is_list(resp)
-      [head | _] = resp
-      assert head["id"] == student.id
+      assert Enum.any?(resp, fn s -> s["id"] == student.id end)
+      found_student = Enum.find(resp, fn s -> s["id"] == student.id end)
+      assert found_student["student_id"] == student.student_id
     end
   end
 

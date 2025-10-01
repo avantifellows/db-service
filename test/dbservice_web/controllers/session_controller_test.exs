@@ -78,8 +78,14 @@ defmodule DbserviceWeb.SessionControllerTest do
 
   describe "index" do
     test "lists all sessions", %{conn: conn} do
+      session = session_fixture()
       conn = get(conn, ~p"/api/session")
-      assert json_response(conn, 200) == []
+      sessions = json_response(conn, 200)
+      assert is_list(sessions)
+      # Find our fixture session in the response
+      fixture_session = Enum.find(sessions, fn s -> s["id"] == session.id end)
+      assert fixture_session["name"] == session.name
+      assert fixture_session["platform"] == session.platform
     end
 
     test "lists all sessions with data", %{conn: conn} do

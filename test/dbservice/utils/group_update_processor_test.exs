@@ -186,7 +186,7 @@ defmodule Dbservice.DataImport.GroupUpdateProcessorTest do
     test "successfully processes grade update with valid data" do
       # Create fixtures
       {user, student} = student_fixture(%{student_id: "STUDENT001"})
-      grade = grade_fixture(%{number: 10})
+      grade = grade_fixture(%{number: 9998})
 
       # Get existing group for the grade
       grade_group = Dbservice.Groups.get_group_by_child_id_and_type(grade.id, "grade")
@@ -245,7 +245,7 @@ defmodule Dbservice.DataImport.GroupUpdateProcessorTest do
 
     test "returns error when grade group is not found" do
       {_user, student} = student_fixture(%{student_id: "STUDENT001"})
-      grade = grade_fixture(%{number: 10})
+      grade = grade_fixture(%{number: 9999})
 
       record = %{
         "student_id" => student.student_id,

@@ -62,11 +62,12 @@ defmodule DbserviceWeb.SchoolControllerTest do
     test "lists all school", %{conn: conn} do
       school = school_fixture()
       conn = get(conn, ~p"/api/school")
-      [head | _tail] = json_response(conn, 200)
-      assert school.id == head["id"]
-      assert school.code == head["code"]
-      assert school.name == head["name"]
-      assert school.af_school_category == head["af_school_category"]
+      resp = json_response(conn, 200)
+      assert Enum.any?(resp, fn s -> s["id"] == school.id end)
+      found_school = Enum.find(resp, fn s -> s["id"] == school.id end)
+      assert school.code == found_school["code"]
+      assert school.name == found_school["name"]
+      assert school.af_school_category == found_school["af_school_category"]
     end
   end
 

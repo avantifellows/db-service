@@ -105,11 +105,14 @@ defmodule Dbservice.DataImport.TeacherEnrollmentTest do
     test "returns subject ID when subject exists with English name" do
       subject =
         subject_fixture(%{
-          name: [%{lang_code: "en", subject: "Mathematics"}, %{lang_code: "hi", subject: "गणित"}],
+          name: [
+            %{lang_code: "en", subject: "Test Mathematics"},
+            %{lang_code: "hi", subject: "गणित"}
+          ],
           code: "MATH101"
         })
 
-      result = TeacherEnrollment.get_subject_id_by_name("Mathematics")
+      result = TeacherEnrollment.get_subject_id_by_name("Test Mathematics")
 
       assert result == subject.id
     end
@@ -117,11 +120,14 @@ defmodule Dbservice.DataImport.TeacherEnrollmentTest do
     test "returns subject ID when subject exists with case-insensitive match" do
       subject =
         subject_fixture(%{
-          name: [%{lang_code: "en", subject: "Mathematics"}, %{lang_code: "hi", subject: "गणित"}],
-          code: "MATH101"
+          name: [
+            %{lang_code: "en", subject: "Test Mathematics Case"},
+            %{lang_code: "hi", subject: "गणित"}
+          ],
+          code: "MATH102"
         })
 
-      result = TeacherEnrollment.get_subject_id_by_name("mathematics")
+      result = TeacherEnrollment.get_subject_id_by_name("test mathematics case")
 
       assert result == subject.id
     end
@@ -129,11 +135,11 @@ defmodule Dbservice.DataImport.TeacherEnrollmentTest do
     test "returns nil when subject does not exist" do
       # Create a subject but search for a different name
       subject_fixture(%{
-        name: [%{lang_code: "en", subject: "Mathematics"}],
-        code: "MATH101"
+        name: [%{lang_code: "en", subject: "Test Mathematics Unique"}],
+        code: "MATH103"
       })
 
-      result = TeacherEnrollment.get_subject_id_by_name("Physics")
+      result = TeacherEnrollment.get_subject_id_by_name("Nonexistent Physics Subject")
 
       assert result == nil
     end
@@ -161,13 +167,13 @@ defmodule Dbservice.DataImport.TeacherEnrollmentTest do
         subject_fixture(%{
           name: [
             %{lang_code: "hi", subject: "गणित"},
-            %{lang_code: "en", subject: "Mathematics"},
+            %{lang_code: "en", subject: "Test Multi Language"},
             %{lang_code: "te", subject: "గణితం"}
           ],
-          code: "MATH101"
+          code: "MATH104"
         })
 
-      result = TeacherEnrollment.get_subject_id_by_name("Mathematics")
+      result = TeacherEnrollment.get_subject_id_by_name("Test Multi Language")
 
       assert result == subject.id
     end
@@ -175,10 +181,10 @@ defmodule Dbservice.DataImport.TeacherEnrollmentTest do
     test "returns nil when subject exists but only has non-English entries" do
       subject_fixture(%{
         name: [%{lang_code: "hi", subject: "गणित"}, %{lang_code: "te", subject: "గణితం"}],
-        code: "MATH101"
+        code: "MATH105"
       })
 
-      result = TeacherEnrollment.get_subject_id_by_name("Mathematics")
+      result = TeacherEnrollment.get_subject_id_by_name("Definitely Nonexistent Subject Name")
 
       assert result == nil
     end

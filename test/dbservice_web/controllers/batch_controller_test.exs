@@ -46,14 +46,15 @@ defmodule DbserviceWeb.BatchControllerTest do
   test "lists all batches with data", %{conn: conn} do
     batch = batch_fixture()
     conn = get(conn, ~p"/api/batch")
-    [head | _] = json_response(conn, 200)
+    resp = json_response(conn, 200)
+    assert Enum.any?(resp, fn b -> b["id"] == batch.id end)
+    found_batch = Enum.find(resp, fn b -> b["id"] == batch.id end)
 
     # field-by-field
-    assert head["id"] == batch.id
-    assert head["name"] == batch.name
-    assert head["contact_hours_per_week"] == batch.contact_hours_per_week
-    assert head["batch_id"] == batch.batch_id
-    assert head["start_date"] == to_string(batch.start_date)
+    assert found_batch["name"] == batch.name
+    assert found_batch["contact_hours_per_week"] == batch.contact_hours_per_week
+    assert found_batch["batch_id"] == batch.batch_id
+    assert found_batch["start_date"] == to_string(batch.start_date)
     # ...etc
   end
 

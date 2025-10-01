@@ -36,24 +36,20 @@ defmodule DbserviceWeb.ProgramControllerTest do
   end
 
   describe "index" do
-    test "lists all programs", %{conn: conn} do
-      conn = get(conn, ~p"/api/program")
-      assert json_response(conn, 200) == []
-    end
-
     test "lists all programs with data", %{conn: conn} do
       program = program_fixture()
       conn = get(conn, ~p"/api/program")
-      [head | _tail] = json_response(conn, 200)
+      resp = json_response(conn, 200)
+      assert Enum.any?(resp, fn p -> p["id"] == program.id end)
+      found_program = Enum.find(resp, fn p -> p["id"] == program.id end)
 
-      assert head["id"] == program.id
-      assert head["name"] == program.name
-      assert head["target_outreach"] == program.target_outreach
-      assert head["donor"] == program.donor
-      assert head["state"] == program.state
-      assert head["model"] == program.model
-      assert head["is_current"] == program.is_current
-      assert head["product_id"] == program.product_id
+      assert found_program["name"] == program.name
+      assert found_program["target_outreach"] == program.target_outreach
+      assert found_program["donor"] == program.donor
+      assert found_program["state"] == program.state
+      assert found_program["model"] == program.model
+      assert found_program["is_current"] == program.is_current
+      assert found_program["product_id"] == program.product_id
     end
   end
 
