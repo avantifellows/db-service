@@ -87,8 +87,6 @@ defmodule DbserviceWeb.ImportLive.New do
   end
 
   defp handle_save(_, socket) do
-    IO.puts("Unexpected empty parameters received!")
-
     {:noreply,
      socket
      |> assign(submitted: false)

@@ -6,77 +6,137 @@ defmodule DbserviceWeb.BatchControllerTest do
   alias Dbservice.Batches.Batch
 
   @create_attrs %{
-    name: "some name",
-    contact_hours_per_week: Enum.random(20..48)
+    name: "some batch name",
+    contact_hours_per_week: 30,
+    batch_id: "BATCH001",
+    parent_id: nil,
+    start_date: "2024-01-01",
+    end_date: "2024-06-01",
+    program_id: nil,
+    auth_group_id: nil,
+    af_medium: "online"
   }
   @update_attrs %{
-    name: "some updated name",
-    contact_hours_per_week: Enum.random(20..48)
+    name: "some updated batch name",
+    contact_hours_per_week: 35,
+    batch_id: "BATCH002",
+    parent_id: nil,
+    start_date: "2024-02-01",
+    end_date: "2024-07-01",
+    program_id: nil,
+    auth_group_id: nil,
+    af_medium: "offline"
   }
   @invalid_attrs %{
     name: nil,
-    contact_hours_per_week: nil
+    contact_hours_per_week: nil,
+    batch_id: nil,
+    parent_id: nil,
+    start_date: nil,
+    end_date: nil,
+    program_id: nil,
+    auth_group_id: nil,
+    af_medium: nil
   }
-  @valid_fields [
-    "contact_hours_per_week",
-    "id",
-    "name"
-  ]
 
   setup %{conn: conn} do
     {:ok, conn: put_req_header(conn, "accept", "application/json")}
   end
 
-  describe "index" do
-    test "lists all batches", %{conn: conn} do
-      conn = get(conn, Routes.batch_path(conn, :index))
-      [head | _tail] = json_response(conn, 200)
-      assert Map.keys(head) == @valid_fields
-    end
+  test "lists all batches with data", %{conn: conn} do
+    batch = batch_fixture()
+    conn = get(conn, ~p"/api/batch")
+    resp = json_response(conn, 200)
+    assert Enum.any?(resp, fn b -> b["id"] == batch.id end)
+    found_batch = Enum.find(resp, fn b -> b["id"] == batch.id end)
+
+    # field-by-field
+    assert found_batch["name"] == batch.name
+    assert found_batch["contact_hours_per_week"] == batch.contact_hours_per_week
+    assert found_batch["batch_id"] == batch.batch_id
+    assert found_batch["start_date"] == to_string(batch.start_date)
+    # ...etc
   end
 
   describe "create batch" do
     test "renders batch when data is valid", %{conn: conn} do
-      conn = post(conn, Routes.batch_path(conn, :create), @create_attrs)
+      conn = post(conn, ~p"/api/batch", @create_attrs)
       %{"id" => id} = json_response(conn, 201)
 
-      conn = get(conn, Routes.batch_path(conn, :show, id))
+      conn = get(conn, ~p"/api/batch/#{id}")
+
+      response = json_response(conn, 200)
 
       assert %{
                "id" => ^id,
-               "name" => "some name",
-               "contact_hours_per_week" => contact_hours_per_week
-             } = json_response(conn, 200)
-
-      assert Enum.member?(20..48, contact_hours_per_week)
+               "name" => "some batch name",
+               "contact_hours_per_week" => 30,
+               "batch_id" => "BATCH001",
+               "parent_id" => nil,
+               "start_date" => "2024-01-01",
+               "end_date" => "2024-06-01",
+               "program_id" => nil,
+               "auth_group_id" => nil,
+               "af_medium" => "online"
+             } = response
     end
 
     test "renders errors when data is invalid", %{conn: conn} do
-      conn = post(conn, Routes.batch_path(conn, :create), batch: @invalid_attrs)
-      assert json_response(conn, 422)["errors"] != %{}
+      conn = post(conn, ~p"/api/batch", @invalid_attrs)
+      assert json_response(conn, 400)["error"] == "Batch ID is required"
+    end
+  end
+
+  describe "show batch" do
+    setup [:create_batch]
+
+    test "renders batch", %{conn: conn, batch: %Batch{id: id}} do
+      conn = get(conn, ~p"/api/batch/#{id}")
+
+      response = json_response(conn, 200)
+
+      assert %{
+               "id" => ^id,
+               "name" => "some batch name",
+               "contact_hours_per_week" => 30,
+               "batch_id" => "BATCH001",
+               "parent_id" => nil,
+               "start_date" => "2024-01-01",
+               "end_date" => "2024-06-01",
+               "program_id" => nil,
+               "auth_group_id" => nil,
+               "af_medium" => "online"
+             } = response
     end
   end
 
   describe "update batch" do
     setup [:create_batch]
 
-    test "renders batch when data is valid", %{conn: conn, batch: %Batch{id: id} = batch} do
-      conn = put(conn, Routes.batch_path(conn, :update, batch), @update_attrs)
+    test "renders batch when data is valid", %{conn: conn, batch: %Batch{id: id}} do
+      conn = put(conn, ~p"/api/batch/#{id}", @update_attrs)
       %{"id" => ^id} = json_response(conn, 200)
 
-      conn = get(conn, Routes.batch_path(conn, :show, id))
+      conn = get(conn, ~p"/api/batch/#{id}")
+
+      response = json_response(conn, 200)
 
       assert %{
                "id" => ^id,
-               "name" => "some updated name",
-               "contact_hours_per_week" => contact_hours_per_week
-             } = json_response(conn, 200)
-
-      assert Enum.member?(20..48, contact_hours_per_week)
+               "name" => "some updated batch name",
+               "contact_hours_per_week" => 35,
+               "batch_id" => "BATCH002",
+               "parent_id" => nil,
+               "start_date" => "2024-02-01",
+               "end_date" => "2024-07-01",
+               "program_id" => nil,
+               "auth_group_id" => nil,
+               "af_medium" => "offline"
+             } = response
     end
 
-    test "renders errors when data is invalid", %{conn: conn, batch: batch} do
-      conn = put(conn, Routes.batch_path(conn, :update, batch), @invalid_attrs)
+    test "renders errors when data is invalid", %{conn: conn, batch: %Batch{id: id}} do
+      conn = put(conn, ~p"/api/batch/#{id}", @invalid_attrs)
       assert json_response(conn, 422)["errors"] != %{}
     end
   end
@@ -84,12 +144,12 @@ defmodule DbserviceWeb.BatchControllerTest do
   describe "delete batch" do
     setup [:create_batch]
 
-    test "deletes chosen batch", %{conn: conn, batch: batch} do
-      conn = delete(conn, Routes.batch_path(conn, :delete, batch))
+    test "deletes chosen batch", %{conn: conn, batch: %Batch{id: id}} do
+      conn = delete(conn, ~p"/api/batch/#{id}")
       assert response(conn, 204)
 
       assert_error_sent 404, fn ->
-        get(conn, Routes.batch_path(conn, :show, batch))
+        get(conn, ~p"/api/batch/#{id}")
       end
     end
   end
