@@ -16,6 +16,7 @@ defmodule DbserviceWeb.ConnCase do
   """
 
   use ExUnit.CaseTemplate
+  import Dotenvy
 
   using do
     quote do
@@ -23,9 +24,7 @@ defmodule DbserviceWeb.ConnCase do
       import Plug.Conn
       import Phoenix.ConnTest
       import DbserviceWeb.ConnCase
-
-      alias DbserviceWeb.Router.Helpers, as: Routes
-
+      use DbserviceWeb, :verified_routes
       # The default endpoint for testing
       @endpoint DbserviceWeb.Endpoint
     end
@@ -34,6 +33,14 @@ defmodule DbserviceWeb.ConnCase do
   setup tags do
     pid = Ecto.Adapters.SQL.Sandbox.start_owner!(Dbservice.Repo, shared: not tags[:async])
     on_exit(fn -> Ecto.Adapters.SQL.Sandbox.stop_owner(pid) end)
-    {:ok, conn: Phoenix.ConnTest.build_conn()}
+    source(["config/.env"])
+    # Ensure requests pass AuthenticationMiddleware in tests — read token from env
+    token = env!("BEARER_TOKEN", :string!)
+
+    conn =
+      Phoenix.ConnTest.build_conn()
+      |> Plug.Conn.put_req_header("authorization", "Bearer " <> token)
+
+    {:ok, conn: conn}
   end
 end

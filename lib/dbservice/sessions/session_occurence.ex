@@ -23,7 +23,7 @@ defmodule Dbservice.Sessions.SessionOccurrence do
     session_occurrence
     |> cast(attrs, [:session_id, :start_time, :end_time, :session_fk])
     |> validate_required([:session_id])
-    |> validate_start_end_date_time
+    |> validate_start_end_date_time()
   end
 
   defp validate_start_end_date_time(changeset) do
