@@ -183,7 +183,9 @@ defmodule DbserviceWeb.UserSessionController do
   end
 
   defp get_student(student_id) do
-    case Repo.get_by(Student, student_id: student_id) do
+    query = from s in Student, where: s.student_id == ^student_id, limit: 1
+
+    case Repo.one(query) do
       nil -> {:error, :not_found}
       student -> {:ok, student}
     end
