@@ -368,7 +368,7 @@ defmodule Dbservice.DataImport.ImportWorker do
     student_id = record["student_id"]
     apaar_id = record["apaar_id"]
 
-    if is_nil_or_empty?(student_id) and is_nil_or_empty?(apaar_id) do
+    if nil_or_empty?(student_id) and nil_or_empty?(apaar_id) do
       {:error, "Either student_id or apaar_id is required for student addition"}
     else
       {:ok, :valid}
@@ -414,10 +414,10 @@ defmodule Dbservice.DataImport.ImportWorker do
 
   defp build_duplicate_error_message(record, existing_student, auth_group_name) do
     cond do
-      not is_nil_or_empty?(record["student_id"]) ->
+      not nil_or_empty?(record["student_id"]) ->
         "Student already exists with student_id: #{existing_student.student_id} and auth_group: #{auth_group_name}"
 
-      not is_nil_or_empty?(record["apaar_id"]) ->
+      not nil_or_empty?(record["apaar_id"]) ->
         "Student already exists with apaar_id: #{existing_student.apaar_id} and auth_group: #{auth_group_name}"
 
       true ->
@@ -425,7 +425,7 @@ defmodule Dbservice.DataImport.ImportWorker do
     end
   end
 
-  defp is_nil_or_empty?(value), do: is_nil(value) or value == ""
+  defp nil_or_empty?(value), do: is_nil(value) or value == ""
 
   defp process_student_update_record(record) do
     # Accept either student_id or apaar_id (like addition and batch movement)
