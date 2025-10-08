@@ -378,14 +378,23 @@ defmodule Dbservice.DataImport.ImportWorker do
 
         existing_student ->
           user = Users.get_user!(existing_student.user_id)
+          # Fetch the student's auth group
+          auth_groups =
+            Dbservice.GroupUsers.get_group_user_by_user_id_and_type(user.id, "auth_group")
 
-          with {:ok, updated_student} <-
-                 Users.update_student_with_user(existing_student, user, record),
-               {:ok, _} <- DataImport.StudentEnrollment.create_enrollments(user, record) do
-            {:ok, updated_student}
-          else
-            {:error, _} = error -> error
-          end
+          auth_group_name =
+            case auth_groups do
+              [%{group: %{id: _, type: _, child_id: child_id}} | _] ->
+                case Dbservice.AuthGroups.get_auth_group!(child_id) do
+                  %{name: name} -> name
+                  _ -> "unknown"
+                end
+
+              _ ->
+                "unknown"
+            end
+
+          {:error, "Student already exists with auth_group: #{auth_group_name}"}
       end
     end
   end
