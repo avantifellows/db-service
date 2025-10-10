@@ -8,7 +8,6 @@ defmodule DbserviceWeb.ResourceController do
   alias Dbservice.Resources.ResourceTopic
   alias Dbservice.Resources.ResourceChapter
   alias Dbservice.Resources.ResourceCurriculum
-  alias Dbservice.Utils.Util
   alias Dbservice.Languages.Language
   alias Dbservice.Resources.ProblemLanguage
 
@@ -40,65 +39,8 @@ defmodule DbserviceWeb.ResourceController do
   end
 
   def index(conn, params) do
-    base_query =
-      from(m in Resource,
-        order_by: [asc: m.id],
-        offset: ^params["offset"],
-        limit: ^params["limit"]
-      )
-
-    query =
-      Enum.reduce(params, base_query, fn
-        {"topic_id", value}, acc ->
-          from(u in acc,
-            join: rt in ResourceTopic,
-            on: rt.resource_id == u.id,
-            where: rt.topic_id == ^value
-          )
-
-        {"chapter_id", value}, acc ->
-          from(u in acc,
-            join: rc in ResourceChapter,
-            on: rc.resource_id == u.id,
-            where: rc.chapter_id == ^value
-          )
-
-        {key, value}, acc ->
-          case String.to_existing_atom(key) do
-            :offset ->
-              acc
-
-            :limit ->
-              acc
-
-            :lang_code ->
-              acc
-
-            :name ->
-              from(u in acc,
-                where:
-                  fragment(
-                    "EXISTS (SELECT 1 FROM JSONB_ARRAY_ELEMENTS(?) obj WHERE obj->>'resource' = ?)",
-                    u.name,
-                    ^value
-                  )
-              )
-
-            :resource_type ->
-              from(u in acc,
-                where: fragment("?->>'resource_type' = ?", u.type_params, ^value)
-              )
-
-            atom ->
-              from(u in acc, where: field(u, ^atom) == ^value)
-          end
-      end)
-
-    # Language filtering
-    query = Util.filter_by_lang(query, params)
-
-    resource = Repo.all(query)
-    render(conn, :index, resource: resource)
+    resources = Resources.list_resources(params)
+    render(conn, :index, resource: resources)
   end
 
   swagger_path :create do
