@@ -63,28 +63,37 @@ defmodule Dbservice.Services.EnrollmentService do
     group = Groups.get_group!(params["group_id"])
 
     # If this is an exclusive group type, validate no existing active enrollments
-    if group.type in @exclusive_group_types do
-      case validate_no_existing_enrollment(params["user_id"], group.type, params["group_id"]) do
-        :ok -> :continue
-        {:error, reason} -> {:error, reason}
+    with :ok <- validate_exclusive_enrollment(params["user_id"], group.type, params["group_id"]) do
+      case GroupUsers.get_group_user_by_user_id_and_group_id(
+             params["user_id"],
+             params["group_id"]
+           ) do
+        nil -> create_new_group_user(params)
+        existing_group_user -> update_existing_group_user(existing_group_user, params)
       end
     end
+  end
 
-    case GroupUsers.get_group_user_by_user_id_and_group_id(
-           params["user_id"],
-           params["group_id"]
-         ) do
-      nil -> create_new_group_user(params)
-      existing_group_user -> update_existing_group_user(existing_group_user, params)
+  @doc """
+  Validates exclusive enrollment only for group types that require it.
+  Returns :ok if validation passes or not needed, {:error, reason} otherwise.
+  """
+  defp validate_exclusive_enrollment(user_id, group_type, current_group_id) do
+    if group_type in @exclusive_group_types do
+      validate_no_existing_enrollment(user_id, group_type, current_group_id)
+    else
+      :ok
     end
   end
 
   @doc """
   Validates that a user doesn't have any other active enrollments for the given group type.
+  Uses EXISTS query for better performance.
   Returns {:error, reason} if an active enrollment exists, :ok otherwise.
   """
   def validate_no_existing_enrollment(user_id, group_type, current_group_id) do
-    query =
+    # Use EXISTS subquery for better performance - stops as soon as it finds one match
+    exists_query =
       from g in Groups,
         join: gu in GroupUser,
         on: gu.group_id == g.id,
@@ -93,14 +102,30 @@ defmodule Dbservice.Services.EnrollmentService do
             gu.user_id == ^user_id and
             g.id != ^current_group_id and
             gu.is_active == true,
-        select: %{group_id: g.id, child_id: g.child_id, type: g.type}
+        select: 1,
+        limit: 1
 
-    case Repo.all(query) do
-      [] ->
+    case Repo.one(exists_query) do
+      nil ->
         :ok
 
-      [existing | _] ->
-        {:error, build_duplicate_enrollment_error(existing, group_type)}
+      _ ->
+        # Only fetch details if we found a conflict
+        conflict =
+          from g in Groups,
+            join: gu in GroupUser,
+            on: gu.group_id == g.id,
+            where:
+              g.type == ^group_type and
+                gu.user_id == ^user_id and
+                g.id != ^current_group_id and
+                gu.is_active == true,
+            select: %{child_id: g.child_id, type: g.type},
+            limit:
+              1
+              |> Repo.one()
+
+        {:error, build_duplicate_enrollment_error(conflict, group_type)}
     end
   end
 
