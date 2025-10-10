@@ -15,6 +15,7 @@ defmodule Dbservice.Services.EnrollmentService do
   alias Dbservice.Batches
   alias Dbservice.Grades
   alias Dbservice.EnrollmentRecords
+  alias Dbservice.Groups.Group
   alias Dbservice.Groups.GroupUser
   alias Dbservice.EnrollmentRecords.EnrollmentRecord
   alias Dbservice.Repo
@@ -74,10 +75,8 @@ defmodule Dbservice.Services.EnrollmentService do
     end
   end
 
-  @doc """
-  Validates exclusive enrollment only for group types that require it.
-  Returns :ok if validation passes or not needed, {:error, reason} otherwise.
-  """
+  # Validates exclusive enrollment only for group types that require it.
+  # Returns :ok if validation passes or not needed, {:error, reason} otherwise.
   defp validate_exclusive_enrollment(user_id, group_type, current_group_id) do
     if group_type in @exclusive_group_types do
       validate_no_existing_enrollment(user_id, group_type, current_group_id)
@@ -94,7 +93,7 @@ defmodule Dbservice.Services.EnrollmentService do
   def validate_no_existing_enrollment(user_id, group_type, current_group_id) do
     # Use EXISTS subquery for better performance - stops as soon as it finds one match
     exists_query =
-      from g in Groups,
+      from g in Group,
         join: gu in GroupUser,
         on: gu.group_id == g.id,
         where:
@@ -102,7 +101,7 @@ defmodule Dbservice.Services.EnrollmentService do
             gu.user_id == ^user_id and
             g.id != ^current_group_id and
             gu.is_active == true,
-        select: 1,
+        select: true,
         limit: 1
 
     case Repo.one(exists_query) do
@@ -111,8 +110,8 @@ defmodule Dbservice.Services.EnrollmentService do
 
       _ ->
         # Only fetch details if we found a conflict
-        conflict =
-          from g in Groups,
+        conflict_query =
+          from g in Group,
             join: gu in GroupUser,
             on: gu.group_id == g.id,
             where:
@@ -121,17 +120,14 @@ defmodule Dbservice.Services.EnrollmentService do
                 g.id != ^current_group_id and
                 gu.is_active == true,
             select: %{child_id: g.child_id, type: g.type},
-            limit:
-              1
-              |> Repo.one()
+            limit: 1
 
+        conflict = Repo.one(conflict_query)
         {:error, build_duplicate_enrollment_error(conflict, group_type)}
     end
   end
 
-  @doc """
-  Builds a descriptive error message for duplicate enrollment attempts.
-  """
+  # Builds a descriptive error message for duplicate enrollment attempts.
   defp build_duplicate_enrollment_error(existing_enrollment, group_type) do
     group_name = get_group_name(existing_enrollment.child_id, group_type)
 
@@ -150,13 +146,11 @@ defmodule Dbservice.Services.EnrollmentService do
     end
   end
 
-  @doc """
-  Gets the display name for a group based on its type and child_id.
-  """
+  # Gets the display name for a group based on its type and child_id.
   defp get_group_name(child_id, group_type) do
     case group_type do
       "school" ->
-        case Schools.get_school(child_id) do
+        case Schools.get_school!(child_id) do
           nil -> "Unknown School"
           school -> school.code || "School ##{child_id}"
         end
@@ -168,7 +162,7 @@ defmodule Dbservice.Services.EnrollmentService do
         end
 
       "auth_group" ->
-        case AuthGroups.get_auth_group(child_id) do
+        case AuthGroups.get_auth_group!(child_id) do
           nil -> "Unknown Auth Group"
           auth_group -> auth_group.name
         end
