@@ -111,6 +111,9 @@ defmodule DbserviceWeb.Router do
     get("/problems", ResourceController, :fetch_problems)
     resources("/test-rule", TestRuleController, except: [:new, :edit])
 
+    get("/reports", SchoolReportController, :index)
+    get("/reports/:test_name", SchoolReportController, :show)
+
     get(
       "/resource/problem/:problem_id/:lang_code/:curriculum_id",
       ResourceController,
