@@ -26,4 +26,13 @@ if config_env() == :prod do
     secret_key_base: secret_key_base,
     debug_errors: true,
     check_origin: false
+
+  # AWS S3 Configuration
+  config :dbservice,
+    s3_bucket: env!("S3_BUCKET_NAME", :string!) || "your-bucket-name"
+
+  config :ex_aws,
+    access_key_id: env!("AWS_ACCESS_KEY_ID", :string!),
+    secret_access_key: env!("AWS_SECRET_ACCESS_KEY", :string!),
+    region: env!("AWS_REGION", :string!) || "us-east-1"
 end
