@@ -16,7 +16,7 @@ defmodule DbserviceWeb.SchoolReportController do
     with {:school_code, code} when not is_nil(code) <- {:school_code, school_code},
          {:school, %School{} = school} <- {:school, Repo.get_by(School, code: code)},
          {:reports, {:ok, reports}} <-
-           {:reports, SchoolReportService.list_reports_by_school_code(school.code)} do
+           {:reports, SchoolReportService.list_reports_by_school(school)} do
       render(conn, :index, reports: reports, school: school)
     else
       {:school_code, nil} ->
@@ -45,7 +45,8 @@ defmodule DbserviceWeb.SchoolReportController do
 
     with {:school_code, code} when not is_nil(code) <- {:school_code, school_code},
          {:school, %School{} = school} <- {:school, Repo.get_by(School, code: code)},
-         {:url, {:ok, url}} <- {:url, SchoolReportService.get_report_url(school.code, test_name)} do
+         {:url, {:ok, url}} <-
+           {:url, SchoolReportService.get_report_url_for_school(school, test_name)} do
       render(conn, :show, url: url, test_name: test_name, expires_in: 3600)
     else
       {:school_code, nil} ->

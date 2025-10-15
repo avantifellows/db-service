@@ -5,8 +5,11 @@ defmodule Dbservice.Services.SchoolReportService do
   Service for fetching school reports from S3
   """
 
-  @s3_bucket Application.compile_env(:dbservice, :s3_bucket)
   @report_base_path "reports/nvs_test_reports"
+
+  defp s3_bucket do
+    Application.get_env(:dbservice, :s3_bucket)
+  end
 
   @doc """
   Get available reports for a school by school code (or UDISE code)
@@ -15,14 +18,22 @@ defmodule Dbservice.Services.SchoolReportService do
   def list_reports_by_school_code(school_code) do
     case Schools.get_school_by_code(school_code) do
       nil -> {:error, :school_not_found}
-      school -> list_reports_by_udise(school.udise_code, school)
+      school -> list_reports_by_school(school)
     end
+  end
+
+  @doc """
+  Get available reports for a school struct
+  Returns a list of test reports with metadata
+  """
+  def list_reports_by_school(%Schools.School{} = school) do
+    list_reports_by_udise(school.udise_code, school)
   end
 
   defp list_reports_by_udise(udise_code, school) do
     path = "#{@report_base_path}/"
 
-    case ExAws.S3.list_objects(@s3_bucket, prefix: path, delimiter: "/") |> ExAws.request() do
+    case ExAws.S3.list_objects(s3_bucket(), prefix: path, delimiter: "/") |> ExAws.request() do
       {:ok, %{body: %{common_prefixes: prefixes}}} ->
         reports =
           prefixes
@@ -50,14 +61,14 @@ defmodule Dbservice.Services.SchoolReportService do
   def report_exists?(test_name, udise_code) do
     path = build_report_path(test_name, udise_code)
 
-    case ExAws.S3.head_object(@s3_bucket, path) |> ExAws.request() do
+    case ExAws.S3.head_object(s3_bucket(), path) |> ExAws.request() do
       {:ok, _} -> true
       {:error, _} -> false
     end
   end
 
   @doc """
-  Get presigned URL for viewing report
+  Get presigned URL for viewing report by school code
   """
   def get_report_url(school_code, test_name, opts \\ []) do
     case Schools.get_school_by_code(school_code) do
@@ -65,19 +76,26 @@ defmodule Dbservice.Services.SchoolReportService do
         {:error, :school_not_found}
 
       school ->
-        expires_in = Keyword.get(opts, :expires_in, 3600)
-        path = build_report_path(test_name, school.udise_code)
+        get_report_url_for_school(school, test_name, opts)
+    end
+  end
 
-        if report_exists?(test_name, school.udise_code) do
-          config = ExAws.Config.new(:s3)
+  @doc """
+  Get presigned URL for viewing report with a school struct
+  """
+  def get_report_url_for_school(%Schools.School{} = school, test_name, opts \\ []) do
+    expires_in = Keyword.get(opts, :expires_in, 3600)
+    path = build_report_path(test_name, school.udise_code)
 
-          case ExAws.S3.presigned_url(config, :get, @s3_bucket, path, expires_in: expires_in) do
-            {:ok, url} -> {:ok, url}
-            {:error, reason} -> {:error, reason}
-          end
-        else
-          {:error, :report_not_found}
-        end
+    if report_exists?(test_name, school.udise_code) do
+      config = ExAws.Config.new(:s3)
+
+      case ExAws.S3.presigned_url(config, :get, s3_bucket(), path, expires_in: expires_in) do
+        {:ok, url} -> {:ok, url}
+        {:error, reason} -> {:error, reason}
+      end
+    else
+      {:error, :report_not_found}
     end
   end
 
