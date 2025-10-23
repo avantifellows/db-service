@@ -23,6 +23,11 @@ defmodule DbserviceWeb.Router do
     plug :admin_basic_auth
   end
 
+  pipeline :cached_api do
+    plug :accepts, ["json"]
+    plug DbserviceWeb.CachePlug, ttl: :timer.minutes(3)
+  end
+
   scope "/", DbserviceWeb do
     pipe_through :browser
 
@@ -35,7 +40,7 @@ defmodule DbserviceWeb.Router do
   end
 
   scope "/api", DbserviceWeb do
-    pipe_through(:api)
+    pipe_through :cached_api
 
     resources("/auth-group", AuthGroupController, except: [:new, :edit])
     post("/group/:id/update-users", GroupController, :update_users)

@@ -47,7 +47,9 @@ defmodule Dbservice.Application do
               "https://www.googleapis.com/auth/spreadsheets",
               "https://www.googleapis.com/auth/drive.readonly"
             ]
-          ]}}
+          ]}},
+      # Cachex for caching
+      {Cachex, name: :dbservice_cache, limit: 10_000}
     ]
 
     opts = [strategy: :one_for_one, name: Dbservice.Supervisor]

@@ -64,7 +64,8 @@ defmodule Dbservice.MixProject do
       {:google_api_sheets, "~> 0.35.0"},
       {:goth, "~> 1.4.5"},
       {:phoenix_html, "~> 4.1"},
-      {:ecto_psql_extras, "~> 0.6"}
+      {:ecto_psql_extras, "~> 0.6"},
+      {:cachex, "~> 4.0"}
     ]
   end
 
