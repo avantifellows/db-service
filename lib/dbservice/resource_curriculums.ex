@@ -19,6 +19,17 @@ defmodule Dbservice.ResourceCurriculums do
   end
 
   @doc """
+  Returns the list of resource_curriculum for a specific resource_id.
+  ## Examples
+      iex> list_resource_curriculums_by_resource_id(123)
+      [%ResourceCurriculum{}, ...]
+  """
+  def list_resource_curriculums_by_resource_id(resource_id) do
+    from(rc in ResourceCurriculum, where: rc.resource_id == ^resource_id)
+    |> Repo.all()
+  end
+
+  @doc """
   Gets a single resource_curriculum.
   Raises `Ecto.NoResultsError` if the resource_curriculum does not exist.
   ## Examples

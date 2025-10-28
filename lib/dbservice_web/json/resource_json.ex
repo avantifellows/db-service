@@ -4,6 +4,7 @@ defmodule DbserviceWeb.ResourceJSON do
   alias Dbservice.Resources.ResourceChapter
   alias Dbservice.Concepts
   alias Dbservice.ResourceConcepts
+  alias Dbservice.ResourceCurriculums
   alias Dbservice.Repo
   import Ecto.Query
 
@@ -43,6 +44,18 @@ defmodule DbserviceWeb.ResourceJSON do
           limit: 1
       )
 
+    # Fetch all resource_curriculum records for this resource
+    resource_curriculums =
+      ResourceCurriculums.list_resource_curriculums_by_resource_id(resource.id)
+
+    curriculum_grades =
+      Enum.map(resource_curriculums, fn rc ->
+        %{
+          curriculum_id: rc.curriculum_id,
+          grade_id: rc.grade_id
+        }
+      end)
+
     base_map = %{
       id: resource.id,
       name: resource.name,
@@ -60,7 +73,8 @@ defmodule DbserviceWeb.ResourceJSON do
       chapter_id: chapter_id,
       cms_status: resource.cms_status,
       exam_ids: resource.exam_ids,
-      exam_details: exam_details
+      exam_details: exam_details,
+      curriculum_grades: curriculum_grades
     }
 
     # Add curriculum data if it exists
@@ -113,6 +127,15 @@ defmodule DbserviceWeb.ResourceJSON do
         %{chapter_id: nil, chapter_code: nil, chapter_name: nil}
       end
 
+    # Build curriculum_grades from resource_curriculums
+    curriculum_grades =
+      Enum.map(resource_curriculums, fn rc ->
+        %{
+          curriculum_id: rc.curriculum_id,
+          grade_id: rc.grade_id
+        }
+      end)
+
     # Build the base resource representation
     base_map = %{
       id: resource.id,
@@ -131,7 +154,8 @@ defmodule DbserviceWeb.ResourceJSON do
       chapter_id: chapter_data.chapter_id,
       chapter_code: chapter_data.chapter_code,
       chapter_name: chapter_data.chapter_name,
-      cms_status: resource.cms_status
+      cms_status: resource.cms_status,
+      curriculum_grades: curriculum_grades
     }
 
     # Find the curriculum mapping for the requested curriculum_id, or fallback to the first one
