@@ -9,8 +9,7 @@ defmodule Dbservice.Resources do
   alias Dbservice.Resources.Resource
   alias Dbservice.Resources.ProblemLanguage
   alias Dbservice.Languages.Language
-  alias Dbservice.Resources.{ResourceTopic, ResourceChapter, ResourceConcept, ResourceCurriculum}
-  alias Dbservice.Grades.Grade
+  alias Dbservice.Resources.{ResourceTopic, ResourceChapter, ResourceConcept}
   alias Dbservice.Utils.Util
 
   @doc """
