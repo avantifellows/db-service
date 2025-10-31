@@ -525,25 +525,25 @@ defmodule Dbservice.Resources do
           ]
         )
 
-      "curriculum" ->
-        # Join with resource_curriculum and curriculum tables
-        from(r in query,
-          left_join: rc in assoc(r, :resource_curriculum),
-          left_join: c in Dbservice.Curriculums.Curriculum,
-          on: rc.curriculum_id == c.id,
-          order_by: [{^sort_order, c.name}],
-          distinct: r.id
-        )
+      # TBD: Implement sorting by curriculum and grade
 
-      "grade" ->
-        # Join with resource_curriculum and grade tables
-        from(r in query,
-          left_join: rc in assoc(r, :resource_curriculum),
-          left_join: g in Dbservice.Grades.Grade,
-          on: rc.grade_id == g.id,
-          order_by: [{^sort_order, g.number}],
-          distinct: r.id
-        )
+      # "curriculum" ->
+      #   from(r in query,
+      #     left_join: rc in assoc(r, :resource_curriculum),
+      #     left_join: c in Dbservice.Curriculums.Curriculum,
+      #     on: rc.curriculum_id == c.id,
+      #     order_by: [{^sort_order, c.name}],
+      #     distinct: r.id
+      #   )
+
+      # "grade" ->
+      #   from(r in query,
+      #     left_join: rc in assoc(r, :resource_curriculum),
+      #     left_join: g in Dbservice.Grades.Grade,
+      #     on: rc.grade_id == g.id,
+      #     order_by: [{^sort_order, g.number}],
+      #     distinct: r.id
+      #   )
 
       "subtype" ->
         from(r in query, order_by: [{^sort_order, r.subtype}])
