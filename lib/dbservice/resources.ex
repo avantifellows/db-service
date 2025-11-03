@@ -397,21 +397,22 @@ defmodule Dbservice.Resources do
   defp update_resource_concepts(_, _), do: :ok
 
   @doc """
-  Lists resources with optional filtering and pagination.
+  Lists resources with optional filtering, sorting and pagination.
 
   ## Examples
 
       iex> list_resources(%{})
       [%Resource{}, ...]
 
-      iex> list_resources(%{"search" => "elixir", "limit" => 10})
+      iex> list_resources(%{"search" => "elixir", "limit" => 10, "sort_by" => "code", "sort_order" => "desc"})
       [%Resource{}, ...]
   """
   def list_resources(params \\ %{}) do
     Resource
-    |> build_base_query(params)
     |> apply_filters(params)
     |> apply_language_filter(params)
+    |> apply_sorting(params)
+    |> apply_pagination(params)
     |> Repo.all()
   end
 
@@ -427,14 +428,6 @@ defmodule Dbservice.Resources do
   end
 
   # Private query building functions
-
-  defp build_base_query(queryable, params) do
-    from(r in queryable,
-      order_by: [asc: r.id],
-      offset: ^get_offset(params),
-      limit: ^get_limit(params)
-    )
-  end
 
   defp apply_filters(query, params) do
     Enum.reduce(params, query, &apply_filter/2)
@@ -470,7 +463,8 @@ defmodule Dbservice.Resources do
     )
   end
 
-  defp apply_filter({key, _value}, query) when key in ["offset", "limit", "lang_code"] do
+  defp apply_filter({key, _value}, query)
+       when key in ["offset", "limit", "lang_code", "sort_by", "sort_order"] do
     query
   end
 
@@ -500,7 +494,6 @@ defmodule Dbservice.Resources do
       field_atom = String.to_existing_atom(key)
       from(r in query, where: field(r, ^field_atom) == ^value)
     rescue
-      # Invalid field, ignore
       ArgumentError -> query
     end
   end
@@ -509,6 +502,66 @@ defmodule Dbservice.Resources do
 
   defp apply_language_filter(query, params) do
     Util.filter_by_lang(query, params)
+  end
+
+  defp apply_sorting(query, params) do
+    sort_by = params["sort_by"]
+    sort_order = get_sort_order(params["sort_order"])
+
+    case sort_by do
+      "code" ->
+        from(r in query, order_by: [{^sort_order, r.code}])
+
+      "name" ->
+        # Sort by the first element's 'resource' field in the name JSONB array
+        from(r in query,
+          order_by: [
+            {^sort_order,
+             fragment(
+               "LOWER((JSONB_ARRAY_ELEMENTS(?) -> 'resource')::text)",
+               r.name
+             )}
+          ]
+        )
+
+      # TBD: Implement sorting by curriculum and grade
+
+      # "curriculum" ->
+      #   from(r in query,
+      #     left_join: rc in assoc(r, :resource_curriculum),
+      #     left_join: c in Dbservice.Curriculums.Curriculum,
+      #     on: rc.curriculum_id == c.id,
+      #     order_by: [{^sort_order, c.name}],
+      #     distinct: r.id
+      #   )
+
+      # "grade" ->
+      #   from(r in query,
+      #     left_join: rc in assoc(r, :resource_curriculum),
+      #     left_join: g in Dbservice.Grades.Grade,
+      #     on: rc.grade_id == g.id,
+      #     order_by: [{^sort_order, g.number}],
+      #     distinct: r.id
+      #   )
+
+      "subtype" ->
+        from(r in query, order_by: [{^sort_order, r.subtype}])
+
+      _ ->
+        # Default sorting by id
+        from(r in query, order_by: [asc: r.id])
+    end
+  end
+
+  defp get_sort_order("desc"), do: :desc
+  defp get_sort_order("DESC"), do: :desc
+  defp get_sort_order(_), do: :asc
+
+  defp apply_pagination(query, params) do
+    from(r in query,
+      offset: ^get_offset(params),
+      limit: ^get_limit(params)
+    )
   end
 
   defp get_offset(params), do: params["offset"] || 0
