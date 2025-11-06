@@ -14,6 +14,14 @@ defmodule DbserviceWeb.FallbackController do
     |> render(:error, changeset: changeset)
   end
 
+  # This clause handles string error messages
+  def call(conn, {:error, error_message}) when is_binary(error_message) do
+    conn
+    |> put_status(:unprocessable_entity)
+    |> put_view(json: DbserviceWeb.ErrorJSON)
+    |> render(:"422", reason: %{message: error_message})
+  end
+
   # This clause is an example of how to handle resources that cannot be found.
   def call(conn, {:error, :not_found}) do
     conn

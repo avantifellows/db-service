@@ -7,6 +7,7 @@ defmodule DbserviceWeb.ErrorJSON do
         "500.json" -> {"Internal Server Error", "Internal Server Error"}
         "404.json" -> {"Not Found", "Not Found"}
         "400.json" -> {"Bad Request", "Invalid request"}
+        "422.json" -> {"Unprocessable Entity", "Validation failed"}
         _ -> {"Unknown error", "Unknown error"}
       end
 
