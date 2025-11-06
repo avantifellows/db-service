@@ -86,83 +86,44 @@ defmodule Dbservice.Services.EnrollmentService do
 
   @doc """
   Validates that a user doesn't have any other active enrollments for the given group type.
-  Uses EXISTS query for better performance.
   Returns {:error, reason} if an active enrollment exists, :ok otherwise.
   """
   def validate_no_existing_enrollment(user_id, group_type, current_group_id) do
-    query = build_enrollment_query(user_id, group_type, current_group_id)
-
-    case Repo.one(query) do
-      nil ->
-        :ok
-
-      existing_enrollment ->
-        {:error, build_duplicate_enrollment_error(existing_enrollment, group_type)}
-    end
-  end
-
-  # Extract query building to a separate function
-  defp build_enrollment_query(user_id, group_type, current_group_id) do
-    base_query =
+    query =
       from er in EnrollmentRecord,
         where:
           er.group_type == ^group_type and
             er.user_id == ^user_id and
             er.is_current == true and
             er.group_id != ^current_group_id,
-        limit: 1
+        limit: 1,
+        select: %{group_id: er.group_id, type: er.group_type}
 
-    add_name_join(base_query, group_type)
-  end
+    case Repo.one(query) do
+      nil ->
+        :ok
 
-  # Separate function for adding joins based on type
-  defp add_name_join(query, "school") do
-    from [er] in query,
-      join: s in Dbservice.Schools.School,
-      on: s.id == er.group_id,
-      select: %{group_id: er.group_id, type: er.group_type, name: s.code}
-  end
-
-  defp add_name_join(query, "grade") do
-    from [er] in query,
-      join: g in Dbservice.Grades.Grade,
-      on: g.id == er.group_id,
-      select: %{group_id: er.group_id, type: er.group_type, name: g.number}
-  end
-
-  defp add_name_join(query, "auth_group") do
-    from [er] in query,
-      join: ag in Dbservice.Groups.AuthGroup,
-      on: ag.id == er.group_id,
-      select: %{group_id: er.group_id, type: er.group_type, name: ag.name}
-  end
-
-  defp add_name_join(query, _) do
-    from [er] in query,
-      select: %{group_id: er.group_id, type: er.group_type, name: nil}
-  end
-
-  defp build_duplicate_enrollment_error(existing_enrollment, group_type) do
-    name = format_name(existing_enrollment.name, group_type)
-
-    case group_type do
-      "school" ->
-        "Student is already enrolled in school: #{name}. Use 'update_incorrect_school_to_correct_school' import type to change schools."
-
-      "grade" ->
-        "Student is already enrolled in grade: #{name}. Use 'update_incorrect_grade_to_correct_grade' import type to change grades."
-
-      "auth_group" ->
-        "Student is already enrolled in auth_group: #{name}. Use 'update_incorrect_auth_group_to_correct_auth_group' import type to change auth groups."
-
-      _ ->
-        "Student is already enrolled in this #{group_type}. Use the appropriate update import type."
+      _existing_enrollment ->
+        {:error, format_enrollment_conflict_message(group_type)}
     end
   end
 
-  defp format_name(nil, _), do: "Unknown"
-  defp format_name(name, "grade"), do: "Grade #{name}"
-  defp format_name(name, _), do: name
+  # Formats user-friendly error message for enrollment conflicts
+  defp format_enrollment_conflict_message(group_type) do
+    case group_type do
+      "school" ->
+        "Student is already enrolled in a different school. Use 'update_incorrect_school_to_correct_school' import type to change schools."
+
+      "grade" ->
+        "Student is already enrolled in a different grade. Use 'update_incorrect_grade_to_correct_grade' import type to change grades."
+
+      "auth_group" ->
+        "Student is already enrolled in a different auth_group. Use 'update_incorrect_auth_group_to_correct_auth_group' import type to change auth groups."
+
+      _ ->
+        "Student is already enrolled in a different #{group_type}. Use the appropriate update import type."
+    end
+  end
 
   @doc """
   Creates a new group user with associated enrollment record.
