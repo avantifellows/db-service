@@ -15,7 +15,6 @@ defmodule Dbservice.Services.EnrollmentService do
   alias Dbservice.Batches
   alias Dbservice.Grades
   alias Dbservice.EnrollmentRecords
-  alias Dbservice.Groups.Group
   alias Dbservice.Groups.GroupUser
   alias Dbservice.EnrollmentRecords.EnrollmentRecord
   alias Dbservice.Repo
@@ -91,59 +90,7 @@ defmodule Dbservice.Services.EnrollmentService do
   Returns {:error, reason} if an active enrollment exists, :ok otherwise.
   """
   def validate_no_existing_enrollment(user_id, group_type, current_group_id) do
-    # Build the complete query with join and select in one go
-    query =
-      case group_type do
-        "school" ->
-          from er in EnrollmentRecord,
-            join: s in Schools.School,
-            on: s.id == er.group_id,
-            # EXCLUDE current group
-            where:
-              er.group_type == ^group_type and
-                er.user_id == ^user_id and
-                er.is_current == true and
-                er.group_id != ^current_group_id,
-            limit: 1,
-            select: %{group_id: er.group_id, type: er.group_type, name: s.code}
-
-        "grade" ->
-          from er in EnrollmentRecord,
-            join: g in Dbservice.Grades.Grade,
-            on: g.id == er.group_id,
-            # EXCLUDE current group
-            where:
-              er.group_type == ^group_type and
-                er.user_id == ^user_id and
-                er.is_current == true and
-                er.group_id != ^current_group_id,
-            limit: 1,
-            select: %{group_id: er.group_id, type: er.group_type, name: g.number}
-
-        "auth_group" ->
-          from er in EnrollmentRecord,
-            join: ag in Dbservice.Groups.AuthGroup,
-            on: ag.id == er.group_id,
-            # EXCLUDE current group
-            where:
-              er.group_type == ^group_type and
-                er.user_id == ^user_id and
-                er.is_current == true and
-                er.group_id != ^current_group_id,
-            limit: 1,
-            select: %{group_id: er.group_id, type: er.group_type, name: ag.name}
-
-        _ ->
-          from er in EnrollmentRecord,
-            # EXCLUDE current group
-            where:
-              er.group_type == ^group_type and
-                er.user_id == ^user_id and
-                er.is_current == true and
-                er.group_id != ^current_group_id,
-            limit: 1,
-            select: %{group_id: er.group_id, type: er.group_type, name: nil}
-      end
+    query = build_enrollment_query(user_id, group_type, current_group_id)
 
     case Repo.one(query) do
       nil ->
@@ -152,6 +99,47 @@ defmodule Dbservice.Services.EnrollmentService do
       existing_enrollment ->
         {:error, build_duplicate_enrollment_error(existing_enrollment, group_type)}
     end
+  end
+
+  # Extract query building to a separate function
+  defp build_enrollment_query(user_id, group_type, current_group_id) do
+    base_query =
+      from er in EnrollmentRecord,
+        where:
+          er.group_type == ^group_type and
+            er.user_id == ^user_id and
+            er.is_current == true and
+            er.group_id != ^current_group_id,
+        limit: 1
+
+    add_name_join(base_query, group_type)
+  end
+
+  # Separate function for adding joins based on type
+  defp add_name_join(query, "school") do
+    from [er] in query,
+      join: s in Dbservice.Schools.School,
+      on: s.id == er.group_id,
+      select: %{group_id: er.group_id, type: er.group_type, name: s.code}
+  end
+
+  defp add_name_join(query, "grade") do
+    from [er] in query,
+      join: g in Dbservice.Grades.Grade,
+      on: g.id == er.group_id,
+      select: %{group_id: er.group_id, type: er.group_type, name: g.number}
+  end
+
+  defp add_name_join(query, "auth_group") do
+    from [er] in query,
+      join: ag in Dbservice.Groups.AuthGroup,
+      on: ag.id == er.group_id,
+      select: %{group_id: er.group_id, type: er.group_type, name: ag.name}
+  end
+
+  defp add_name_join(query, _) do
+    from [er] in query,
+      select: %{group_id: er.group_id, type: er.group_type, name: nil}
   end
 
   defp build_duplicate_enrollment_error(existing_enrollment, group_type) do
