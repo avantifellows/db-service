@@ -14,7 +14,7 @@ defmodule DbserviceWeb.FallbackController do
     |> render(:error, changeset: changeset)
   end
 
-  # This clause handles string error messages (like enrollment validation errors)
+  # This clause handles string error messages
   def call(conn, {:error, error_message}) when is_binary(error_message) do
     conn
     |> put_status(:unprocessable_entity)
