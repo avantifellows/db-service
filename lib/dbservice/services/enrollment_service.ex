@@ -91,136 +91,90 @@ defmodule Dbservice.Services.EnrollmentService do
   Returns {:error, reason} if an active enrollment exists, :ok otherwise.
   """
   def validate_no_existing_enrollment(user_id, group_type, current_group_id) do
-    # Use EXISTS subquery for better performance - stops as soon as it finds one match
-    exists_query =
-      from g in Group,
-        join: gu in GroupUser,
-        on: gu.group_id == g.id,
-        where:
-          g.type == ^group_type and
-            gu.user_id == ^user_id and
-            g.id != ^current_group_id and
-            gu.is_active == true,
-        select: true,
-        limit: 1
+    # Build the complete query with join and select in one go
+    query =
+      case group_type do
+        "school" ->
+          from er in EnrollmentRecord,
+            join: s in Schools.School,
+            on: s.id == er.group_id,
+            # EXCLUDE current group
+            where:
+              er.group_type == ^group_type and
+                er.user_id == ^user_id and
+                er.is_current == true and
+                er.group_id != ^current_group_id,
+            limit: 1,
+            select: %{group_id: er.group_id, type: er.group_type, name: s.code}
 
-    case Repo.one(exists_query) do
+        "grade" ->
+          from er in EnrollmentRecord,
+            join: g in Dbservice.Grades.Grade,
+            on: g.id == er.group_id,
+            # EXCLUDE current group
+            where:
+              er.group_type == ^group_type and
+                er.user_id == ^user_id and
+                er.is_current == true and
+                er.group_id != ^current_group_id,
+            limit: 1,
+            select: %{group_id: er.group_id, type: er.group_type, name: g.number}
+
+        "auth_group" ->
+          from er in EnrollmentRecord,
+            join: ag in Dbservice.Groups.AuthGroup,
+            on: ag.id == er.group_id,
+            # EXCLUDE current group
+            where:
+              er.group_type == ^group_type and
+                er.user_id == ^user_id and
+                er.is_current == true and
+                er.group_id != ^current_group_id,
+            limit: 1,
+            select: %{group_id: er.group_id, type: er.group_type, name: ag.name}
+
+        _ ->
+          from er in EnrollmentRecord,
+            # EXCLUDE current group
+            where:
+              er.group_type == ^group_type and
+                er.user_id == ^user_id and
+                er.is_current == true and
+                er.group_id != ^current_group_id,
+            limit: 1,
+            select: %{group_id: er.group_id, type: er.group_type, name: nil}
+      end
+
+    case Repo.one(query) do
       nil ->
         :ok
 
-      _ ->
-        # Only fetch details if we found a conflict
-        conflict_query =
-          from g in Group,
-            join: gu in GroupUser,
-            on: gu.group_id == g.id,
-            where:
-              g.type == ^group_type and
-                gu.user_id == ^user_id and
-                g.id != ^current_group_id and
-                gu.is_active == true,
-            select: %{child_id: g.child_id, type: g.type},
-            limit: 1
-
-        conflict = Repo.one(conflict_query)
-        {:error, build_duplicate_enrollment_error(conflict, group_type)}
+      existing_enrollment ->
+        {:error, build_duplicate_enrollment_error(existing_enrollment, group_type)}
     end
   end
 
-  # Builds a descriptive error message for duplicate enrollment attempts.
   defp build_duplicate_enrollment_error(existing_enrollment, group_type) do
-    group_name = get_group_name(existing_enrollment.child_id, group_type)
+    name = format_name(existing_enrollment.name, group_type)
 
     case group_type do
       "school" ->
-        "Student is already enrolled in school: #{group_name}. Use 'update_incorrect_school_to_correct_school' import type to change schools."
+        "Student is already enrolled in school: #{name}. Use 'update_incorrect_school_to_correct_school' import type to change schools."
 
       "grade" ->
-        "Student is already enrolled in grade: #{group_name}. Use 'update_incorrect_grade_to_correct_grade' import type to change grades."
+        "Student is already enrolled in grade: #{name}. Use 'update_incorrect_grade_to_correct_grade' import type to change grades."
 
       "auth_group" ->
-        "Student is already enrolled in auth_group: #{group_name}. Use 'update_incorrect_auth_group_to_correct_auth_group' import type to change auth groups."
+        "Student is already enrolled in auth_group: #{name}. Use 'update_incorrect_auth_group_to_correct_auth_group' import type to change auth groups."
 
       _ ->
         "Student is already enrolled in this #{group_type}. Use the appropriate update import type."
     end
   end
 
-  # Gets the display name for a group based on its type and child_id.
-  defp get_group_name(child_id, group_type) do
-    case group_type do
-      "school" ->
-        case Schools.get_school!(child_id) do
-          nil -> "Unknown School"
-          school -> school.code || "School ##{child_id}"
-        end
-
-      "grade" ->
-        case Grades.get_grade(child_id) do
-          nil -> "Unknown Grade"
-          grade -> "Grade #{grade.number}"
-        end
-
-      "auth_group" ->
-        case AuthGroups.get_auth_group!(child_id) do
-          nil -> "Unknown Auth Group"
-          auth_group -> auth_group.name
-        end
-
-      _ ->
-        "Unknown"
-    end
-  end
-
-  @doc """
-  Validates enrollment before creation (can be called from import workers).
-  Returns :ok if enrollment is allowed, {:error, reason} otherwise.
-  """
-  def validate_enrollment(%{"enrollment_type" => enrollment_type} = data) do
-    group_id =
-      case enrollment_type do
-        "auth_group" ->
-          case get_auth_group_id(data["auth_group"]) do
-            {:error, _} = err -> err
-            id -> id
-          end
-
-        "school" ->
-          case get_school_group_id(data["school_code"]) do
-            {:error, _} = err -> err
-            id -> id
-          end
-
-        "grade" ->
-          case get_grade_group_id(data["grade_id"]) do
-            {:error, _} = err -> err
-            id -> id
-          end
-
-        "batch" ->
-          case get_batch_group_id(data["batch_id"]) do
-            {:error, _} = err -> err
-            id -> id
-          end
-
-        _ ->
-          {:error, "Unknown enrollment type"}
-      end
-
-    case group_id do
-      {:error, _} = err ->
-        err
-
-      id ->
-        group = Groups.get_group!(id)
-
-        if group.type in @exclusive_group_types do
-          validate_no_existing_enrollment(data["user_id"], group.type, id)
-        else
-          :ok
-        end
-    end
-  end
+  defp format_name(nil, _), do: "Unknown"
+  defp format_name(name, "grade"), do: "Grade #{name}"
+  defp format_name(name, _), do: name
 
   @doc """
   Creates a new group user with associated enrollment record.
