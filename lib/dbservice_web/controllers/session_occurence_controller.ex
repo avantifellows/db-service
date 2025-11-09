@@ -43,8 +43,7 @@ defmodule DbserviceWeb.SessionOccurrenceController do
   end
 
   def index(conn, params) do
-    session_ids_param = Map.get(params, "session_ids", "")
-    session_ids = if session_ids_param != "", do: String.split(session_ids_param, ","), else: []
+    session_ids = Map.get(params, "session_ids", [])
 
     session_occurrences = fetch_filtered_session_occurrences(session_ids, params)
     render(conn, :index, session_occurrence: session_occurrences)
