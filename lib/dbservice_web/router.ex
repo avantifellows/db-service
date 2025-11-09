@@ -60,6 +60,7 @@ defmodule DbserviceWeb.Router do
     resources("/session", SessionController, only: [:index, :create, :update, :show, :delete])
     post("/session/:id/update-groups", SessionController, :update_groups)
     resources("/session-occurrence", SessionOccurrenceController, except: [:new, :edit])
+    post("/session-occurrence/search", SessionOccurrenceController, :search)
     resources("/user-session", UserSessionController, except: [:new, :edit])
     get("/group-session/session-auth-group", GroupSessionController, :get_auth_group_from_session)
     resources("/group-session", GroupSessionController, except: [:new, :edit])

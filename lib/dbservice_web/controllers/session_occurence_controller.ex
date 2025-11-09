@@ -43,6 +43,20 @@ defmodule DbserviceWeb.SessionOccurrenceController do
   end
 
   def index(conn, params) do
+    session_ids = Map.get(params, "session_ids", [])
+
+    session_occurrences = fetch_filtered_session_occurrences(session_ids, params)
+    render(conn, :index, session_occurrence: session_occurrences)
+  end
+
+  def search(conn, params) do
+    session_ids = Map.get(params, "session_ids", [])
+
+    session_occurrences = fetch_filtered_session_occurrences(session_ids, params)
+    render(conn, :index, session_occurrence: session_occurrences)
+  end
+
+  defp fetch_filtered_session_occurrences(session_ids, params) do
     today = Date.utc_today()
 
     # Construct the beginning and end of today
@@ -52,18 +66,15 @@ defmodule DbserviceWeb.SessionOccurrenceController do
     # Get current timestamp for active occurrence queries (when is_start_time="active")
     current_time = NaiveDateTime.utc_now() |> NaiveDateTime.add(5 * 3600 + 30 * 60, :second)
 
-    session_ids_param = Map.get(params, "session_ids", "")
-    session_ids = if session_ids_param != "", do: String.split(session_ids_param, ","), else: []
-
-    query =
+    base_query =
       from(m in SessionOccurrence,
         order_by: [asc: m.id],
         offset: ^params["offset"],
         limit: ^params["limit"]
       )
 
-    query =
-      Enum.reduce(params, query, fn {key, value}, acc ->
+    filtered_query =
+      Enum.reduce(params, base_query, fn {key, value}, acc ->
         case String.to_existing_atom(key) do
           :offset ->
             acc
@@ -82,8 +93,7 @@ defmodule DbserviceWeb.SessionOccurrenceController do
         end
       end)
 
-    session_occurrence = Repo.all(query)
-    render(conn, :index, session_occurrence: session_occurrence)
+    Repo.all(filtered_query)
   end
 
   swagger_path :create do
