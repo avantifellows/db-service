@@ -230,7 +230,6 @@ defmodule DbserviceWeb.StudentController do
     end
   end
 
-  # Extract the main dropout logic into a separate function
   defp process_dropout(conn, student, dropout_start_date, academic_year) do
     user_id = student.user_id
 
