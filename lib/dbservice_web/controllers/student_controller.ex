@@ -210,6 +210,9 @@ defmodule DbserviceWeb.StudentController do
       "academic_year" => academic_year
     } = params
 
+    # Get student by either student_id or apaar_id
+    # Expects params to contain either "student_id" or "apaar_id" key
+    # Falls back to apaar_id if student_id is not provided or empty
     student = Users.get_student_by_id_or_apaar_id(params)
 
     case student do
