@@ -302,7 +302,9 @@ defmodule DbserviceWeb.ImportLive.Show do
     case import do
       %{total_rows: total, processed_rows: processed}
       when is_number(total) and is_number(processed) and total > 0 ->
-        round(processed / total * 100)
+        # Calculate percentage and cap it at 100
+        percentage = round(processed / total * 100)
+        min(percentage, 100)
 
       _ ->
         0
