@@ -19,7 +19,8 @@ defmodule DbserviceWeb.CutoffJSON do
       state_quota: cutoff.state_quota,
       opening_rank: cutoff.opening_rank,
       closing_rank: cutoff.closing_rank,
-      exam_occurrence: render_association(cutoff.exam_occurrence, &DbserviceWeb.ExamOccurrenceJSON.render/1),
+      exam_occurrence:
+        render_association(cutoff.exam_occurrence, &DbserviceWeb.ExamOccurrenceJSON.render/1),
       college: render_association(cutoff.college, &DbserviceWeb.CollegeJSON.render/1),
       branch: render_association(cutoff.branch, &DbserviceWeb.BranchJSON.render/1)
     }
