@@ -508,31 +508,35 @@ defmodule Dbservice.DataImport.ImportWorker do
   defp process_alumni_record(record) do
     student_identifier = Map.get(record, "student_id")
 
-    if is_nil(student_identifier) or student_identifier == "" do
-      {:error, "student_id is required for alumni addition"}
-    else
-      case Users.get_student_by_student_id(student_identifier) do
-        nil ->
-          # Create User + Student when student not found
-          with {:ok, %Dbservice.Users.Student{} = student} <-
-                 Users.create_student_with_user(record) do
-            attrs = Map.put(record, "student_id", student.id)
-            Dbservice.Alumnis.create_alumni(attrs)
-          else
-            {:error, reason} -> {:error, reason}
-          end
+    with {:ok, student_pk} <- get_or_create_student_pk(record, student_identifier) do
+      create_or_update_alumni(student_pk, record)
+    end
+  end
 
-        %Dbservice.Users.Student{id: student_pk} ->
-          attrs = Map.put(record, "student_id", student_pk)
+  defp get_or_create_student_pk(_record, student_identifier)
+       when is_nil(student_identifier) or student_identifier == "" do
+    {:error, "student_id is required for alumni addition"}
+  end
 
-          case Dbservice.Alumnis.get_alumni_by_student_id(student_pk) do
-            nil ->
-              Dbservice.Alumnis.create_alumni(attrs)
+  defp get_or_create_student_pk(record, student_identifier) do
+    case Users.get_student_by_student_id(student_identifier) do
+      nil ->
+        case Users.create_student_with_user(record) do
+          {:ok, %Dbservice.Users.Student{id: student_pk}} -> {:ok, student_pk}
+          {:error, reason} -> {:error, reason}
+        end
 
-            %Dbservice.Alumnis.Alumni{} = existing ->
-              Dbservice.Alumnis.update_alumni(existing, attrs)
-          end
-      end
+      %Dbservice.Users.Student{id: student_pk} ->
+        {:ok, student_pk}
+    end
+  end
+
+  defp create_or_update_alumni(student_pk, record) do
+    attrs = Map.put(record, "student_id", student_pk)
+
+    case Dbservice.Alumnis.get_alumni_by_student_id(student_pk) do
+      nil -> Dbservice.Alumnis.create_alumni(attrs)
+      %Dbservice.Alumnis.Alumni{} = existing -> Dbservice.Alumnis.update_alumni(existing, attrs)
     end
   end
 
