@@ -83,7 +83,7 @@ defmodule DbserviceWeb.Router do
     resources("/exam", ExamController)
     resources("/student-exam-record", StudentExamRecordController)
     get("/user/:user_id/sessions", UserController, :get_user_sessions)
-    patch("/dropout/:student_id", StudentController, :dropout)
+    patch("/dropout", StudentController, :dropout)
     resources("/status", StatusController, except: [:new, :edit])
     patch("/enrolled", StudentController, :enrolled)
     resources("/school-batch", SchoolBatchController, except: [:new, :edit])
