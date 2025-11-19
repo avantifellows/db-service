@@ -39,7 +39,7 @@ defmodule DbserviceWeb.CutoffController do
         order_by: [asc: c.id],
         offset: ^params["offset"],
         limit: ^params["limit"],
-        preload: [:exam_occurrence, :college, :branch]
+        preload: [:exam_occurrence, :college, :branch, :demographic_profile]
       )
 
     query =

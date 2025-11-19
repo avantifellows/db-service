@@ -121,7 +121,7 @@ defmodule Dbservice.Cutoffs do
   def get_cutoff_with_associations!(id) do
     Cutoff
     |> Repo.get!(id)
-    |> Repo.preload([:exam_occurrence, :college, :branch])
+    |> Repo.preload([:exam_occurrence, :college, :branch, :demographic_profile])
   end
 
   @doc """
