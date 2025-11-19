@@ -18,7 +18,7 @@ defmodule Dbservice.Demographics.DemographicProfile do
     field :urban_rural, :boolean, default: false
     field :region, :string
 
-    has_many :cutoffs, Dbservice.Cutoffs.Cutoff, foreign_key: :category
+    has_many :cutoffs, Dbservice.Cutoffs.Cutoff
 
     timestamps()
   end

@@ -12,5 +12,6 @@ defmodule Dbservice.Repo.Migrations.CreateBranchTable do
     end
 
     create index(:branch, [:name])
+    create index(:branch, [:branch_id])
   end
 end

@@ -52,5 +52,7 @@ defmodule Dbservice.Repo.Migrations.CreateAlumniTable do
 
       timestamps()
     end
+
+    create unique_index(:alumni, [:student_id])
   end
 end

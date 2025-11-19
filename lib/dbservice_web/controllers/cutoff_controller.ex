@@ -27,7 +27,7 @@ defmodule DbserviceWeb.CutoffController do
       exam_occurrence_id(:query, :integer, "Exam occurrence ID", required: false)
       college_id(:query, :integer, "College ID", required: false)
       branch_id(:query, :integer, "Branch ID", required: false)
-      category_id(:query, :integer, "Category ID", required: false)
+      demographic_profile_id(:query, :integer, "Demographic Profile ID", required: false)
     end
 
     response(200, "OK", Schema.ref(:Cutoffs))

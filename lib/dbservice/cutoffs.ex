@@ -89,19 +89,19 @@ defmodule Dbservice.Cutoffs do
   end
 
   @doc """
-  Gets cutoffs by category.
+  Gets cutoffs by demographic_profile_id.
 
   ## Examples
 
-      iex> get_cutoffs_by_category("General")
+      iex> get_cutoffs_by_demographic_profile_id(1)
       [%Cutoff{}, ...]
 
-      iex> get_cutoffs_by_category("Unknown")
+      iex> get_cutoffs_by_demographic_profile_id(999)
       []
   """
-  def get_cutoffs_by_category(category) do
+  def get_cutoffs_by_demographic_profile_id(demographic_profile_id) do
     Cutoff
-    |> where([c], c.category == ^category)
+    |> where([c], c.demographic_profile_id == ^demographic_profile_id)
     |> Repo.all()
   end
 

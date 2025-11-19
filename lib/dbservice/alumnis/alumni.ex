@@ -95,5 +95,6 @@ defmodule Dbservice.Alumnis.Alumni do
       :contact_status
     ])
     |> validate_required([:student_id])
+    |> unique_constraint(:student_id)
   end
 end
