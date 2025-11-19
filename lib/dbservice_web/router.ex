@@ -85,7 +85,7 @@ defmodule DbserviceWeb.Router do
     resources("/college", CollegeController, except: [:new, :edit])
     resources("/exam", ExamController)
     resources("/exam_occurrence", ExamOccurrenceController, except: [:new, :edit])
-    resources("/demographic_profile", DemographicProfileController, except: [:new, :edit])
+    resources("/demographic-profile", DemographicProfileController, except: [:new, :edit])
     resources("/branch", BranchController, except: [:new, :edit])
     resources("/cutoffs", CutoffController, except: [:new, :edit])
 
