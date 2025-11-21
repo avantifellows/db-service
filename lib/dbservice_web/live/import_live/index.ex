@@ -19,7 +19,7 @@ defmodule DbserviceWeb.ImportLive.Index do
        show_stop_modal: false,
        selected_import: nil,
        page: 1,
-       page_size: 50,
+       page_size: 20,
        total_count: 0,
        total_pages: 0,
        overall_counts: %{}
@@ -298,8 +298,10 @@ defmodule DbserviceWeb.ImportLive.Index do
                         <span><%= import.processed_rows %>/<%= import.total_rows %></span>
                         <span><%= calculate_percentage(import.processed_rows, import.total_rows) %>%</span>
                       </div>
-                      <div class="w-full bg-gray-200 dark:bg-gray-700 rounded-full h-2">
-                        <div class="bg-gradient-to-r from-indigo-500 to-violet-500 h-2 rounded-full" style={"width: #{calculate_percentage(import.processed_rows, import.total_rows)}%"}></div>
+                      <div class="w-full bg-gray-200 dark:bg-gray-700 rounded-full h-2 overflow-hidden">
+                        <div class="bg-gradient-to-r from-indigo-500 to-violet-500 h-2 rounded-full transition-all duration-300"
+                            style={"width: #{min(calculate_percentage(import.processed_rows, import.total_rows), 100)}%"}>
+                        </div>
                       </div>
                     </div>
 
@@ -380,8 +382,10 @@ defmodule DbserviceWeb.ImportLive.Index do
                             <span><%= import.processed_rows %>/<%= import.total_rows %></span>
                             <span><%= calculate_percentage(import.processed_rows, import.total_rows) %>%</span>
                           </div>
-                          <div class="w-full bg-gray-200 dark:bg-gray-700 rounded-full h-2">
-                            <div class="bg-gradient-to-r from-indigo-500 to-violet-500 h-2 rounded-full" style={"width: #{calculate_percentage(import.processed_rows, import.total_rows)}%"}></div>
+                          <div class="w-full bg-gray-200 dark:bg-gray-700 rounded-full h-2 overflow-hidden">
+                            <div class="bg-gradient-to-r from-indigo-500 to-violet-500 h-2 rounded-full transition-all duration-300"
+                                style={"width: #{min(calculate_percentage(import.processed_rows, import.total_rows), 100)}%"}>
+                            </div>
                           </div>
                         </div>
                       </td>
@@ -510,7 +514,9 @@ defmodule DbserviceWeb.ImportLive.Index do
   defp pad(number), do: "#{number}"
 
   defp calculate_percentage(processed, total) when total > 0 do
-    round(processed / total * 100)
+    # Calculate percentage and cap it at 100
+    percentage = (processed / total * 100) |> round()
+    min(percentage, 100)
   end
 
   defp calculate_percentage(_, _), do: 0
