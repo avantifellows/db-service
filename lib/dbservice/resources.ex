@@ -564,6 +564,6 @@ defmodule Dbservice.Resources do
     )
   end
 
-  defp get_offset(params), do: params["offset"] || 0
-  defp get_limit(params), do: params["limit"] || 50
+  defp get_offset(params), do: params["offset"]
+  defp get_limit(params), do: params["limit"]
 end
