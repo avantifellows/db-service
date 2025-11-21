@@ -83,14 +83,12 @@ defmodule Dbservice.Constants.Mappings do
       db_field: "student_id",
       required: [
         "student",
-        "batch_movement",
-        "student_update",
         "update_incorrect_batch_id_to_correct_batch_id",
         "update_incorrect_school_to_correct_school",
         "update_incorrect_grade_to_correct_grade",
         "update_incorrect_auth_group_to_correct_auth_group"
       ],
-      optional: [],
+      optional: ["batch_movement", "student_update"],
       type: :string
     },
     "student_father_name" => %{
@@ -312,7 +310,7 @@ defmodule Dbservice.Constants.Mappings do
     "student_apaar_id" => %{
       db_field: "apaar_id",
       required: [],
-      optional: ["student", "student_update"],
+      optional: ["student", "student_update", "batch_movement"],
       type: :string
     },
 

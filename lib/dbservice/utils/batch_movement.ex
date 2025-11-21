@@ -4,7 +4,7 @@ defmodule Dbservice.DataImport.BatchMovement do
   @moduledoc """
   This module handles batch movement processing for importing student batch changes.
   It processes batch movement records by:
-  1. Finding the student by student_id
+  1. Finding the student by student_id or apaar_id
   2. Finding the new batch by batch_id
   3. Updating group_user records to reflect the new batch
   4. Creating new enrollment records for the new batch (isCurrent=true)
@@ -17,23 +17,28 @@ defmodule Dbservice.DataImport.BatchMovement do
   alias Dbservice.Services.BatchEnrollmentService
 
   def process_batch_movement(record) do
-    case Users.get_student_by_student_id(record["student_id"]) do
+    case Users.get_student_by_id_or_apaar_id(record) do
       nil ->
-        {:error, "Student not found with ID: #{record["student_id"]}"}
+        {:error,
+         "Student not found. student_id: #{record["student_id"]}, apaar_id: #{record["apaar_id"]}"}
 
       student ->
-        with {batch_group_id, batch_id, batch_group_type} <-
-               BatchEnrollmentService.get_batch_info(record["batch_id"]),
-             {:ok, _} <-
-               handle_batch_movement(
-                 student,
-                 {batch_group_id, batch_id, batch_group_type},
-                 record
-               ) do
-          {:ok, "Batch movement processed successfully"}
-        else
-          {:error, reason} ->
-            {:error, reason}
+        process_student_with_batch(student, record)
+    end
+  end
+
+  defp process_student_with_batch(student, record) do
+    case BatchEnrollmentService.get_batch_info(record["batch_id"]) do
+      nil ->
+        {:error, "Batch not found with ID: #{record["batch_id"]}"}
+
+      {batch_group_id, batch_id, batch_group_type} ->
+        case handle_batch_movement(
+               student,
+               {batch_group_id, batch_id, batch_group_type},
+               record
+             ) do
+          {:ok, _} -> {:ok, "Batch movement processed successfully"}
         end
     end
   end
@@ -100,7 +105,7 @@ defmodule Dbservice.DataImport.BatchMovement do
   end
 
   defp handle_grade_movement(student, record, user_id, academic_year, start_date, group_users) do
-    has_grade = Map.has_key?(record, "grade") && record["grade"] != ""
+    has_grade = Map.has_key?(record, "grade") && record["grade"] != nil && record["grade"] != ""
 
     if has_grade do
       process_grade_change(
@@ -118,6 +123,9 @@ defmodule Dbservice.DataImport.BatchMovement do
 
   defp process_grade_change(student, grade, user_id, academic_year, start_date, group_users) do
     case BatchEnrollmentService.get_grade_info(grade) do
+      nil ->
+        :grade_not_found
+
       {grade_group_id, grade_id, grade_group_type} ->
         handle_grade_enrollment_if_changed(
           student,
@@ -129,9 +137,6 @@ defmodule Dbservice.DataImport.BatchMovement do
           start_date,
           group_users
         )
-
-      nil ->
-        :grade_not_found
     end
   end
 

@@ -16,6 +16,7 @@ defmodule Dbservice.DataImport.ImportWorker do
   alias Dbservice.Users
   alias Dbservice.Grades
   alias Dbservice.Services.StudentUpdateService
+  alias Dbservice.Utils.ChangesetFormatter
 
   @impl Oban.Worker
   def perform(%Oban.Job{args: %{"id" => import_id}}) do
@@ -23,7 +24,10 @@ defmodule Dbservice.DataImport.ImportWorker do
 
     with {:ok, updated_import} <- initialize_import_processing(import_record),
          {:ok, processor_fn} <- get_record_processor(updated_import.type) do
-      process_import(updated_import, processor_fn)
+      case process_import(updated_import, processor_fn) do
+        {:ok, _processed_records} -> :ok
+        {:error, reason} -> {:error, reason}
+      end
     else
       {:error, reason} -> {:error, reason}
     end
@@ -277,14 +281,16 @@ defmodule Dbservice.DataImport.ImportWorker do
         {:cont, {:ok, [result | processed_records]}}
 
       {:error, reason} ->
-        handle_record_error(index - 1, reason, import_record, processed_records)
+        handle_record_error(index, reason, import_record, processed_records)
     end
   end
 
   # Helper function to handle errors during record processing
   defp handle_record_error(index, reason, import_record, _processed_records) do
-    # Calculate actual CSV row number: index is 1-based for data rows, so CSV row = index + 1 (accounting for header)
-    csv_row_number = index + 1
+    # Calculate actual CSV row number: index is 1-based for filtered data rows
+    # CSV row = index + start_row - 1 (since index 1 = first data row = start_row)
+    start_row = import_record.start_row || 2
+    csv_row_number = index + start_row - 1
 
     # Update import record with error details before halting
     update_params = %{
@@ -308,52 +314,135 @@ defmodule Dbservice.DataImport.ImportWorker do
     try do
       case record_processor_fn.(record) do
         {:ok, _} = result ->
-          update_import_progress(import_record, index, :success)
+          update_import_progress(import_record, index)
           result
 
         {:error, reason} = error ->
-          update_import_progress(import_record, index, :error, reason)
+          # Don't update progress for errors - only log the error
+          log_import_error(import_record, index, reason)
           error
       end
     rescue
       e ->
-        update_import_progress(import_record, index, :exception, e)
+        # Don't update progress for exceptions - only log the error
+        log_import_error(import_record, index, Exception.message(e))
         {:error, Exception.message(e)}
     end
   end
 
+  # Log import error without updating processed rows count
+  defp log_import_error(import_record, index, error) do
+    # Calculate actual CSV row number
+    start_row = import_record.start_row || 2
+    csv_row_number = index + start_row - 1
+
+    error_message = format_error_message(error, csv_row_number)
+
+    update_params = %{
+      error_count: (import_record.error_count || 0) + 1,
+      error_details: [
+        %{row: csv_row_number, error: error_message}
+        | import_record.error_details || []
+      ]
+    }
+
+    DataImport.update_import(import_record, update_params)
+
+    # Broadcast error update
+    Phoenix.PubSub.broadcast(
+      Dbservice.PubSub,
+      "imports",
+      {:import_updated, import_record.id}
+    )
+  end
+
   # Record processor functions for each import type
   defp process_student_record(record) do
-    case Users.get_student_by_student_id(record["student_id"]) do
-      nil ->
-        with {:ok, student} <- Users.create_student_with_user(record),
-             student <- Dbservice.Repo.preload(student, [:user]),
-             {:ok, _} <- DataImport.StudentEnrollment.create_enrollments(student.user, record) do
-          {:ok, student}
-        else
-          {:error, _} = error -> error
-        end
-
-      existing_student ->
-        user = Users.get_user!(existing_student.user_id)
-
-        with {:ok, updated_student} <-
-               Users.update_student_with_user(existing_student, user, record),
-             {:ok, _} <- DataImport.StudentEnrollment.create_enrollments(user, record) do
-          {:ok, updated_student}
-        else
-          {:error, _} = error -> error
-        end
+    with {:ok, _} <- validate_student_identifiers(record),
+         {:ok, result} <- process_student(record) do
+      result
     end
   end
 
-  defp process_student_update_record(record) do
+  defp validate_student_identifiers(record) do
     student_id = record["student_id"]
+    apaar_id = record["apaar_id"]
 
-    if is_nil(student_id) or student_id == "" do
-      {:error, "student_id is required for student updates"}
+    if nil_or_empty?(student_id) and nil_or_empty?(apaar_id) do
+      {:error, "Either student_id or apaar_id is required for student addition"}
     else
-      StudentUpdateService.update_student_by_student_id(student_id, record)
+      {:ok, :valid}
+    end
+  end
+
+  defp process_student(record) do
+    case Users.get_student_by_id_or_apaar_id(record) do
+      nil -> create_student(record)
+      existing_student -> handle_existing_student(existing_student, record)
+    end
+  end
+
+  defp create_student(record) do
+    with {:ok, student} <- Users.create_student_with_user(record),
+         student <- Dbservice.Repo.preload(student, [:user]),
+         {:ok, _} <- DataImport.StudentEnrollment.create_enrollments(student.user, record) do
+      {:ok, {:ok, student}}
+    else
+      {:error, _} = error -> {:ok, error}
+    end
+  end
+
+  defp handle_existing_student(existing_student, record) do
+    user = Users.get_user!(existing_student.user_id)
+    auth_groups = Dbservice.GroupUsers.get_group_user_by_user_id_and_type(user.id, "auth_group")
+
+    auth_group_name =
+      case auth_groups do
+        [%{group: %{id: _, type: _, child_id: child_id}} | _] ->
+          case Dbservice.AuthGroups.get_auth_group!(child_id) do
+            %{name: name} -> name
+            _ -> "unknown"
+          end
+
+        _ ->
+          "unknown"
+      end
+
+    error_message = build_duplicate_error_message(record, existing_student, auth_group_name)
+    {:ok, {:error, error_message}}
+  end
+
+  defp build_duplicate_error_message(record, existing_student, auth_group_name) do
+    cond do
+      not nil_or_empty?(record["student_id"]) ->
+        "Student already exists with student_id: #{existing_student.student_id} and auth_group: #{auth_group_name}"
+
+      not nil_or_empty?(record["apaar_id"]) ->
+        "Student already exists with apaar_id: #{existing_student.apaar_id} and auth_group: #{auth_group_name}"
+
+      true ->
+        "Student already exists with auth_group: #{auth_group_name}"
+    end
+  end
+
+  defp nil_or_empty?(value), do: is_nil(value) or value == ""
+
+  defp process_student_update_record(record) do
+    # Accept either student_id or apaar_id (like addition and batch movement)
+    student_id = record["student_id"]
+    apaar_id = record["apaar_id"]
+
+    if (is_nil(student_id) or student_id == "") and (is_nil(apaar_id) or apaar_id == "") do
+      {:error, "Either student_id or apaar_id is required for student updates"}
+    else
+      case Users.get_student_by_id_or_apaar_id(record) do
+        nil ->
+          {:error,
+           "Student not found. student_id: #{record["student_id"]}, apaar_id: #{record["apaar_id"]}"}
+
+        student ->
+          StudentUpdateService.update_student_with_user_data(student, record)
+      end
     end
   end
 
@@ -449,37 +538,11 @@ defmodule Dbservice.DataImport.ImportWorker do
     end
   end
 
-  defp update_import_progress(import_record, index, status, error \\ nil) do
-    # Calculate actual CSV row number: index is 1-based for data rows, so CSV row = index + 1 (accounting for header)
-    csv_row_number = index + 1
-    # Calculate how many data rows we've processed
-    processed_rows = csv_row_number - (import_record.start_row || 2)
+  defp update_import_progress(import_record, index) do
+    # Calculate how many data rows we've processed successfully
+    processed_rows = index
 
-    update_params = build_base_update_params(processed_rows)
-
-    update_params =
-      case status do
-        :error ->
-          Map.merge(update_params, %{
-            error_count: (import_record.error_count || 0) + 1,
-            error_details: [
-              %{row: csv_row_number, error: inspect(error)}
-              | import_record.error_details || []
-            ]
-          })
-
-        :exception ->
-          Map.merge(update_params, %{
-            error_count: (import_record.error_count || 0) + 1,
-            error_details: [
-              %{row: csv_row_number, error: Exception.message(error)}
-              | import_record.error_details || []
-            ]
-          })
-
-        _ ->
-          update_params
-      end
+    update_params = %{processed_rows: processed_rows}
 
     DataImport.update_import(import_record, update_params)
 
@@ -491,9 +554,13 @@ defmodule Dbservice.DataImport.ImportWorker do
     )
   end
 
-  # Extract base update params creation
-  defp build_base_update_params(processed_rows) do
-    %{processed_rows: processed_rows}
+  # Format error message based on error type
+  defp format_error_message(%Ecto.Changeset{} = changeset, csv_row_number) do
+    ChangesetFormatter.format_errors_with_row(changeset, csv_row_number)
+  end
+
+  defp format_error_message(error, csv_row_number) do
+    "Row #{csv_row_number}: #{inspect(error)}"
   end
 
   defp finalize_import(import_record, records) do

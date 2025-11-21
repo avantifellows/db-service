@@ -43,6 +43,47 @@ defmodule Dbservice.DataImport do
   end
 
   @doc """
+  Returns a paginated list of imports and the total count.
+
+  The `page` is 1-based. `page_size` is the number of records per page.
+  """
+  def list_imports_paginated(page, page_size) when page >= 1 and page_size >= 1 do
+    offset = (page - 1) * page_size
+
+    imports_query =
+      from i in Import,
+        order_by: [desc: i.inserted_at],
+        limit: ^page_size,
+        offset: ^offset
+
+    total_count_query = from i in Import, select: count(i.id)
+
+    {
+      Repo.all(imports_query),
+      Repo.one(total_count_query)
+    }
+  end
+
+  @doc """
+  Returns the total number of imports.
+  """
+  def count_imports do
+    Repo.one(from i in Import, select: count(i.id))
+  end
+
+  @doc """
+  Returns a map of status => count for all imports.
+  """
+  def count_imports_by_status do
+    from(i in Import,
+      group_by: i.status,
+      select: {i.status, count(i.id)}
+    )
+    |> Repo.all()
+    |> Map.new()
+  end
+
+  @doc """
   Gets a single Import.
   Raises `Ecto.NoResultsError` if the Import does not exist.
   ## Examples
@@ -84,6 +125,22 @@ defmodule Dbservice.DataImport do
     data_import
     |> Import.changeset(attrs)
     |> Repo.update()
+  end
+
+  def start_import(params) when not is_map_key(params, "sheet_url") do
+    {:error, "URL is required for starting an import"}
+  end
+
+  def start_import(%{"sheet_url" => url}) when url == "" do
+    {:error, "URL cannot be empty"}
+  end
+
+  def start_import(params) when not is_map_key(params, "type") do
+    {:error, "Import type is required"}
+  end
+
+  def start_import(params) when not is_map_key(params, "start_row") do
+    {:error, "Start row is required"}
   end
 
   def start_import(%{

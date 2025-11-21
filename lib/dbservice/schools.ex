@@ -154,9 +154,15 @@ defmodule Dbservice.Schools do
 
     with {:ok, %User{} = user} <- Users.create_user(attrs),
          {:ok, %School{} = school} <-
-           Schools.create_school(Map.merge(attrs, %{"user_id" => user.id})) do
+           Schools.create_school(Map.merge(stringify_keys(attrs), %{"user_id" => user.id})) do
       {:ok, school}
     end
+  end
+
+  defp stringify_keys(map) do
+    map
+    |> Enum.map(fn {key, value} -> {to_string(key), value} end)
+    |> Enum.into(%{})
   end
 
   @doc """
@@ -176,7 +182,10 @@ defmodule Dbservice.Schools do
 
     with {:ok, %User{} = user} <- Users.update_user(user, attrs),
          {:ok, %School{} = school} <-
-           Schools.update_school(school, Map.merge(attrs, %{"user_id" => user.id})) do
+           Schools.update_school(
+             school,
+             Map.merge(stringify_keys(attrs), %{"user_id" => user.id})
+           ) do
       {:ok, school}
     end
   end

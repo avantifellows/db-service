@@ -11,7 +11,7 @@ defmodule Dbservice.Utils.Util do
 
   @valid_categories ~w(Gen OBC SC ST Gen-EWS PWD-SC PWD-Gen PWD-OBC PWD-EWS PWD-ST)
   @valid_genders ~w(Male Female Others)
-  @valid_streams ~w(engineering medical pcmb pcm pcb foundation)
+  @valid_streams ~w(engineering medical pcmb pcm pcb foundation ca clat)
 
   def invalidate_future_date(changeset, date_field_atom) do
     utc_now = DateTime.utc_now()
@@ -217,23 +217,28 @@ defmodule Dbservice.Utils.Util do
   end
 
   @doc """
-  Filters a JSONB `name` field by `lang_code`. If `lang_code` is `"all"`, returns all.
-  Defaults to `"en"` if `lang_code` is missing.
+  Filters a JSONB `name` field by `lang_code`. If `lang_code` is `"all"` or not provided, returns all.
+  Only filters by language when `lang_code` is explicitly provided.
   """
   def filter_by_lang(query, params) do
-    case Map.get(params, "lang_code", "en") do
-      "all" ->
-        # No filtering, return all languages
+    case Map.get(params, "lang_code") do
+      # No lang_code provided or "all" - don't filter by language
+      nil ->
         query
 
+      "all" ->
+        query
+
+      # Explicit lang_code provided - filter and exclude NULL names
       lang_code ->
         from(u in query,
           where:
-            fragment(
-              "EXISTS (SELECT 1 FROM JSONB_ARRAY_ELEMENTS(?) obj WHERE obj->>'lang_code' = ?)",
-              u.name,
-              ^lang_code
-            ),
+            not is_nil(u.name) and
+              fragment(
+                "EXISTS (SELECT 1 FROM JSONB_ARRAY_ELEMENTS(?) obj WHERE obj->>'lang_code' = ?)",
+                u.name,
+                ^lang_code
+              ),
           select_merge: %{
             name:
               fragment(

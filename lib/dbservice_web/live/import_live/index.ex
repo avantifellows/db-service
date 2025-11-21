@@ -7,31 +7,69 @@ defmodule DbserviceWeb.ImportLive.Index do
 
   @impl true
   def mount(_params, _session, socket) do
-    imports = DataImport.list_imports()
-
     # Subscribe to import updates
     if connected?(socket) do
       Phoenix.PubSub.subscribe(Dbservice.PubSub, "imports")
     end
 
-    # Track import statuses to avoid duplicate notifications
-    import_statuses =
-      imports
-      |> Enum.map(&{&1.id, &1.status})
-      |> Enum.into(%{})
-
     {:ok,
      assign(socket,
-       imports: imports,
-       import_statuses: import_statuses,
+       imports: [],
+       import_statuses: %{},
        show_stop_modal: false,
-       selected_import: nil
+       selected_import: nil,
+       page: 1,
+       page_size: 20,
+       total_count: 0,
+       total_pages: 0,
+       overall_counts: %{}
      )}
   end
 
   @impl true
   def handle_params(params, _url, socket) do
-    {:noreply, apply_action(socket, socket.assigns.live_action, params)}
+    page =
+      case Map.get(params, "page") do
+        nil ->
+          1
+
+        p when is_binary(p) ->
+          case Integer.parse(p) do
+            {num, _} when num >= 1 -> num
+            _ -> 1
+          end
+      end
+
+    page_size = socket.assigns.page_size
+
+    {imports, total_count} = DataImport.list_imports_paginated(page, page_size)
+    overall_counts = DataImport.count_imports_by_status()
+
+    import_statuses =
+      imports
+      |> Enum.map(&{&1.id, &1.status})
+      |> Enum.into(%{})
+
+    total_pages =
+      if total_count == 0 do
+        0
+      else
+        div(total_count + page_size - 1, page_size)
+      end
+
+    socket =
+      socket
+      |> assign(:page_title, "Data Imports")
+      |> assign(
+        imports: imports,
+        import_statuses: import_statuses,
+        page: page,
+        total_count: total_count,
+        total_pages: total_pages,
+        overall_counts: overall_counts
+      )
+
+    {:noreply, socket}
   end
 
   @impl true
@@ -71,7 +109,10 @@ defmodule DbserviceWeb.ImportLive.Index do
   @impl true
   def handle_info({:import_updated, import_id}, socket) do
     # Refresh the imports list when any import is updated
-    imports = DataImport.list_imports()
+    {imports, _total_count} =
+      DataImport.list_imports_paginated(socket.assigns.page, socket.assigns.page_size)
+
+    overall_counts = DataImport.count_imports_by_status()
 
     # Check if this import status changed to a terminal state
     updated_import = Enum.find(imports, &(&1.id == import_id))
@@ -92,15 +133,12 @@ defmodule DbserviceWeb.ImportLive.Index do
         socket.assigns.import_statuses
       end
 
-    {:noreply, assign(socket, imports: imports, import_statuses: new_import_statuses)}
-  end
-
-  defp apply_action(socket, :index, _params) do
-    assign(socket, :page_title, "Data Imports")
-  end
-
-  defp apply_action(socket, _action, _params) do
-    assign(socket, :page_title, "Data Imports")
+    {:noreply,
+     assign(socket,
+       imports: imports,
+       import_statuses: new_import_statuses,
+       overall_counts: overall_counts
+     )}
   end
 
   @impl true
@@ -148,7 +186,7 @@ defmodule DbserviceWeb.ImportLive.Index do
               </div>
               <div class="ml-4">
                 <p class="text-sm font-medium text-gray-500 dark:text-gray-400">Completed</p>
-                <p class="text-xl sm:text-2xl font-bold text-gray-900 dark:text-white"><%= Enum.count(@imports, & &1.status == "completed") %></p>
+                <p class="text-xl sm:text-2xl font-bold text-gray-900 dark:text-white"><%= Map.get(@overall_counts, "completed", 0) %></p>
               </div>
             </div>
             </div>
@@ -172,7 +210,7 @@ defmodule DbserviceWeb.ImportLive.Index do
                 </div>
                 <div class="ml-4">
                   <p class="text-sm font-medium text-gray-500 dark:text-gray-400">In Progress</p>
-                  <p class="text-xl sm:text-2xl font-bold text-gray-900 dark:text-white"><%= Enum.count(@imports, & &1.status == "processing") %></p>
+                  <p class="text-xl sm:text-2xl font-bold text-gray-900 dark:text-white"><%= Map.get(@overall_counts, "processing", 0) %></p>
                 </div>
               </div>
             </div>
@@ -195,7 +233,7 @@ defmodule DbserviceWeb.ImportLive.Index do
                 </div>
                 <div class="ml-4">
                   <p class="text-sm font-medium text-gray-500 dark:text-gray-400">Stopped</p>
-                  <p class="text-xl sm:text-2xl font-bold text-gray-900 dark:text-white"><%= Enum.count(@imports, & &1.status == "stopped") %></p>
+                  <p class="text-xl sm:text-2xl font-bold text-gray-900 dark:text-white"><%= Map.get(@overall_counts, "stopped", 0) %></p>
                 </div>
               </div>
             </div>
@@ -223,7 +261,7 @@ defmodule DbserviceWeb.ImportLive.Index do
 
                 <div class="ml-4">
                   <p class="text-sm font-medium text-gray-500 dark:text-gray-400">Failed</p>
-                  <p class="text-xl sm:text-2xl font-bold text-gray-900 dark:text-white"><%= Enum.count(@imports, & &1.status == "failed") %></p>
+                  <p class="text-xl sm:text-2xl font-bold text-gray-900 dark:text-white"><%= Map.get(@overall_counts, "failed", 0) %></p>
                 </div>
               </div>
           </div>
@@ -260,8 +298,10 @@ defmodule DbserviceWeb.ImportLive.Index do
                         <span><%= import.processed_rows %>/<%= import.total_rows %></span>
                         <span><%= calculate_percentage(import.processed_rows, import.total_rows) %>%</span>
                       </div>
-                      <div class="w-full bg-gray-200 dark:bg-gray-700 rounded-full h-2">
-                        <div class="bg-gradient-to-r from-indigo-500 to-violet-500 h-2 rounded-full" style={"width: #{calculate_percentage(import.processed_rows, import.total_rows)}%"}></div>
+                      <div class="w-full bg-gray-200 dark:bg-gray-700 rounded-full h-2 overflow-hidden">
+                        <div class="bg-gradient-to-r from-indigo-500 to-violet-500 h-2 rounded-full transition-all duration-300"
+                            style={"width: #{min(calculate_percentage(import.processed_rows, import.total_rows), 100)}%"}>
+                        </div>
                       </div>
                     </div>
 
@@ -342,8 +382,10 @@ defmodule DbserviceWeb.ImportLive.Index do
                             <span><%= import.processed_rows %>/<%= import.total_rows %></span>
                             <span><%= calculate_percentage(import.processed_rows, import.total_rows) %>%</span>
                           </div>
-                          <div class="w-full bg-gray-200 dark:bg-gray-700 rounded-full h-2">
-                            <div class="bg-gradient-to-r from-indigo-500 to-violet-500 h-2 rounded-full" style={"width: #{calculate_percentage(import.processed_rows, import.total_rows)}%"}></div>
+                          <div class="w-full bg-gray-200 dark:bg-gray-700 rounded-full h-2 overflow-hidden">
+                            <div class="bg-gradient-to-r from-indigo-500 to-violet-500 h-2 rounded-full transition-all duration-300"
+                                style={"width: #{min(calculate_percentage(import.processed_rows, import.total_rows), 100)}%"}>
+                            </div>
                           </div>
                         </div>
                       </td>
@@ -403,6 +445,48 @@ defmodule DbserviceWeb.ImportLive.Index do
           </div>
         </div>
 
+        <!-- Pagination controls -->
+        <div class="mt-4 flex items-center justify-between px-3">
+          <div class="text-sm text-gray-600 dark:text-gray-400">
+            <%= if @total_count > 0 do %>
+              Showing
+              <%= ((@page - 1) * @page_size) + 1 %>
+              to
+              <%= min(@page * @page_size, @total_count) %>
+              of
+              <%= @total_count %>
+              imports
+            <% else %>
+              No imports
+            <% end %>
+          </div>
+
+          <div class="inline-flex items-center gap-2" role="group">
+            <.link
+              patch={~p"/imports?page=#{max(@page - 1, 1)}"}
+              class={if @page <= 1 do
+                "px-4 py-2 text-sm font-medium rounded-lg cursor-not-allowed text-gray-400 bg-gray-100 dark:bg-gray-700"
+              else
+                "px-4 py-2 text-sm font-medium rounded-lg text-white bg-gradient-to-r from-indigo-600 to-violet-600 hover:opacity-90 shadow"
+              end}
+              aria-disabled={@page <= 1}
+            >
+              Prev
+            </.link>
+            <.link
+              patch={~p"/imports?page=#{min(@page + 1, max(@total_pages, 1))}"}
+              class={if @page >= @total_pages or @total_pages == 0 do
+                "px-4 py-2 text-sm font-medium rounded-lg cursor-not-allowed text-gray-400 bg-gray-100 dark:bg-gray-700"
+              else
+                "px-4 py-2 text-sm font-medium rounded-lg text-white bg-gradient-to-r from-indigo-600 to-violet-600 hover:opacity-90 shadow"
+              end}
+              aria-disabled={@page >= @total_pages or @total_pages == 0}
+            >
+              Next
+            </.link>
+          </div>
+        </div>
+
         <!-- Reusable confirmation modal for stopping import -->
         <.import_stop_modal
           show={@show_stop_modal}
@@ -430,7 +514,9 @@ defmodule DbserviceWeb.ImportLive.Index do
   defp pad(number), do: "#{number}"
 
   defp calculate_percentage(processed, total) when total > 0 do
-    round(processed / total * 100)
+    # Calculate percentage and cap it at 100
+    percentage = (processed / total * 100) |> round()
+    min(percentage, 100)
   end
 
   defp calculate_percentage(_, _), do: 0

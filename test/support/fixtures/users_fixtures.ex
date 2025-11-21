@@ -13,18 +13,21 @@ defmodule Dbservice.UsersFixtures do
     {:ok, user} =
       attrs
       |> Enum.into(%{
+        first_name: "some first name",
+        last_name: "some last name",
         address: "some address",
         city: "some city",
         district: "some district",
         email: "some email",
-        full_name: "some full name",
-        gender: "some gender",
+        gender: "Male",
         phone: "9456591269",
-        pincode: "some pincode",
-        role: "some role",
         state: "some state",
-        whatsapp_phone: "some whatsapp phone",
-        date_of_birth: ~U[2022-04-28 13:58:00Z]
+        region: "some region",
+        pincode: "123456",
+        role: "student",
+        whatsapp_phone: "9456591269",
+        date_of_birth: ~D[2000-01-01],
+        country: "some country"
       })
       |> Dbservice.Users.create_user()
 
@@ -35,74 +38,78 @@ defmodule Dbservice.UsersFixtures do
   Generate a student.
   """
   def student_fixture(attrs \\ %{}) do
+    user = user_fixture()
+    user_id = user.id
+
     {:ok, student} =
       attrs
       |> Enum.into(%{
-        category: "some category",
+        student_id: "some student id",
+        category: "Gen",
         father_name: "some father_name",
         father_phone: "some father_phone",
         mother_name: "some mother_name",
-        mother_phone: "some mother_phone",
-        stream: "some stream",
-        uuid: "some uuid",
+        stream: "medical",
         physically_handicapped: false,
-        family_income: "some family income",
-        father_profession: "some father profession",
+        annual_family_income: "some family income",
         father_education_level: "some father education level",
-        mother_profession: "some mother profession",
+        father_profession: "some father profession",
+        mother_phone: "some mother phone",
         mother_education_level: "some mother education level",
-        time_of_device_availability: ~U[2022-04-28 13:58:00Z],
-        has_internet_access: false,
+        time_of_device_availability: "morning",
+        has_internet_access: "false",
         primary_smartphone_owner: "some primary smartphone owner",
         primary_smartphone_owner_profession: "some primary smartphone owner profession",
-        user_id: get_user_id()
+        user_id: user_id
       })
       |> Dbservice.Users.create_student()
 
-    student
+    {user, student}
   end
 
   @doc """
   Generate a teacher.
   """
   def teacher_fixture(attrs \\ %{}) do
+    user = user_fixture()
+    user_id = user.id
+
     {:ok, teacher} =
       attrs
       |> Enum.into(%{
+        teacher_id: "some teacher id",
         designation: "some designation",
-        grade: "some grade",
-        subject: "some subject",
-        uuid: "some uuid",
-        user_id: get_user_id_for_teacher(),
-        school_id: get_school_id(),
-        program_manager_id: get_program_manager_id()
+        is_af_teacher: false,
+        user_id: user_id
       })
       |> Dbservice.Users.create_teacher()
 
-    teacher
+    {user, teacher}
   end
 
   def get_user_id do
-    [head | _tail] = Users.list_student()
-    user_id = head.user_id
-    user_id
+    case Users.list_student() do
+      [] ->
+        # No students exist, create a user first
+        user = user_fixture()
+        user.id
+
+      [head | _tail] ->
+        # Use existing student's user_id
+        head.user_id
+    end
   end
 
   def get_user_id_for_teacher do
-    [head | _tail] = Users.list_teacher()
-    user_id = head.user_id
-    user_id
-  end
+    case Users.list_teacher() do
+      [] ->
+        # No teachers exist, create a user first
+        user = user_fixture()
+        user.id
 
-  def get_school_id do
-    [head | _tail] = Users.list_teacher()
-    school_id = head.school_id
-    school_id
-  end
-
-  def get_program_manager_id do
-    [head | _tail] = Users.list_teacher()
-    program_manager_id = head.program_manager_id
-    program_manager_id
+      [head | _tail] ->
+        # Use existing teacher's user_id
+        head.user_id
+    end
   end
 end

@@ -35,6 +35,8 @@ jobs:
             sed -i "s|POOL_SIZE=.*|POOL_SIZE=${{ secrets.PRODUCTION_POOL_SIZE }}|" .env
             sed -i "s|PORT=.*|PORT=${{ secrets.PRODUCTION_PORT }}|" .env
             sed -i "s|BEARER_TOKEN=.*|BEARER_TOKEN=${{ secrets.PRODUCTION_BEARER_TOKEN }}|" .env
+            sed -i "s|DASHBOARD_USER=.*|DASHBOARD_USER=${{ secrets.PRODUCTION_DASHBOARD_USER }}|" .env || true
+            sed -i "s|DASHBOARD_PASS=.*|DASHBOARD_PASS=${{ secrets.PRODUCTION_DASHBOARD_PASS }}|" .env || true
 
             #Now we have got the access of EC2 and we will start the deploy .
             cd /var/www/html

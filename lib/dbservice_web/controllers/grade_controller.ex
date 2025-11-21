@@ -84,8 +84,15 @@ defmodule DbserviceWeb.GradeController do
   end
 
   def show(conn, %{"id" => id}) do
-    grade = Grades.get_grade!(id)
-    render(conn, :show, grade: grade)
+    case Grades.get_grade(id) do
+      nil ->
+        conn
+        |> put_status(:not_found)
+        |> json(%{error: "Grade not found"})
+
+      grade ->
+        render(conn, :show, grade: grade)
+    end
   end
 
   swagger_path :update do
@@ -100,10 +107,16 @@ defmodule DbserviceWeb.GradeController do
   end
 
   def update(conn, params) do
-    grade = Grades.get_grade!(params["id"])
+    case Grades.get_grade(params["id"]) do
+      nil ->
+        conn
+        |> put_status(:not_found)
+        |> json(%{error: "Grade not found"})
 
-    with {:ok, %Grade{} = grade} <- Grades.update_grade(grade, params) do
-      render(conn, :show, grade: grade)
+      grade ->
+        with {:ok, %Grade{} = grade} <- Grades.update_grade(grade, params) do
+          render(conn, :show, grade: grade)
+        end
     end
   end
 
@@ -118,10 +131,16 @@ defmodule DbserviceWeb.GradeController do
   end
 
   def delete(conn, %{"id" => id}) do
-    grade = Grades.get_grade!(id)
+    case Grades.get_grade(id) do
+      nil ->
+        conn
+        |> put_status(:not_found)
+        |> json(%{error: "Grade not found"})
 
-    with {:ok, %Grade{}} <- Grades.delete_grade(grade) do
-      send_resp(conn, :no_content, "")
+      grade ->
+        with {:ok, %Grade{}} <- Grades.delete_grade(grade) do
+          send_resp(conn, :no_content, "")
+        end
     end
   end
 

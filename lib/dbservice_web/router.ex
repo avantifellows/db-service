@@ -4,6 +4,7 @@ defmodule DbserviceWeb.Router do
 
   import Dotenvy
   import Phoenix.LiveView.Router
+  import Plug.Conn
 
   pipeline :api do
     plug(:accepts, ["json"])
@@ -16,6 +17,10 @@ defmodule DbserviceWeb.Router do
     plug(:put_root_layout, {DbserviceWeb.Layouts, :root})
     plug(:protect_from_forgery)
     plug(:put_secure_browser_headers)
+  end
+
+  pipeline :dashboard_auth do
+    plug :admin_basic_auth
   end
 
   scope "/", DbserviceWeb do
@@ -36,7 +41,7 @@ defmodule DbserviceWeb.Router do
     post("/group/:id/update-users", GroupController, :update_users)
     post("/group/:id/update-sessions", GroupController, :update_sessions)
 
-    resources("/user", UserController, only: [:index, :create, :update, :show])
+    resources("/user", UserController, only: [:index, :create, :update, :show, :delete])
     post("/user/:id/update-groups", UserController, :update_group)
     get("/student/get-schema", StudentController, :get_schema)
     resources("/student", StudentController, except: [:new, :edit])
@@ -52,9 +57,10 @@ defmodule DbserviceWeb.Router do
     resources("/language", LanguageController, except: [:new, :edit])
     resources("/skill", SkillController, except: [:new, :edit])
     resources("/enrollment-record", EnrollmentRecordController, except: [:new, :edit])
-    resources("/session", SessionController, only: [:index, :create, :update, :show])
+    resources("/session", SessionController, only: [:index, :create, :update, :show, :delete])
     post("/session/:id/update-groups", SessionController, :update_groups)
     resources("/session-occurrence", SessionOccurrenceController, except: [:new, :edit])
+    post("/session-occurrence/search", SessionOccurrenceController, :search)
     resources("/user-session", UserSessionController, except: [:new, :edit])
     get("/group-session/session-auth-group", GroupSessionController, :get_auth_group_from_session)
     resources("/group-session", GroupSessionController, except: [:new, :edit])
@@ -77,7 +83,7 @@ defmodule DbserviceWeb.Router do
     resources("/exam", ExamController)
     resources("/student-exam-record", StudentExamRecordController)
     get("/user/:user_id/sessions", UserController, :get_user_sessions)
-    patch("/dropout/:student_id", StudentController, :dropout)
+    patch("/dropout", StudentController, :dropout)
     resources("/status", StatusController, except: [:new, :edit])
     patch("/enrolled", StudentController, :enrolled)
     resources("/school-batch", SchoolBatchController, except: [:new, :edit])
@@ -156,6 +162,22 @@ defmodule DbserviceWeb.Router do
 
       live_dashboard("/dashboard", metrics: DbserviceWeb.Telemetry)
     end
+  end
+
+  if Mix.env() == :prod do
+    import Phoenix.LiveDashboard.Router
+
+    scope "/" do
+      pipe_through([:fetch_session, :protect_from_forgery, :dashboard_auth])
+
+      live_dashboard("/dashboard", metrics: DbserviceWeb.Telemetry, ecto_repos: [Dbservice.Repo])
+    end
+  end
+
+  defp admin_basic_auth(conn, _opts) do
+    username = env!("DASHBOARD_USER", :string!)
+    password = env!("DASHBOARD_PASS", :string!)
+    Plug.BasicAuth.basic_auth(conn, username: username, password: password)
   end
 
   # Enables the Swoosh mailbox preview in development.

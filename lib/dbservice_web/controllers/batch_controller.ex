@@ -65,12 +65,20 @@ defmodule DbserviceWeb.BatchController do
   end
 
   def create(conn, params) do
-    case Batches.get_batch_by_batch_id(params["batch_id"]) do
-      nil ->
-        create_new_batch(conn, params)
+    batch_id = params["batch_id"]
 
-      existing_batch ->
-        update_existing_batch(conn, existing_batch, params)
+    if is_nil(batch_id) do
+      conn
+      |> put_status(:bad_request)
+      |> json(%{error: "Batch ID is required"})
+    else
+      case Batches.get_batch_by_batch_id(batch_id) do
+        nil ->
+          create_new_batch(conn, params)
+
+        existing_batch ->
+          update_existing_batch(conn, existing_batch, params)
+      end
     end
   end
 

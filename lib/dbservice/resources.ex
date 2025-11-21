@@ -9,6 +9,8 @@ defmodule Dbservice.Resources do
   alias Dbservice.Resources.Resource
   alias Dbservice.Resources.ProblemLanguage
   alias Dbservice.Languages.Language
+  alias Dbservice.Resources.{ResourceTopic, ResourceChapter, ResourceConcept}
+  alias Dbservice.Utils.Util
 
   @doc """
   Returns the list of resource.
@@ -57,13 +59,16 @@ defmodule Dbservice.Resources do
              true <- test_resource.type == "test" do
           problem_ids = extract_problem_ids_from_test(test_resource.type_params)
 
-          # Query for all problems with those IDs, including ALL resource_curriculum data
+          # Query for all problems with those IDs, including ALL resource_curriculum data and chapter data
           problems =
             from(r in Resource,
               where: r.id in ^problem_ids and r.type == "problem",
               preload: [
                 # preload all curriculum mappings
                 :resource_curriculum,
+                # preload chapters via the many_to_many association
+                :chapter,
+                # keyword preload must come last in the list
                 problem_language: ^from(pl in ProblemLanguage, where: pl.lang_id == ^lang_id)
               ]
             )
@@ -301,6 +306,7 @@ defmodule Dbservice.Resources do
 
   defp update_resource_associations(resource, params) do
     update_resource_curriculums(resource, params)
+    update_resource_concepts(resource, params)
 
     if resource.type == "problem" do
       update_problem_language(resource, params)
@@ -352,4 +358,212 @@ defmodule Dbservice.Resources do
   end
 
   def resolve_tag_id(tag), do: tag
+
+  defp update_resource_concepts(resource, %{"concept_ids" => new_concept_ids})
+       when is_list(new_concept_ids) do
+    # Get current concept IDs
+    current_concept_ids =
+      from(rc in ResourceConcept, where: rc.resource_id == ^resource.id, select: rc.concept_id)
+      |> Repo.all()
+
+    # Find concepts to add and remove
+    concepts_to_add = new_concept_ids -- current_concept_ids
+    concepts_to_remove = current_concept_ids -- new_concept_ids
+
+    # Remove concepts
+    if length(concepts_to_remove) > 0 do
+      from(rc in ResourceConcept,
+        where: rc.resource_id == ^resource.id and rc.concept_id in ^concepts_to_remove
+      )
+      |> Repo.delete_all()
+    end
+
+    # Add new concepts
+    if length(concepts_to_add) > 0 do
+      resource_concepts_to_insert =
+        Enum.map(concepts_to_add, fn concept_id ->
+          %{
+            resource_id: resource.id,
+            concept_id: concept_id,
+            inserted_at: NaiveDateTime.utc_now() |> NaiveDateTime.truncate(:second),
+            updated_at: NaiveDateTime.utc_now() |> NaiveDateTime.truncate(:second)
+          }
+        end)
+
+      Repo.insert_all(ResourceConcept, resource_concepts_to_insert)
+    end
+  end
+
+  defp update_resource_concepts(_, _), do: :ok
+
+  @doc """
+  Lists resources with optional filtering, sorting and pagination.
+
+  ## Examples
+
+      iex> list_resources(%{})
+      [%Resource{}, ...]
+
+      iex> list_resources(%{"search" => "elixir", "limit" => 10, "sort_by" => "code", "sort_order" => "desc"})
+      [%Resource{}, ...]
+  """
+  def list_resources(params \\ %{}) do
+    Resource
+    |> apply_filters(params)
+    |> apply_language_filter(params)
+    |> apply_sorting(params)
+    |> apply_pagination(params)
+    |> Repo.all()
+  end
+
+  @doc """
+  Counts resources matching the given filters.
+  """
+  def count_resources(params \\ %{}) do
+    Resource
+    |> apply_filters(params)
+    |> apply_language_filter(params)
+    |> select([r], count(r.id))
+    |> Repo.one()
+  end
+
+  # Private query building functions
+
+  defp apply_filters(query, params) do
+    Enum.reduce(params, query, &apply_filter/2)
+  end
+
+  defp apply_filter({"topic_id", value}, query) when not is_nil(value) do
+    from(r in query,
+      join: rt in ResourceTopic,
+      on: rt.resource_id == r.id,
+      where: rt.topic_id == ^value
+    )
+  end
+
+  defp apply_filter({"chapter_id", value}, query) when not is_nil(value) do
+    from(r in query,
+      join: rc in ResourceChapter,
+      on: rc.resource_id == r.id,
+      where: rc.chapter_id == ^value
+    )
+  end
+
+  defp apply_filter({"search", value}, query) when not is_nil(value) and value != "" do
+    search_term = "%#{value}%"
+
+    from(r in query,
+      where:
+        ilike(r.code, ^search_term) or
+          fragment(
+            "EXISTS (SELECT 1 FROM JSONB_ARRAY_ELEMENTS(?) obj WHERE LOWER(obj->>'resource') LIKE LOWER(?))",
+            r.name,
+            ^search_term
+          )
+    )
+  end
+
+  defp apply_filter({key, _value}, query)
+       when key in ["offset", "limit", "lang_code", "sort_by", "sort_order"] do
+    query
+  end
+
+  defp apply_filter({key, value}, query) do
+    apply_field_filter(query, key, value)
+  end
+
+  defp apply_field_filter(query, "name", value) when not is_nil(value) do
+    from(r in query,
+      where:
+        fragment(
+          "EXISTS (SELECT 1 FROM JSONB_ARRAY_ELEMENTS(?) obj WHERE obj->>'resource' = ?)",
+          r.name,
+          ^value
+        )
+    )
+  end
+
+  defp apply_field_filter(query, "resource_type", value) when not is_nil(value) do
+    from(r in query,
+      where: fragment("?->>'resource_type' = ?", r.type_params, ^value)
+    )
+  end
+
+  defp apply_field_filter(query, key, value) when not is_nil(value) do
+    try do
+      field_atom = String.to_existing_atom(key)
+      from(r in query, where: field(r, ^field_atom) == ^value)
+    rescue
+      ArgumentError -> query
+    end
+  end
+
+  defp apply_field_filter(query, _key, _value), do: query
+
+  defp apply_language_filter(query, params) do
+    Util.filter_by_lang(query, params)
+  end
+
+  defp apply_sorting(query, params) do
+    sort_by = params["sort_by"]
+    sort_order = get_sort_order(params["sort_order"])
+
+    case sort_by do
+      "code" ->
+        from(r in query, order_by: [{^sort_order, r.code}])
+
+      "name" ->
+        # Sort by the first element's 'resource' field in the name JSONB array
+        from(r in query,
+          order_by: [
+            {^sort_order,
+             fragment(
+               "LOWER((JSONB_ARRAY_ELEMENTS(?) -> 'resource')::text)",
+               r.name
+             )}
+          ]
+        )
+
+      # TBD: Implement sorting by curriculum and grade
+
+      # "curriculum" ->
+      #   from(r in query,
+      #     left_join: rc in assoc(r, :resource_curriculum),
+      #     left_join: c in Dbservice.Curriculums.Curriculum,
+      #     on: rc.curriculum_id == c.id,
+      #     order_by: [{^sort_order, c.name}],
+      #     distinct: r.id
+      #   )
+
+      # "grade" ->
+      #   from(r in query,
+      #     left_join: rc in assoc(r, :resource_curriculum),
+      #     left_join: g in Dbservice.Grades.Grade,
+      #     on: rc.grade_id == g.id,
+      #     order_by: [{^sort_order, g.number}],
+      #     distinct: r.id
+      #   )
+
+      "subtype" ->
+        from(r in query, order_by: [{^sort_order, r.subtype}])
+
+      _ ->
+        # Default sorting by id
+        from(r in query, order_by: [asc: r.id])
+    end
+  end
+
+  defp get_sort_order("desc"), do: :desc
+  defp get_sort_order("DESC"), do: :desc
+  defp get_sort_order(_), do: :asc
+
+  defp apply_pagination(query, params) do
+    from(r in query,
+      offset: ^get_offset(params),
+      limit: ^get_limit(params)
+    )
+  end
+
+  defp get_offset(params), do: params["offset"] || 0
+  defp get_limit(params), do: params["limit"] || 50
 end

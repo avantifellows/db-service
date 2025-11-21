@@ -1,16 +1,10 @@
 defmodule DbserviceWeb.UserController do
-  alias Dbservice.Groups
   use DbserviceWeb, :controller
 
   import Ecto.Query
   alias Dbservice.Repo
   alias Dbservice.Users
   alias Dbservice.Users.User
-  alias Dbservice.GroupUsers
-  alias Dbservice.GroupSessions
-  alias Dbservice.Sessions
-  alias Dbservice.Groups
-  alias Dbservice.Batches
 
   action_fallback DbserviceWeb.FallbackController
 
@@ -78,12 +72,18 @@ defmodule DbserviceWeb.UserController do
   end
 
   def create(conn, params) do
-    case Users.get_user_by_user_id(params["user_id"]) do
-      nil ->
-        create_new_user(conn, params)
+    user_id = params["user_id"]
 
-      existing_user ->
-        update_existing_user(conn, existing_user, params)
+    if is_nil(user_id) do
+      create_new_user(conn, params)
+    else
+      case Users.get_user_by_user_id(user_id) do
+        nil ->
+          create_new_user(conn, params)
+
+        existing_user ->
+          update_existing_user(conn, existing_user, params)
+      end
     end
   end
 
@@ -98,8 +98,16 @@ defmodule DbserviceWeb.UserController do
   end
 
   def show(conn, %{"id" => id}) do
-    user = Users.get_user!(id)
-    render(conn, :show, user: user)
+    try do
+      user = Users.get_user!(id)
+      render(conn, :show, user: user)
+    rescue
+      Ecto.NoResultsError ->
+        conn
+        |> put_status(:not_found)
+        |> put_view(DbserviceWeb.ErrorJSON)
+        |> render(:"404")
+    end
   end
 
   swagger_path :update do
@@ -178,8 +186,7 @@ defmodule DbserviceWeb.UserController do
   end
 
   def get_user_sessions(conn, %{"user_id" => user_id, "quiz" => quiz_flag}) do
-    group_users = GroupUsers.get_group_user_by_user_id(user_id)
-    sessions = Enum.flat_map(group_users, &fetch_group_user_sessions(&1, quiz_flag))
+    sessions = fetch_user_sessions(user_id, quiz_flag)
     render(conn, :user_sessions, session: sessions)
   end
 
@@ -187,52 +194,114 @@ defmodule DbserviceWeb.UserController do
     get_user_sessions(conn, %{"user_id" => user_id, "quiz" => false})
   end
 
-  defp fetch_group_user_sessions(group_user, quiz_flag) do
-    group_id = group_user.group_id
+  # Single optimized query
+  defp fetch_user_sessions(user_id, quiz_flag) do
+    user_batch_data = get_user_batch_data(user_id)
 
-    case Groups.get_group_by_group_id_and_type(group_id, "batch") do
-      nil -> []
-      group -> fetch_group_sessions(group, quiz_flag)
+    if Enum.empty?(user_batch_data) do
+      []
+    else
+      if quiz_flag do
+        get_quiz_sessions(user_batch_data)
+      else
+        get_regular_sessions(user_batch_data)
+      end
     end
   end
 
-  defp fetch_group_sessions(group, quiz_flag) do
-    child_id = group.child_id
-    batch = Batches.get_batch!(child_id)
-    class_batch_id = batch.batch_id
-    quiz_id = batch.parent_id
-    quiz_group = Groups.get_group_by_child_id_and_type(quiz_id, "batch")
-    quiz_group_id = quiz_group.id
+  # Get user's groups with batch information (supports multi-level hierarchy)
+  defp get_user_batch_data(user_id) do
+    user_id = if is_binary(user_id), do: String.to_integer(user_id), else: user_id
+    # First, get all batches in the hierarchy using recursive CTE
+    batch_hierarchy_query = """
+    WITH RECURSIVE batch_hierarchy AS (
+      -- Base case: Get immediate class batches for the user
+      SELECT DISTINCT
+        cb.id as batch_pk,
+        cb.batch_id as batch_id,
+        cb.parent_id,
+        cg.id as class_group_id,
+        0 as level
+      FROM group_user gu
+      JOIN "group" cg ON cg.id = gu.group_id AND cg.type = 'batch'
+      JOIN batch cb ON cb.id = cg.child_id
+      WHERE gu.user_id = $1
 
-    group_id = if quiz_flag, do: quiz_group_id, else: group.id
-    group_sessions = GroupSessions.get_group_session_by_group_id(group_id)
+      UNION ALL
 
-    filter_sessions(group_sessions, quiz_flag, class_batch_id)
-    |> Enum.map(&get_session_by_id/1)
+      -- Recursive case: Get parent batches
+      SELECT
+        pb.id as batch_pk,
+        pb.batch_id as batch_id,
+        pb.parent_id,
+        NULL as class_group_id,
+        bh.level + 1 as level
+      FROM batch_hierarchy bh
+      JOIN batch pb ON pb.id = bh.parent_id
+      WHERE bh.parent_id IS NOT NULL
+    )
+    SELECT
+      bh.batch_pk,
+      bh.batch_id,
+      bh.parent_id,
+      bh.class_group_id,
+      bh.level,
+      qg.id as quiz_group_id
+    FROM batch_hierarchy bh
+    LEFT JOIN "group" qg ON qg.child_id = bh.batch_pk AND qg.type = 'batch'
+    ORDER BY bh.level ASC
+    """
+
+    Ecto.Adapters.SQL.query!(Repo, batch_hierarchy_query, [user_id])
+    |> transform_hierarchy_result()
   end
 
-  defp filter_sessions(group_sessions, quiz_flag, class_batch_id) do
-    Enum.filter(group_sessions, &should_include_session?(&1, quiz_flag, class_batch_id))
+  # Transform the raw SQL result into the expected format
+  defp transform_hierarchy_result(%{rows: rows, columns: columns}) do
+    Enum.map(rows, fn row ->
+      columns
+      |> Enum.zip(row)
+      |> Enum.into(%{})
+      |> Map.new(fn {k, v} -> {String.to_atom(k), v} end)
+    end)
   end
 
-  defp should_include_session?(group_session, quiz_flag, class_batch_id) do
-    case get_session_by_id(group_session) do
-      nil ->
-        false
+  # Updated quiz sessions to work with multi-level hierarchy
+  defp get_quiz_sessions(user_batch_data) do
+    # Get all quiz group IDs from the hierarchy
+    quiz_group_ids =
+      user_batch_data
+      |> Enum.map(& &1.quiz_group_id)
+      |> Enum.reject(&is_nil/1)
+      |> Enum.uniq()
 
-      session ->
-        session.is_active &&
-          if quiz_flag && session.meta_data["batch_id"] != "" do
-            # Split the comma-separated batch_id and check if class_batch_id is in the list
-            batch_ids = String.split(session.meta_data["batch_id"], ",")
-            class_batch_id in batch_ids and session.platform == "quiz"
-          else
-            true
-          end
+    if Enum.empty?(quiz_group_ids) do
+      []
+    else
+      # Get all batch IDs in the hierarchy for filtering
+      all_batch_ids =
+        user_batch_data
+        |> Enum.map(& &1.batch_id)
+        |> Enum.reject(&is_nil/1)
+        |> Enum.uniq()
+
+      Dbservice.GroupSessions.fetch_sessions_by_group_ids(quiz_group_ids, all_batch_ids)
     end
   end
 
-  defp get_session_by_id(group_session) do
-    Sessions.get_session!(group_session.session_id)
+  # Updated regular sessions to work with multi-level hierarchy
+  defp get_regular_sessions(user_batch_data) do
+    # Get class group IDs (only level 0 - direct class groups)
+    class_group_ids =
+      user_batch_data
+      |> Enum.filter(&(&1.level == 0 && !is_nil(&1.class_group_id)))
+      |> Enum.map(& &1.class_group_id)
+      |> Enum.uniq()
+
+    if Enum.empty?(class_group_ids) do
+      []
+    else
+      Dbservice.GroupSessions.fetch_sessions_by_group_ids(class_group_ids)
+    end
   end
 end

@@ -120,12 +120,20 @@ defmodule DbserviceWeb.SessionController do
   end
 
   def create(conn, params) do
-    case Sessions.get_session_by_session_id(params["session_id"]) do
-      nil ->
-        create_new_session(conn, params)
+    session_id = params["session_id"]
 
-      existing_session ->
-        update_existing_session(conn, existing_session, params)
+    if is_nil(session_id) do
+      conn
+      |> put_status(:bad_request)
+      |> json(%{error: "Session ID is required"})
+    else
+      case Sessions.get_session_by_session_id(session_id) do
+        nil ->
+          create_new_session(conn, params)
+
+        existing_session ->
+          update_existing_session(conn, existing_session, params)
+      end
     end
   end
 

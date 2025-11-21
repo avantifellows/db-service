@@ -48,7 +48,7 @@ defmodule Dbservice.Users do
       ** (Ecto.NoResultsError)
   """
   def get_user_by_user_id(user_id) do
-    Repo.get_by(User, user_id: user_id)
+    Repo.get(User, user_id)
   end
 
   @doc """
@@ -178,6 +178,38 @@ defmodule Dbservice.Users do
   end
 
   @doc """
+  Gets a student by either student_id or apaar_id.
+  Returns the first student found with either identifier.
+
+  ## Examples
+
+      iex> get_student_by_id_or_apaar_id(%{"student_id" => "1234", "apaar_id" => nil})
+      %Student{}
+      iex> get_student_by_id_or_apaar_id(%{"student_id" => nil, "apaar_id" => "123456789101"})
+      %Student{}
+      iex> get_student_by_id_or_apaar_id(%{"student_id" => nil, "apaar_id" => nil})
+      nil
+  """
+  def get_student_by_id_or_apaar_id(%{"student_id" => student_id, "apaar_id" => apaar_id}) do
+    cond do
+      student_id && student_id != "" ->
+        get_student_by_student_id(student_id)
+
+      apaar_id && apaar_id != "" ->
+        Repo.get_by(Student, apaar_id: apaar_id)
+
+      true ->
+        nil
+    end
+  end
+
+  def get_student_by_id_or_apaar_id(record) when is_map(record) do
+    student_id = Map.get(record, "student_id")
+    apaar_id = Map.get(record, "apaar_id")
+    get_student_by_id_or_apaar_id(%{"student_id" => student_id, "apaar_id" => apaar_id})
+  end
+
+  @doc """
   Creates a student.
 
   ## Examples
@@ -246,7 +278,7 @@ defmodule Dbservice.Users do
 
     with {:ok, %User{} = user} <- Users.create_user(attrs),
          {:ok, %Student{} = student} <-
-           Users.create_student(Map.merge(attrs, %{"user_id" => user.id})) do
+           Users.create_student(Map.merge(stringify_keys(attrs), %{"user_id" => user.id})) do
       {:ok, student}
     end
   end
@@ -268,7 +300,10 @@ defmodule Dbservice.Users do
 
     with {:ok, %User{} = user} <- Users.update_user(user, attrs),
          {:ok, %Student{} = student} <-
-           Users.update_student(student, Map.merge(attrs, %{"user_id" => user.id})) do
+           Users.update_student(
+             student,
+             Map.merge(stringify_keys(attrs), %{"user_id" => user.id})
+           ) do
       {:ok, student}
     end
   end
@@ -400,7 +435,7 @@ defmodule Dbservice.Users do
 
     with {:ok, %User{} = user} <- Users.create_user(attrs),
          {:ok, %Teacher{} = teacher} <-
-           Users.create_teacher(Map.merge(attrs, %{"user_id" => user.id})) do
+           Users.create_teacher(Map.merge(stringify_keys(attrs), %{"user_id" => user.id})) do
       {:ok, teacher}
     end
   end
@@ -422,7 +457,10 @@ defmodule Dbservice.Users do
 
     with {:ok, %User{} = user} <- Users.update_user(user, attrs),
          {:ok, %Teacher{} = teacher} <-
-           Users.update_teacher(teacher, Map.merge(attrs, %{"user_id" => user.id})) do
+           Users.update_teacher(
+             teacher,
+             Map.merge(stringify_keys(attrs), %{"user_id" => user.id})
+           ) do
       {:ok, teacher}
     end
   end
@@ -633,6 +671,12 @@ defmodule Dbservice.Users do
       select: {s, u}
     )
     |> Repo.all()
+  end
+
+  defp stringify_keys(map) do
+    map
+    |> Enum.map(fn {key, value} -> {to_string(key), value} end)
+    |> Enum.into(%{})
   end
 
   @doc """

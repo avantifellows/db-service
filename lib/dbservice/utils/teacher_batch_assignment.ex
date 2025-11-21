@@ -19,18 +19,22 @@ defmodule Dbservice.DataImport.TeacherBatchAssignment do
         {:error, "Teacher not found with ID: #{record["teacher_id"]}"}
 
       teacher ->
-        with {batch_group_id, batch_id, batch_group_type} <-
-               BatchEnrollmentService.get_batch_info(record["batch_id"]),
-             {:ok, _} <-
-               handle_teacher_batch_assignment(
-                 teacher,
-                 {batch_group_id, batch_id, batch_group_type},
-                 record
-               ) do
-          {:ok, "Teacher batch assignment processed successfully"}
-        else
-          {:error, reason} ->
-            {:error, reason}
+        process_teacher_with_batch(teacher, record)
+    end
+  end
+
+  defp process_teacher_with_batch(teacher, record) do
+    case BatchEnrollmentService.get_batch_info(record["batch_id"]) do
+      nil ->
+        {:error, "Batch not found with ID: #{record["batch_id"]}"}
+
+      {batch_group_id, batch_id, batch_group_type} ->
+        case handle_teacher_batch_assignment(
+               teacher,
+               {batch_group_id, batch_id, batch_group_type},
+               record
+             ) do
+          {:ok, _} -> {:ok, "Teacher batch assignment processed successfully"}
         end
     end
   end
