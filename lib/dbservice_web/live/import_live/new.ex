@@ -59,30 +59,46 @@ defmodule DbserviceWeb.ImportLive.New do
   end
 
   defp handle_save(%{"import" => import_params}, socket) do
-    case DataImport.start_import(import_params) do
-      {:ok, _import} ->
-        {:noreply,
-         socket
-         |> put_flash(
-           :info,
-           "Import queued successfully! Processing will begin shortly. Check the imports page for progress updates."
-         )
-         |> push_navigate(to: ~p"/imports")}
+    import_type = Map.get(import_params, "type", "")
 
-      {:error, reason} ->
-        changeset =
-          %DataImport.Import{}
-          |> DataImport.Import.changeset(import_params)
-          |> Ecto.Changeset.add_error(:sheet_url, reason)
-          |> Map.put(:action, :validate)
+    if import_type == "dropout" do
+      # For dropout imports, use JavaScript to submit form to authenticated endpoint
+      # This will prompt for basic auth credentials
+      {:noreply,
+       socket
+       |> push_event("submit_dropout_import", %{
+         url: ~p"/imports/dropout",
+         sheet_url: Map.get(import_params, "sheet_url", ""),
+         type: "dropout",
+         start_row: Map.get(import_params, "start_row", "2")
+       })}
+    else
+      # For other import types, process normally
+      case DataImport.start_import(import_params) do
+        {:ok, _import} ->
+          {:noreply,
+           socket
+           |> put_flash(
+             :info,
+             "Import queued successfully! Processing will begin shortly. Check the imports page for progress updates."
+           )
+           |> push_navigate(to: ~p"/imports")}
 
-        form = to_form(changeset)
+        {:error, reason} ->
+          changeset =
+            %DataImport.Import{}
+            |> DataImport.Import.changeset(import_params)
+            |> Ecto.Changeset.add_error(:sheet_url, reason)
+            |> Map.put(:action, :validate)
 
-        {:noreply,
-         socket
-         |> assign(changeset: changeset, form: form, submitted: false)
-         |> clear_flash()
-         |> put_flash(:error, "Import failed: #{reason}")}
+          form = to_form(changeset)
+
+          {:noreply,
+           socket
+           |> assign(changeset: changeset, form: form, submitted: false)
+           |> clear_flash()
+           |> put_flash(:error, "Import failed: #{reason}")}
+      end
     end
   end
 

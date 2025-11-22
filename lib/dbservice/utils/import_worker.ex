@@ -460,23 +460,20 @@ defmodule Dbservice.DataImport.ImportWorker do
     if (is_nil(student_id) or student_id == "") and (is_nil(apaar_id) or apaar_id == "") do
       {:error, "Either student_id or apaar_id is required for dropout"}
     else
-      case Users.get_student_by_id_or_apaar_id(record) do
-        nil ->
-          {:error,
-           "Student not found. student_id: #{record["student_id"]}, apaar_id: #{record["apaar_id"]}"}
+      process_dropout_for_student(record)
+    end
+  end
 
-        student ->
-          start_date = record["start_date"]
-          academic_year = record["academic_year"]
+  defp process_dropout_for_student(record) do
+    case Users.get_student_by_id_or_apaar_id(record) do
+      nil ->
+        {:error,
+         "Student not found. student_id: #{record["student_id"]}, apaar_id: #{record["apaar_id"]}"}
 
-          case DropoutService.process_dropout(student, start_date, academic_year) do
-            {:ok, _updated_student} ->
-              {:ok, "Dropout processed successfully"}
-
-            {:error, _reason} = error ->
-              error
-          end
-      end
+      student ->
+        start_date = record["start_date"]
+        academic_year = record["academic_year"]
+        DropoutService.process_dropout(student, start_date, academic_year)
     end
   end
 

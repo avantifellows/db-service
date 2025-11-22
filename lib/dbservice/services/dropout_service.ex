@@ -32,52 +32,55 @@ defmodule Dbservice.Services.DropoutService do
   Returns {:ok, student} on success or {:error, reason} on failure.
   """
   def process_dropout(student, start_date, academic_year) do
-    user_id = student.user_id
-
     # Check if the student's status is already 'dropout'
     if student.status == "dropout" do
       {:error, "Student is already marked as dropout"}
     else
-      case get_dropout_status_info() do
-        nil ->
-          {:error, "Dropout status not found in the system"}
+      create_dropout_enrollment(student, start_date, academic_year)
+    end
+  end
 
-        {status_id, group_type} ->
-          # Update all current enrollment records
-          update_current_enrollments(user_id, start_date)
+  defp create_dropout_enrollment(student, start_date, academic_year) do
+    case get_dropout_status_info() do
+      nil ->
+        {:error, "Dropout status not found in the system"}
 
-          # Get grade_id from the student table
-          grade_id = student.grade_id
+      {status_id, group_type} ->
+        user_id = student.user_id
+        update_current_enrollments(user_id, start_date)
 
-          # Create a new enrollment record with the fetched status_id
-          new_enrollment_attrs = %{
-            user_id: user_id,
-            is_current: true,
-            start_date: start_date,
-            group_id: status_id,
-            group_type: group_type,
-            academic_year: academic_year,
-            grade_id: grade_id
-          }
+        new_enrollment_attrs =
+          build_enrollment_attrs(student, status_id, group_type, start_date, academic_year)
 
-          with {:ok, _enrollment_record} <-
-                 EnrollmentRecords.create_enrollment_record(new_enrollment_attrs),
-               {:ok, updated_student} <-
-                 Users.update_student(student, %{"status" => "dropout"}) do
-            {:ok, updated_student}
-          else
-            {:error, changeset} ->
-              # Return a more descriptive error message
-              error_message =
-                if changeset.errors != [] do
-                  "Failed to process dropout: #{inspect(changeset.errors)}"
-                else
-                  "Failed to process dropout"
-                end
+        with {:ok, _enrollment_record} <-
+               EnrollmentRecords.create_enrollment_record(new_enrollment_attrs),
+             {:ok, updated_student} <-
+               Users.update_student(student, %{"status" => "dropout"}) do
+          {:ok, updated_student}
+        else
+          {:error, changeset} ->
+            {:error, format_dropout_error(changeset)}
+        end
+    end
+  end
 
-              {:error, error_message}
-          end
-      end
+  defp build_enrollment_attrs(student, status_id, group_type, start_date, academic_year) do
+    %{
+      user_id: student.user_id,
+      is_current: true,
+      start_date: start_date,
+      group_id: status_id,
+      group_type: group_type,
+      academic_year: academic_year,
+      grade_id: student.grade_id
+    }
+  end
+
+  defp format_dropout_error(changeset) do
+    if changeset.errors != [] do
+      "Failed to process dropout: #{inspect(changeset.errors)}"
+    else
+      "Failed to process dropout"
     end
   end
 

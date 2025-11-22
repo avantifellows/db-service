@@ -34,6 +34,13 @@ defmodule DbserviceWeb.Router do
     get "/templates/:type/download", TemplateController, :download_csv_template
   end
 
+  # Protected endpoint for dropout imports only
+  scope "/", DbserviceWeb do
+    pipe_through [:browser, :dashboard_auth]
+
+    post "/imports/dropout", ImportController, :create_dropout_import
+  end
+
   scope "/api", DbserviceWeb do
     pipe_through(:api)
 
@@ -120,7 +127,7 @@ defmodule DbserviceWeb.Router do
     )
 
     def swagger_info do
-      source(["config/.env", "config/.env"])
+      source(["config/.env"])
 
       host =
         if Application.get_env(:dbservice, :environment) == :dev do
@@ -175,8 +182,34 @@ defmodule DbserviceWeb.Router do
   end
 
   defp admin_basic_auth(conn, _opts) do
-    username = env!("DASHBOARD_USER", :string!)
-    password = env!("DASHBOARD_PASS", :string!)
+    source(["config/.env"])
+
+    username =
+      case env!("DASHBOARD_USER", :string) do
+        nil ->
+          if Mix.env() == :prod do
+            raise "DASHBOARD_USER environment variable must be set in production"
+          else
+            "admin"
+          end
+
+        val ->
+          val
+      end
+
+    password =
+      case env!("DASHBOARD_PASS", :string) do
+        nil ->
+          if Mix.env() == :prod do
+            raise "DASHBOARD_PASS environment variable must be set in production"
+          else
+            "admin"
+          end
+
+        val ->
+          val
+      end
+
     Plug.BasicAuth.basic_auth(conn, username: username, password: password)
   end
 
