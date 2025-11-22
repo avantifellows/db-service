@@ -11,13 +11,12 @@ defmodule DbserviceWeb.StudentController do
   alias Dbservice.Users
   alias Dbservice.Users.Student
   alias Dbservice.EnrollmentRecords.EnrollmentRecord
-  alias Dbservice.Statuses.Status
-  alias Dbservice.Groups.Group
   alias Dbservice.GroupUsers
   alias DbserviceWeb.EnrollmentRecordJSON
   alias Dbservice.Statuses
   alias Dbservice.Services.BatchEnrollmentService
   alias Dbservice.Services.StudentUpdateService
+  alias Dbservice.Services.DropoutService
 
   action_fallback(DbserviceWeb.FallbackController)
 
@@ -222,72 +221,15 @@ defmodule DbserviceWeb.StudentController do
         |> json(%{errors: "Student not found with the provided identifier"})
 
       student ->
-        # Check if the student's status is already 'dropout'
-        if student.status == "dropout" do
-          conn
-          |> put_status(:bad_request)
-          |> json(%{errors: "Student is already marked as dropout"})
-        else
-          process_dropout(conn, student, dropout_start_date, academic_year)
+        case DropoutService.process_dropout(student, dropout_start_date, academic_year) do
+          {:ok, updated_student} ->
+            render(conn, :show, student: updated_student)
+
+          {:error, reason} ->
+            conn
+            |> put_status(:bad_request)
+            |> json(%{errors: reason})
         end
-    end
-  end
-
-  defp process_dropout(conn, student, dropout_start_date, academic_year) do
-    user_id = student.user_id
-
-    # Fetch status and group details in a single query
-    {status_id, group_type} =
-      from(s in Status,
-        join: g in Group,
-        on: g.child_id == s.id and g.type == "status",
-        where: s.title == :dropout,
-        select: {g.child_id, g.type}
-      )
-      |> Repo.one()
-
-    # Fetch all current enrollment records for the user
-    current_enrollments =
-      from(e in EnrollmentRecord,
-        where: e.user_id == ^user_id and e.is_current == true
-      )
-      |> Repo.all()
-
-    # Get grade_id from the student table
-    grade_id = student.grade_id
-
-    Enum.each(current_enrollments, fn enrollment ->
-      EnrollmentRecords.update_enrollment_record(enrollment, %{
-        is_current: false,
-        end_date: dropout_start_date
-      })
-    end)
-
-    # Create a new enrollment record with the fetched status_id
-    new_enrollment_attrs = %{
-      user_id: user_id,
-      is_current: true,
-      start_date: dropout_start_date,
-      group_id: status_id,
-      group_type: group_type,
-      academic_year: academic_year,
-      grade_id: grade_id
-    }
-
-    EnrollmentRecords.create_enrollment_record(new_enrollment_attrs)
-
-    # Delete all group-user entries for the user
-    # NOTE: Commenting these lines because we don't want to stop
-    # students from logging in once they are marked as dropout(s)
-    # in case they want to re-enroll in the future.
-    #
-    # from(gu in GroupUser, where: gu.user_id == ^user_id)
-    # |> Repo.delete_all()
-
-    # Update the student's status to 'dropout' using update_student/2
-    with {:ok, %Student{} = updated_student} <-
-           Users.update_student(student, %{"status" => "dropout"}) do
-      render(conn, :show, student: updated_student)
     end
   end
 
