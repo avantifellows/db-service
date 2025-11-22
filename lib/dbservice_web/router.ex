@@ -184,31 +184,8 @@ defmodule DbserviceWeb.Router do
   defp admin_basic_auth(conn, _opts) do
     source(["config/.env"])
 
-    username =
-      case env!("DASHBOARD_USER", :string) do
-        nil ->
-          if Mix.env() == :prod do
-            raise "DASHBOARD_USER environment variable must be set in production"
-          else
-            "admin"
-          end
-
-        val ->
-          val
-      end
-
-    password =
-      case env!("DASHBOARD_PASS", :string) do
-        nil ->
-          if Mix.env() == :prod do
-            raise "DASHBOARD_PASS environment variable must be set in production"
-          else
-            "admin"
-          end
-
-        val ->
-          val
-      end
+    username = env!("DASHBOARD_USER", :string!)
+    password = env!("DASHBOARD_PASS", :string!)
 
     Plug.BasicAuth.basic_auth(conn, username: username, password: password)
   end
