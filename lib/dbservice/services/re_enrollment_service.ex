@@ -47,28 +47,42 @@ defmodule Dbservice.Services.ReEnrollmentService do
     if is_nil(current_auth_group_id) or is_nil(incoming_auth_group_name) do
       {:error, "Auth group information is missing"}
     else
-      # Get incoming auth group ID
-      case EnrollmentService.get_auth_group_id(incoming_auth_group_name) do
-        {:error, error_msg} ->
-          {:error, error_msg}
+      validate_auth_group_ids(current_auth_group_id, incoming_auth_group_name)
+    end
+  end
 
-        incoming_auth_group_id ->
-          # Get the child_id (auth_group.id) from the group
-          incoming_auth_group = Groups.get_group!(incoming_auth_group_id)
-          incoming_auth_group_child_id = incoming_auth_group.child_id
+  defp validate_auth_group_ids(current_auth_group_id, incoming_auth_group_name) do
+    case EnrollmentService.get_auth_group_id(incoming_auth_group_name) do
+      {:error, error_msg} ->
+        {:error, error_msg}
 
-          # Compare child_ids (the actual auth_group.id values)
-          if current_auth_group_id == incoming_auth_group_child_id do
-            :ok
-          else
-            # Get current auth group name for better error message
-            # Incoming name is already available from params
-            current_auth_group_name = get_auth_group_name(current_auth_group_id)
+      incoming_auth_group_id ->
+        compare_auth_group_ids(
+          current_auth_group_id,
+          incoming_auth_group_id,
+          incoming_auth_group_name
+        )
+    end
+  end
 
-            {:error,
-             "Auth group mismatch. Current: #{current_auth_group_name}, Incoming: #{incoming_auth_group_name}"}
-          end
-      end
+  defp compare_auth_group_ids(
+         current_auth_group_id,
+         incoming_auth_group_id,
+         incoming_auth_group_name
+       ) do
+    # Get the child_id (auth_group.id) from the group
+    incoming_auth_group = Groups.get_group!(incoming_auth_group_id)
+    incoming_auth_group_child_id = incoming_auth_group.child_id
+
+    # Compare child_ids (the actual auth_group.id values)
+    if current_auth_group_id == incoming_auth_group_child_id do
+      :ok
+    else
+      # Get current auth group name for better error message
+      current_auth_group_name = get_auth_group_name(current_auth_group_id)
+
+      {:error,
+       "Auth group mismatch. Current: #{current_auth_group_name}, Incoming: #{incoming_auth_group_name}"}
     end
   end
 
@@ -123,7 +137,7 @@ defmodule Dbservice.Services.ReEnrollmentService do
         with {:ok, _} <- create_grade_enrollment(user_id, params, start_date, academic_year),
              {:ok, _} <- create_batch_enrollment(user_id, params, start_date, academic_year),
              {:ok, _} <- create_school_enrollment(user_id, params, start_date, academic_year),
-             {:ok, _} <- create_auth_group_enrollment(user_id, params, start_date, academic_year) do
+             {:ok, _} <- create_auth_group_enrollment(user_id, params, start_date) do
           {:ok, student}
         end
     end
@@ -185,35 +199,43 @@ defmodule Dbservice.Services.ReEnrollmentService do
         {:ok, "No grade_id provided"}
 
       grade_id ->
-        case EnrollmentService.get_grade_group_id(grade_id) do
-          {:error, error_msg} ->
-            {:error, error_msg}
+        process_grade_enrollment(user_id, grade_id, start_date, academic_year)
+    end
+  end
 
-          group_id ->
-            group = Groups.get_group!(group_id)
+  defp process_grade_enrollment(user_id, grade_id, start_date, academic_year) do
+    case EnrollmentService.get_grade_group_id(grade_id) do
+      {:error, error_msg} ->
+        {:error, error_msg}
 
-            enrollment_attrs = %{
-              "user_id" => user_id,
-              "is_current" => true,
-              "start_date" => start_date,
-              "group_id" => group.child_id,
-              "group_type" => "grade",
-              "academic_year" => academic_year
-            }
+      group_id ->
+        create_grade_enrollment_record(user_id, group_id, start_date, academic_year)
+    end
+  end
 
-            # Update existing grade enrollments to not current
-            update_existing_enrollments(user_id, "grade", start_date)
+  defp create_grade_enrollment_record(user_id, group_id, start_date, academic_year) do
+    group = Groups.get_group!(group_id)
 
-            case EnrollmentRecords.create_enrollment_record(enrollment_attrs) do
-              {:ok, _} ->
-                # Update or create group-user
-                update_or_create_group_user(user_id, group_id)
-                {:ok, "Grade enrollment created"}
+    enrollment_attrs = %{
+      "user_id" => user_id,
+      "is_current" => true,
+      "start_date" => start_date,
+      "group_id" => group.child_id,
+      "group_type" => "grade",
+      "academic_year" => academic_year
+    }
 
-              error ->
-                error
-            end
-        end
+    # Update existing grade enrollments to not current
+    update_existing_enrollments(user_id, "grade", start_date)
+
+    case EnrollmentRecords.create_enrollment_record(enrollment_attrs) do
+      {:ok, _} ->
+        # Update or create group-user
+        update_or_create_group_user(user_id, group_id)
+        {:ok, "Grade enrollment created"}
+
+      error ->
+        error
     end
   end
 
@@ -223,35 +245,43 @@ defmodule Dbservice.Services.ReEnrollmentService do
         {:ok, "No batch_id provided"}
 
       batch_id ->
-        case EnrollmentService.get_batch_group_id(batch_id) do
-          {:error, error_msg} ->
-            {:error, error_msg}
+        process_batch_enrollment(user_id, batch_id, start_date, academic_year)
+    end
+  end
 
-          group_id ->
-            group = Groups.get_group!(group_id)
+  defp process_batch_enrollment(user_id, batch_id, start_date, academic_year) do
+    case EnrollmentService.get_batch_group_id(batch_id) do
+      {:error, error_msg} ->
+        {:error, error_msg}
 
-            enrollment_attrs = %{
-              "user_id" => user_id,
-              "is_current" => true,
-              "start_date" => start_date,
-              "group_id" => group.child_id,
-              "group_type" => "batch",
-              "academic_year" => academic_year
-            }
+      group_id ->
+        create_batch_enrollment_record(user_id, group_id, start_date, academic_year)
+    end
+  end
 
-            # Update existing batch enrollments to not current
-            update_existing_enrollments(user_id, "batch", start_date)
+  defp create_batch_enrollment_record(user_id, group_id, start_date, academic_year) do
+    group = Groups.get_group!(group_id)
 
-            case EnrollmentRecords.create_enrollment_record(enrollment_attrs) do
-              {:ok, _} ->
-                # Update or create group-user
-                update_or_create_group_user(user_id, group_id)
-                {:ok, "Batch enrollment created"}
+    enrollment_attrs = %{
+      "user_id" => user_id,
+      "is_current" => true,
+      "start_date" => start_date,
+      "group_id" => group.child_id,
+      "group_type" => "batch",
+      "academic_year" => academic_year
+    }
 
-              error ->
-                error
-            end
-        end
+    # Update existing batch enrollments to not current
+    update_existing_enrollments(user_id, "batch", start_date)
+
+    case EnrollmentRecords.create_enrollment_record(enrollment_attrs) do
+      {:ok, _} ->
+        # Update or create group-user
+        update_or_create_group_user(user_id, group_id)
+        {:ok, "Batch enrollment created"}
+
+      error ->
+        error
     end
   end
 
@@ -261,72 +291,88 @@ defmodule Dbservice.Services.ReEnrollmentService do
         {:ok, "No school_code provided"}
 
       school_code ->
-        case EnrollmentService.get_school_group_id(school_code) do
-          {:error, error_msg} ->
-            {:error, error_msg}
-
-          group_id ->
-            group = Groups.get_group!(group_id)
-
-            enrollment_attrs = %{
-              "user_id" => user_id,
-              "is_current" => true,
-              "start_date" => start_date,
-              "group_id" => group.child_id,
-              "group_type" => "school",
-              "academic_year" => academic_year
-            }
-
-            # Update existing school enrollments to not current
-            update_existing_enrollments(user_id, "school", start_date)
-
-            case EnrollmentRecords.create_enrollment_record(enrollment_attrs) do
-              {:ok, _} ->
-                # Update or create group-user
-                update_or_create_group_user(user_id, group_id)
-                {:ok, "School enrollment created"}
-
-              error ->
-                error
-            end
-        end
+        process_school_enrollment(user_id, school_code, start_date, academic_year)
     end
   end
 
-  defp create_auth_group_enrollment(user_id, params, start_date, academic_year) do
+  defp process_school_enrollment(user_id, school_code, start_date, academic_year) do
+    case EnrollmentService.get_school_group_id(school_code) do
+      {:error, error_msg} ->
+        {:error, error_msg}
+
+      group_id ->
+        create_school_enrollment_record(user_id, group_id, start_date, academic_year)
+    end
+  end
+
+  defp create_school_enrollment_record(user_id, group_id, start_date, academic_year) do
+    group = Groups.get_group!(group_id)
+
+    enrollment_attrs = %{
+      "user_id" => user_id,
+      "is_current" => true,
+      "start_date" => start_date,
+      "group_id" => group.child_id,
+      "group_type" => "school",
+      "academic_year" => academic_year
+    }
+
+    # Update existing school enrollments to not current
+    update_existing_enrollments(user_id, "school", start_date)
+
+    case EnrollmentRecords.create_enrollment_record(enrollment_attrs) do
+      {:ok, _} ->
+        # Update or create group-user
+        update_or_create_group_user(user_id, group_id)
+        {:ok, "School enrollment created"}
+
+      error ->
+        error
+    end
+  end
+
+  defp create_auth_group_enrollment(user_id, params, start_date) do
     case Map.get(params, "auth_group") do
       nil ->
         {:error, "Auth group is required for re-enrollment"}
 
       auth_group_name ->
-        case EnrollmentService.get_auth_group_id(auth_group_name) do
-          {:error, error_msg} ->
-            {:error, error_msg}
+        process_auth_group_enrollment(user_id, auth_group_name, start_date)
+    end
+  end
 
-          group_id ->
-            group = Groups.get_group!(group_id)
+  defp process_auth_group_enrollment(user_id, auth_group_name, start_date) do
+    case EnrollmentService.get_auth_group_id(auth_group_name) do
+      {:error, error_msg} ->
+        {:error, error_msg}
 
-            enrollment_attrs = %{
-              "user_id" => user_id,
-              "is_current" => true,
-              "start_date" => start_date,
-              "group_id" => group.child_id,
-              "group_type" => "auth_group"
-            }
+      group_id ->
+        create_auth_group_enrollment_record(user_id, group_id, start_date)
+    end
+  end
 
-            # Update existing auth_group enrollments to not current
-            update_existing_enrollments(user_id, "auth_group", start_date)
+  defp create_auth_group_enrollment_record(user_id, group_id, start_date) do
+    group = Groups.get_group!(group_id)
 
-            case EnrollmentRecords.create_enrollment_record(enrollment_attrs) do
-              {:ok, _} ->
-                # Update or create group-user
-                update_or_create_group_user(user_id, group_id)
-                {:ok, "Auth group enrollment created"}
+    enrollment_attrs = %{
+      "user_id" => user_id,
+      "is_current" => true,
+      "start_date" => start_date,
+      "group_id" => group.child_id,
+      "group_type" => "auth_group"
+    }
 
-              error ->
-                error
-            end
-        end
+    # Update existing auth_group enrollments to not current
+    update_existing_enrollments(user_id, "auth_group", start_date)
+
+    case EnrollmentRecords.create_enrollment_record(enrollment_attrs) do
+      {:ok, _} ->
+        # Update or create group-user
+        update_or_create_group_user(user_id, group_id)
+        {:ok, "Auth group enrollment created"}
+
+      error ->
+        error
     end
   end
 
