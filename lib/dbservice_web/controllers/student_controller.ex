@@ -17,6 +17,7 @@ defmodule DbserviceWeb.StudentController do
   alias Dbservice.Services.BatchEnrollmentService
   alias Dbservice.Services.StudentUpdateService
   alias Dbservice.Services.DropoutService
+  alias Dbservice.Services.ReEnrollmentService
 
   action_fallback(DbserviceWeb.FallbackController)
 
@@ -222,6 +223,29 @@ defmodule DbserviceWeb.StudentController do
 
       student ->
         case DropoutService.process_dropout(student, dropout_start_date, academic_year) do
+          {:ok, updated_student} ->
+            render(conn, :show, student: updated_student)
+
+          {:error, reason} ->
+            conn
+            |> put_status(:bad_request)
+            |> json(%{errors: reason})
+        end
+    end
+  end
+
+  def re_enroll(conn, params) do
+    # Get student by either student_id or apaar_id
+    student = Users.get_student_by_id_or_apaar_id(params)
+
+    case student do
+      nil ->
+        conn
+        |> put_status(:not_found)
+        |> json(%{errors: "Student not found with the provided identifier"})
+
+      student ->
+        case ReEnrollmentService.process_re_enrollment(student, params) do
           {:ok, updated_student} ->
             render(conn, :show, student: updated_student)
 
