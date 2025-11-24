@@ -385,7 +385,7 @@ defmodule Dbservice.Services.ReEnrollmentService do
       )
 
     # Delete all existing group-user entries for this user and group type
-    {deleted_count, _} =
+    {_deleted_count, _} =
       from(gu in GroupUser,
         where: gu.user_id == ^user_id and gu.group_id in subquery(group_ids_subquery)
       )
