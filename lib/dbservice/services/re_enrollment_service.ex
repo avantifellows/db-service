@@ -16,6 +16,7 @@ defmodule Dbservice.Services.ReEnrollmentService do
   alias Dbservice.Services.EnrollmentService
   alias Dbservice.Services.DropoutService
   alias Dbservice.GroupUsers
+  alias Dbservice.Groups.GroupUser
   alias Dbservice.AuthGroups
 
   @doc """
@@ -194,13 +195,8 @@ defmodule Dbservice.Services.ReEnrollmentService do
   end
 
   defp create_grade_enrollment(user_id, params, start_date, academic_year) do
-    case Map.get(params, "grade_id") do
-      nil ->
-        {:ok, "No grade_id provided"}
-
-      grade_id ->
-        process_grade_enrollment(user_id, grade_id, start_date, academic_year)
-    end
+    grade_id = Map.get(params, "grade_id")
+    process_grade_enrollment(user_id, grade_id, start_date, academic_year)
   end
 
   defp process_grade_enrollment(user_id, grade_id, start_date, academic_year) do
@@ -240,13 +236,8 @@ defmodule Dbservice.Services.ReEnrollmentService do
   end
 
   defp create_batch_enrollment(user_id, params, start_date, academic_year) do
-    case Map.get(params, "batch_id") do
-      nil ->
-        {:ok, "No batch_id provided"}
-
-      batch_id ->
-        process_batch_enrollment(user_id, batch_id, start_date, academic_year)
-    end
+    batch_id = Map.get(params, "batch_id")
+    process_batch_enrollment(user_id, batch_id, start_date, academic_year)
   end
 
   defp process_batch_enrollment(user_id, batch_id, start_date, academic_year) do
@@ -286,13 +277,8 @@ defmodule Dbservice.Services.ReEnrollmentService do
   end
 
   defp create_school_enrollment(user_id, params, start_date, academic_year) do
-    case Map.get(params, "school_code") do
-      nil ->
-        {:ok, "No school_code provided"}
-
-      school_code ->
-        process_school_enrollment(user_id, school_code, start_date, academic_year)
-    end
+    school_code = Map.get(params, "school_code")
+    process_school_enrollment(user_id, school_code, start_date, academic_year)
   end
 
   defp process_school_enrollment(user_id, school_code, start_date, academic_year) do
@@ -388,15 +374,24 @@ defmodule Dbservice.Services.ReEnrollmentService do
   end
 
   defp update_or_create_group_user(user_id, group_id) do
-    case GroupUsers.get_group_user_by_user_id_and_group_id(user_id, group_id) do
-      nil ->
-        GroupUsers.create_group_user(%{"user_id" => user_id, "group_id" => group_id})
+    group = Groups.get_group!(group_id)
+    group_type = group.type
 
-      existing_group_user ->
-        GroupUsers.update_group_user(existing_group_user, %{
-          "user_id" => user_id,
-          "group_id" => group_id
-        })
-    end
+    # Get all group IDs that match this type using a subquery
+    group_ids_subquery =
+      from(g in Group,
+        where: g.type == ^group_type,
+        select: g.id
+      )
+
+    # Delete all existing group-user entries for this user and group type
+    {deleted_count, _} =
+      from(gu in GroupUser,
+        where: gu.user_id == ^user_id and gu.group_id in subquery(group_ids_subquery)
+      )
+      |> Repo.delete_all()
+
+    # Create a new group-user entry for the new group_id
+    GroupUsers.create_group_user(%{"user_id" => user_id, "group_id" => group_id})
   end
 end
