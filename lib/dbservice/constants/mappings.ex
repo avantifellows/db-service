@@ -88,7 +88,7 @@ defmodule Dbservice.Constants.Mappings do
         "update_incorrect_grade_to_correct_grade",
         "update_incorrect_auth_group_to_correct_auth_group"
       ],
-      optional: ["batch_movement", "student_update"],
+      optional: ["batch_movement", "student_update", "dropout"],
       type: :string
     },
     "student_father_name" => %{
@@ -310,7 +310,7 @@ defmodule Dbservice.Constants.Mappings do
     "student_apaar_id" => %{
       db_field: "apaar_id",
       required: [],
-      optional: ["student", "student_update", "batch_movement"],
+      optional: ["student", "student_update", "batch_movement", "dropout"],
       type: :string
     },
 
@@ -329,7 +329,13 @@ defmodule Dbservice.Constants.Mappings do
     },
     "academic_year" => %{
       db_field: "academic_year",
-      required: ["student", "batch_movement", "teacher_addition", "teacher_batch_assignment"],
+      required: [
+        "student",
+        "batch_movement",
+        "teacher_addition",
+        "teacher_batch_assignment",
+        "dropout"
+      ],
       optional: [],
       type: :string
     },
@@ -371,7 +377,13 @@ defmodule Dbservice.Constants.Mappings do
     },
     "start_date" => %{
       db_field: "start_date",
-      required: ["student", "batch_movement", "teacher_addition", "teacher_batch_assignment"],
+      required: [
+        "student",
+        "batch_movement",
+        "teacher_addition",
+        "teacher_batch_assignment",
+        "dropout"
+      ],
       optional: [],
       type: :date
     },
