@@ -34,6 +34,13 @@ defmodule DbserviceWeb.Router do
     get "/templates/:type/download", TemplateController, :download_csv_template
   end
 
+  # Protected endpoint for dropout imports only
+  scope "/", DbserviceWeb do
+    pipe_through [:browser, :dashboard_auth]
+
+    post "/imports/dropout", ImportController, :create_dropout_import
+  end
+
   scope "/api", DbserviceWeb do
     pipe_through(:api)
 
@@ -106,6 +113,7 @@ defmodule DbserviceWeb.Router do
     # Some students were incorrectly marked as "dropouts" in our system. This endpoint was introduced to reverse this mistake by removing the dropout status from both the enrollment records and the student table
     patch("/student/remove-dropout-status/:student_id", StudentController, :remove_dropout_status)
     delete("/cleanup-student/:student_id", UserSessionController, :cleanup_student)
+    delete("/cleanup-teacher/:teacher_id", UserSessionController, :cleanup_teacher)
     delete("/remove-batch/:student_id/:batch_id", UserSessionController, :remove_batch_mapping)
     post("/student/:student_id/status", StudentController, :update_student_status)
     resources("/chapter-curriculum", ChapterCurriculumController, except: [:new, :edit])
@@ -127,7 +135,7 @@ defmodule DbserviceWeb.Router do
     )
 
     def swagger_info do
-      source(["config/.env", "config/.env"])
+      source(["config/.env"])
 
       host =
         if Application.get_env(:dbservice, :environment) == :dev do
@@ -182,8 +190,11 @@ defmodule DbserviceWeb.Router do
   end
 
   defp admin_basic_auth(conn, _opts) do
+    source(["config/.env"])
+
     username = env!("DASHBOARD_USER", :string!)
     password = env!("DASHBOARD_PASS", :string!)
+
     Plug.BasicAuth.basic_auth(conn, username: username, password: password)
   end
 

@@ -16,6 +16,7 @@ defmodule Dbservice.DataImport.ImportWorker do
   alias Dbservice.Users
   alias Dbservice.Grades
   alias Dbservice.Services.StudentUpdateService
+  alias Dbservice.Services.DropoutService
   alias Dbservice.Utils.ChangesetFormatter
   alias Dbservice.Colleges
 
@@ -61,7 +62,8 @@ defmodule Dbservice.DataImport.ImportWorker do
       "update_incorrect_batch_id_to_correct_batch_id" => &process_batch_id_update_record/1,
       "update_incorrect_school_to_correct_school" => &process_school_update_record/1,
       "update_incorrect_grade_to_correct_grade" => &process_grade_update_record/1,
-      "update_incorrect_auth_group_to_correct_auth_group" => &process_auth_group_update_record/1
+      "update_incorrect_auth_group_to_correct_auth_group" => &process_auth_group_update_record/1,
+      "dropout" => &process_dropout_record/1
     }
 
     case Map.get(processor_map, import_type) do
@@ -479,6 +481,31 @@ defmodule Dbservice.DataImport.ImportWorker do
 
   defp process_batch_movement_record(record) do
     DataImport.BatchMovement.process_batch_movement(record)
+  end
+
+  defp process_dropout_record(record) do
+    # Accept either student_id or apaar_id (like batch movement)
+    student_id = record["student_id"]
+    apaar_id = record["apaar_id"]
+
+    if (is_nil(student_id) or student_id == "") and (is_nil(apaar_id) or apaar_id == "") do
+      {:error, "Either student_id or apaar_id is required for dropout"}
+    else
+      process_dropout_for_student(record)
+    end
+  end
+
+  defp process_dropout_for_student(record) do
+    case Users.get_student_by_id_or_apaar_id(record) do
+      nil ->
+        {:error,
+         "Student not found. student_id: #{record["student_id"]}, apaar_id: #{record["apaar_id"]}"}
+
+      student ->
+        start_date = record["start_date"]
+        academic_year = record["academic_year"]
+        DropoutService.process_dropout(student, start_date, academic_year)
+    end
   end
 
   defp process_teacher_record(record) do

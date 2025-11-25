@@ -31,6 +31,8 @@ defmodule Dbservice.DataImport do
   def format_type_name("update_incorrect_auth_group_to_correct_auth_group"),
     do: "Update Incorrect Auth Group to Correct Auth Group"
 
+  def format_type_name("dropout"), do: "Student Dropout"
+
   def format_type_name(type), do: String.capitalize(type)
 
   @doc """
