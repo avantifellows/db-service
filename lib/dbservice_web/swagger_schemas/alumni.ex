@@ -27,14 +27,14 @@ defmodule DbserviceWeb.SwaggerSchema.Alumni do
             start_year_ug(:integer, "UG start year")
             college_id_ug(:integer, "UG college ID")
             degree_ug(:string, "UG degree")
-            branch_ug(:string, "UG branch")
+            branch_id_ug(:integer, "UG branch ID")
             year_of_graduation_ug(:integer, "UG graduation year")
 
             # PG fields
             start_year_pg(:integer, "PG start year")
             college_id_pg(:integer, "PG college ID")
             degree_pg(:string, "PG degree")
-            branch_pg(:string, "PG branch")
+            branch_id_pg(:integer, "PG branch ID")
             year_of_graduation_pg(:integer, "PG graduation year")
 
             past_internship_orgs(:string, "Past internship organizations")
@@ -72,7 +72,7 @@ defmodule DbserviceWeb.SwaggerSchema.Alumni do
             start_year_ug: 2015,
             college_id_ug: 1,
             degree_ug: "B.Tech",
-            branch_ug: "Computer Science",
+            branch_id_ug: 1,
             year_of_graduation_ug: 2019,
             current_job_role: "Software Engineer",
             current_org_name: "Tech Company",

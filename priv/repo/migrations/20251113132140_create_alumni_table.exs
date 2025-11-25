@@ -16,14 +16,14 @@ defmodule Dbservice.Repo.Migrations.CreateAlumniTable do
       add :start_year_ug, :integer
       add :college_id_ug, references(:college, on_delete: :nothing)
       add :degree_ug, :string
-      add :branch_ug, :string
+      add :branch_id_ug, references(:branch, on_delete: :nothing)
       add :year_of_graduation_ug, :integer
 
       # PG fields
       add :start_year_pg, :integer
       add :college_id_pg, references(:college, on_delete: :nothing)
       add :degree_pg, :string
-      add :branch_pg, :string
+      add :branch_id_pg, references(:branch, on_delete: :nothing)
       add :year_of_graduation_pg, :integer
 
       add :past_internship_orgs, :string

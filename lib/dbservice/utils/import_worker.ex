@@ -19,6 +19,7 @@ defmodule Dbservice.DataImport.ImportWorker do
   alias Dbservice.Services.DropoutService
   alias Dbservice.Utils.ChangesetFormatter
   alias Dbservice.Colleges
+  alias Dbservice.Branches
 
   @impl Oban.Worker
   def perform(%Oban.Job{args: %{"id" => import_id}}) do
@@ -120,6 +121,7 @@ defmodule Dbservice.DataImport.ImportWorker do
       |> add_grade_id(row_number)
       |> add_subject_id(row_number)
       |> add_college_ids(row_number)
+      |> add_branch_ids(row_number)
     end
   end
 
@@ -218,6 +220,34 @@ defmodule Dbservice.DataImport.ImportWorker do
         rescue
           error ->
             reraise "Failed to lookup #{field} '#{college_code}' on row #{row_number}: #{Exception.message(error)}",
+                    __STACKTRACE__
+        end
+
+      _ ->
+        record
+    end
+  end
+
+  defp add_branch_ids(record, row_number) do
+    record
+    |> maybe_put_branch_pk("branch_id_ug", row_number)
+    |> maybe_put_branch_pk("branch_id_pg", row_number)
+  end
+
+  defp maybe_put_branch_pk(record, field, row_number) do
+    case Map.get(record, field) do
+      nil ->
+        record
+
+      branch_code when is_binary(branch_code) ->
+        try do
+          case Branches.get_branch_by_branch_id(branch_code) do
+            nil -> record
+            %{id: branch_pk} -> Map.put(record, field, branch_pk)
+          end
+        rescue
+          error ->
+            reraise "Failed to lookup #{field} '#{branch_code}' on row #{row_number}: #{Exception.message(error)}",
                     __STACKTRACE__
         end
 

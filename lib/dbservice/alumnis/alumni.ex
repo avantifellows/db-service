@@ -15,13 +15,11 @@ defmodule Dbservice.Alumnis.Alumni do
     # UG fields
     field :start_year_ug, :integer
     field :degree_ug, :string
-    field :branch_ug, :string
     field :year_of_graduation_ug, :integer
 
     # PG fields
     field :start_year_pg, :integer
     field :degree_pg, :string
-    field :branch_pg, :string
     field :year_of_graduation_pg, :integer
 
     field :past_internship_orgs, :string
@@ -48,6 +46,8 @@ defmodule Dbservice.Alumnis.Alumni do
     belongs_to :student, Dbservice.Users.Student
     belongs_to :college_ug, Dbservice.Colleges.College, foreign_key: :college_id_ug
     belongs_to :college_pg, Dbservice.Colleges.College, foreign_key: :college_id_pg
+    belongs_to :branch_ug, Dbservice.Branches.Branch, foreign_key: :branch_id_ug
+    belongs_to :branch_pg, Dbservice.Branches.Branch, foreign_key: :branch_id_pg
 
     timestamps()
   end
@@ -64,12 +64,12 @@ defmodule Dbservice.Alumnis.Alumni do
       :start_year_ug,
       :college_id_ug,
       :degree_ug,
-      :branch_ug,
+      :branch_id_ug,
       :year_of_graduation_ug,
       :start_year_pg,
       :college_id_pg,
       :degree_pg,
-      :branch_pg,
+      :branch_id_pg,
       :year_of_graduation_pg,
       :past_internship_orgs,
       :which_year_did_you_start_working,

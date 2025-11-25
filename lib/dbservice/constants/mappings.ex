@@ -161,25 +161,25 @@ defmodule Dbservice.Constants.Mappings do
     "student_time_of_device_availability" => %{
       db_field: "time_of_device_availability",
       required: ["student"],
-      optional: ["student_update", "alumni_addition"],
+      optional: ["student_update"],
       type: :string
     },
     "student_has_internet_access" => %{
       db_field: "has_internet_access",
       required: ["student"],
-      optional: ["student_update", "alumni_addition"],
+      optional: ["student_update"],
       type: :boolean
     },
     "student_primary_smartphone_owner" => %{
       db_field: "primary_smartphone_owner",
       required: ["student"],
-      optional: ["student_update", "alumni_addition"],
+      optional: ["student_update"],
       type: :string
     },
     "student_primary_smartphone_owner_profession" => %{
       db_field: "primary_smartphone_owner_profession",
       required: ["student"],
-      optional: ["student_update", "alumni_addition"],
+      optional: ["student_update"],
       type: :string
     },
     "student_guardian_name" => %{
@@ -227,7 +227,7 @@ defmodule Dbservice.Constants.Mappings do
     "student_number_of_smartphones" => %{
       db_field: "number_of_smartphones",
       required: ["student"],
-      optional: ["student_update", "alumni_addition"],
+      optional: ["student_update"],
       type: :integer
     },
     "student_family_type" => %{
@@ -239,25 +239,25 @@ defmodule Dbservice.Constants.Mappings do
     "student_number_of_four_wheelers" => %{
       db_field: "number_of_four_wheelers",
       required: ["student"],
-      optional: ["student_update", "alumni_addition"],
+      optional: ["student_update"],
       type: :integer
     },
     "student_number_of_two_wheelers" => %{
       db_field: "number_of_two_wheelers",
       required: ["student"],
-      optional: ["student_update", "alumni_addition"],
+      optional: ["student_update"],
       type: :integer
     },
     "student_goes_for_tuition_or_other_coaching" => %{
       db_field: "goes_for_tuition_or_other_coaching",
       required: ["student"],
-      optional: ["student_update", "alumni_addition"],
+      optional: ["student_update"],
       type: :boolean
     },
     "student_know_about_avanti" => %{
       db_field: "know_about_avanti",
       required: ["student"],
-      optional: ["student_update", "alumni_addition"],
+      optional: ["student_update"],
       type: :boolean
     },
     "student_percentage_in_grade_10_science" => %{
@@ -293,7 +293,7 @@ defmodule Dbservice.Constants.Mappings do
     "student_has_air_conditioner" => %{
       db_field: "has_air_conditioner",
       required: ["student"],
-      optional: ["student_update", "alumni_addition"],
+      optional: ["student_update"],
       type: :boolean
     },
     "student_board_stream" => %{
@@ -305,7 +305,7 @@ defmodule Dbservice.Constants.Mappings do
     "student_school_medium" => %{
       db_field: "school_medium",
       required: ["student"],
-      optional: ["student_update", "alumni_addition"],
+      optional: ["student_update"],
       type: :string
     },
     "student_apaar_id" => %{
@@ -466,8 +466,8 @@ defmodule Dbservice.Constants.Mappings do
       optional: ["alumni_addition"],
       type: :string
     },
-    "branch_ug" => %{
-      db_field: "branch_ug",
+    "branch_id_ug" => %{
+      db_field: "branch_id_ug",
       required: [],
       optional: ["alumni_addition"],
       type: :string
@@ -496,8 +496,8 @@ defmodule Dbservice.Constants.Mappings do
       optional: ["alumni_addition"],
       type: :string
     },
-    "branch_pg" => %{
-      db_field: "branch_pg",
+    "branch_id_pg" => %{
+      db_field: "branch_id_pg",
       required: [],
       optional: ["alumni_addition"],
       type: :string

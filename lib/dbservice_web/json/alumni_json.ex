@@ -20,13 +20,13 @@ defmodule DbserviceWeb.AlumniJSON do
       start_year_ug: alumni.start_year_ug,
       college_id_ug: alumni.college_id_ug,
       degree_ug: alumni.degree_ug,
-      branch_ug: alumni.branch_ug,
+      branch_id_ug: alumni.branch_id_ug,
       year_of_graduation_ug: alumni.year_of_graduation_ug,
       # PG fields
       start_year_pg: alumni.start_year_pg,
       college_id_pg: alumni.college_id_pg,
       degree_pg: alumni.degree_pg,
-      branch_pg: alumni.branch_pg,
+      branch_id_pg: alumni.branch_id_pg,
       year_of_graduation_pg: alumni.year_of_graduation_pg,
       # Employment fields
       past_internship_orgs: alumni.past_internship_orgs,
