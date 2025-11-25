@@ -340,25 +340,58 @@ defmodule Dbservice.Services.ReEnrollmentService do
   defp create_auth_group_enrollment_record(user_id, group_id, start_date) do
     group = Groups.get_group!(group_id)
 
-    enrollment_attrs = %{
-      "user_id" => user_id,
-      "is_current" => true,
-      "start_date" => start_date,
-      "group_id" => group.child_id,
-      "group_type" => "auth_group"
-    }
+    # Find the existing auth_group enrollment record for this user
+    # Match on group.child_id since enrollment records store child_id, not group.id
+    existing_enrollment =
+      from(er in EnrollmentRecord,
+        where:
+          er.user_id == ^user_id and
+            er.group_id == ^group.child_id and
+            er.group_type == "auth_group",
+        order_by: [desc: er.inserted_at],
+        limit: 1
+      )
+      |> Repo.one()
 
-    # Update existing auth_group enrollments to not current
-    update_existing_enrollments(user_id, "auth_group", start_date)
+    case existing_enrollment do
+      nil ->
+        # If no existing record found, create a new one
+        enrollment_attrs = %{
+          "user_id" => user_id,
+          "is_current" => true,
+          "start_date" => start_date,
+          "group_id" => group.child_id,
+          "group_type" => "auth_group"
+        }
 
-    case EnrollmentRecords.create_enrollment_record(enrollment_attrs) do
-      {:ok, _} ->
-        # Update or create group-user
-        update_or_create_group_user(user_id, group_id)
-        {:ok, "Auth group enrollment created"}
+        case EnrollmentRecords.create_enrollment_record(enrollment_attrs) do
+          {:ok, _} ->
+            # Update or create group-user
+            update_or_create_group_user(user_id, group_id)
+            {:ok, "Auth group enrollment created"}
 
-      error ->
-        error
+          error ->
+            error
+        end
+
+      enrollment ->
+        # Mark any other current auth_group enrollments as not current
+        # Exclude the enrollment we're about to reactivate to avoid double updates
+        update_other_auth_group_enrollments(user_id, enrollment.id, start_date)
+
+        # Reactivate the existing enrollment record
+        case EnrollmentRecords.update_enrollment_record(enrollment, %{
+               "is_current" => true,
+               "end_date" => nil
+             }) do
+          {:ok, _} ->
+            # Update or create group-user
+            update_or_create_group_user(user_id, group_id)
+            {:ok, "Auth group enrollment reactivated"}
+
+          error ->
+            error
+        end
     end
   end
 
@@ -368,6 +401,18 @@ defmodule Dbservice.Services.ReEnrollmentService do
         er.user_id == ^user_id and
           er.group_type == ^group_type and
           er.is_current == true,
+      update: [set: [is_current: false, end_date: ^end_date]]
+    )
+    |> Repo.update_all([])
+  end
+
+  defp update_other_auth_group_enrollments(user_id, exclude_enrollment_id, end_date) do
+    from(er in EnrollmentRecord,
+      where:
+        er.user_id == ^user_id and
+          er.group_type == "auth_group" and
+          er.is_current == true and
+          er.id != ^exclude_enrollment_id,
       update: [set: [is_current: false, end_date: ^end_date]]
     )
     |> Repo.update_all([])
