@@ -5,9 +5,6 @@ defmodule Dbservice.Repo.Migrations.CreateAlumniTable do
     create table(:alumni) do
       add :student_id, references(:student, on_delete: :nothing), null: false
 
-      add :phone_number, :bigint
-      add :email, :string
-
       add :which_competitive_exam_did_you_appear_for, :string
       add :did_you_take_a_gap_year, :string
       add :why_did_you_take_a_gap_year, :string

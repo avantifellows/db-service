@@ -11,8 +11,6 @@ defmodule DbserviceWeb.AlumniJSON do
     %{
       id: alumni.id,
       student_id: alumni.student_id,
-      phone_number: alumni.phone_number,
-      email: alumni.email,
       which_competitive_exam_did_you_appear_for: alumni.which_competitive_exam_did_you_appear_for,
       did_you_take_a_gap_year: alumni.did_you_take_a_gap_year,
       why_did_you_take_a_gap_year: alumni.why_did_you_take_a_gap_year,

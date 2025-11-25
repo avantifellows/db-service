@@ -422,18 +422,6 @@ defmodule Dbservice.Constants.Mappings do
     },
 
     # Alumni fields (for alumni_addition import)
-    "phone_number" => %{
-      db_field: "phone_number",
-      required: [],
-      optional: ["alumni_addition"],
-      type: :integer
-    },
-    "email" => %{
-      db_field: "email",
-      required: [],
-      optional: ["alumni_addition"],
-      type: :string
-    },
     "which_competitive_exam_did_you_appear_for" => %{
       db_field: "which_competitive_exam_did_you_appear_for",
       required: [],

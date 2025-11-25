@@ -5,9 +5,6 @@ defmodule Dbservice.Alumnis.Alumni do
   import Ecto.Changeset
 
   schema "alumni" do
-    field :phone_number, :integer
-    field :email, :string
-
     field :which_competitive_exam_did_you_appear_for, :string
     field :did_you_take_a_gap_year, :string
     field :why_did_you_take_a_gap_year, :string
@@ -60,8 +57,6 @@ defmodule Dbservice.Alumnis.Alumni do
     alumni
     |> cast(attrs, [
       :student_id,
-      :phone_number,
-      :email,
       :which_competitive_exam_did_you_appear_for,
       :did_you_take_a_gap_year,
       :why_did_you_take_a_gap_year,

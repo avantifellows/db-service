@@ -13,8 +13,6 @@ defmodule DbserviceWeb.SwaggerSchema.Alumni do
           properties do
             id(:integer, "Alumni ID")
             student_id(:integer, "Student ID", required: true)
-            phone_number(:integer, "Phone number")
-            email(:string, "Email address")
 
             which_competitive_exam_did_you_appear_for(:string, "Competitive exam appeared for")
             did_you_take_a_gap_year(:string, "Did you take a gap year")
@@ -69,8 +67,6 @@ defmodule DbserviceWeb.SwaggerSchema.Alumni do
           example(%{
             id: 1,
             student_id: 123,
-            phone_number: 9_876_543_210,
-            email: "alumni@example.com",
             which_competitive_exam_did_you_appear_for: "JEE",
             did_you_take_a_gap_year: "No",
             start_year_ug: 2015,
