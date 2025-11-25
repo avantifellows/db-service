@@ -355,24 +355,7 @@ defmodule Dbservice.Services.ReEnrollmentService do
 
     case existing_enrollment do
       nil ->
-        # If no existing record found, create a new one
-        enrollment_attrs = %{
-          "user_id" => user_id,
-          "is_current" => true,
-          "start_date" => start_date,
-          "group_id" => group.child_id,
-          "group_type" => "auth_group"
-        }
-
-        case EnrollmentRecords.create_enrollment_record(enrollment_attrs) do
-          {:ok, _} ->
-            # Update or create group-user
-            update_or_create_group_user(user_id, group_id)
-            {:ok, "Auth group enrollment created"}
-
-          error ->
-            error
-        end
+        {:error, "Auth group enrollment record not found. This indicates a data inconsistency."}
 
       enrollment ->
         # Mark any other current auth_group enrollments as not current
