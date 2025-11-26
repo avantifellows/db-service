@@ -45,7 +45,7 @@ defmodule DbserviceWeb.Endpoint do
   plug Plug.Head
   plug Plug.Session, @session_options
   plug CORSPlug
-  plug DbserviceWeb.AuthenticationMiddleware
+  # plug DbserviceWeb.AuthenticationMiddleware
 
   plug DbserviceWeb.Router
 end

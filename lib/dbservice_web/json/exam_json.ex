@@ -11,12 +11,17 @@ defmodule DbserviceWeb.ExamJSON do
     %{
       id: exam.id,
       name: exam.name,
-      exam_id: exam.exam_id,
-      cutoff_id: exam.cutoff_id,
-      conducting_body: exam.conducting_body,
-      registration_deadline: exam.registration_deadline,
-      date: exam.date,
-      cutoff: exam.cutoff
+      counselling_body: exam.counselling_body,
+      type: exam.type,
+      exam_occurrences: render_association(exam.exam_occurrences, &render_exam_occurrences/1)
     }
+  end
+
+  defp render_association(%Ecto.Association.NotLoaded{}, _render_fn), do: nil
+  defp render_association(nil, _render_fn), do: nil
+  defp render_association(association, render_fn), do: render_fn.(association)
+
+  defp render_exam_occurrences(exam_occurrences) do
+    Enum.map(exam_occurrences, &DbserviceWeb.ExamOccurrenceJSON.render/1)
   end
 end
