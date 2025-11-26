@@ -18,6 +18,8 @@ defmodule Dbservice.DataImport.ImportWorker do
   alias Dbservice.Services.StudentUpdateService
   alias Dbservice.Services.DropoutService
   alias Dbservice.Utils.ChangesetFormatter
+  alias Dbservice.Colleges
+  alias Dbservice.Branches
 
   @impl Oban.Worker
   def perform(%Oban.Job{args: %{"id" => import_id}}) do
@@ -56,6 +58,7 @@ defmodule Dbservice.DataImport.ImportWorker do
       "student" => &process_student_record/1,
       "student_update" => &process_student_update_record/1,
       "batch_movement" => &process_batch_movement_record/1,
+      "alumni_addition" => &process_alumni_record/1,
       "teacher_batch_assignment" => &process_teacher_batch_assignment_record/1,
       "update_incorrect_batch_id_to_correct_batch_id" => &process_batch_id_update_record/1,
       "update_incorrect_school_to_correct_school" => &process_school_update_record/1,
@@ -117,6 +120,8 @@ defmodule Dbservice.DataImport.ImportWorker do
       |> map_boolean_fields(import_type)
       |> add_grade_id(row_number)
       |> add_subject_id(row_number)
+      |> add_college_ids(row_number)
+      |> add_branch_ids(row_number)
     end
   end
 
@@ -192,6 +197,62 @@ defmodule Dbservice.DataImport.ImportWorker do
             reraise "Failed to lookup subject '#{subject_name}' on row #{row_number}: #{Exception.message(error)}",
                     __STACKTRACE__
         end
+    end
+  end
+
+  defp add_college_ids(record, row_number) do
+    record
+    |> maybe_put_college_pk("college_id_ug", row_number)
+    |> maybe_put_college_pk("college_id_pg", row_number)
+  end
+
+  defp maybe_put_college_pk(record, field, row_number) do
+    case Map.get(record, field) do
+      nil ->
+        record
+
+      college_code when is_binary(college_code) ->
+        try do
+          case Colleges.get_college_by_college_id(college_code) do
+            nil -> record
+            %{id: college_pk} -> Map.put(record, field, college_pk)
+          end
+        rescue
+          error ->
+            reraise "Failed to lookup #{field} '#{college_code}' on row #{row_number}: #{Exception.message(error)}",
+                    __STACKTRACE__
+        end
+
+      _ ->
+        record
+    end
+  end
+
+  defp add_branch_ids(record, row_number) do
+    record
+    |> maybe_put_branch_pk("branch_id_ug", row_number)
+    |> maybe_put_branch_pk("branch_id_pg", row_number)
+  end
+
+  defp maybe_put_branch_pk(record, field, row_number) do
+    case Map.get(record, field) do
+      nil ->
+        record
+
+      branch_code when is_binary(branch_code) ->
+        try do
+          case Branches.get_branch_by_branch_id(branch_code) do
+            nil -> record
+            %{id: branch_pk} -> Map.put(record, field, branch_pk)
+          end
+        rescue
+          error ->
+            reraise "Failed to lookup #{field} '#{branch_code}' on row #{row_number}: #{Exception.message(error)}",
+                    __STACKTRACE__
+        end
+
+      _ ->
+        record
     end
   end
 
@@ -498,6 +559,41 @@ defmodule Dbservice.DataImport.ImportWorker do
         else
           {:error, _} = error -> error
         end
+    end
+  end
+
+  defp process_alumni_record(record) do
+    student_identifier = Map.get(record, "student_id")
+
+    with {:ok, student_pk} <- get_or_create_student_pk(record, student_identifier) do
+      create_or_update_alumni(student_pk, record)
+    end
+  end
+
+  defp get_or_create_student_pk(_record, student_identifier)
+       when is_nil(student_identifier) or student_identifier == "" do
+    {:error, "student_id is required for alumni addition"}
+  end
+
+  defp get_or_create_student_pk(record, student_identifier) do
+    case Users.get_student_by_student_id(student_identifier) do
+      nil ->
+        case Users.create_student_with_user(record) do
+          {:ok, %Dbservice.Users.Student{id: student_pk}} -> {:ok, student_pk}
+          {:error, reason} -> {:error, reason}
+        end
+
+      %Dbservice.Users.Student{id: student_pk} ->
+        {:ok, student_pk}
+    end
+  end
+
+  defp create_or_update_alumni(student_pk, record) do
+    attrs = Map.put(record, "student_id", student_pk)
+
+    case Dbservice.Alumnis.get_alumni_by_student_id(student_pk) do
+      nil -> Dbservice.Alumnis.create_alumni(attrs)
+      %Dbservice.Alumnis.Alumni{} = existing -> Dbservice.Alumnis.update_alumni(existing, attrs)
     end
   end
 
