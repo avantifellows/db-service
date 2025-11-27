@@ -311,7 +311,14 @@ defmodule Dbservice.Constants.Mappings do
     "student_apaar_id" => %{
       db_field: "apaar_id",
       required: [],
-      optional: ["student", "student_update", "batch_movement", "dropout", "alumni_addition", "re_enrollment"],
+      optional: [
+        "student",
+        "student_update",
+        "batch_movement",
+        "dropout",
+        "alumni_addition",
+        "re_enrollment"
+      ],
       type: :string
     },
 
