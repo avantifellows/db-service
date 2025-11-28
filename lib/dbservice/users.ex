@@ -354,7 +354,7 @@ defmodule Dbservice.Users do
           user = get_user!(existing_student.user_id)
           update_student_with_user(existing_student, user, params)
 
-        {:error, reason} = error ->
+        {:error, _reason} = error ->
           error
       end
     end
@@ -371,23 +371,8 @@ defmodule Dbservice.Users do
     existing_student = get_student_by_id_or_apaar_id(params)
 
     # Determine which identifier was used to find the student (for validation)
-    # Check if student matches by student_id (prioritized in get_student_by_id_or_apaar_id)
-    student_by_id =
-      if existing_student && student_id && student_id != "" &&
-           existing_student.student_id == student_id do
-        existing_student
-      else
-        nil
-      end
-
-    # Check if student matches by apaar_id (only if not found by student_id)
-    student_by_apaar =
-      if existing_student && !student_by_id && apaar_id && apaar_id != "" &&
-           existing_student.apaar_id == apaar_id do
-        existing_student
-      else
-        nil
-      end
+    {student_by_id, student_by_apaar} =
+      determine_matching_identifiers(existing_student, student_id, apaar_id)
 
     # Validate that if we found a student by one identifier, the other identifier matches
     # This prevents accidentally changing identifiers when they don't match
@@ -401,6 +386,33 @@ defmodule Dbservice.Users do
            ),
          :ok <- validate_identifiers_not_duplicated(student_id, apaar_id, existing_student) do
       {:ok, existing_student}
+    end
+  end
+
+  defp determine_matching_identifiers(nil, _student_id, _apaar_id), do: {nil, nil}
+
+  defp determine_matching_identifiers(existing_student, student_id, apaar_id) do
+    student_by_id = check_student_id_match(existing_student, student_id)
+    student_by_apaar = check_apaar_id_match(existing_student, student_by_id, apaar_id)
+
+    {student_by_id, student_by_apaar}
+  end
+
+  defp check_student_id_match(existing_student, student_id) do
+    if existing_student && student_id && student_id != "" &&
+         existing_student.student_id == student_id do
+      existing_student
+    else
+      nil
+    end
+  end
+
+  defp check_apaar_id_match(existing_student, student_by_id, apaar_id) do
+    if existing_student && !student_by_id && apaar_id && apaar_id != "" &&
+         existing_student.apaar_id == apaar_id do
+      existing_student
+    else
+      nil
     end
   end
 
