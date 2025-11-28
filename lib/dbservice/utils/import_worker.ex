@@ -457,9 +457,9 @@ defmodule Dbservice.DataImport.ImportWorker do
     identifiers = build_identifier_string(student)
 
     if identifiers != "" do
-      "Student already exists with #{identifiers} and auth_group: #{auth_group_name}. Use student_update import type for updates."
+      "Student already exists with #{identifiers} and auth_group: #{auth_group_name}. Use 'Update Student Details' import type for updates."
     else
-      "Student already exists with auth_group: #{auth_group_name}. Use student_update import type for updates."
+      "Student already exists with auth_group: #{auth_group_name}. Use 'Update Student Details' import type for updates."
     end
   end
 
