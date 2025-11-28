@@ -430,8 +430,6 @@ defmodule Dbservice.DataImport.ImportWorker do
         handle_student_creation_result(existing_student, student, record)
 
       {:error, reason} ->
-        # Pass through detailed error from create_or_update_student
-        # (includes identifier mismatch errors like "Student found with APAAR ID 'X' but Student ID 'Y' doesn't match existing Student ID 'Z'")
         {:error, reason}
     end
   end
