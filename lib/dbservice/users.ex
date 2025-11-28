@@ -367,16 +367,27 @@ defmodule Dbservice.Users do
     student_id = params["student_id"]
     apaar_id = params["apaar_id"]
 
-    # Try to find student by student_id first
+    # Use the existing function to find student
+    existing_student = get_student_by_id_or_apaar_id(params)
+
+    # Determine which identifier was used to find the student (for validation)
+    # Check if student matches by student_id (prioritized in get_student_by_id_or_apaar_id)
     student_by_id =
-      if student_id && student_id != "", do: get_student_by_student_id(student_id), else: nil
+      if existing_student && student_id && student_id != "" &&
+           existing_student.student_id == student_id do
+        existing_student
+      else
+        nil
+      end
 
-    # Try to find student by apaar_id
+    # Check if student matches by apaar_id (only if not found by student_id)
     student_by_apaar =
-      if apaar_id && apaar_id != "", do: Repo.get_by(Student, apaar_id: apaar_id), else: nil
-
-    # Determine which student we found (prioritize student_id match)
-    existing_student = student_by_id || student_by_apaar
+      if existing_student && !student_by_id && apaar_id && apaar_id != "" &&
+           existing_student.apaar_id == apaar_id do
+        existing_student
+      else
+        nil
+      end
 
     # Validate that if we found a student by one identifier, the other identifier matches
     # This prevents accidentally changing identifiers when they don't match
@@ -413,25 +424,41 @@ defmodule Dbservice.Users do
        ) do
     cond do
       # If we found student by student_id, check that apaar_id matches (if provided)
-      student_by_id && apaar_id && apaar_id != "" ->
-        if existing_student.apaar_id && existing_student.apaar_id != apaar_id do
-          {:error,
-           "Student found with Student ID '#{student_id}' but APAAR ID '#{apaar_id}' doesn't match existing APAAR ID '#{existing_student.apaar_id}'"}
-        else
-          :ok
-        end
+      found_by_student_id?(student_by_id, apaar_id) ->
+        validate_apaar_id_match(existing_student, student_id, apaar_id)
 
       # If we found student by apaar_id, check that student_id matches (if provided)
-      student_by_apaar && !student_by_id && student_id && student_id != "" ->
-        if existing_student.student_id && existing_student.student_id != student_id do
-          {:error,
-           "Student found with APAAR ID '#{apaar_id}' but Student ID '#{student_id}' doesn't match existing Student ID '#{existing_student.student_id}'"}
-        else
-          :ok
-        end
+      found_by_apaar_id_only?(student_by_apaar, student_by_id, student_id) ->
+        validate_student_id_match(existing_student, student_id, apaar_id)
 
       true ->
         :ok
+    end
+  end
+
+  defp found_by_student_id?(student_by_id, apaar_id) do
+    student_by_id && apaar_id && apaar_id != ""
+  end
+
+  defp found_by_apaar_id_only?(student_by_apaar, student_by_id, student_id) do
+    student_by_apaar && !student_by_id && student_id && student_id != ""
+  end
+
+  defp validate_apaar_id_match(existing_student, student_id, apaar_id) do
+    if existing_student.apaar_id && existing_student.apaar_id != apaar_id do
+      {:error,
+       "Student found with Student ID '#{student_id}' but APAAR ID '#{apaar_id}' doesn't match existing APAAR ID '#{existing_student.apaar_id}'"}
+    else
+      :ok
+    end
+  end
+
+  defp validate_student_id_match(existing_student, student_id, apaar_id) do
+    if existing_student.student_id && existing_student.student_id != student_id do
+      {:error,
+       "Student found with APAAR ID '#{apaar_id}' but Student ID '#{student_id}' doesn't match existing Student ID '#{existing_student.student_id}'"}
+    else
+      :ok
     end
   end
 

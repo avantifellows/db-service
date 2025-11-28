@@ -421,75 +421,82 @@ defmodule Dbservice.DataImport.ImportWorker do
 
   # Record processor functions for each import type
   defp process_student_record(record) do
-    # For student imports, if student already exists, return error (don't update)
-    # Only create new students using the shared function
+    # For student imports, if student already exists, returns error
     # Check if student exists first to determine if this would be an update
     existing_student = Users.get_student_by_id_or_apaar_id(record)
 
-    # Always use create_or_update_student to get detailed validation errors
-    # (including identifier mismatches)
     case Users.create_or_update_student(record) do
       {:ok, student} ->
-        # If student existed before, this was an update which we don't allow for student imports
-        if existing_student do
-          # Student already exists - return detailed error (student_update import type should be used for updates)
-          user = Users.get_user!(student.user_id)
-
-          auth_groups =
-            Dbservice.GroupUsers.get_group_user_by_user_id_and_type(user.id, "auth_group")
-
-          auth_group_name =
-            case auth_groups do
-              [%{group: %{child_id: child_id}} | _] ->
-                case Dbservice.AuthGroups.get_auth_group!(child_id) do
-                  %{name: name} -> name
-                  _ -> "unknown"
-                end
-
-              _ ->
-                "unknown"
-            end
-
-          student_id_info =
-            if not nil_or_empty?(student.student_id) do
-              "Student ID: #{student.student_id}"
-            else
-              nil
-            end
-
-          apaar_id_info =
-            if not nil_or_empty?(student.apaar_id) do
-              "APAAR ID: #{student.apaar_id}"
-            else
-              nil
-            end
-
-          identifiers =
-            [student_id_info, apaar_id_info] |> Enum.filter(&(&1 != nil)) |> Enum.join(", ")
-
-          error_message =
-            if identifiers != "" do
-              "Student already exists with #{identifiers} and auth_group: #{auth_group_name}. Use student_update import type for updates."
-            else
-              "Student already exists with auth_group: #{auth_group_name}. Use student_update import type for updates."
-            end
-
-          {:error, error_message}
-        else
-          # Student was created - proceed with enrollments
-          student = Dbservice.Repo.preload(student, [:user])
-
-          case DataImport.StudentEnrollment.create_enrollments(student.user, record) do
-            {:ok, _} -> {:ok, {:ok, student}}
-            {:error, reason} -> {:error, reason}
-          end
-        end
+        handle_student_creation_result(existing_student, student, record)
 
       {:error, reason} ->
         # Pass through detailed error from create_or_update_student
         # (includes identifier mismatch errors like "Student found with APAAR ID 'X' but Student ID 'Y' doesn't match existing Student ID 'Z'")
         {:error, reason}
     end
+  end
+
+  defp handle_student_creation_result(nil, student, record) do
+    # Student was created - proceed with enrollments
+    student = Dbservice.Repo.preload(student, [:user])
+
+    case DataImport.StudentEnrollment.create_enrollments(student.user, record) do
+      {:ok, _} -> {:ok, {:ok, student}}
+      {:error, reason} -> {:error, reason}
+    end
+  end
+
+  defp handle_student_creation_result(_existing_student, student, _record) do
+    # Student already exists - return detailed error (student_update import type should be used for updates)
+    {:error, build_student_exists_error_message(student)}
+  end
+
+  defp build_student_exists_error_message(student) do
+    auth_group_name = get_auth_group_name_for_student(student)
+
+    identifiers = build_identifier_string(student)
+
+    if identifiers != "" do
+      "Student already exists with #{identifiers} and auth_group: #{auth_group_name}. Use student_update import type for updates."
+    else
+      "Student already exists with auth_group: #{auth_group_name}. Use student_update import type for updates."
+    end
+  end
+
+  defp get_auth_group_name_for_student(student) do
+    user = Users.get_user!(student.user_id)
+
+    auth_groups =
+      Dbservice.GroupUsers.get_group_user_by_user_id_and_type(user.id, "auth_group")
+
+    case auth_groups do
+      [%{group: %{child_id: child_id}} | _] ->
+        case Dbservice.AuthGroups.get_auth_group!(child_id) do
+          %{name: name} -> name
+          _ -> "unknown"
+        end
+
+      _ ->
+        "unknown"
+    end
+  end
+
+  defp build_identifier_string(student) do
+    student_id_info =
+      if nil_or_empty?(student.student_id) do
+        nil
+      else
+        "Student ID: #{student.student_id}"
+      end
+
+    apaar_id_info =
+      if nil_or_empty?(student.apaar_id) do
+        nil
+      else
+        "APAAR ID: #{student.apaar_id}"
+      end
+
+    [student_id_info, apaar_id_info] |> Enum.filter(&(&1 != nil)) |> Enum.join(", ")
   end
 
   defp nil_or_empty?(value), do: is_nil(value) or value == ""
