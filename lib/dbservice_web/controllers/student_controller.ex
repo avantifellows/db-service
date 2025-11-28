@@ -107,11 +107,14 @@ defmodule DbserviceWeb.StudentController do
 
   def create(conn, params) do
     student_id = params["student_id"]
+    apaar_id = params["apaar_id"]
 
-    if is_nil(student_id) do
-      create_student_with_user(conn, params)
+    if (is_nil(student_id) or student_id == "") and (is_nil(apaar_id) or apaar_id == "") do
+      conn
+      |> put_status(:bad_request)
+      |> json(%{error: "Student ID or APAAR ID is required"})
     else
-      case Users.get_student_by_student_id(student_id) do
+      case Users.get_student_by_id_or_apaar_id(params) do
         nil ->
           create_student_with_user(conn, params)
 
