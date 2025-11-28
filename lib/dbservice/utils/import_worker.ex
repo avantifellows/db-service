@@ -421,70 +421,74 @@ defmodule Dbservice.DataImport.ImportWorker do
 
   # Record processor functions for each import type
   defp process_student_record(record) do
-    with {:ok, _} <- validate_student_identifiers(record),
-         {:ok, result} <- process_student(record) do
-      result
-    end
-  end
+    # For student imports, if student already exists, return error (don't update)
+    # Only create new students using the shared function
+    # Check if student exists first to determine if this would be an update
+    existing_student = Users.get_student_by_id_or_apaar_id(record)
 
-  defp validate_student_identifiers(record) do
-    student_id = record["student_id"]
-    apaar_id = record["apaar_id"]
+    # Always use create_or_update_student to get detailed validation errors
+    # (including identifier mismatches)
+    case Users.create_or_update_student(record) do
+      {:ok, student} ->
+        # If student existed before, this was an update which we don't allow for student imports
+        if existing_student do
+          # Student already exists - return detailed error (student_update import type should be used for updates)
+          user = Users.get_user!(student.user_id)
 
-    if nil_or_empty?(student_id) and nil_or_empty?(apaar_id) do
-      {:error, "Either student_id or apaar_id is required for student addition"}
-    else
-      {:ok, :valid}
-    end
-  end
+          auth_groups =
+            Dbservice.GroupUsers.get_group_user_by_user_id_and_type(user.id, "auth_group")
 
-  defp process_student(record) do
-    case Users.get_student_by_id_or_apaar_id(record) do
-      nil -> create_student(record)
-      existing_student -> handle_existing_student(existing_student, record)
-    end
-  end
+          auth_group_name =
+            case auth_groups do
+              [%{group: %{child_id: child_id}} | _] ->
+                case Dbservice.AuthGroups.get_auth_group!(child_id) do
+                  %{name: name} -> name
+                  _ -> "unknown"
+                end
 
-  defp create_student(record) do
-    with {:ok, student} <- Users.create_student_with_user(record),
-         student <- Dbservice.Repo.preload(student, [:user]),
-         {:ok, _} <- DataImport.StudentEnrollment.create_enrollments(student.user, record) do
-      {:ok, {:ok, student}}
-    else
-      {:error, _} = error -> {:ok, error}
-    end
-  end
+              _ ->
+                "unknown"
+            end
 
-  defp handle_existing_student(existing_student, record) do
-    user = Users.get_user!(existing_student.user_id)
-    auth_groups = Dbservice.GroupUsers.get_group_user_by_user_id_and_type(user.id, "auth_group")
+          student_id_info =
+            if not nil_or_empty?(student.student_id) do
+              "Student ID: #{student.student_id}"
+            else
+              nil
+            end
 
-    auth_group_name =
-      case auth_groups do
-        [%{group: %{id: _, type: _, child_id: child_id}} | _] ->
-          case Dbservice.AuthGroups.get_auth_group!(child_id) do
-            %{name: name} -> name
-            _ -> "unknown"
+          apaar_id_info =
+            if not nil_or_empty?(student.apaar_id) do
+              "APAAR ID: #{student.apaar_id}"
+            else
+              nil
+            end
+
+          identifiers =
+            [student_id_info, apaar_id_info] |> Enum.filter(&(&1 != nil)) |> Enum.join(", ")
+
+          error_message =
+            if identifiers != "" do
+              "Student already exists with #{identifiers} and auth_group: #{auth_group_name}. Use student_update import type for updates."
+            else
+              "Student already exists with auth_group: #{auth_group_name}. Use student_update import type for updates."
+            end
+
+          {:error, error_message}
+        else
+          # Student was created - proceed with enrollments
+          student = Dbservice.Repo.preload(student, [:user])
+
+          case DataImport.StudentEnrollment.create_enrollments(student.user, record) do
+            {:ok, _} -> {:ok, {:ok, student}}
+            {:error, reason} -> {:error, reason}
           end
+        end
 
-        _ ->
-          "unknown"
-      end
-
-    error_message = build_duplicate_error_message(record, existing_student, auth_group_name)
-    {:ok, {:error, error_message}}
-  end
-
-  defp build_duplicate_error_message(record, existing_student, auth_group_name) do
-    cond do
-      not nil_or_empty?(record["student_id"]) ->
-        "Student already exists with student_id: #{existing_student.student_id} and auth_group: #{auth_group_name}"
-
-      not nil_or_empty?(record["apaar_id"]) ->
-        "Student already exists with apaar_id: #{existing_student.apaar_id} and auth_group: #{auth_group_name}"
-
-      true ->
-        "Student already exists with auth_group: #{auth_group_name}"
+      {:error, reason} ->
+        # Pass through detailed error from create_or_update_student
+        # (includes identifier mismatch errors like "Student found with APAAR ID 'X' but Student ID 'Y' doesn't match existing Student ID 'Z'")
+        {:error, reason}
     end
   end
 
