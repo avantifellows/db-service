@@ -115,7 +115,7 @@ defmodule DbserviceWeb.ResourceJSON do
 
     # Get chapter information from preloaded data or fallback to query
     chapter_data =
-      if Ecto.assoc_loaded?(resource.chapter) && length(resource.chapter) > 0 do
+      if Ecto.assoc_loaded?(resource.chapter) && not Enum.empty?(resource.chapter) do
         chapter = List.first(resource.chapter)
 
         %{

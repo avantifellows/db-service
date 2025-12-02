@@ -8,7 +8,7 @@ defmodule Dbservice.DataImportTest do
     test "list_imports/0 returns all imports" do
       import_record = import_fixture()
       imports = DataImport.list_imports()
-      assert length(imports) >= 1
+      refute Enum.empty?(imports)
       assert Enum.any?(imports, fn imp -> imp.id == import_record.id end)
     end
 

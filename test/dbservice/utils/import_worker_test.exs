@@ -115,7 +115,7 @@ defmodule Dbservice.DataImport.ImportWorkerTest do
 
       # Should complete but with errors recorded
       assert updated_import.error_count > 0
-      assert length(updated_import.error_details) > 0
+      assert not Enum.empty?(updated_import.error_details)
 
       # Verify error messages are readable
       first_error = List.first(updated_import.error_details)
