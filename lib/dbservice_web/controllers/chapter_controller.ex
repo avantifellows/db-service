@@ -6,6 +6,7 @@ defmodule DbserviceWeb.ChapterController do
   alias Dbservice.Chapters
   alias Dbservice.Chapters.Chapter
   alias Dbservice.ChapterCurriculums.ChapterCurriculum
+  alias Dbservice.Resources.ResourceChapter
   alias Dbservice.Utils.Util
 
   action_fallback(DbserviceWeb.FallbackController)
@@ -156,6 +157,10 @@ defmodule DbserviceWeb.ChapterController do
     Repo.transaction(fn ->
       # First delete related chapter_curriculum records
       from(cc in ChapterCurriculum, where: cc.chapter_id == ^id)
+      |> Repo.delete_all()
+
+      # Delete related resource_chapter records
+      from(rc in ResourceChapter, where: rc.chapter_id == ^id)
       |> Repo.delete_all()
 
       # Then retrieve and delete the chapter
