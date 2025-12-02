@@ -106,18 +106,16 @@ defmodule DbserviceWeb.StudentController do
   end
 
   def create(conn, params) do
-    student_id = params["student_id"]
+    case Users.create_or_update_student(params) do
+      {:ok, student} ->
+        conn
+        |> put_status(:ok)
+        |> render(:show, student: student)
 
-    if is_nil(student_id) do
-      create_student_with_user(conn, params)
-    else
-      case Users.get_student_by_student_id(student_id) do
-        nil ->
-          create_student_with_user(conn, params)
-
-        existing_student ->
-          update_existing_student_with_user(conn, existing_student, params)
-      end
+      {:error, reason} ->
+        conn
+        |> put_status(:bad_request)
+        |> json(%{error: reason})
     end
   end
 
@@ -181,25 +179,6 @@ defmodule DbserviceWeb.StudentController do
 
     with {:ok, %Student{}} <- Users.delete_student(student) do
       send_resp(conn, :no_content, "")
-    end
-  end
-
-  defp update_existing_student_with_user(conn, existing_student, params) do
-    user = Users.get_user!(existing_student.user_id)
-
-    with {:ok, %Student{} = student} <-
-           Users.update_student_with_user(existing_student, user, params) do
-      conn
-      |> put_status(:ok)
-      |> render(:show, student: student)
-    end
-  end
-
-  defp create_student_with_user(conn, params) do
-    with {:ok, %Student{} = student} <- Users.create_student_with_user(params) do
-      conn
-      |> put_status(:created)
-      |> render(:show, student: student)
     end
   end
 

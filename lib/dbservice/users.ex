@@ -191,15 +191,23 @@ defmodule Dbservice.Users do
       nil
   """
   def get_student_by_id_or_apaar_id(%{"student_id" => student_id, "apaar_id" => apaar_id}) do
-    cond do
-      student_id && student_id != "" ->
+    # Try student_id first if provided
+    student =
+      if student_id && student_id != "" do
         get_student_by_student_id(student_id)
-
-      apaar_id && apaar_id != "" ->
-        Repo.get_by(Student, apaar_id: apaar_id)
-
-      true ->
+      else
         nil
+      end
+
+    # If student_id lookup didn't find a student, try apaar_id
+    if student do
+      student
+    else
+      if apaar_id && apaar_id != "" do
+        Repo.get_by(Student, apaar_id: apaar_id)
+      else
+        nil
+      end
     end
   end
 
@@ -306,6 +314,211 @@ defmodule Dbservice.Users do
            ) do
       {:ok, student}
     end
+  end
+
+  @doc """
+  Creates or updates a student based on student_id or apaar_id.
+  Validates that identifiers are not duplicated before creating/updating.
+  This function can be used by both API endpoints and LiveView forms.
+
+  ## Parameters
+  - params: Map containing student and user data, including student_id and/or apaar_id
+
+  ## Returns
+  - {:ok, student} if successful
+  - {:error, reason} if validation fails or operation fails
+
+  ## Examples
+
+      iex> create_or_update_student(%{"student_id" => "1234", "apaar_id" => "123456789101"})
+      {:ok, %Student{}}
+
+      iex> create_or_update_student(%{"student_id" => "1234", "apaar_id" => "123456789101"})
+      {:error, "Student ID '1234' already exists for another student"}
+  """
+  def create_or_update_student(params) do
+    student_id = params["student_id"]
+    apaar_id = params["apaar_id"]
+
+    # Validate at least one identifier is provided
+    if (is_nil(student_id) or student_id == "") and (is_nil(apaar_id) or apaar_id == "") do
+      {:error, "Student ID or APAAR ID is required"}
+    else
+      case get_student_by_id_or_apaar_id_with_validation(params) do
+        {:ok, nil} ->
+          # Student doesn't exist and no duplicates - create new
+          create_student_with_user(params)
+
+        {:ok, existing_student} ->
+          # Student exists and no duplicates - update
+          user = get_user!(existing_student.user_id)
+          update_student_with_user(existing_student, user, params)
+
+        {:error, _reason} = error ->
+          error
+      end
+    end
+  end
+
+  # Gets student by identifier and validates no duplicates exist for other students
+  # Returns {:ok, student} if found and validated, {:ok, nil} if not found and validated,
+  # or {:error, reason} if duplicates found
+  defp get_student_by_id_or_apaar_id_with_validation(params) do
+    student_id = params["student_id"]
+    apaar_id = params["apaar_id"]
+
+    # Use the existing function to find student
+    existing_student = get_student_by_id_or_apaar_id(params)
+
+    # Determine which identifier was used to find the student (for validation)
+    {student_by_id, student_by_apaar} =
+      determine_matching_identifiers(existing_student, student_id, apaar_id)
+
+    # Validate that if we found a student by one identifier, the other identifier matches
+    # This prevents accidentally changing identifiers when they don't match
+    with :ok <-
+           validate_identifier_matches(
+             existing_student,
+             student_by_id,
+             student_by_apaar,
+             student_id,
+             apaar_id
+           ),
+         :ok <- validate_identifiers_not_duplicated(student_id, apaar_id, existing_student) do
+      {:ok, existing_student}
+    end
+  end
+
+  defp determine_matching_identifiers(nil, _student_id, _apaar_id), do: {nil, nil}
+
+  defp determine_matching_identifiers(existing_student, student_id, apaar_id) do
+    student_by_id = check_student_id_match(existing_student, student_id)
+    student_by_apaar = check_apaar_id_match(existing_student, student_by_id, apaar_id)
+
+    {student_by_id, student_by_apaar}
+  end
+
+  defp check_student_id_match(existing_student, student_id) do
+    if existing_student && student_id && student_id != "" &&
+         existing_student.student_id == student_id do
+      existing_student
+    else
+      nil
+    end
+  end
+
+  defp check_apaar_id_match(existing_student, student_by_id, apaar_id) do
+    if existing_student && !student_by_id && apaar_id && apaar_id != "" &&
+         existing_student.apaar_id == apaar_id do
+      existing_student
+    else
+      nil
+    end
+  end
+
+  # Validates that if we found a student by one identifier, the other identifier in params matches
+  # This prevents changing identifiers when they don't match the existing student
+  defp validate_identifier_matches(
+         nil,
+         _student_by_id,
+         _student_by_apaar,
+         _student_id,
+         _apaar_id
+       ),
+       do: :ok
+
+  defp validate_identifier_matches(
+         existing_student,
+         student_by_id,
+         student_by_apaar,
+         student_id,
+         apaar_id
+       ) do
+    cond do
+      # If we found student by student_id, check that apaar_id matches (if provided)
+      found_by_student_id?(student_by_id, apaar_id) ->
+        validate_apaar_id_match(existing_student, student_id, apaar_id)
+
+      # If we found student by apaar_id, check that student_id matches (if provided)
+      found_by_apaar_id_only?(student_by_apaar, student_by_id, student_id) ->
+        validate_student_id_match(existing_student, student_id, apaar_id)
+
+      true ->
+        :ok
+    end
+  end
+
+  defp found_by_student_id?(student_by_id, apaar_id) do
+    student_by_id && apaar_id && apaar_id != ""
+  end
+
+  defp found_by_apaar_id_only?(student_by_apaar, student_by_id, student_id) do
+    student_by_apaar && !student_by_id && student_id && student_id != ""
+  end
+
+  defp validate_apaar_id_match(existing_student, student_id, apaar_id) do
+    if existing_student.apaar_id && existing_student.apaar_id != apaar_id do
+      {:error,
+       "Student found with Student ID '#{student_id}' but APAAR ID '#{apaar_id}' doesn't match existing APAAR ID '#{existing_student.apaar_id}'"}
+    else
+      :ok
+    end
+  end
+
+  defp validate_student_id_match(existing_student, student_id, apaar_id) do
+    if existing_student.student_id && existing_student.student_id != student_id do
+      {:error,
+       "Student found with APAAR ID '#{apaar_id}' but Student ID '#{student_id}' doesn't match existing Student ID '#{existing_student.student_id}'"}
+    else
+      :ok
+    end
+  end
+
+  # Validates that student_id and apaar_id are not duplicated in other students
+  # When updating, validates that the NEW values in params don't conflict with other students
+  defp validate_identifiers_not_duplicated(student_id, apaar_id, existing_student) do
+    # Always validate both identifiers if provided, regardless of which one was used to find the student
+    student_id_valid =
+      if student_id && student_id != "" do
+        not duplicate_exists?(:student_id, student_id, existing_student)
+      else
+        true
+      end
+
+    apaar_id_valid =
+      if apaar_id && apaar_id != "" do
+        not duplicate_exists?(:apaar_id, apaar_id, existing_student)
+      else
+        true
+      end
+
+    cond do
+      not student_id_valid ->
+        {:error, "Student ID '#{student_id}' already exists for another student"}
+
+      not apaar_id_valid ->
+        {:error, "APAAR ID '#{apaar_id}' already exists for another student"}
+
+      true ->
+        :ok
+    end
+  end
+
+  defp duplicate_exists?(field, value, existing_student) do
+    query =
+      case field do
+        :student_id -> from(s in Student, where: s.student_id == ^value)
+        :apaar_id -> from(s in Student, where: s.apaar_id == ^value)
+      end
+
+    query =
+      if existing_student do
+        from(s in query, where: s.id != ^existing_student.id)
+      else
+        query
+      end
+
+    not is_nil(Repo.one(query))
   end
 
   @doc """
