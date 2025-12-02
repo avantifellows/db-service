@@ -40,7 +40,8 @@ defmodule DbserviceWeb.ChapterJSON do
   # Helper function to get the chapter_curriculum
   defp get_chapter_curriculum(chapter) do
     # If chapter_curriculum is preloaded and contains records
-    if Ecto.assoc_loaded?(chapter.chapter_curriculum) && not Enum.empty?(chapter.chapter_curriculum) do
+    if Ecto.assoc_loaded?(chapter.chapter_curriculum) &&
+         not Enum.empty?(chapter.chapter_curriculum) do
       List.first(chapter.chapter_curriculum)
     else
       nil
