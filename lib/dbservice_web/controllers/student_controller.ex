@@ -17,6 +17,7 @@ defmodule DbserviceWeb.StudentController do
   alias Dbservice.Services.BatchEnrollmentService
   alias Dbservice.Services.StudentUpdateService
   alias Dbservice.Services.DropoutService
+  alias Dbservice.Services.ReEnrollmentService
 
   action_fallback(DbserviceWeb.FallbackController)
 
@@ -106,18 +107,16 @@ defmodule DbserviceWeb.StudentController do
   end
 
   def create(conn, params) do
-    student_id = params["student_id"]
+    case Users.create_or_update_student(params) do
+      {:ok, student} ->
+        conn
+        |> put_status(:ok)
+        |> render(:show, student: student)
 
-    if is_nil(student_id) do
-      create_student_with_user(conn, params)
-    else
-      case Users.get_student_by_student_id(student_id) do
-        nil ->
-          create_student_with_user(conn, params)
-
-        existing_student ->
-          update_existing_student_with_user(conn, existing_student, params)
-      end
+      {:error, reason} ->
+        conn
+        |> put_status(:bad_request)
+        |> json(%{error: reason})
     end
   end
 
@@ -184,25 +183,6 @@ defmodule DbserviceWeb.StudentController do
     end
   end
 
-  defp update_existing_student_with_user(conn, existing_student, params) do
-    user = Users.get_user!(existing_student.user_id)
-
-    with {:ok, %Student{} = student} <-
-           Users.update_student_with_user(existing_student, user, params) do
-      conn
-      |> put_status(:ok)
-      |> render(:show, student: student)
-    end
-  end
-
-  defp create_student_with_user(conn, params) do
-    with {:ok, %Student{} = student} <- Users.create_student_with_user(params) do
-      conn
-      |> put_status(:created)
-      |> render(:show, student: student)
-    end
-  end
-
   def dropout(conn, params) do
     %{
       "start_date" => dropout_start_date,
@@ -222,6 +202,29 @@ defmodule DbserviceWeb.StudentController do
 
       student ->
         case DropoutService.process_dropout(student, dropout_start_date, academic_year) do
+          {:ok, updated_student} ->
+            render(conn, :show, student: updated_student)
+
+          {:error, reason} ->
+            conn
+            |> put_status(:bad_request)
+            |> json(%{errors: reason})
+        end
+    end
+  end
+
+  def re_enroll(conn, params) do
+    # Get student by either student_id or apaar_id
+    student = Users.get_student_by_id_or_apaar_id(params)
+
+    case student do
+      nil ->
+        conn
+        |> put_status(:not_found)
+        |> json(%{errors: "Student not found with the provided identifier"})
+
+      student ->
+        case ReEnrollmentService.process_re_enrollment(student, params) do
           {:ok, updated_student} ->
             render(conn, :show, student: updated_student)
 

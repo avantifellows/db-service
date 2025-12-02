@@ -17,6 +17,7 @@ defmodule Dbservice.DataImport.ImportWorker do
   alias Dbservice.Grades
   alias Dbservice.Services.StudentUpdateService
   alias Dbservice.Services.DropoutService
+  alias Dbservice.Services.ReEnrollmentService
   alias Dbservice.Utils.ChangesetFormatter
   alias Dbservice.Colleges
   alias Dbservice.Branches
@@ -64,7 +65,8 @@ defmodule Dbservice.DataImport.ImportWorker do
       "update_incorrect_school_to_correct_school" => &process_school_update_record/1,
       "update_incorrect_grade_to_correct_grade" => &process_grade_update_record/1,
       "update_incorrect_auth_group_to_correct_auth_group" => &process_auth_group_update_record/1,
-      "dropout" => &process_dropout_record/1
+      "dropout" => &process_dropout_record/1,
+      "re_enrollment" => &process_re_enrollment_record/1
     }
 
     case Map.get(processor_map, import_type) do
@@ -421,71 +423,80 @@ defmodule Dbservice.DataImport.ImportWorker do
 
   # Record processor functions for each import type
   defp process_student_record(record) do
-    with {:ok, _} <- validate_student_identifiers(record),
-         {:ok, result} <- process_student(record) do
-      result
+    # For student imports, if student already exists, returns error
+    # Check if student exists first to determine if this would be an update
+    existing_student = Users.get_student_by_id_or_apaar_id(record)
+
+    case Users.create_or_update_student(record) do
+      {:ok, student} ->
+        handle_student_creation_result(existing_student, student, record)
+
+      {:error, reason} ->
+        {:error, reason}
     end
   end
 
-  defp validate_student_identifiers(record) do
-    student_id = record["student_id"]
-    apaar_id = record["apaar_id"]
+  defp handle_student_creation_result(nil, student, record) do
+    # Student was created - proceed with enrollments
+    student = Dbservice.Repo.preload(student, [:user])
 
-    if nil_or_empty?(student_id) and nil_or_empty?(apaar_id) do
-      {:error, "Either student_id or apaar_id is required for student addition"}
+    case DataImport.StudentEnrollment.create_enrollments(student.user, record) do
+      {:ok, _} -> {:ok, {:ok, student}}
+      {:error, reason} -> {:error, reason}
+    end
+  end
+
+  defp handle_student_creation_result(_existing_student, student, _record) do
+    # Student already exists - return detailed error (student_update import type should be used for updates)
+    {:error, build_student_exists_error_message(student)}
+  end
+
+  defp build_student_exists_error_message(student) do
+    auth_group_name = get_auth_group_name_for_student(student)
+
+    identifiers = build_identifier_string(student)
+
+    if identifiers != "" do
+      "Student already exists with #{identifiers} and auth_group: #{auth_group_name}. Use 'Update Student Details' import type for updates."
     else
-      {:ok, :valid}
+      "Student already exists with auth_group: #{auth_group_name}. Use 'Update Student Details' import type for updates."
     end
   end
 
-  defp process_student(record) do
-    case Users.get_student_by_id_or_apaar_id(record) do
-      nil -> create_student(record)
-      existing_student -> handle_existing_student(existing_student, record)
+  defp get_auth_group_name_for_student(student) do
+    user = Users.get_user!(student.user_id)
+
+    auth_groups =
+      Dbservice.GroupUsers.get_group_user_by_user_id_and_type(user.id, "auth_group")
+
+    case auth_groups do
+      [%{group: %{child_id: child_id}} | _] ->
+        case Dbservice.AuthGroups.get_auth_group!(child_id) do
+          %{name: name} -> name
+          _ -> "unknown"
+        end
+
+      _ ->
+        "unknown"
     end
   end
 
-  defp create_student(record) do
-    with {:ok, student} <- Users.create_student_with_user(record),
-         student <- Dbservice.Repo.preload(student, [:user]),
-         {:ok, _} <- DataImport.StudentEnrollment.create_enrollments(student.user, record) do
-      {:ok, {:ok, student}}
-    else
-      {:error, _} = error -> {:ok, error}
-    end
-  end
-
-  defp handle_existing_student(existing_student, record) do
-    user = Users.get_user!(existing_student.user_id)
-    auth_groups = Dbservice.GroupUsers.get_group_user_by_user_id_and_type(user.id, "auth_group")
-
-    auth_group_name =
-      case auth_groups do
-        [%{group: %{id: _, type: _, child_id: child_id}} | _] ->
-          case Dbservice.AuthGroups.get_auth_group!(child_id) do
-            %{name: name} -> name
-            _ -> "unknown"
-          end
-
-        _ ->
-          "unknown"
+  defp build_identifier_string(student) do
+    student_id_info =
+      if nil_or_empty?(student.student_id) do
+        nil
+      else
+        "Student ID: #{student.student_id}"
       end
 
-    error_message = build_duplicate_error_message(record, existing_student, auth_group_name)
-    {:ok, {:error, error_message}}
-  end
+    apaar_id_info =
+      if nil_or_empty?(student.apaar_id) do
+        nil
+      else
+        "APAAR ID: #{student.apaar_id}"
+      end
 
-  defp build_duplicate_error_message(record, existing_student, auth_group_name) do
-    cond do
-      not nil_or_empty?(record["student_id"]) ->
-        "Student already exists with student_id: #{existing_student.student_id} and auth_group: #{auth_group_name}"
-
-      not nil_or_empty?(record["apaar_id"]) ->
-        "Student already exists with apaar_id: #{existing_student.apaar_id} and auth_group: #{auth_group_name}"
-
-      true ->
-        "Student already exists with auth_group: #{auth_group_name}"
-    end
+    [student_id_info, apaar_id_info] |> Enum.filter(&(&1 != nil)) |> Enum.join(", ")
   end
 
   defp nil_or_empty?(value), do: is_nil(value) or value == ""
@@ -535,6 +546,29 @@ defmodule Dbservice.DataImport.ImportWorker do
         start_date = record["start_date"]
         academic_year = record["academic_year"]
         DropoutService.process_dropout(student, start_date, academic_year)
+    end
+  end
+
+  defp process_re_enrollment_record(record) do
+    # Accept either student_id or apaar_id
+    student_id = record["student_id"]
+    apaar_id = record["apaar_id"]
+
+    if (is_nil(student_id) or student_id == "") and (is_nil(apaar_id) or apaar_id == "") do
+      {:error, "Either student_id or apaar_id is required for re-enrollment"}
+    else
+      process_re_enrollment_for_student(record)
+    end
+  end
+
+  defp process_re_enrollment_for_student(record) do
+    case Users.get_student_by_id_or_apaar_id(record) do
+      nil ->
+        {:error,
+         "Student not found. student_id: #{record["student_id"]}, apaar_id: #{record["apaar_id"]}"}
+
+      student ->
+        ReEnrollmentService.process_re_enrollment(student, record)
     end
   end
 

@@ -38,7 +38,7 @@ defmodule DbserviceWeb.TopicJSON do
   # Helper function to get the topic_curriculum
   defp get_topic_curriculum(topic) do
     # If topic_curriculum is preloaded and contains records
-    if Ecto.assoc_loaded?(topic.topic_curriculum) && length(topic.topic_curriculum) > 0 do
+    if Ecto.assoc_loaded?(topic.topic_curriculum) && not Enum.empty?(topic.topic_curriculum) do
       List.first(topic.topic_curriculum)
     else
       nil

@@ -371,7 +371,7 @@ defmodule Dbservice.Resources do
     concepts_to_remove = current_concept_ids -- new_concept_ids
 
     # Remove concepts
-    if length(concepts_to_remove) > 0 do
+    if not Enum.empty?(concepts_to_remove) do
       from(rc in ResourceConcept,
         where: rc.resource_id == ^resource.id and rc.concept_id in ^concepts_to_remove
       )
@@ -379,7 +379,7 @@ defmodule Dbservice.Resources do
     end
 
     # Add new concepts
-    if length(concepts_to_add) > 0 do
+    if not Enum.empty?(concepts_to_add) do
       resource_concepts_to_insert =
         Enum.map(concepts_to_add, fn concept_id ->
           %{
@@ -564,6 +564,6 @@ defmodule Dbservice.Resources do
     )
   end
 
-  defp get_offset(params), do: params["offset"] || 0
-  defp get_limit(params), do: params["limit"] || 50
+  defp get_offset(params), do: params["offset"]
+  defp get_limit(params), do: params["limit"]
 end

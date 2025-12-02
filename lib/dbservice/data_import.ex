@@ -32,6 +32,7 @@ defmodule Dbservice.DataImport do
     do: "Update Incorrect Auth Group to Correct Auth Group"
 
   def format_type_name("dropout"), do: "Student Dropout"
+  def format_type_name("re_enrollment"), do: "Student Re-Enrollment After Dropout"
 
   def format_type_name(type), do: String.capitalize(type)
 
@@ -395,7 +396,7 @@ defmodule Dbservice.DataImport do
     # Check for extra headers (allow optional fields)
     extra_headers = normalized_headers -- all_headers
 
-    if length(missing_required) > 0 or length(extra_headers) > 0 do
+    if not Enum.empty?(missing_required) or not Enum.empty?(extra_headers) do
       {:error, "Invalid format for #{sheet_type}"}
     else
       :ok
