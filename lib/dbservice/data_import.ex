@@ -396,7 +396,7 @@ defmodule Dbservice.DataImport do
     # Check for extra headers (allow optional fields)
     extra_headers = normalized_headers -- all_headers
 
-    if length(missing_required) > 0 or length(extra_headers) > 0 do
+    if not Enum.empty?(missing_required) or not Enum.empty?(extra_headers) do
       {:error, "Invalid format for #{sheet_type}"}
     else
       :ok
