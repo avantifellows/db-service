@@ -9,7 +9,7 @@ defmodule Dbservice.Repo.Migrations.CreateUserPermissionTable do
       add :regions, {:array, :string}
       add :read_only, :boolean, default: false
 
-      timestamps()
+      timestamps(default: fragment("now()"), null: false)
     end
 
     # Add unique index on email
