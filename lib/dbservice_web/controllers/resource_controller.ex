@@ -362,8 +362,8 @@ defmodule DbserviceWeb.ResourceController do
 
     query =
       query
-      |> filter_by_subject(params)
       |> filter_by_grade(params)
+      |> filter_by_subject(params)
       |> filter_by_chapter(params)
       |> filter_by_topic(params)
       |> filter_by_type(params)
@@ -377,9 +377,7 @@ defmodule DbserviceWeb.ResourceController do
   # Helper functions for each filter
   defp filter_by_subject(query, %{"subject_id" => subject_id})
        when not is_nil(subject_id) do
-    from(r in query,
-      join: rc in ResourceCurriculum,
-      on: rc.resource_id == r.id,
+    from([r, rc] in query,
       where: rc.subject_id == ^subject_id
     )
   end
@@ -407,9 +405,7 @@ defmodule DbserviceWeb.ResourceController do
   defp filter_by_topic(query, _), do: query
 
   defp filter_by_grade(query, %{"grade_id" => grade_id}) when not is_nil(grade_id) do
-    from(r in query,
-      join: rc in ResourceCurriculum,
-      on: rc.resource_id == r.id,
+    from([r, rc] in query,
       where: rc.grade_id == ^grade_id
     )
   end
