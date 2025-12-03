@@ -39,6 +39,7 @@ defmodule DbserviceWeb.Router do
     pipe_through [:browser, :dashboard_auth]
 
     post "/imports/dropout", ImportController, :create_dropout_import
+    post "/imports/re_enrollment", ImportController, :create_re_enrollment_import
   end
 
   scope "/api", DbserviceWeb do

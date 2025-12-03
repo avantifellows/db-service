@@ -61,15 +61,24 @@ defmodule DbserviceWeb.ImportLive.New do
   defp handle_save(%{"import" => import_params}, socket) do
     import_type = Map.get(import_params, "type", "")
 
-    if import_type == "dropout" do
-      # For dropout imports, use JavaScript to submit form to authenticated endpoint
+    # Check if this is a dropout or re-enrollment import (both require admin auth)
+    if import_type in ["dropout", "re_enrollment"] do
+      # For dropout and re-enrollment imports, use JavaScript to submit form to authenticated endpoint
       # This will prompt for basic auth credentials
+      event_name =
+        if import_type == "dropout",
+          do: "submit_dropout_import",
+          else: "submit_re_enrollment_import"
+
+      url =
+        if import_type == "dropout", do: ~p"/imports/dropout", else: ~p"/imports/re_enrollment"
+
       {:noreply,
        socket
-       |> push_event("submit_dropout_import", %{
-         url: ~p"/imports/dropout",
+       |> push_event(event_name, %{
+         url: url,
          sheet_url: Map.get(import_params, "sheet_url", ""),
-         type: "dropout",
+         type: import_type,
          start_row: Map.get(import_params, "start_row", "2")
        })}
     else
