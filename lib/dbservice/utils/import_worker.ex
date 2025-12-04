@@ -39,7 +39,8 @@ defmodule Dbservice.DataImport.ImportWorker do
 
   # Initialize import processing with total rows calculation and status update
   defp initialize_import_processing(import_record) do
-    total_rows = count_total_rows(import_record.filename, import_record.start_row || 2) + 1
+    # count_total_rows now returns the exact count of rows to be processed
+    total_rows = count_total_rows(import_record.filename, import_record.start_row || 2)
 
     case DataImport.update_import(import_record, %{status: "processing", total_rows: total_rows}) do
       {:ok, updated_import} ->
@@ -271,15 +272,21 @@ defmodule Dbservice.DataImport.ImportWorker do
           validate_row_length: false,
           escape_max_lines: 2
         )
-        # index 1 corresponds to first data row (after header)
+        # First index: tracks position in decoded CSV (1 = first data row after header)
         |> Stream.with_index(1)
+        # Filter to only process rows from start_row onward
         |> Stream.filter(fn {_record, index} -> index >= start_row - 1 end)
-        |> Stream.map(fn {record, index} ->
-          # Compute actual CSV row number (header is row 1)
-          csv_row_number = index + 1
+        # Second index: tracks sequential processing count (1, 2, 3...)
+        |> Stream.with_index(1)
+        |> Stream.map(fn {{record, csv_index}, processing_index} ->
+          # csv_index is the original row index in the decoded CSV (1-based)
+          # processing_index is the sequential processing count (1, 2, 3...)
+          # Compute actual CSV row number (header is row 1, so add 1)
+          csv_row_number = csv_index + 1
 
           try do
-            {field_extractor_fn.({record, csv_row_number}), index}
+            # Use processing_index for progress tracking, csv_row_number for errors
+            {field_extractor_fn.({record, csv_row_number}), processing_index}
           rescue
             e ->
               {:error, Exception.message(e), csv_row_number}
@@ -352,10 +359,10 @@ defmodule Dbservice.DataImport.ImportWorker do
 
   # Helper function to handle errors during record processing
   defp handle_record_error(index, reason, import_record, _processed_records) do
-    # Calculate actual CSV row number: index is 1-based for filtered data rows
-    # CSV row = index + start_row - 1 (since index 1 = first data row = start_row)
+    # index is now the processing index (1, 2, 3...)
+    # Calculate actual CSV row number: start_row + (processing_index - 1)
     start_row = import_record.start_row || 2
-    csv_row_number = index + start_row - 1
+    csv_row_number = start_row + index - 1
 
     # Update import record with error details before halting
     update_params = %{
@@ -397,9 +404,10 @@ defmodule Dbservice.DataImport.ImportWorker do
 
   # Log import error without updating processed rows count
   defp log_import_error(import_record, index, error) do
+    # index is now the processing index (1, 2, 3...)
     # Calculate actual CSV row number
     start_row = import_record.start_row || 2
-    csv_row_number = index + start_row - 1
+    csv_row_number = start_row + index - 1
 
     error_message = format_error_message(error, csv_row_number)
 
@@ -658,19 +666,22 @@ defmodule Dbservice.DataImport.ImportWorker do
       count =
         path
         |> File.stream!()
-        |> Stream.drop(start_row - 1)
         |> CSV.decode!(
-          # Comma separator
           separator: ?,,
-          # Explicit escape character
           escape_character: ?",
-          # Use headers to be more lenient
+          # This consumes row 1 as headers
           headers: true,
-          # Allow variable row lengths
           validate_row_length: false,
-          # Allow multi-line escapes
           escape_max_lines: 2
         )
+        # At this point, index 1 = row 2, index 2 = row 3, etc.
+        |> Stream.with_index(1)
+        # Filter to only count rows from start_row onward
+        |> Stream.filter(fn {_record, index} ->
+          # If start_row is 2, we want index >= 1 (all rows)
+          # If start_row is 669, we want index >= 668 (skip first 667 data rows)
+          index >= start_row - 1
+        end)
         |> Enum.count()
 
       max(0, count)
@@ -696,7 +707,7 @@ defmodule Dbservice.DataImport.ImportWorker do
   end
 
   defp update_import_progress(import_record, index) do
-    # Calculate how many data rows we've processed successfully
+    # index is now the processing index (1, 2, 3...) which directly represents processed rows
     processed_rows = index
 
     update_params = %{processed_rows: processed_rows}
