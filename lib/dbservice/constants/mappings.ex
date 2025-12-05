@@ -627,6 +627,12 @@ defmodule Dbservice.Constants.Mappings do
       optional: ["alumni_addition"],
       type: :string
     },
+    "current_status" => %{
+      db_field: "current_status",
+      required: [],
+      optional: ["alumni_addition"],
+      type: :string
+    },
 
     # Update fields for correction import types
     "old_batch_id" => %{
