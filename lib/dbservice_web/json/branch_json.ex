@@ -11,7 +11,7 @@ defmodule DbserviceWeb.BranchJSON do
     %{
       id: branch.id,
       branch_id: branch.branch_id,
-      parent_branch: branch.parent_branch,
+      parent_branch_id: branch.parent_branch_id,
       name: branch.name,
       duration: branch.duration
     }
