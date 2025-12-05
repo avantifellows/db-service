@@ -317,7 +317,11 @@ defmodule Dbservice.Constants.Mappings do
         "batch_movement",
         "dropout",
         "alumni_addition",
-        "re_enrollment"
+        "re_enrollment",
+        "update_incorrect_batch_id_to_correct_batch_id",
+        "update_incorrect_school_to_correct_school",
+        "update_incorrect_grade_to_correct_grade",
+        "update_incorrect_auth_group_to_correct_auth_group"
       ],
       type: :string
     },
@@ -623,6 +627,12 @@ defmodule Dbservice.Constants.Mappings do
     },
     "contact_status" => %{
       db_field: "contact_status",
+      required: [],
+      optional: ["alumni_addition"],
+      type: :string
+    },
+    "current_status" => %{
+      db_field: "current_status",
       required: [],
       optional: ["alumni_addition"],
       type: :string

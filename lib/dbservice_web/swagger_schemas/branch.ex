@@ -12,14 +12,14 @@ defmodule DbserviceWeb.SwaggerSchema.Branch do
 
           properties do
             branch_id(:string, "The unique branch ID")
-            parent_branch(:string, "Parent branch")
+            parent_branch_id(:string, "Parent branch ID")
             name(:string, "Branch name")
             duration(:integer, "Duration in years")
           end
 
           example(%{
             branch_id: "CSE",
-            parent_branch: "Engineering",
+            parent_branch_id: nil,
             name: "Computer Science Engineering",
             duration: 4
           })

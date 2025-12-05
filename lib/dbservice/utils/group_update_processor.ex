@@ -15,7 +15,7 @@ defmodule Dbservice.DataImport.GroupUpdateProcessor do
   Processes batch ID correction (old_batch_id -> new batch_id)
   """
   def process_batch_id_update(record) do
-    with {:ok, student} <- get_student(record["student_id"]),
+    with {:ok, student} <- get_student(record),
          {:ok, old_batch} <- get_batch_by_id(record["old_batch_id"]),
          {:ok, new_batch_group_id} <- get_batch_group_id(record["batch_id"]) do
       params = %{
@@ -32,11 +32,11 @@ defmodule Dbservice.DataImport.GroupUpdateProcessor do
   end
 
   @doc """
-  Processes school correction (student_id, school_code)
+  Processes school correction (student_id or apaar_id, school_code)
   """
   def process_school_update(record) do
     process_generic_update(
-      record["student_id"],
+      record,
       fn -> get_school_group_id(record["school_code"]) end,
       "school",
       "School update"
@@ -44,11 +44,11 @@ defmodule Dbservice.DataImport.GroupUpdateProcessor do
   end
 
   @doc """
-  Processes grade correction (student_id, grade)
+  Processes grade correction (student_id or apaar_id, grade)
   """
   def process_grade_update(record) do
     process_generic_update(
-      record["student_id"],
+      record,
       fn -> get_grade_group_id(record["grade"]) end,
       "grade",
       "Grade update"
@@ -56,11 +56,11 @@ defmodule Dbservice.DataImport.GroupUpdateProcessor do
   end
 
   @doc """
-  Processes auth group correction (student_id, auth_group_name)
+  Processes auth group correction (student_id or apaar_id, auth_group_name)
   """
   def process_auth_group_update(record) do
     process_generic_update(
-      record["student_id"],
+      record,
       fn -> get_auth_group_id(record["auth_group_name"]) end,
       "auth_group",
       "Auth group update"
@@ -70,8 +70,8 @@ defmodule Dbservice.DataImport.GroupUpdateProcessor do
   # Private helper functions
 
   # Generic processor function that handles the common pattern
-  defp process_generic_update(student_id, group_id_getter_fn, type, success_message_prefix) do
-    with {:ok, student} <- get_student(student_id),
+  defp process_generic_update(record, group_id_getter_fn, type, success_message_prefix) do
+    with {:ok, student} <- get_student(record),
          {:ok, group_id} <- group_id_getter_fn.() do
       params = %{
         "user_id" => student.user_id,
@@ -95,10 +95,22 @@ defmodule Dbservice.DataImport.GroupUpdateProcessor do
   end
 
   # Common student lookup with consistent error handling
-  defp get_student(student_id) do
-    case Users.get_student_by_student_id(student_id) do
-      nil -> {:error, "Student not found with ID: #{student_id}"}
-      student -> {:ok, student}
+  defp get_student(record) when is_map(record) do
+    student_id = record["student_id"]
+    apaar_id = record["apaar_id"]
+
+    # Validate that at least one identifier is provided
+    if (is_nil(student_id) or student_id == "") and (is_nil(apaar_id) or apaar_id == "") do
+      {:error, "Either student_id or apaar_id is required"}
+    else
+      case Users.get_student_by_id_or_apaar_id(record) do
+        nil ->
+          {:error,
+           "Student not found. student_id: #{inspect(student_id)}, apaar_id: #{inspect(apaar_id)}"}
+
+        student ->
+          {:ok, student}
+      end
     end
   end
 

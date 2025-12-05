@@ -59,6 +59,7 @@ defmodule DbserviceWeb.SwaggerSchema.Alumni do
             employment_status(:string, "Employment status")
             seeking_employment(:string, "Seeking employment")
             contact_status(:string, "Contact status")
+            current_status(:string, "Current status")
 
             inserted_at(:string, "Created timestamp", format: "ISO-8601")
             updated_at(:string, "Updated timestamp", format: "ISO-8601")
@@ -79,7 +80,8 @@ defmodule DbserviceWeb.SwaggerSchema.Alumni do
             years_of_experience: 4,
             employment_status: "Employed",
             ug_status: "Completed",
-            contact_status: "Active"
+            contact_status: "Active",
+            current_status: "Studying"
           })
         end
     }

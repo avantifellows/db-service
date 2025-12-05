@@ -42,6 +42,7 @@ defmodule Dbservice.Alumnis.Alumni do
     field :employment_status, :string
     field :seeking_employment, :string
     field :contact_status, :string
+    field :current_status, :string
 
     belongs_to :student, Dbservice.Users.Student
     belongs_to :college_ug, Dbservice.Colleges.College, foreign_key: :college_id_ug
@@ -87,7 +88,8 @@ defmodule Dbservice.Alumnis.Alumni do
       :pg_status,
       :employment_status,
       :seeking_employment,
-      :contact_status
+      :contact_status,
+      :current_status
     ])
     |> validate_required([:student_id])
     |> unique_constraint(:student_id)
