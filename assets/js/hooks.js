@@ -31,7 +31,8 @@ const Hooks = {
         document.body.removeChild(link);
       });
 
-      this.handleEvent("submit_dropout_import", ({ url, sheet_url, type, start_row }) => {
+      // Reusable function to submit authenticated imports (dropout, re-enrollment, etc.)
+      const submitAuthenticatedImport = ({ url, sheet_url, type, start_row }) => {
         // Create a form and submit it to the authenticated endpoint
         // This will trigger the browser's basic auth prompt
         const form = document.createElement('form');
@@ -68,7 +69,11 @@ const Hooks = {
 
         document.body.appendChild(form);
         form.submit();
-      });
+      };
+
+      // Register the same handler for both dropout and re-enrollment imports
+      this.handleEvent("submit_dropout_import", submitAuthenticatedImport);
+      this.handleEvent("submit_re_enrollment_import", submitAuthenticatedImport);
     }
   }
 };
