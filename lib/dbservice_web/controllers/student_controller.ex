@@ -18,6 +18,7 @@ defmodule DbserviceWeb.StudentController do
   alias Dbservice.Services.StudentUpdateService
   alias Dbservice.Services.DropoutService
   alias Dbservice.Services.ReEnrollmentService
+  alias Dbservice.Utils.ChangesetFormatter
 
   action_fallback(DbserviceWeb.FallbackController)
 
@@ -39,14 +40,12 @@ defmodule DbserviceWeb.StudentController do
         Map.merge(
           SwaggerSchemaStudent.student_id_generation(),
           SwaggerSchemaStudent.student_id_generation_response()
-        ),
-        Map.merge(
-          Map.merge(
-            SwaggerSchemaStudent.verify_student_request(),
-            SwaggerSchemaStudent.verification_result()
-          ),
-          SwaggerSchemaStudent.verification_params()
         )
+        |> Map.merge(SwaggerSchemaStudent.verify_student_request())
+        |> Map.merge(SwaggerSchemaStudent.verification_result())
+        |> Map.merge(SwaggerSchemaStudent.verification_params())
+        |> Map.merge(SwaggerSchemaStudent.student_with_enrollments()),
+        %{}
       )
     )
   end
@@ -867,5 +866,151 @@ defmodule DbserviceWeb.StudentController do
     |> Repo.update_all([])
 
     {:ok, :updated}
+  end
+
+  @doc """
+  Creates a new student with user data and all enrollment records.
+  This endpoint is designed for external services to create students with full enrollment setup.
+
+  Expected params:
+  - Student fields: student_id, apaar_id, category, etc.
+  - User fields: first_name, last_name, phone, email, date_of_birth, gender, etc.
+  - Enrollment fields: auth_group, school_code, batch_id, grade, academic_year, start_date
+
+  Note: If grade number is provided, it will be automatically converted to grade_id.
+
+  Returns the created student with user data or error details.
+  """
+  swagger_path :create_with_enrollments do
+    post("/api/student/create-with-enrollments")
+
+    parameters do
+      body(:body, Schema.ref(:StudentWithEnrollments), "Student with user and enrollment data",
+        required: true
+      )
+    end
+
+    response(201, "Created", Schema.ref(:StudentWithUser))
+    response(400, "Bad Request")
+    response(422, "Unprocessable Entity")
+  end
+
+  def create_with_enrollments(conn, params) do
+    # Validate required enrollment fields and convert grade to grade_id
+    with :ok <- validate_enrollment_params(params),
+         {:ok, enriched_params} <- enrich_params_with_grade_id(params),
+         {:ok, student} <- Users.create_or_update_student(enriched_params),
+         student <- Dbservice.Repo.preload(student, [:user]),
+         {:ok, _enrollments} <- create_student_enrollments(student.user, enriched_params) do
+      conn
+      |> put_status(:created)
+      |> render(:show, student: student)
+    else
+      {:error, :missing_enrollment_fields, missing} ->
+        conn
+        |> put_status(:bad_request)
+        |> json(%{
+          error: "Missing required enrollment fields",
+          missing_fields: missing
+        })
+
+      {:error, :grade_not_found, grade} ->
+        conn
+        |> put_status(:bad_request)
+        |> json(%{
+          error: "Grade not found",
+          grade: grade,
+          message: "No grade found with number: #{grade}"
+        })
+
+      {:error, :student_exists, student} ->
+        conn
+        |> put_status(:unprocessable_entity)
+        |> json(%{
+          error: "Student already exists",
+          student_id: student.student_id,
+          apaar_id: student.apaar_id,
+          message:
+            "Use the update endpoint or student_update import type to modify existing students"
+        })
+
+      {:error, %Ecto.Changeset{} = changeset} ->
+        conn
+        |> put_status(:unprocessable_entity)
+        |> json(%{
+          error: "Validation failed",
+          details: ChangesetFormatter.map_errors(changeset)
+        })
+
+      {:error, reason} when is_binary(reason) ->
+        conn
+        |> put_status(:bad_request)
+        |> json(%{error: reason})
+
+      {:error, reason} ->
+        conn
+        |> put_status(:bad_request)
+        |> json(%{error: inspect(reason)})
+    end
+  end
+
+  # Validates that required enrollment fields are present
+  defp validate_enrollment_params(params) do
+    required_fields = ["academic_year", "start_date"]
+    optional_enrollment_fields = ["auth_group", "school_code", "batch_id", "grade"]
+
+    missing_required =
+      Enum.filter(required_fields, fn field ->
+        is_nil(params[field]) || params[field] == ""
+      end)
+
+    # Check if at least one enrollment field is present
+    has_enrollment_field =
+      Enum.any?(optional_enrollment_fields, fn field ->
+        not is_nil(params[field]) && params[field] != ""
+      end)
+
+    cond do
+      length(missing_required) > 0 ->
+        {:error, :missing_enrollment_fields, missing_required}
+
+      not has_enrollment_field ->
+        {:error, :missing_enrollment_fields,
+         ["At least one of: auth_group, school_code, batch_id, or grade must be provided"]}
+
+      true ->
+        :ok
+    end
+  end
+
+  # Enriches params by converting grade number to grade_id if grade is provided
+  defp enrich_params_with_grade_id(params) do
+    case Map.get(params, "grade") do
+      nil ->
+        # No grade provided, return params as-is
+        {:ok, params}
+
+      grade when is_binary(grade) or is_integer(grade) ->
+        # Convert to integer if string
+        grade_number = if is_binary(grade), do: String.to_integer(grade), else: grade
+
+        case Grades.get_grade_by_number(grade_number) do
+          nil ->
+            {:error, :grade_not_found, grade_number}
+
+          grade_record ->
+            # Add grade_id to params
+            {:ok, Map.put(params, "grade_id", grade_record.id)}
+        end
+
+      _ ->
+        # Invalid grade format
+        {:ok, params}
+    end
+  end
+
+  # Creates all enrollment records for the student
+  defp create_student_enrollments(user, params) do
+    Dbservice.DataImport.StudentEnrollment.create_enrollments(user, params)
   end
 end
