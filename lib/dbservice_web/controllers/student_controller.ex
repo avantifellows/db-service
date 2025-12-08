@@ -896,9 +896,9 @@ defmodule DbserviceWeb.StudentController do
   end
 
   def create_with_enrollments(conn, params) do
-    # Validate required enrollment fields and convert grade to grade_id
-    with :ok <- validate_enrollment_params(params),
-         {:ok, enriched_params} <- enrich_params_with_grade_id(params),
+    enriched_params = Users.enrich_student_params(params)
+
+    with :ok <- validate_enrollment_params(enriched_params),
          {:ok, student} <- Users.create_or_update_student(enriched_params),
          student <- Dbservice.Repo.preload(student, [:user]),
          {:ok, _enrollments} <- create_student_enrollments(student.user, enriched_params) do
@@ -912,15 +912,6 @@ defmodule DbserviceWeb.StudentController do
         |> json(%{
           error: "Missing required enrollment fields",
           missing_fields: missing
-        })
-
-      {:error, :grade_not_found, grade} ->
-        conn
-        |> put_status(:bad_request)
-        |> json(%{
-          error: "Grade not found",
-          grade: grade,
-          message: "No grade found with number: #{grade}"
         })
 
       {:error, :student_exists, student} ->
@@ -971,7 +962,7 @@ defmodule DbserviceWeb.StudentController do
       end)
 
     cond do
-      length(missing_required) > 0 ->
+      not Enum.empty?(missing_required) ->
         {:error, :missing_enrollment_fields, missing_required}
 
       not has_enrollment_field ->
@@ -980,32 +971,6 @@ defmodule DbserviceWeb.StudentController do
 
       true ->
         :ok
-    end
-  end
-
-  # Enriches params by converting grade number to grade_id if grade is provided
-  defp enrich_params_with_grade_id(params) do
-    case Map.get(params, "grade") do
-      nil ->
-        # No grade provided, return params as-is
-        {:ok, params}
-
-      grade when is_binary(grade) or is_integer(grade) ->
-        # Convert to integer if string
-        grade_number = if is_binary(grade), do: String.to_integer(grade), else: grade
-
-        case Grades.get_grade_by_number(grade_number) do
-          nil ->
-            {:error, :grade_not_found, grade_number}
-
-          grade_record ->
-            # Add grade_id to params
-            {:ok, Map.put(params, "grade_id", grade_record.id)}
-        end
-
-      _ ->
-        # Invalid grade format
-        {:ok, params}
     end
   end
 
