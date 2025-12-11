@@ -10,6 +10,7 @@ defmodule Dbservice.Services.GroupUpdateService do
   alias Dbservice.GroupUsers
   alias Dbservice.EnrollmentRecords
   alias Dbservice.EnrollmentRecords.EnrollmentRecord
+  alias Dbservice.Users
 
   @doc """
   Updates a user's group membership by type.
@@ -24,39 +25,46 @@ defmodule Dbservice.Services.GroupUpdateService do
   """
   def update_user_group_by_type(params) do
     user_id = params["user_id"]
-    type = params["type"]
 
-    case Groups.get_group_by_group_id_and_type(params["group_id"], type) do
-      nil ->
-        {:error, :not_found}
-
-      new_group ->
-        new_group_id = new_group.child_id
-
-        # Fetch all GroupUsers for the specified user_id and type
-        group_users = GroupUsers.get_group_user_by_user_id_and_type(user_id, type)
-
-        # Determine which GroupUser to update and fetch the corresponding EnrollmentRecord
-        {group_user_to_update, enrollment_record} =
-          find_records_to_update(group_users, user_id, type, params)
-
-        case {group_user_to_update, enrollment_record} do
-          {nil, _} ->
-            {:error, :not_found}
-
-          {_, nil} ->
-            {:error, :not_found}
-
-          {group_user, enrollment_record} ->
-            update_group_user_and_enrollment(
-              group_user,
-              enrollment_record,
-              params,
-              new_group_id
-            )
-        end
+    with {:ok, type} <- fetch_type(params),
+         {:ok, new_group} <- fetch_group(params["group_id"], type),
+         group_users <- GroupUsers.get_group_user_by_user_id_and_type(user_id, type),
+         {group_user_to_update, enrollment_record} <-
+           find_records_to_update(group_users, user_id, type, params),
+         {:ok, {group_user, enrollment_record}} <-
+           ensure_records(group_user_to_update, enrollment_record),
+         {:ok, updated_group_user} <-
+           update_group_user_and_enrollment(
+             group_user,
+             enrollment_record,
+             params,
+             new_group.child_id
+           ),
+         :ok <- maybe_update_student_grade(user_id, type, new_group.child_id) do
+      {:ok, updated_group_user}
     end
   end
+
+  defp fetch_type(params) do
+    type = params["type"] || params["group_type"]
+
+    if is_nil(type) or type == "" do
+      {:error, "group type is required"}
+    else
+      {:ok, type}
+    end
+  end
+
+  defp fetch_group(group_id, type) do
+    case Groups.get_group_by_group_id_and_type(group_id, type) do
+      nil -> {:error, :not_found}
+      group -> {:ok, group}
+    end
+  end
+
+  defp ensure_records(nil, _), do: {:error, :not_found}
+  defp ensure_records(_, nil), do: {:error, :not_found}
+  defp ensure_records(group_user, enrollment_record), do: {:ok, {group_user, enrollment_record}}
 
   @doc """
   Finds the records to update based on the group type and parameters.
@@ -120,5 +128,21 @@ defmodule Dbservice.Services.GroupUpdateService do
           Repo.rollback(failed_operation)
       end
     end)
+  end
+
+  defp maybe_update_student_grade(_user_id, type, _new_group_child_id) when type != "grade",
+    do: :ok
+
+  defp maybe_update_student_grade(user_id, "grade", new_group_child_id) do
+    case Users.get_student_by_user_id(user_id) do
+      nil ->
+        :ok
+
+      student ->
+        case Users.update_student(student, %{"grade_id" => new_group_child_id}) do
+          {:ok, _} -> :ok
+          {:error, _changeset} -> {:error, "Failed to update student grade"}
+        end
+    end
   end
 end

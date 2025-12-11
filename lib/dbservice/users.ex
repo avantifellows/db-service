@@ -178,6 +178,14 @@ defmodule Dbservice.Users do
   end
 
   @doc """
+  Gets a student by user ID.
+  Returns nil if no student exists for the given user_id.
+  """
+  def get_student_by_user_id(user_id) do
+    Repo.get_by(Student, user_id: user_id)
+  end
+
+  @doc """
   Gets a student by either student_id or apaar_id.
   Returns the first student found with either identifier.
 
