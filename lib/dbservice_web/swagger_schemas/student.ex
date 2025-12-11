@@ -240,4 +240,61 @@ defmodule DbserviceWeb.SwaggerSchema.Student do
         end
     }
   end
+
+  def student_with_enrollments do
+    %{
+      StudentWithEnrollments:
+        swagger_schema do
+          title("Student with Enrollments")
+          description("Student data including user information and enrollment fields")
+
+          properties do
+            # Student fields
+            student_id(:string, "Unique student identifier", required: false)
+            apaar_id(:string, "APAAR ID for the student", required: false)
+            category(:string, "Student category (e.g., General, OBC, SC, ST)", required: false)
+            status(:string, "Student status", required: false)
+
+            # User fields
+            first_name(:string, "First name", required: true)
+            middle_name(:string, "Middle name", required: false)
+            last_name(:string, "Last name", required: false)
+            phone(:string, "Phone number", required: false)
+            email(:string, "Email address", required: false)
+            date_of_birth(:string, "Date of birth (YYYY-MM-DD)", format: :date, required: false)
+            gender(:string, "Gender", required: false)
+            father_name(:string, "Father's name", required: false)
+            mother_name(:string, "Mother's name", required: false)
+
+            # Enrollment fields
+            auth_group(:string, "Auth group name", required: false)
+            school_code(:string, "School code", required: false)
+            batch_id(:string, "Batch ID", required: false)
+            grade(:integer, "Grade number", required: false)
+            grade_id(:integer, "Grade ID (alternative to grade number)", required: false)
+            academic_year(:string, "Academic year (e.g., 2024-25)", required: true)
+
+            start_date(:string, "Enrollment start date (YYYY-MM-DD)",
+              format: :date,
+              required: true
+            )
+          end
+
+          example(%{
+            first_name: "John",
+            last_name: "Doe",
+            date_of_birth: "2005-05-15",
+            gender: "Male",
+            student_id: "STU12345",
+            category: "Gen",
+            auth_group: "EnableStudents",
+            school_code: "19062",
+            batch_id: "EN-11-Photon-Eng-24",
+            grade: 11,
+            academic_year: "2025-2026",
+            start_date: "2025-04-01"
+          })
+        end
+    }
+  end
 end
