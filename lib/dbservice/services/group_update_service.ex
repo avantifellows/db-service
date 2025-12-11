@@ -10,6 +10,7 @@ defmodule Dbservice.Services.GroupUpdateService do
   alias Dbservice.GroupUsers
   alias Dbservice.EnrollmentRecords
   alias Dbservice.EnrollmentRecords.EnrollmentRecord
+  alias Dbservice.Users
 
   @doc """
   Updates a user's group membership by type.
@@ -31,7 +32,7 @@ defmodule Dbservice.Services.GroupUpdateService do
         {:error, :not_found}
 
       new_group ->
-        new_group_id = new_group.child_id
+        new_group_child_id = new_group.child_id
 
         # Fetch all GroupUsers for the specified user_id and type
         group_users = GroupUsers.get_group_user_by_user_id_and_type(user_id, type)
@@ -48,12 +49,20 @@ defmodule Dbservice.Services.GroupUpdateService do
             {:error, :not_found}
 
           {group_user, enrollment_record} ->
-            update_group_user_and_enrollment(
-              group_user,
-              enrollment_record,
-              params,
-              new_group_id
-            )
+            case update_group_user_and_enrollment(
+                   group_user,
+                   enrollment_record,
+                   params,
+                   new_group_child_id
+                 ) do
+              {:ok, updated_group_user} ->
+                with :ok <- maybe_update_student_grade(user_id, type, new_group_child_id) do
+                  {:ok, updated_group_user}
+                end
+
+              {:error, reason} ->
+                {:error, reason}
+            end
         end
     end
   end
@@ -120,5 +129,21 @@ defmodule Dbservice.Services.GroupUpdateService do
           Repo.rollback(failed_operation)
       end
     end)
+  end
+
+  defp maybe_update_student_grade(_user_id, type, _new_group_child_id) when type != "grade",
+    do: :ok
+
+  defp maybe_update_student_grade(user_id, "grade", new_group_child_id) do
+    case Users.get_student_by_user_id(user_id) do
+      nil ->
+        :ok
+
+      student ->
+        case Users.update_student(student, %{"grade_id" => new_group_child_id}) do
+          {:ok, _} -> :ok
+          {:error, _changeset} -> {:error, "Failed to update student grade"}
+        end
+    end
   end
 end
