@@ -904,4 +904,34 @@ defmodule Dbservice.Users do
         Repo.one(from s in Student, where: s.student_id == ^id)
     end
   end
+
+  @doc """
+  Enriches student params by converting grade number to grade_id if present.
+
+  This is used when creating students via API or import to allow callers to
+  specify grade as a number rather than looking up the grade_id.
+
+  ## Examples
+
+      iex> enrich_student_params(%{"grade" => 10, "first_name" => "John"})
+      %{"grade" => 10, "grade_id" => 123, "first_name" => "John"}
+
+      iex> enrich_student_params(%{"first_name" => "John"})
+      %{"first_name" => "John"}
+  """
+  def enrich_student_params(params) do
+    case Map.get(params, "grade") do
+      nil ->
+        params
+
+      grade ->
+        case Dbservice.Grades.get_grade_by_number(grade) do
+          %Dbservice.Grades.Grade{} = grade_record ->
+            Map.put(params, "grade_id", grade_record.id)
+
+          _ ->
+            params
+        end
+    end
+  end
 end
