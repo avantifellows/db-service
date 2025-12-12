@@ -25,7 +25,11 @@ defmodule DbserviceWeb.CollegeJSON do
       salary_tier: college.salary_tier,
       qualifying_exam: college.qualifying_exam,
       nirf_ranking: college.nirf_ranking,
-      top_200_nirf: college.top_200_nirf
+      top_200_nirf: college.top_200_nirf,
+      placement_rate: college.placement_rate,
+      median_salary: college.median_salary,
+      entrance_test: college.entrance_test,
+      tuition_fees_annual: college.tuition_fees_annual
     }
   end
 end
