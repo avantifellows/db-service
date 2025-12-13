@@ -28,6 +28,10 @@ defmodule DbserviceWeb.SwaggerSchema.College do
             qualifying_exam(:string, "Qualifying exam")
             nirf_ranking(:integer, "NIRF ranking")
             top_200_nirf(:boolean, "Is in top 200 NIRF")
+            placement_rate(:number, "Placement rate", format: :float)
+            median_salary(:number, "Median salary", format: :float)
+            entrance_test(:array, "Entrance test IDs", items: %{type: :integer})
+            tuition_fees_annual(:number, "Annual tuition fees", format: :float)
           end
 
           example(%{
@@ -47,7 +51,11 @@ defmodule DbserviceWeb.SwaggerSchema.College do
             salary_tier: "A",
             qualifying_exam: "JEE Advanced",
             nirf_ranking: 3,
-            top_200_nirf: true
+            top_200_nirf: true,
+            placement_rate: 95.5,
+            median_salary: 1_500_000.00,
+            entrance_test: [1, 2, 3],
+            tuition_fees_annual: 200_000.00
           })
         end
     }

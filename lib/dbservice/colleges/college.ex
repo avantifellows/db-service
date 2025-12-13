@@ -1,5 +1,3 @@
-# model
-
 defmodule Dbservice.Colleges.College do
   @moduledoc false
 
@@ -24,6 +22,10 @@ defmodule Dbservice.Colleges.College do
     field :qualifying_exam, :string
     field :nirf_ranking, :integer
     field :top_200_nirf, :boolean
+    field :placement_rate, :float
+    field :median_salary, :float
+    field :entrance_test, {:array, :integer}
+    field :tuition_fees_annual, :float
 
     has_many :cutoffs, Dbservice.Cutoffs.Cutoff
 
@@ -50,7 +52,11 @@ defmodule Dbservice.Colleges.College do
       :salary_tier,
       :qualifying_exam,
       :nirf_ranking,
-      :top_200_nirf
+      :top_200_nirf,
+      :placement_rate,
+      :median_salary,
+      :entrance_test,
+      :tuition_fees_annual
     ])
     |> validate_required([:college_id, :name])
   end
