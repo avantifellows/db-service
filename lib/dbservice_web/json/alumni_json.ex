@@ -48,7 +48,9 @@ defmodule DbserviceWeb.AlumniJSON do
       employment_status: alumni.employment_status,
       seeking_employment: alumni.seeking_employment,
       contact_status: alumni.contact_status,
-      current_status: alumni.current_status
+      current_status: alumni.current_status,
+      scholarship_availed: alumni.scholarship_availed,
+      skilling_programs: alumni.skilling_programs
     }
   end
 end

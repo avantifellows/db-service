@@ -60,6 +60,8 @@ defmodule DbserviceWeb.SwaggerSchema.Alumni do
             seeking_employment(:string, "Seeking employment")
             contact_status(:string, "Contact status")
             current_status(:string, "Current status")
+            scholarship_availed(:string, "Scholarship availed")
+            skilling_programs(:string, "Skilling programs participated in")
 
             inserted_at(:string, "Created timestamp", format: "ISO-8601")
             updated_at(:string, "Updated timestamp", format: "ISO-8601")
@@ -81,7 +83,9 @@ defmodule DbserviceWeb.SwaggerSchema.Alumni do
             employment_status: "Employed",
             ug_status: "Completed",
             contact_status: "Active",
-            current_status: "Studying"
+            current_status: "Studying",
+            scholarship_availed: "Yes",
+            skilling_programs: "Data Science Bootcamp"
           })
         end
     }
