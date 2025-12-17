@@ -57,7 +57,6 @@ defmodule DbserviceWeb.SwaggerSchema.Alumni do
             ug_status(:string, "UG status")
             pg_status(:string, "PG status")
             employment_status(:string, "Employment status")
-            seeking_employment(:string, "Seeking employment")
             contact_status(:string, "Contact status")
             current_status(:string, "Current status")
             scholarship_availed(:string, "Scholarship availed")

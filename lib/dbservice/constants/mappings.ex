@@ -619,12 +619,6 @@ defmodule Dbservice.Constants.Mappings do
       optional: ["alumni_addition"],
       type: :string
     },
-    "seeking_employment" => %{
-      db_field: "seeking_employment",
-      required: [],
-      optional: ["alumni_addition"],
-      type: :string
-    },
     "contact_status" => %{
       db_field: "contact_status",
       required: [],
