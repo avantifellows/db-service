@@ -61,17 +61,18 @@ defmodule DbserviceWeb.ImportLive.New do
   defp handle_save(%{"import" => import_params}, socket) do
     import_type = Map.get(import_params, "type", "")
 
-    # Check if this is a dropout or re-enrollment import (both require admin auth)
-    if import_type in ["dropout", "re_enrollment"] do
-      # For dropout and re-enrollment imports, use JavaScript to submit form to authenticated endpoint
-      # This will prompt for basic auth credentials
-      event_name =
-        if import_type == "dropout",
-          do: "submit_dropout_import",
-          else: "submit_re_enrollment_import"
+    # Imports that require dashboard auth and should be submitted via a JS form
+    admin_auth_imports = %{
+      "dropout" => %{event: "submit_dropout_import", url: ~p"/imports/dropout"},
+      "re_enrollment" => %{event: "submit_re_enrollment_import", url: ~p"/imports/re_enrollment"},
+      "remove_wrong_enrollment_records" => %{
+        event: "submit_remove_wrong_enrollment_records_import",
+        url: ~p"/imports/remove_wrong_enrollment_records"
+      }
+    }
 
-      url =
-        if import_type == "dropout", do: ~p"/imports/dropout", else: ~p"/imports/re_enrollment"
+    if Map.has_key?(admin_auth_imports, import_type) do
+      %{event: event_name, url: url} = Map.fetch!(admin_auth_imports, import_type)
 
       {:noreply,
        socket
@@ -169,6 +170,7 @@ defmodule DbserviceWeb.ImportLive.New do
                     <option value="batch_movement" selected={@form[:type].value == "batch_movement"}>Student Batch Movement</option>
                     <option value="dropout" selected={@form[:type].value == "dropout"}>Student Dropout</option>
                     <option value="re_enrollment" selected={@form[:type].value == "re_enrollment"}>Student Re-Enrollment After Dropout</option>
+                    <option value="remove_wrong_enrollment_records" selected={@form[:type].value == "remove_wrong_enrollment_records"}>Remove Wrong Enrollment Records</option>
                     <option value="teacher_batch_assignment" selected={@form[:type].value == "teacher_batch_assignment"}>Teacher Batch Assignment</option>
                     <option value="update_incorrect_batch_id_to_correct_batch_id" selected={@form[:type].value == "update_incorrect_batch_id_to_correct_batch_id"}>Update Incorrect Batch ID to Correct Batch ID</option>
                     <option value="update_incorrect_school_to_correct_school" selected={@form[:type].value == "update_incorrect_school_to_correct_school"}>Update Incorrect School to Correct School</option>
