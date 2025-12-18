@@ -87,7 +87,8 @@ defmodule Dbservice.Constants.Mappings do
         "update_incorrect_batch_id_to_correct_batch_id",
         "update_incorrect_school_to_correct_school",
         "update_incorrect_grade_to_correct_grade",
-        "update_incorrect_auth_group_to_correct_auth_group"
+        "update_incorrect_auth_group_to_correct_auth_group",
+        "remove_wrong_enrollment_records"
       ],
       optional: ["batch_movement", "student_update", "dropout", "re_enrollment"],
       type: :string
@@ -321,7 +322,8 @@ defmodule Dbservice.Constants.Mappings do
         "update_incorrect_batch_id_to_correct_batch_id",
         "update_incorrect_school_to_correct_school",
         "update_incorrect_grade_to_correct_grade",
-        "update_incorrect_auth_group_to_correct_auth_group"
+        "update_incorrect_auth_group_to_correct_auth_group",
+        "remove_wrong_enrollment_records"
       ],
       type: :string
     },
@@ -347,7 +349,8 @@ defmodule Dbservice.Constants.Mappings do
         "teacher_addition",
         "teacher_batch_assignment",
         "dropout",
-        "re_enrollment"
+        "re_enrollment",
+        "remove_wrong_enrollment_records"
       ],
       optional: [],
       type: :string
@@ -406,6 +409,24 @@ defmodule Dbservice.Constants.Mappings do
       ],
       optional: [],
       type: :date
+    },
+    "group_id" => %{
+      db_field: "group_id",
+      required: ["remove_wrong_enrollment_records"],
+      optional: [],
+      type: :integer
+    },
+    "group_type" => %{
+      db_field: "group_type",
+      required: ["remove_wrong_enrollment_records"],
+      optional: [],
+      type: :string
+    },
+    "Should it be retained?" => %{
+      db_field: "retain_record",
+      required: ["remove_wrong_enrollment_records"],
+      optional: [],
+      type: :boolean
     },
 
     # Teacher creation fields

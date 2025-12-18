@@ -56,4 +56,26 @@ defmodule DbserviceWeb.ImportController do
         |> redirect(to: ~p"/imports/new")
     end
   end
+
+  def create_remove_wrong_enrollment_records_import(conn, params) do
+    import_params =
+      params
+      |> Map.get("import", %{})
+      |> Map.put("type", "remove_wrong_enrollment_records")
+
+    case DataImport.start_import(import_params) do
+      {:ok, _import} ->
+        conn
+        |> put_flash(
+          :info,
+          "Remove Wrong Enrollment Records import queued successfully! Processing will begin shortly. Check the imports page for progress updates."
+        )
+        |> redirect(to: ~p"/imports")
+
+      {:error, reason} ->
+        conn
+        |> put_flash(:error, "Import failed: #{reason}")
+        |> redirect(to: ~p"/imports/new")
+    end
+  end
 end
