@@ -11,7 +11,6 @@ defmodule Dbservice.Services.EnrollmentRetentionService do
   alias Dbservice.Repo
   alias Dbservice.Users
   alias Dbservice.Groups
-  alias Dbservice.GroupUsers
   alias Dbservice.Groups.Group
   alias Dbservice.Groups.GroupUser
   alias Dbservice.EnrollmentRecords.EnrollmentRecord

@@ -769,18 +769,17 @@ defmodule Dbservice.DataImport.ImportWorker do
   defp maybe_deduplicate_retention_records(records, _), do: records
 
   defp truthy_retain?(record) do
-    case Map.get(record, "retain_record") do
-      true -> true
-      "true" -> true
-      "TRUE" -> true
-      "True" -> true
-      "yes" -> true
-      "Yes" -> true
-      "YES" -> true
-      "1" -> true
-      1 -> true
-      _ -> false
-    end
+    Map.get(record, "retain_record") in [
+      true,
+      "true",
+      "TRUE",
+      "True",
+      "yes",
+      "Yes",
+      "YES",
+      "1",
+      1
+    ]
   end
 
   defp finalize_import(import_record, records) do
