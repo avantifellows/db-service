@@ -25,7 +25,7 @@ defmodule Dbservice.Alumnis.Alumni do
     field :past_internship_orgs, :string
     field :which_year_did_you_start_working, :integer
     field :starting_ctc_ug_range, :string
-    field :current_ctc, :integer
+    field :current_ctc, :float
     field :current_ctc_range, :string
     field :current_job_city, :string
     field :current_job_role, :string

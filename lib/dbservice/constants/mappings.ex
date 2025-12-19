@@ -549,7 +549,7 @@ defmodule Dbservice.Constants.Mappings do
       db_field: "current_ctc",
       required: [],
       optional: ["alumni_addition"],
-      type: :integer
+      type: :float
     },
     "current_ctc_range" => %{
       db_field: "current_ctc_range",

@@ -40,7 +40,7 @@ defmodule DbserviceWeb.SwaggerSchema.Alumni do
             past_internship_orgs(:string, "Past internship organizations")
             which_year_did_you_start_working(:integer, "Year started working")
             starting_ctc_ug_range(:string, "Starting CTC range after UG")
-            current_ctc(:integer, "Current CTC")
+            current_ctc(:float, "Current CTC")
             current_ctc_range(:string, "Current CTC range")
             current_job_city(:string, "Current job city")
             current_job_role(:string, "Current job role")
