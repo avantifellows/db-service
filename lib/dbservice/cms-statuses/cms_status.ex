@@ -10,6 +10,8 @@ defmodule Dbservice.CmsStatuses.CmsStatus do
     timestamps()
 
     has_many :resource, Dbservice.Resources.Resource
+    has_many :chapter, Dbservice.Chapters.Chapter
+    has_many :topic, Dbservice.Topics.Topic
   end
 
   @doc false
