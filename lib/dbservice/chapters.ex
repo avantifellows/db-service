@@ -9,6 +9,7 @@ defmodule Dbservice.Chapters do
   alias Dbservice.Chapters.Chapter
   alias Dbservice.ChapterCurriculums.ChapterCurriculum
   alias Dbservice.ChapterCurriculums
+  alias Dbservice.CmsStatuses
 
   @doc """
   Returns the list of chapter.
@@ -58,9 +59,11 @@ defmodule Dbservice.Chapters do
       {:error, %Ecto.Changeset{}}
   """
   def create_chapter(attrs \\ %{}) do
-    %Chapter{}
-    |> Chapter.changeset(attrs)
-    |> Repo.insert()
+    with {:ok, attrs} <- CmsStatuses.ensure_cms_status_id(attrs) do
+      %Chapter{}
+      |> Chapter.changeset(attrs)
+      |> Repo.insert()
+    end
   end
 
   @doc """
@@ -72,9 +75,11 @@ defmodule Dbservice.Chapters do
       {:error, %Ecto.Changeset{}}
   """
   def update_chapter(%Chapter{} = chapter, attrs) do
-    chapter
-    |> Chapter.changeset(attrs)
-    |> Repo.update()
+    with {:ok, attrs} <- CmsStatuses.ensure_cms_status_id(attrs) do
+      chapter
+      |> Chapter.changeset(attrs)
+      |> Repo.update()
+    end
   end
 
   @doc """

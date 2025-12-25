@@ -9,6 +9,7 @@ defmodule Dbservice.Resources.Resource do
   alias Dbservice.Topics.Topic
   alias Dbservice.Resources.ResourceCurriculum
   alias Dbservice.Resources.ProblemLanguage
+  alias Dbservice.CmsStatuses.CmsStatus
 
   schema "resource" do
     field(:name, {:array, :map})
@@ -22,7 +23,6 @@ defmodule Dbservice.Resources.Resource do
     field(:exam_ids, {:array, :integer})
     field(:skill_ids, {:array, :integer})
     field(:learning_objective_ids, {:array, :integer})
-    field(:cms_status, :string)
 
     timestamps()
 
@@ -31,6 +31,7 @@ defmodule Dbservice.Resources.Resource do
     belongs_to(:teacher, Teacher)
     has_many(:resource_curriculum, ResourceCurriculum)
     has_many(:problem_language, ProblemLanguage, foreign_key: :res_id)
+    belongs_to(:cms_status, CmsStatus)
   end
 
   @doc false
@@ -49,7 +50,7 @@ defmodule Dbservice.Resources.Resource do
       :learning_objective_ids,
       :teacher_id,
       :exam_ids,
-      :cms_status
+      :cms_status_id
     ])
     |> validate_required([:type, :type_params])
   end

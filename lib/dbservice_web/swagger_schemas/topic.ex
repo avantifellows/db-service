@@ -22,6 +22,8 @@ defmodule DbserviceWeb.SwaggerSchema.Topic do
 
             code(:string, "Topic Code")
             chapter_id(:integer, "Chapter id associated with the topic")
+            cms_status(:string, "Status name from cms_status table. Also accepts cms_status_id.")
+            cms_status_id(:integer, "cms_status.id value to set status directly")
           end
 
           example(%{
@@ -30,7 +32,8 @@ defmodule DbserviceWeb.SwaggerSchema.Topic do
               %{lang_code: "hi", topic: "पदार्थ क्या है?"}
             ],
             code: "9C01.1",
-            chapter_id: 1
+            chapter_id: 1,
+            cms_status: "archived"
           })
         end
     }
