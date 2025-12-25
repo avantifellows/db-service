@@ -173,6 +173,11 @@ defmodule DbserviceWeb.ResourceController do
         conn
         |> put_status(:unprocessable_entity)
         |> json(%{error: "Failed to create resource curriculum entries: #{inspect(reason)}"})
+
+      {:error, {:cms_status_error, reason}} ->
+        conn
+        |> put_status(:unprocessable_entity)
+        |> json(%{error: reason})
     end
   end
 
@@ -184,6 +189,9 @@ defmodule DbserviceWeb.ResourceController do
 
       {:error, %Ecto.Changeset{} = changeset} ->
         Repo.rollback({:changeset_error, changeset})
+
+      {:error, reason} ->
+        Repo.rollback({:cms_status_error, reason})
     end
   end
 

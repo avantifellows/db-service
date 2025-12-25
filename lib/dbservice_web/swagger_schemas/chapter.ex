@@ -23,6 +23,8 @@ defmodule DbserviceWeb.SwaggerSchema.Chapter do
             code(:string, "Chapter Code")
             grade_id(:integer, "Grade id associated with the chapter")
             subject_id(:integer, "Subject id associated with the chapter")
+            cms_status(:string, "Status name from cms_status table. Also accepts cms_status_id.")
+            cms_status_id(:integer, "cms_status.id value to set status directly")
           end
 
           example(%{
@@ -32,7 +34,8 @@ defmodule DbserviceWeb.SwaggerSchema.Chapter do
             ],
             code: "9C01",
             grade_id: 1,
-            subject_id: 1
+            subject_id: 1,
+            cms_status: "archived"
           })
         end
     }
