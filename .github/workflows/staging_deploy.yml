@@ -46,10 +46,10 @@ jobs:
             sed -i 's|POOL_SIZE=.*|POOL_SIZE=${{ secrets.STAGING_POOL_SIZE }}|' .env
             sed -i 's|PORT=.*|PORT=${{ secrets.STAGING_PORT }}|' .env
             sed -i 's|BEARER_TOKEN=.*|BEARER_TOKEN=${{ secrets.STAGING_BEARER_TOKEN }}|' .env
-            cd /var/www/html
-            sudo ./kill_process_on_port_4000.sh
+            cd /var/www/html &&
+            sudo ./kill_process_on_port_4000.sh || true &&
             echo '=== Killing any existing beam processes ===' &&
-            sudo pkill -f 'beam.smp' || true &&
+            (sudo killall beam.smp 2>/dev/null || true) &&
             sleep 2 &&
             cd /var/www/html/db-service &&
             echo '=== Debug: Current directory ===' &&
