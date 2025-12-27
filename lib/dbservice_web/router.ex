@@ -67,6 +67,7 @@ defmodule DbserviceWeb.Router do
     resources("/enrollment-record", EnrollmentRecordController, except: [:new, :edit])
     resources("/session", SessionController, only: [:index, :create, :update, :show, :delete])
     post("/session/:id/update-groups", SessionController, :update_groups)
+    post("/session/search", SessionController, :search)
     resources("/session-occurrence", SessionOccurrenceController, except: [:new, :edit])
     post("/session-occurrence/search", SessionOccurrenceController, :search)
     resources("/user-session", UserSessionController, except: [:new, :edit])

@@ -11,21 +11,6 @@ defmodule Dbservice.Application do
   def start(_type, _args) do
     source(["config/.env"])
 
-    # Read and decode the JSON file
-    json_path = env!("PATH_TO_CREDENTIALS", :string!)
-
-    credentials =
-      case File.read(json_path) do
-        {:ok, content} ->
-          Jason.decode!(content)
-
-        {:error, reason} ->
-          raise "Failed to read Google service account JSON: #{inspect(reason)}"
-      end
-
-    # Ensure the private key is correctly formatted
-    credentials = Util.process_credentials(credentials)
-
     children = [
       # Start the Ecto repository
       Dbservice.Repo,
@@ -36,22 +21,52 @@ defmodule Dbservice.Application do
       # Start the Endpoint (http/https)
       DbserviceWeb.Endpoint,
       # Start Oban
-      {Oban, Application.fetch_env!(:dbservice, Oban)},
-      # Start Goth with additional configuration
-      {Goth,
-       name: Dbservice.Goth,
-       source:
-         {:service_account, credentials,
-          [
-            scopes: [
-              "https://www.googleapis.com/auth/spreadsheets",
-              "https://www.googleapis.com/auth/drive.readonly"
-            ]
-          ]}}
+      {Oban, Application.fetch_env!(:dbservice, Oban)}
     ]
+
+    # Only start Goth (Google Auth) if credentials are available
+    # This allows tests to run without Google credentials
+    children = children ++ goth_child_spec()
 
     opts = [strategy: :one_for_one, name: Dbservice.Supervisor]
     Supervisor.start_link(children, opts)
+  end
+
+  defp goth_child_spec do
+    case env!("PATH_TO_CREDENTIALS", :string, nil) do
+      nil ->
+        if Application.get_env(:dbservice, :environment) != :test do
+          raise "PATH_TO_CREDENTIALS environment variable is required"
+        end
+
+        []
+
+      json_path ->
+        case File.read(json_path) do
+          {:ok, content} ->
+            credentials = Jason.decode!(content) |> Util.process_credentials()
+
+            [
+              {Goth,
+               name: Dbservice.Goth,
+               source:
+                 {:service_account, credentials,
+                  [
+                    scopes: [
+                      "https://www.googleapis.com/auth/spreadsheets",
+                      "https://www.googleapis.com/auth/drive.readonly"
+                    ]
+                  ]}}
+            ]
+
+          {:error, reason} ->
+            if Application.get_env(:dbservice, :environment) == :test do
+              []
+            else
+              raise "Failed to read Google service account JSON: #{inspect(reason)}"
+            end
+        end
+    end
   end
 
   # Tell Phoenix to update the endpoint configuration
