@@ -57,9 +57,10 @@ jobs:
             sudo git checkout $DEPLOY_BRANCH &&
             sudo git pull origin $DEPLOY_BRANCH &&
             sudo rm -rf _build deps &&
-            sudo MIX_ENV=prod mix deps.get &&
-            sudo MIX_ENV=prod mix deps.compile &&
-            sudo MIX_ENV=prod mix ecto.migrate &&
-            sudo MIX_ENV=prod mix phx.swagger.generate &&
-            sudo MIX_ENV=prod elixir --erl \"-detached\" -S mix phx.server
+            export MIX_ENV=prod &&
+            sudo -E mix deps.get &&
+            sudo -E mix deps.compile &&
+            sudo -E mix ecto.migrate &&
+            sudo -E mix phx.swagger.generate &&
+            sudo -E elixir --erl \"-detached\" -S mix phx.server
           "
