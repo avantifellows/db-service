@@ -1,8 +1,14 @@
 name: Deploy to EC2 staging
 
-# on:
-#   push:
-#     branches: ["main"]
+on:
+  workflow_dispatch:
+    inputs:
+      branch:
+        description: 'Branch to deploy'
+        required: true
+        default: 'main'
+  # push:
+  #   branches: ["main"]
 
 jobs:
   build:
@@ -41,7 +47,9 @@ jobs:
             if [ -f /var/www/html/db-service/priv/static/swagger.json ]; then
               sudo rm /var/www/html/db-service/priv/static/swagger.json
             fi
-            sudo git pull origin main &&
+            sudo git fetch origin &&
+            sudo git checkout ${{ github.event.inputs.branch || 'main' }} &&
+            sudo git pull origin ${{ github.event.inputs.branch || 'main' }} &&
             sudo MIX_ENV=prod mix deps.get &&
             sudo MIX_ENV=prod mix deps.compile &&
             sudo MIX_ENV=prod mix ecto.migrate &&

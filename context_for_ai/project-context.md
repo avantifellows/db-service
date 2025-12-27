@@ -741,11 +741,30 @@ mix test.watch
 - Steps: format check, dialyzer PLT cache, `mix check`
 - Tests currently disabled in CI
 
+**Credo Requirements (enforced by CI):**
+- Max function nesting depth: 2 (extract helpers to reduce nesting)
+- Avoid `length/1` for empty checks (use `list != []` or `list == []` instead)
+- Follow standard Elixir formatting (`mix format`)
+
+**Staging Deploy (`.github/workflows/staging_deploy.yml`):**
+- Manual trigger via `workflow_dispatch` (Actions → Run workflow → Select branch)
+- SSH to EC2, pulls selected branch, runs migrations
+- Supports deploying feature branches for testing
+
 **Production Deploy (`.github/workflows/production_deploy.yml`):**
 - Triggers on push to `release` branch
 - SSH to EC2, updates env vars, pulls code
 - Runs: deps.get, deps.compile, ecto.migrate, phx.swagger.generate, assets.deploy
 - Starts detached Elixir process
+
+### Test Environment
+
+Tests can run without Google Cloud credentials. The application detects `environment: :test` config and skips Goth initialization if credentials are missing. This allows running tests locally without a Google service account.
+
+```elixir
+# config/test.exs
+config :dbservice, environment: :test
+```
 
 ### Environment Variables (Production)
 
