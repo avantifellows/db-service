@@ -747,15 +747,19 @@ mix test.watch
 - Follow standard Elixir formatting (`mix format`)
 
 **Staging Deploy (`.github/workflows/staging_deploy.yml`):**
-- Manual trigger via `workflow_dispatch` (Actions → Run workflow → Select branch)
-- SSH to EC2, pulls selected branch, runs migrations
-- Supports deploying feature branches for testing
+- Triggers on PRs to main (requires approval via `staging` GitHub Environment)
+- Also supports manual trigger via `workflow_dispatch`
+- SSH to EC2, pulls PR branch, does full clean (`rm -rf _build deps`)
+- Runs: deps.get, deps.compile, ecto.migrate, phx.swagger.generate
+- Starts detached Elixir process with `MIX_ENV=prod`
+- Staging URL: `staging-db.avantifellows.org`
 
 **Production Deploy (`.github/workflows/production_deploy.yml`):**
 - Triggers on push to `release` branch
 - SSH to EC2, updates env vars, pulls code
 - Runs: deps.get, deps.compile, ecto.migrate, phx.swagger.generate, assets.deploy
 - Starts detached Elixir process
+- Production URL: `api.avantifellows.org`
 
 ### Test Environment
 
@@ -792,7 +796,7 @@ AWS infrastructure managed via Terraform in `/terraform`:
 
 **Environments:**
 - Production: `api.avantifellows.org` (release branch)
-- Staging: `staging-dbservice-test.avantifellows.org` (main branch)
+- Staging: `staging-db.avantifellows.org` (PR branches, requires approval)
 
 ---
 
