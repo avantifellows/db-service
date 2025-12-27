@@ -1,33 +1,38 @@
 name: Deploy to EC2 staging
 
 on:
+  pull_request:
+    branches: [main]
   workflow_dispatch:
     inputs:
       branch:
         description: 'Branch to deploy'
         required: true
         default: 'main'
-  # push:
-  #   branches: ["main"]
 
 jobs:
-  build:
+  deploy:
     runs-on: ubuntu-latest
+    environment: staging
 
     steps:
-      - uses: actions/checkout@v2
+      - uses: actions/checkout@v4
 
-  Deploy:
-    needs: build
-    runs-on: ubuntu-latest
+      - name: Determine branch to deploy
+        id: branch
+        run: |
+          if [ "${{ github.event_name }}" = "pull_request" ]; then
+            echo "name=${{ github.head_ref }}" >> $GITHUB_OUTPUT
+          else
+            echo "name=${{ github.event.inputs.branch || 'main' }}" >> $GITHUB_OUTPUT
+          fi
 
-    steps:
-      - uses: actions/checkout@v2
-      - name: Deploy in EC2
+      - name: Deploy to EC2
         env:
           PRIVATE_KEY: ${{ secrets.SSH_PRIVATE_KEY }}
           HOSTNAME: ${{ secrets.HOSTNAME }}
           USER_NAME: ${{ secrets.USER_NAME }}
+          DEPLOY_BRANCH: ${{ steps.branch.outputs.name }}
 
         run: |
           echo "$PRIVATE_KEY" > private_key && chmod 600 private_key
@@ -48,11 +53,11 @@ jobs:
               sudo rm /var/www/html/db-service/priv/static/swagger.json
             fi
             sudo git fetch origin &&
-            sudo git checkout ${{ github.event.inputs.branch || 'main' }} &&
-            sudo git pull origin ${{ github.event.inputs.branch || 'main' }} &&
+            sudo git checkout ${DEPLOY_BRANCH} &&
+            sudo git pull origin ${DEPLOY_BRANCH} &&
             sudo MIX_ENV=prod mix deps.get &&
             sudo MIX_ENV=prod mix deps.compile &&
             sudo MIX_ENV=prod mix ecto.migrate &&
             sudo MIX_ENV=prod mix phx.swagger.generate &&
-            sudo MIX_ENV=prod elixir --erl "-detached" -S mix phx.server
+            sudo MIX_ENV=prod elixir --erl \"-detached\" -S mix phx.server
           "
