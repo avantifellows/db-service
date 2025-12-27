@@ -49,6 +49,10 @@ jobs:
             cd /var/www/html
             sudo ./kill_process_on_port_4000.sh
             cd /var/www/html/db-service &&
+            echo '=== Debug: Current directory ===' &&
+            pwd &&
+            echo '=== Debug: Checking _build age before clean ===' &&
+            ls -la _build 2>/dev/null || echo 'No _build directory' &&
             sudo git checkout . &&
             if [ -f /var/www/html/db-service/priv/static/swagger.json ]; then
               sudo rm /var/www/html/db-service/priv/static/swagger.json
@@ -57,13 +61,17 @@ jobs:
             sudo git checkout $DEPLOY_BRANCH &&
             sudo git pull origin $DEPLOY_BRANCH &&
             sudo rm -rf _build deps &&
-            sudo MIX_ENV=prod mix deps.get &&
-            sudo MIX_ENV=prod mix deps.compile &&
-            sudo MIX_ENV=prod mix ecto.migrate || true &&
-            sudo MIX_ENV=prod mix phx.swagger.generate &&
+            echo '=== Debug: After clean, checking _build ===' &&
+            ls -la _build 2>/dev/null || echo '_build removed successfully' &&
+            echo '=== Debug: Verifying MIX_ENV will be prod ===' &&
+            sudo env MIX_ENV=prod mix --version &&
+            sudo env MIX_ENV=prod mix deps.get &&
+            sudo env MIX_ENV=prod mix deps.compile &&
+            sudo env MIX_ENV=prod mix ecto.migrate || true &&
+            sudo env MIX_ENV=prod mix phx.swagger.generate &&
             sudo pkill -f 'beam.smp.*mix phx.server' || true &&
             sleep 2 &&
-            sudo MIX_ENV=prod elixir --erl \"-detached\" -S mix phx.server &&
+            sudo env MIX_ENV=prod elixir --erl \"-detached\" -S mix phx.server &&
             sleep 3 &&
             echo 'Server started successfully'
           "
