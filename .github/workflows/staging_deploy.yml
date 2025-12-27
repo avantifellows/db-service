@@ -48,6 +48,9 @@ jobs:
             sed -i 's|BEARER_TOKEN=.*|BEARER_TOKEN=${{ secrets.STAGING_BEARER_TOKEN }}|' .env
             cd /var/www/html
             sudo ./kill_process_on_port_4000.sh
+            echo '=== Killing any existing beam processes ===' &&
+            sudo pkill -f 'beam.smp' || true &&
+            sleep 2 &&
             cd /var/www/html/db-service &&
             echo '=== Debug: Current directory ===' &&
             pwd &&
@@ -71,7 +74,9 @@ jobs:
             sudo env MIX_ENV=prod mix phx.swagger.generate &&
             sudo pkill -f 'beam.smp.*mix phx.server' || true &&
             sleep 2 &&
-            sudo env MIX_ENV=prod elixir --erl \"-detached\" -S mix phx.server &&
-            sleep 3 &&
-            echo 'Server started successfully'
+            echo '=== Starting server ===' &&
+            nohup sudo env MIX_ENV=prod elixir --erl \"-detached\" -S mix phx.server > /tmp/phx_server.log 2>&1 &
+            sleep 5 &&
+            echo '=== Checking if server is running ===' &&
+            pgrep -f 'beam.smp' && echo 'Server started successfully' || echo 'Warning: Server may not have started'
           "
