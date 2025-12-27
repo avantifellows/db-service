@@ -63,5 +63,7 @@ jobs:
             sudo MIX_ENV=prod mix phx.swagger.generate &&
             sudo pkill -f 'beam.smp.*mix phx.server' || true &&
             sleep 2 &&
-            sudo MIX_ENV=prod elixir --erl \"-detached\" -S mix phx.server
+            sudo MIX_ENV=prod elixir --erl \"-detached\" -S mix phx.server &&
+            sleep 3 &&
+            echo 'Server started successfully'
           "
