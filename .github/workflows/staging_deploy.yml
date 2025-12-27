@@ -55,7 +55,7 @@ jobs:
             sudo git fetch origin &&
             sudo git checkout ${DEPLOY_BRANCH} &&
             sudo git pull origin ${DEPLOY_BRANCH} &&
-            sudo rm -rf _build/prod/lib/ranch _build/prod/lib/cowboy _build/prod/lib/cowlib deps/ranch deps/cowboy deps/cowlib &&
+            sudo rm -rf _build deps &&
             sudo MIX_ENV=prod mix deps.get &&
             sudo MIX_ENV=prod mix deps.compile &&
             sudo MIX_ENV=prod mix ecto.migrate &&
