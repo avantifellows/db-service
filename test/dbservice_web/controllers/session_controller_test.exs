@@ -330,7 +330,7 @@ defmodule DbserviceWeb.SessionControllerTest do
 
       response = json_response(conn, 200)
       assert is_list(response)
-      assert length(response) >= 1
+      assert response != []
     end
 
     test "respects limit parameter", %{conn: conn} do

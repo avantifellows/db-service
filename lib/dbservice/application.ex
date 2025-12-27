@@ -34,38 +34,46 @@ defmodule Dbservice.Application do
 
   defp goth_child_spec do
     case env!("PATH_TO_CREDENTIALS", :string, nil) do
-      nil ->
-        if Application.get_env(:dbservice, :environment) != :test do
-          raise "PATH_TO_CREDENTIALS environment variable is required"
-        end
+      nil -> handle_missing_credentials()
+      json_path -> load_credentials(json_path)
+    end
+  end
 
-        []
+  defp handle_missing_credentials do
+    if Application.get_env(:dbservice, :environment) == :test do
+      []
+    else
+      raise "PATH_TO_CREDENTIALS environment variable is required"
+    end
+  end
 
-      json_path ->
-        case File.read(json_path) do
-          {:ok, content} ->
-            credentials = Jason.decode!(content) |> Util.process_credentials()
+  defp load_credentials(json_path) do
+    case File.read(json_path) do
+      {:ok, content} -> build_goth_spec(content)
+      {:error, reason} -> handle_credentials_error(reason)
+    end
+  end
 
-            [
-              {Goth,
-               name: Dbservice.Goth,
-               source:
-                 {:service_account, credentials,
-                  [
-                    scopes: [
-                      "https://www.googleapis.com/auth/spreadsheets",
-                      "https://www.googleapis.com/auth/drive.readonly"
-                    ]
-                  ]}}
-            ]
+  defp build_goth_spec(content) do
+    credentials = Jason.decode!(content) |> Util.process_credentials()
 
-          {:error, reason} ->
-            if Application.get_env(:dbservice, :environment) == :test do
-              []
-            else
-              raise "Failed to read Google service account JSON: #{inspect(reason)}"
-            end
-        end
+    [
+      {Goth,
+       name: Dbservice.Goth,
+       source:
+         {:service_account, credentials,
+          scopes: [
+            "https://www.googleapis.com/auth/spreadsheets",
+            "https://www.googleapis.com/auth/drive.readonly"
+          ]}}
+    ]
+  end
+
+  defp handle_credentials_error(reason) do
+    if Application.get_env(:dbservice, :environment) == :test do
+      []
+    else
+      raise "Failed to read Google service account JSON: #{inspect(reason)}"
     end
   end
 
