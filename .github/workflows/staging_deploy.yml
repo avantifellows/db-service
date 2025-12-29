@@ -46,16 +46,9 @@ jobs:
             sed -i 's|POOL_SIZE=.*|POOL_SIZE=${{ secrets.STAGING_POOL_SIZE }}|' .env
             sed -i 's|PORT=.*|PORT=${{ secrets.STAGING_PORT }}|' .env
             sed -i 's|BEARER_TOKEN=.*|BEARER_TOKEN=${{ secrets.STAGING_BEARER_TOKEN }}|' .env
-            cd /var/www/html &&
-            sudo ./kill_process_on_port_4000.sh || true &&
-            echo '=== Killing any existing beam processes ===' &&
-            (sudo killall beam.smp 2>/dev/null || true) &&
-            sleep 2 &&
             cd /var/www/html/db-service &&
-            echo '=== Debug: Current directory ===' &&
-            pwd &&
-            echo '=== Debug: Checking _build age before clean ===' &&
-            ls -la _build 2>/dev/null || echo 'No _build directory' &&
+            sudo fuser -k 4000/tcp 2>/dev/null || true &&
+            sleep 2 &&
             sudo git checkout . &&
             if [ -f /var/www/html/db-service/priv/static/swagger.json ]; then
               sudo rm /var/www/html/db-service/priv/static/swagger.json
@@ -63,20 +56,15 @@ jobs:
             sudo git fetch origin &&
             sudo git checkout $DEPLOY_BRANCH &&
             sudo git pull origin $DEPLOY_BRANCH &&
-            sudo rm -rf _build deps &&
-            echo '=== Debug: After clean, checking _build ===' &&
-            ls -la _build 2>/dev/null || echo '_build removed successfully' &&
-            echo '=== Debug: Verifying MIX_ENV will be prod ===' &&
-            sudo env MIX_ENV=prod mix --version &&
+            # Uncomment the line below if you encounter compilation errors or corrupted .beam files
+            # sudo rm -rf _build deps &&
             sudo env MIX_ENV=prod mix deps.get &&
             sudo env MIX_ENV=prod mix deps.compile &&
             sudo env MIX_ENV=prod mix ecto.migrate || true &&
             sudo env MIX_ENV=prod mix phx.swagger.generate &&
-            sudo pkill -f 'beam.smp.*mix phx.server' || true &&
+            sudo fuser -k 4000/tcp 2>/dev/null || true &&
             sleep 2 &&
-            echo '=== Starting server ===' &&
             nohup sudo env MIX_ENV=prod elixir --erl \"-detached\" -S mix phx.server > /tmp/phx_server.log 2>&1 &
             sleep 5 &&
-            echo '=== Checking if server is running ===' &&
-            pgrep -f 'beam.smp' && echo 'Server started successfully' || echo 'Warning: Server may not have started'
+            curl -s -o /dev/null -w '%{http_code}' http://localhost:4000/api/session?limit=1 | grep -q '200' && echo 'Server started successfully' || echo 'Warning: Server may not have started'
           "

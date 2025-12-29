@@ -45,13 +45,7 @@ defmodule DbserviceWeb.SessionController do
   end
 
   def index(conn, params) do
-    sort_order = extract_sort_order(params)
-
-    query =
-      from m in Session,
-        order_by: [{^sort_order, m.id}],
-        offset: ^params["offset"],
-        limit: ^params["limit"]
+    query = base_session_query(params)
 
     query =
       Enum.reduce(params, query, fn {key, value}, acc ->
@@ -94,6 +88,15 @@ defmodule DbserviceWeb.SessionController do
       "asc" -> :asc
       _ -> :desc
     end
+  end
+
+  defp base_session_query(params) do
+    sort_order = extract_sort_order(params)
+
+    from m in Session,
+      order_by: [{^sort_order, m.id}],
+      offset: ^params["offset"],
+      limit: ^params["limit"]
   end
 
   defp apply_session_id_null_filter(value, acc) do
@@ -236,13 +239,7 @@ defmodule DbserviceWeb.SessionController do
   end
 
   defp build_search_query(platform_ids, platform, params) do
-    sort_order = extract_sort_order(params)
-
-    base_query =
-      from m in Session,
-        order_by: [{^sort_order, m.id}],
-        offset: ^params["offset"],
-        limit: ^params["limit"]
+    base_query = base_session_query(params)
 
     # Apply platform_ids filter if provided
     base_query =
