@@ -62,6 +62,7 @@ jobs:
             sudo env MIX_ENV=prod mix deps.compile &&
             sudo env MIX_ENV=prod mix ecto.migrate || true &&
             sudo env MIX_ENV=prod mix phx.swagger.generate &&
+            sudo env MIX_ENV=prod mix assets.deploy &&
             sudo fuser -k 4000/tcp 2>/dev/null || true &&
             sleep 2 &&
             nohup sudo env MIX_ENV=prod elixir --erl \"-detached\" -S mix phx.server > /tmp/phx_server.log 2>&1 &
