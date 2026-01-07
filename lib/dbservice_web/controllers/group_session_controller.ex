@@ -60,11 +60,7 @@ defmodule DbserviceWeb.GroupSessionController do
 
   def create(conn, params) do
     case GroupSessions.get_group_session_by_session_id(params["session_id"]) do
-      nil ->
-        create_new_group_session(conn, params)
-
-      existing_group_session ->
-        update_existing_group_session(conn, existing_group_session, params)
+      create_new_group_session(conn, params)
     end
   end
 
