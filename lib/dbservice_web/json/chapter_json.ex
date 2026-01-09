@@ -19,7 +19,8 @@ defmodule DbserviceWeb.ChapterJSON do
       name: chapter.name,
       code: chapter.code,
       grade_id: chapter.grade_id,
-      subject_id: chapter.subject_id
+      subject_id: chapter.subject_id,
+      cms_status_id: chapter.cms_status_id
     }
 
     # Add chapter_curriculum fields if they exist

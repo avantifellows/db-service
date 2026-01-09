@@ -9,6 +9,7 @@ defmodule Dbservice.Topics do
   alias Dbservice.Topics.Topic
   alias Dbservice.TopicCurriculums.TopicCurriculum
   alias Dbservice.TopicCurriculums
+  alias Dbservice.CmsStatuses
 
   @doc """
   Returns the list of topic.
@@ -58,9 +59,11 @@ defmodule Dbservice.Topics do
       {:error, %Ecto.Changeset{}}
   """
   def create_topic(attrs \\ %{}) do
-    %Topic{}
-    |> Topic.changeset(attrs)
-    |> Repo.insert()
+    with {:ok, attrs} <- CmsStatuses.ensure_cms_status_id(attrs) do
+      %Topic{}
+      |> Topic.changeset(attrs)
+      |> Repo.insert()
+    end
   end
 
   @doc """
@@ -157,9 +160,11 @@ defmodule Dbservice.Topics do
       {:error, %Ecto.Changeset{}}
   """
   def update_topic(%Topic{} = topic, attrs) do
-    topic
-    |> Topic.changeset(attrs)
-    |> Repo.update()
+    with {:ok, attrs} <- CmsStatuses.ensure_cms_status_id(attrs) do
+      topic
+      |> Topic.changeset(attrs)
+      |> Repo.update()
+    end
   end
 
   @doc """

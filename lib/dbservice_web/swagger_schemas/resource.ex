@@ -33,6 +33,8 @@ defmodule DbserviceWeb.SwaggerSchema.Resource do
             skill_ids(:array, "Skill ids associated with the resource")
             teacher_id(:integer, "Teacher id associated with the resource")
             exam_ids(:array, "Exam ids associated with the resource")
+            cms_status(:string, "Status name from cms_status table. Also accepts cms_status_id.")
+            cms_status_id(:integer, "cms_status.id value to set status directly")
           end
 
           example(%{
@@ -50,7 +52,8 @@ defmodule DbserviceWeb.SwaggerSchema.Resource do
             tag_ids: [5, 7, 9],
             skill_ids: [1, 3, 7],
             teacher_id: 1,
-            exam_ids: [1, 2, 3]
+            exam_ids: [1, 2, 3],
+            cms_status: "archived"
           })
         end
     }
