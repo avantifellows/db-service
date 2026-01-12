@@ -32,6 +32,7 @@ defmodule DbserviceWeb.Router do
 
     # Add route for CSV template downloads
     get "/templates/:type/download", TemplateController, :download_csv_template
+    get "/", WelcomeController, :index
   end
 
   # Protected endpoint for dropout imports only
