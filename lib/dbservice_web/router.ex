@@ -131,6 +131,9 @@ defmodule DbserviceWeb.Router do
     resources("/alumni", AlumniController, except: [:new, :edit])
     post("/student/create-with-enrollments", StudentController, :create_with_enrollments)
 
+    get("/reports", SchoolReportController, :index)
+    get("/reports/:test_name", SchoolReportController, :show)
+
     get(
       "/resource/problem/:problem_id/:lang_code/:curriculum_id",
       ResourceController,
