@@ -28,6 +28,7 @@ defmodule DbserviceWeb.SchoolJSON do
       block_name: school.block_name,
       board: school.board,
       user_id: school.user_id,
+      program_ids: school.program_ids,
       user: if(school.user, do: UserJSON.render(school.user), else: nil)
     }
   end

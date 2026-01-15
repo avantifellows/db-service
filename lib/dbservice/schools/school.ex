@@ -23,6 +23,7 @@ defmodule Dbservice.Schools.School do
     field :block_name, :string
     field :board, :string
     # field :board_medium, :string
+    field :program_ids, {:array, :integer}, default: []
 
     has_many :group, Group, foreign_key: :child_id, where: [type: "school"]
 
@@ -53,7 +54,8 @@ defmodule Dbservice.Schools.School do
       :block_name,
       :board,
       # :board_medium,
-      :user_id
+      :user_id,
+      :program_ids
     ])
     |> validate_required([
       :code,
