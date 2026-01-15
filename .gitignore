@@ -45,4 +45,4 @@ priv/static
 !priv/static/favicon.ico
 
 # Ignore ElixirLS files
-.elixir_ls
+.elixir_lscontext_for_ai/

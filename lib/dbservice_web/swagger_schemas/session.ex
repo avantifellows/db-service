@@ -68,4 +68,30 @@ defmodule DbserviceWeb.SwaggerSchema.Session do
         end
     }
   end
+
+  def session_search do
+    %{
+      SessionSearch:
+        swagger_schema do
+          title("SessionSearch")
+          description("Parameters for bulk session search")
+
+          properties do
+            platform_ids(:array, "List of platform IDs to search for", items: %{type: :string})
+            platform(:string, "Platform type filter (e.g., 'quiz')")
+            offset(:integer, "Pagination offset")
+            limit(:integer, "Pagination limit")
+            sort_order(:string, "Sort order: 'asc' or 'desc'")
+          end
+
+          example(%{
+            platform: "quiz",
+            platform_ids: ["68ef710fa0ef79777d2cd951", "694cec5693dc2b52ba0d6ca1"],
+            limit: 1000,
+            offset: 0,
+            sort_order: "desc"
+          })
+        end
+    }
+  end
 end
