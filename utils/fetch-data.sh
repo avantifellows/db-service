@@ -126,24 +126,7 @@ fi
 echo ""
 echo -e "${BLUE}🚀 Starting database fetch process...${NC}"
 
-# Step 1: Clear local database
-echo -e "${BLUE}🧹 Clearing local database...${NC}"
-PGPASSWORD="$LOCAL_DB_PASSWORD" "$PSQL_PATH" \
-    --host="$LOCAL_DB_HOST" \
-    --port="$LOCAL_DB_PORT" \
-    --username="$LOCAL_DB_USER" \
-    --dbname="$LOCAL_DB_NAME" \
-    --command="DROP SCHEMA public CASCADE; CREATE SCHEMA public;" \
-    --quiet
-
-if [ $? -eq 0 ]; then
-    echo -e "${GREEN}✅ Local database cleared${NC}"
-else
-    echo -e "${RED}❌ Error: Failed to clear local database${NC}"
-    exit 1
-fi
-
-# Step 2: Fetch data dump
+# Step 1: Fetch data dump
 echo -e "${BLUE}📥 Fetching data from $FETCH_ENVIRONMENT database...${NC}"
 PGPASSWORD="$REMOTE_DB_PASSWORD" "$PG_DUMP_PATH" \
     --host="$REMOTE_DB_HOST" \
@@ -157,6 +140,36 @@ if [ $? -eq 0 ]; then
     echo -e "${GREEN}✅ Data dump fetched successfully${NC}"
 else
     echo -e "${RED}❌ Error: Failed to fetch data dump${NC}"
+    echo -e "${YELLOW}💡 Local database remains unchanged${NC}"
+    exit 1
+fi
+
+# Verify the dump file exists and has content
+if [ ! -s "$SCRIPT_DIR/$DUMP_FILE" ]; then
+    echo -e "${RED}❌ Error: Dump file is empty or missing${NC}"
+    echo -e "${YELLOW}💡 Local database remains unchanged${NC}"
+    rm -f "$SCRIPT_DIR/$DUMP_FILE"
+    exit 1
+fi
+
+echo -e "${GREEN}✅ Dump file validated ($(du -h "$SCRIPT_DIR/$DUMP_FILE" | cut -f1))${NC}"
+
+# Step 2: NOW clear local database (only after successful fetch)
+echo -e "${BLUE}🧹 Clearing local database...${NC}"
+PGPASSWORD="$LOCAL_DB_PASSWORD" "$PSQL_PATH" \
+    --host="$LOCAL_DB_HOST" \
+    --port="$LOCAL_DB_PORT" \
+    --username="$LOCAL_DB_USER" \
+    --dbname="$LOCAL_DB_NAME" \
+    --command="DROP SCHEMA public CASCADE; CREATE SCHEMA public;" \
+    --quiet
+
+if [ $? -eq 0 ]; then
+    echo -e "${GREEN}✅ Local database cleared${NC}"
+else
+    echo -e "${RED}❌ Error: Failed to clear local database${NC}"
+    echo -e "${YELLOW}💡 Dump file saved at: $SCRIPT_DIR/$DUMP_FILE${NC}"
+    echo -e "${YELLOW}💡 You can manually restore it later${NC}"
     exit 1
 fi
 
@@ -174,6 +187,8 @@ if [ $? -eq 0 ]; then
     echo -e "${GREEN}✅ Data restored successfully${NC}"
 else
     echo -e "${RED}❌ Error: Failed to restore data${NC}"
+    echo -e "${YELLOW}💡 WARNING: Local database may be in an inconsistent state${NC}"
+    echo -e "${YELLOW}💡 Dump file saved at: $SCRIPT_DIR/$DUMP_FILE${NC}"
     exit 1
 fi
 
