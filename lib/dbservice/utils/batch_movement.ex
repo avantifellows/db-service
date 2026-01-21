@@ -28,6 +28,17 @@ defmodule Dbservice.DataImport.BatchMovement do
   end
 
   defp process_student_with_batch(student, record) do
+    if student.status == "dropout" do
+      student_identifier = student.student_id || student.apaar_id
+
+      {:error,
+       "Cannot process batch movement for student id: #{student_identifier} because status is dropout"}
+    else
+      process_with_batch_info(student, record)
+    end
+  end
+
+  defp process_with_batch_info(student, record) do
     case BatchEnrollmentService.get_batch_info(record["batch_id"]) do
       nil ->
         {:error, "Batch not found with ID: #{record["batch_id"]}"}
