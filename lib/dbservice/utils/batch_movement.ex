@@ -31,19 +31,23 @@ defmodule Dbservice.DataImport.BatchMovement do
     if student.status == "dropout" do
       {:error, "Cannot process batch movement for dropout students"}
     else
-      case BatchEnrollmentService.get_batch_info(record["batch_id"]) do
-        nil ->
-          {:error, "Batch not found with ID: #{record["batch_id"]}"}
+      process_with_batch_info(student, record)
+    end
+  end
 
-        {batch_group_id, batch_id, batch_group_type} ->
-          case handle_batch_movement(
-                 student,
-                 {batch_group_id, batch_id, batch_group_type},
-                 record
-               ) do
-            {:ok, _} -> {:ok, "Batch movement processed successfully"}
-          end
-      end
+  defp process_with_batch_info(student, record) do
+    case BatchEnrollmentService.get_batch_info(record["batch_id"]) do
+      nil ->
+        {:error, "Batch not found with ID: #{record["batch_id"]}"}
+
+      {batch_group_id, batch_id, batch_group_type} ->
+        case handle_batch_movement(
+               student,
+               {batch_group_id, batch_id, batch_group_type},
+               record
+             ) do
+          {:ok, _} -> {:ok, "Batch movement processed successfully"}
+        end
     end
   end
 
