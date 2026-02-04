@@ -566,4 +566,133 @@ defmodule Dbservice.Resources do
 
   defp get_offset(params), do: params["offset"]
   defp get_limit(params), do: params["limit"]
+
+  @doc """
+  Searches for problems with optional filtering, sorting and pagination.
+  Searches in problem_lang table and includes resource + resource_curriculum details.
+
+  ## Examples
+
+      iex> search_problems(%{"search" => "che", "limit" => 10, "offset" => 0, "sort_by" => "subtype", "sort_order" => "asc"})
+      [%{resource: %Resource{}, problem_lang: %ProblemLanguage{}, resource_curriculums: [%ResourceCurriculum{}]}, ...]
+
+      iex> count_problems(%{"search" => "che"})
+      25
+  """
+  def search_problems(params \\ %{}) do
+    ProblemLanguage
+    |> apply_problem_search_filters(params)
+    |> apply_problem_sorting(params)
+    |> apply_problem_pagination(params)
+    |> Repo.all()
+    |> Enum.map(fn problem_lang ->
+      resource = Repo.get!(Resource, problem_lang.res_id)
+
+      resource_curriculums =
+        Repo.all(
+          from(rc in Dbservice.Resources.ResourceCurriculum,
+            where: rc.resource_id == ^resource.id
+          )
+        )
+
+      %{
+        resource: resource,
+        problem_lang: problem_lang,
+        resource_curriculums: resource_curriculums
+      }
+    end)
+  end
+
+  def count_problems(params \\ %{}) do
+    ProblemLanguage
+    |> apply_problem_search_filters(params)
+    |> select([pl], count(pl.id))
+    |> Repo.one()
+  end
+
+  # Private query building functions for problem search
+
+  defp apply_problem_search_filters(query, params) do
+    Enum.reduce(params, query, &apply_problem_search_filter/2)
+  end
+
+  defp apply_problem_search_filter({"search", value}, query)
+       when not is_nil(value) and value != "" do
+    search_term = "%#{value}%"
+
+    from(pl in query,
+      join: r in Resource,
+      on: pl.res_id == r.id,
+      where:
+        r.type == "problem" and
+          (ilike(fragment("?->>'text'", pl.meta_data), ^search_term) or
+             ilike(fragment("?->>'hint'", pl.meta_data), ^search_term) or
+             ilike(fragment("?->>'solution'", pl.meta_data), ^search_term))
+    )
+  end
+
+  defp apply_problem_search_filter({"type", value}, query) when not is_nil(value) do
+    from(pl in query,
+      join: r in Resource,
+      on: pl.res_id == r.id,
+      where: r.type == ^value
+    )
+  end
+
+  defp apply_problem_search_filter({"subtype", value}, query) when not is_nil(value) do
+    from(pl in query,
+      join: r in Resource,
+      on: pl.res_id == r.id,
+      where: r.subtype == ^value
+    )
+  end
+
+  defp apply_problem_search_filter({"lang_code", value}, query)
+       when not is_nil(value) and value != "" do
+    from(pl in query,
+      join: l in Language,
+      on: pl.lang_id == l.id,
+      where: l.code == ^value
+    )
+  end
+
+  defp apply_problem_search_filter({key, _value}, query)
+       when key in ["offset", "limit", "sort_by", "sort_order"] do
+    query
+  end
+
+  defp apply_problem_search_filter({_key, _value}, query) do
+    query
+  end
+
+  defp apply_problem_sorting(query, params) do
+    sort_by = params["sort_by"]
+    sort_order = get_sort_order(params["sort_order"])
+
+    case sort_by do
+      "subtype" ->
+        from(pl in query,
+          join: r in Resource,
+          on: pl.res_id == r.id,
+          order_by: [{^sort_order, r.subtype}],
+          distinct: pl.id
+        )
+
+      "text" ->
+        from(pl in query,
+          order_by: [{^sort_order, fragment("?->>'text'", pl.meta_data)}]
+        )
+
+      _ ->
+        # Default sorting by id
+        from(pl in query, order_by: [asc: pl.id])
+    end
+  end
+
+  defp apply_problem_pagination(query, params) do
+    from(pl in query,
+      offset: ^get_offset(params),
+      limit: ^get_limit(params)
+    )
+  end
 end
