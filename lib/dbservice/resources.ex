@@ -45,52 +45,48 @@ defmodule Dbservice.Resources do
     - List of problem resources with their metadata from problem_lang table and difficulty_level from resource_curriculum
   """
   def get_problems_by_test_and_language(test_id, lang_code, curriculum_id) do
-    # Get the language by code
-    language =
-      from(l in Language, where: l.code == ^lang_code, select: l)
-      |> Repo.one()
+    language = from(l in Language, where: l.code == ^lang_code, select: l) |> Repo.one()
 
     case language do
-      nil ->
-        {:error, :language_not_found}
-
-      %Language{id: lang_id} ->
-        with %Resource{} = test_resource <- Repo.get(Resource, test_id),
-             true <- test_resource.type == "test" do
-          problem_ids = extract_problem_ids_from_test(test_resource.type_params)
-
-          # Query for all problems with those IDs, including ALL resource_curriculum data and chapter data
-          problems =
-            from(r in Resource,
-              where: r.id in ^problem_ids and r.type == "problem",
-              preload: [
-                # preload all curriculum mappings
-                :resource_curriculum,
-                # preload chapters via the many_to_many association
-                :chapter,
-                # keyword preload must come last in the list
-                problem_language: ^from(pl in ProblemLanguage, where: pl.lang_id == ^lang_id)
-              ]
-            )
-            |> Repo.all()
-
-          Enum.map(problems, fn resource ->
-            problem_lang = Enum.find(resource.problem_language, &(&1.lang_id == lang_id))
-
-            %{
-              resource: resource,
-              # always a list
-              resource_curriculums: resource.resource_curriculum,
-              problem_lang: problem_lang || %{},
-              requested_curriculum_id: curriculum_id
-            }
-          end)
-        else
-          nil -> {:error, :test_not_found}
-          false -> {:error, :resource_not_test_type}
-          error -> error
-        end
+      nil -> {:error, :language_not_found}
+      %Language{id: lang_id} -> get_problems_for_test(test_id, lang_id, curriculum_id)
     end
+  end
+
+  defp get_problems_for_test(test_id, lang_id, curriculum_id) do
+    test_resource = Repo.get(Resource, test_id)
+
+    cond do
+      is_nil(test_resource) -> {:error, :test_not_found}
+      test_resource.type != "test" -> {:error, :resource_not_test_type}
+      true -> fetch_and_format_problems(test_resource, lang_id, curriculum_id)
+    end
+  end
+
+  defp fetch_and_format_problems(test_resource, lang_id, curriculum_id) do
+    problem_ids = extract_problem_ids_from_test(test_resource.type_params)
+
+    problems =
+      from(r in Resource,
+        where: r.id in ^problem_ids and r.type == "problem",
+        preload: [
+          :resource_curriculum,
+          :chapter,
+          problem_language: ^from(pl in ProblemLanguage, where: pl.lang_id == ^lang_id)
+        ]
+      )
+      |> Repo.all()
+
+    Enum.map(problems, fn resource ->
+      problem_lang = Enum.find(resource.problem_language, &(&1.lang_id == lang_id))
+
+      %{
+        resource: resource,
+        resource_curriculums: resource.resource_curriculum,
+        problem_lang: problem_lang || %{},
+        requested_curriculum_id: curriculum_id
+      }
+    end)
   end
 
   @doc """
