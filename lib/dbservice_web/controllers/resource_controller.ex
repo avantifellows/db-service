@@ -498,11 +498,6 @@ defmodule DbserviceWeb.ResourceController do
         |> put_status(:bad_request)
         |> json(%{error: "The specified resource is not a test"})
 
-      {:error, :curriculum_not_found} ->
-        conn
-        |> put_status(:not_found)
-        |> json(%{error: "Curriculum not found"})
-
       problems ->
         conn
         |> put_status(:ok)
