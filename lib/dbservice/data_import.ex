@@ -33,6 +33,7 @@ defmodule Dbservice.DataImport do
 
   def format_type_name("dropout"), do: "Student Dropout"
   def format_type_name("re_enrollment"), do: "Student Re-Enrollment After Dropout"
+  def format_type_name("remove_wrong_enrollment_records"), do: "Remove Wrong Enrollment Records"
 
   def format_type_name(type), do: String.capitalize(type)
 

@@ -18,6 +18,7 @@ defmodule Dbservice.DataImport.ImportWorker do
   alias Dbservice.Services.StudentUpdateService
   alias Dbservice.Services.DropoutService
   alias Dbservice.Services.ReEnrollmentService
+  alias Dbservice.Services.EnrollmentRetentionService
   alias Dbservice.Utils.ChangesetFormatter
   alias Dbservice.Colleges
   alias Dbservice.Branches
@@ -67,7 +68,8 @@ defmodule Dbservice.DataImport.ImportWorker do
       "update_incorrect_grade_to_correct_grade" => &process_grade_update_record/1,
       "update_incorrect_auth_group_to_correct_auth_group" => &process_auth_group_update_record/1,
       "dropout" => &process_dropout_record/1,
-      "re_enrollment" => &process_re_enrollment_record/1
+      "re_enrollment" => &process_re_enrollment_record/1,
+      "remove_wrong_enrollment_records" => &process_enrollment_retention_record/1
     }
 
     case Map.get(processor_map, import_type) do
@@ -83,6 +85,9 @@ defmodule Dbservice.DataImport.ImportWorker do
 
     case parse_csv_records(path, start_row, import_record.type) do
       {:ok, parsed_records} ->
+        parsed_records =
+          maybe_deduplicate_retention_records(parsed_records, import_record.type)
+
         try do
           case process_parsed_records(
                  parsed_records,
@@ -580,6 +585,10 @@ defmodule Dbservice.DataImport.ImportWorker do
     end
   end
 
+  defp process_enrollment_retention_record(record) do
+    EnrollmentRetentionService.process_retention(record)
+  end
+
   defp process_teacher_record(record) do
     case Users.get_teacher_by_teacher_id(record["teacher_id"]) do
       nil ->
@@ -731,6 +740,48 @@ defmodule Dbservice.DataImport.ImportWorker do
     "Row #{csv_row_number}: #{inspect(error)}"
   end
 
+  # Deduplicate retention rows so that any "Yes" wins for a given user+group_id+group_type.
+  # This prevents later "No" rows from deleting records that a prior row marked to retain.
+  defp maybe_deduplicate_retention_records(records, "remove_wrong_enrollment_records") do
+    records
+    |> Enum.group_by(fn {record, _idx} ->
+      {
+        Map.get(record, "student_id"),
+        Map.get(record, "student_apaar_id"),
+        Map.get(record, "group_id"),
+        Map.get(record, "group_type"),
+        Map.get(record, "academic_year")
+      }
+    end)
+    |> Enum.map(fn {_key, rows} ->
+      {{base_record, _}, _} = rows |> Enum.with_index() |> hd()
+
+      retain? =
+        rows
+        |> Enum.any?(fn {rec, _} -> truthy_retain?(rec) end)
+
+      Map.put(base_record, "retain_record", retain?)
+    end)
+    |> Enum.with_index(1)
+    |> Enum.map(fn {record, idx} -> {record, idx} end)
+  end
+
+  defp maybe_deduplicate_retention_records(records, _), do: records
+
+  defp truthy_retain?(record) do
+    Map.get(record, "retain_record") in [
+      true,
+      "true",
+      "TRUE",
+      "True",
+      "yes",
+      "Yes",
+      "YES",
+      "1",
+      1
+    ]
+  end
+
   defp finalize_import(import_record, records) do
     # Check if import was stopped during processing
     current_import = DataImport.get_import!(import_record.id)
@@ -739,7 +790,16 @@ defmodule Dbservice.DataImport.ImportWorker do
       # Import was halted, don't mark as completed
       {:ok, records}
     else
-      total_records = length(records)
+      total_records =
+        case import_record.type do
+          "remove_wrong_enrollment_records" ->
+            # For retention imports, progress updates are based on de-duplicated rows.
+            # Use the original total_rows so the final processed count reaches 100%.
+            current_import.total_rows || length(records)
+
+          _ ->
+            length(records)
+        end
 
       DataImport.complete_import(
         import_record.id,

@@ -74,6 +74,10 @@ const Hooks = {
       // Register the same handler for both dropout and re-enrollment imports
       this.handleEvent("submit_dropout_import", submitAuthenticatedImport);
       this.handleEvent("submit_re_enrollment_import", submitAuthenticatedImport);
+      this.handleEvent(
+        "submit_remove_wrong_enrollment_records_import",
+        submitAuthenticatedImport
+      );
     }
   }
 };
