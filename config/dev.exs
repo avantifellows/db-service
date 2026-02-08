@@ -28,6 +28,15 @@ config :dbservice, DbserviceWeb.Endpoint,
     esbuild: {Esbuild, :install_and_run, [:default, ~w(--sourcemap=inline --watch)]}
   ]
 
+# AWS S3 Configuration
+config :dbservice,
+  s3_bucket: System.get_env("AWS_S3_BUCKET") || "your-s3-bucket-name"
+
+config :ex_aws,
+  access_key_id: System.get_env("AWS_ACCESS_KEY_ID") || "your-access-key-id",
+  secret_access_key: System.get_env("AWS_SECRET_ACCESS_KEY") || "your-secret-access-key",
+  region: System.get_env("AWS_REGION") || "ap-south-1"
+
 # ## SSL Support
 #
 # In order to use HTTPS in development, a self-signed
