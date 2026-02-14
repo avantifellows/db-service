@@ -498,11 +498,6 @@ defmodule DbserviceWeb.ResourceController do
         |> put_status(:bad_request)
         |> json(%{error: "The specified resource is not a test"})
 
-      {:error, :curriculum_not_found} ->
-        conn
-        |> put_status(:not_found)
-        |> json(%{error: "Curriculum not found"})
-
       problems ->
         conn
         |> put_status(:ok)
@@ -626,5 +621,51 @@ defmodule DbserviceWeb.ResourceController do
             )
         end
     end
+  end
+
+  swagger_path :search_problems do
+    get("/api/problems/search")
+
+    parameters do
+      query(:string, "search", "Search term to find in problem text, hint, or solution",
+        required: false
+      )
+
+      query(:string, "type", "Resource type (e.g., 'problem')", required: false)
+
+      query(:string, "subtype", "Resource subtype", required: false)
+
+      query(:string, "lang_code", "Language code for the problem (e.g., 'en', 'hi')",
+        required: false
+      )
+
+      query(:integer, "limit", "Number of results per page", required: false)
+
+      query(:integer, "offset", "Number of results to skip", required: false)
+
+      query(:string, "sort_by", "Field to sort by (e.g., 'subtype', 'text')", required: false)
+
+      query(:string, "sort_order", "Sort order: 'asc' or 'desc'", required: false)
+    end
+
+    response(200, "OK")
+  end
+
+  def search_problems(conn, params) do
+    # Ensure type is set to "problem" for problem search
+    params = Map.put(params, "type", "problem")
+
+    # Ensure default values for pagination
+    params =
+      params
+      |> Map.put_new("limit", 10)
+      |> Map.put_new("offset", 0)
+
+    total_count = Resources.count_problems(params)
+    problems = Resources.search_problems(params)
+
+    conn
+    |> put_resp_header("x-total-count", Integer.to_string(total_count))
+    |> render("problems.json", problems: problems)
   end
 end

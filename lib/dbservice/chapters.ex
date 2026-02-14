@@ -137,32 +137,35 @@ defmodule Dbservice.Chapters do
 
     if curriculum_id do
       with {:ok, %Chapter{} = updated_chapter} <- update_chapter(chapter, attrs) do
-        chapter_curriculum_attrs = %{
-          "chapter_id" => updated_chapter.id,
-          "curriculum_id" => curriculum_id,
-          "priority" => Map.get(attrs, "priority"),
-          "priority_text" => Map.get(attrs, "priority_text"),
-          "weightage" => Map.get(attrs, "weightage")
-        }
-
-        case ChapterCurriculums.get_chapter_curriculum_by_chapter_id_and_curriculum_id(
-               updated_chapter.id,
-               curriculum_id
-             ) do
-          nil ->
-            ChapterCurriculums.create_chapter_curriculum(chapter_curriculum_attrs)
-
-          existing_chapter_curriculum ->
-            ChapterCurriculums.update_chapter_curriculum(
-              existing_chapter_curriculum,
-              chapter_curriculum_attrs
-            )
-        end
-
+        update_chapter_curriculum_mapping(updated_chapter, curriculum_id, attrs)
         {:ok, updated_chapter}
       end
     else
       update_chapter(chapter, attrs)
+    end
+  end
+
+  defp update_chapter_curriculum_mapping(chapter, curriculum_id, attrs) do
+    chapter_curriculum_attrs = %{
+      "chapter_id" => chapter.id,
+      "curriculum_id" => curriculum_id,
+      "priority" => Map.get(attrs, "priority"),
+      "priority_text" => Map.get(attrs, "priority_text"),
+      "weightage" => Map.get(attrs, "weightage")
+    }
+
+    case ChapterCurriculums.get_chapter_curriculum_by_chapter_id_and_curriculum_id(
+           chapter.id,
+           curriculum_id
+         ) do
+      nil ->
+        ChapterCurriculums.create_chapter_curriculum(chapter_curriculum_attrs)
+
+      existing_chapter_curriculum ->
+        ChapterCurriculums.update_chapter_curriculum(
+          existing_chapter_curriculum,
+          chapter_curriculum_attrs
+        )
     end
   end
 
