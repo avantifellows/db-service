@@ -666,12 +666,20 @@ defmodule Dbservice.Resources do
     sort_order = get_sort_order(params["sort_order"])
 
     case sort_by do
+      "code" ->
+        from(pl in query,
+          join: r in Resource,
+          on: pl.res_id == r.id,
+          order_by: [{^sort_order, r.code}],
+          select: pl
+        )
+
       "subtype" ->
         from(pl in query,
           join: r in Resource,
           on: pl.res_id == r.id,
           order_by: [{^sort_order, r.subtype}],
-          distinct: pl.id
+          select: pl
         )
 
       "text" ->
