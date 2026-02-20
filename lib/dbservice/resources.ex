@@ -11,6 +11,7 @@ defmodule Dbservice.Resources do
   alias Dbservice.Languages.Language
   alias Dbservice.Resources.{ResourceTopic, ResourceChapter, ResourceConcept}
   alias Dbservice.Utils.Util
+  alias Dbservice.CmsStatuses
 
   @doc """
   Returns the list of resource.
@@ -195,9 +196,11 @@ defmodule Dbservice.Resources do
       {:error, %Ecto.Changeset{}}
   """
   def create_resource(attrs \\ %{}) do
-    %Resource{}
-    |> Resource.changeset(attrs)
-    |> Repo.insert()
+    with {:ok, attrs} <- CmsStatuses.ensure_cms_status_id(attrs) do
+      %Resource{}
+      |> Resource.changeset(attrs)
+      |> Repo.insert()
+    end
   end
 
   @doc """
@@ -209,9 +212,11 @@ defmodule Dbservice.Resources do
       {:error, %Ecto.Changeset{}}
   """
   def update_resource(%Resource{} = resource, attrs) do
-    resource
-    |> Resource.changeset(attrs)
-    |> Repo.update()
+    with {:ok, attrs} <- CmsStatuses.ensure_cms_status_id(attrs) do
+      resource
+      |> Resource.changeset(attrs)
+      |> Repo.update()
+    end
   end
 
   @doc """

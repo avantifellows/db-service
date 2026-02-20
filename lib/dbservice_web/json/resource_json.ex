@@ -71,7 +71,7 @@ defmodule DbserviceWeb.ResourceJSON do
       teacher_id: resource.teacher_id,
       topic_id: topic_id,
       chapter_id: chapter_id,
-      cms_status: resource.cms_status,
+      cms_status_id: resource.cms_status_id,
       exam_ids: resource.exam_ids,
       exam_details: exam_details,
       curriculum_grades: curriculum_grades
@@ -154,7 +154,7 @@ defmodule DbserviceWeb.ResourceJSON do
       chapter_id: chapter_data.chapter_id,
       chapter_code: chapter_data.chapter_code,
       chapter_name: chapter_data.chapter_name,
-      cms_status: resource.cms_status,
+      cms_status_id: resource.cms_status_id,
       curriculum_grades: curriculum_grades
     }
 

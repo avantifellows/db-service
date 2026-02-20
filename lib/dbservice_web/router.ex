@@ -137,6 +137,8 @@ defmodule DbserviceWeb.Router do
       :get_problem
     )
 
+    resources("/cms-status", CmsStatusController, except: [:new, :edit])
+
     def swagger_info do
       source(["config/.env"])
 
