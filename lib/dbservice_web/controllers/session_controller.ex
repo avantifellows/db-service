@@ -17,8 +17,11 @@ defmodule DbserviceWeb.SessionController do
     # merge the required definitions in a pair at a time using the Map.merge/2 function
     Map.merge(
       Map.merge(
-        SwaggerSchemaSession.session(),
-        SwaggerSchemaSession.sessions()
+        Map.merge(
+          SwaggerSchemaSession.session(),
+          SwaggerSchemaSession.sessions()
+        ),
+        SwaggerSchemaSession.session_search()
       ),
       SwaggerSchemaCommon.group_ids()
     )
@@ -42,13 +45,7 @@ defmodule DbserviceWeb.SessionController do
   end
 
   def index(conn, params) do
-    sort_order = extract_sort_order(params)
-
-    query =
-      from m in Session,
-        order_by: [{^sort_order, m.id}],
-        offset: ^params["offset"],
-        limit: ^params["limit"]
+    query = base_session_query(params)
 
     query =
       Enum.reduce(params, query, fn {key, value}, acc ->
@@ -91,6 +88,15 @@ defmodule DbserviceWeb.SessionController do
       "asc" -> :asc
       _ -> :desc
     end
+  end
+
+  defp base_session_query(params) do
+    sort_order = extract_sort_order(params)
+
+    from m in Session,
+      order_by: [{^sort_order, m.id}],
+      offset: ^params["offset"],
+      limit: ^params["limit"]
   end
 
   defp apply_session_id_null_filter(value, acc) do
@@ -207,6 +213,47 @@ defmodule DbserviceWeb.SessionController do
       when is_list(group_ids) do
     with {:ok, %Session{} = session} <- Sessions.update_groups(session_id, group_ids) do
       render(conn, :show, session: session)
+    end
+  end
+
+  swagger_path :search do
+    post("/api/session/search")
+    summary("Bulk search sessions by platform IDs")
+    description("Search for multiple sessions by providing a list of platform_ids")
+
+    parameters do
+      body(:body, Schema.ref(:SessionSearch), "Search parameters", required: true)
+    end
+
+    response(200, "OK", Schema.ref(:Sessions))
+  end
+
+  def search(conn, params) do
+    platform_ids = Map.get(params, "platform_ids", [])
+    platform = Map.get(params, "platform")
+
+    query = build_search_query(platform_ids, platform, params)
+    sessions = Repo.all(query)
+
+    render(conn, :index, session: sessions)
+  end
+
+  defp build_search_query(platform_ids, platform, params) do
+    base_query = base_session_query(params)
+
+    # Apply platform_ids filter if provided
+    base_query =
+      if platform_ids != [] do
+        from(s in base_query, where: s.platform_id in ^platform_ids)
+      else
+        base_query
+      end
+
+    # Apply platform filter if provided
+    if platform do
+      from(s in base_query, where: s.platform == ^platform)
+    else
+      base_query
     end
   end
 
