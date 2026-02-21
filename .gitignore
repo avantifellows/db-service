@@ -46,3 +46,7 @@ priv/static
 
 # Ignore ElixirLS files
 .elixir_ls
+
+config/service_account.json
+
+docs/ai
