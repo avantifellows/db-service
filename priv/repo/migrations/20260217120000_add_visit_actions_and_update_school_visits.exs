@@ -2,9 +2,9 @@ defmodule Dbservice.Repo.Migrations.AddVisitActionsAndUpdateSchoolVisits do
   use Ecto.Migration
 
   def up do
-    # ── 0.1  Create lms_pm_visit_actions table ──────────────────────────
+    # ── 0.1  Create lms_pm_school_visit_actions table ──────────────────────────
 
-    create table(:lms_pm_visit_actions) do
+    create table(:lms_pm_school_visit_actions) do
       add :visit_id, references(:lms_pm_school_visits, on_delete: :delete_all), null: false
 
       # Action identification (validated in app code; no DB CHECK on type)
@@ -35,17 +35,17 @@ defmodule Dbservice.Repo.Migrations.AddVisitActionsAndUpdateSchoolVisits do
     end
 
     # Status values
-    create constraint(:lms_pm_visit_actions, :lms_pm_visit_actions_status_check,
+    create constraint(:lms_pm_school_visit_actions, :lms_pm_school_visit_actions_status_check,
              check: "status IN ('pending', 'in_progress', 'completed')"
            )
 
     # Soft delete only allowed for pending actions
-    create constraint(:lms_pm_visit_actions, :lms_pm_visit_actions_deleted_pending_check,
+    create constraint(:lms_pm_school_visit_actions, :lms_pm_school_visit_actions_deleted_pending_check,
              check: "deleted_at IS NULL OR status = 'pending'"
            )
 
     # Status ↔ timestamp consistency
-    create constraint(:lms_pm_visit_actions, :lms_pm_visit_actions_status_timestamps_check,
+    create constraint(:lms_pm_school_visit_actions, :lms_pm_school_visit_actions_status_timestamps_check,
              check: """
              (status = 'pending'     AND started_at IS NULL AND ended_at IS NULL) OR
              (status = 'in_progress' AND started_at IS NOT NULL AND ended_at IS NULL) OR
@@ -54,12 +54,12 @@ defmodule Dbservice.Repo.Migrations.AddVisitActionsAndUpdateSchoolVisits do
            )
 
     # End cannot precede start
-    create constraint(:lms_pm_visit_actions, :lms_pm_visit_actions_time_order_check,
+    create constraint(:lms_pm_school_visit_actions, :lms_pm_school_visit_actions_time_order_check,
              check: "ended_at IS NULL OR ended_at >= started_at"
            )
 
     # Index for querying actions by visit
-    create index(:lms_pm_visit_actions, [:visit_id], name: :idx_visit_actions_visit_id)
+    create index(:lms_pm_school_visit_actions, [:visit_id], name: :idx_school_visit_actions_visit_id)
 
     # ── 0.2  Alter lms_pm_school_visits ─────────────────────────────────
 
@@ -84,6 +84,6 @@ defmodule Dbservice.Repo.Migrations.AddVisitActionsAndUpdateSchoolVisits do
     create index(:lms_pm_school_visits, [:ended_at])
 
     # Drop actions table (constraints + indexes dropped with it)
-    drop table(:lms_pm_visit_actions)
+    drop table(:lms_pm_school_visit_actions)
   end
 end
