@@ -63,9 +63,6 @@ defmodule Dbservice.Repo.Migrations.AddVisitActionsAndUpdateSchoolVisits do
 
     # ── 0.2  Alter lms_pm_school_visits ─────────────────────────────────
 
-    # Drop the ended_at index before removing the column
-    drop_if_exists index(:lms_pm_school_visits, [:ended_at])
-
     alter table(:lms_pm_school_visits) do
       add :completed_at, :naive_datetime
       remove :data
