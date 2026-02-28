@@ -1,0 +1,28 @@
+name: Run Staging Migrations
+
+on:
+  pull_request:
+    paths:
+      - "priv/repo/migrations/**"
+
+jobs:
+  migrate:
+    runs-on: ubuntu-latest
+    environment: Staging
+
+    steps:
+      - name: Run migrations on staging
+        env:
+          PRIVATE_KEY: ${{ secrets.SSH_PRIVATE_KEY }}
+          HOSTNAME: ${{ secrets.HOSTNAME }}
+          USER_NAME: ${{ secrets.USER_NAME }}
+        run: |
+          echo "$PRIVATE_KEY" > private_key && chmod 600 private_key
+          ssh -o StrictHostKeyChecking=no -i private_key ${USER_NAME}@${HOSTNAME} "
+            cd /var/www/html/db-service &&
+            sudo git fetch origin &&
+            sudo git checkout ${{ github.head_ref }} &&
+            sudo MIX_ENV=prod mix deps.get &&
+            sudo MIX_ENV=prod mix ecto.migrate &&
+            echo '✅ Migrations completed successfully'
+          "
