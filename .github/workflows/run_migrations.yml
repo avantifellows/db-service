@@ -1,5 +1,19 @@
 name: Run Staging Migrations
 
+# Triggers on PRs that add/modify migration files.
+# Gated behind the "Staging" environment — requires manual approval before running.
+#
+# How it works:
+# - SSHs into the EC2 server where db-service is deployed
+# - Checks out the PR branch to pick up new migration files
+# - Runs `mix ecto.migrate` against the staging database
+# - Switches back to main when done
+#
+# IMPORTANT: The server's config/.env contains the DATABASE_URL for the staging DB.
+# Since `git checkout` overwrites .env with the repo version (which has no DATABASE_URL),
+# we back it up before checkout and restore it after. Without this, migrations would
+# silently run against the local dev postgres on the EC2 instead of the staging RDS.
+
 on:
   pull_request:
     paths:
@@ -20,9 +34,24 @@ jobs:
           echo "$PRIVATE_KEY" > private_key && chmod 600 private_key
           ssh -o StrictHostKeyChecking=no -i private_key ${USER_NAME}@${HOSTNAME} "
             cd /var/www/html/db-service &&
+
+            # Back up .env — git checkout will overwrite it with the repo version
+            # which lacks DATABASE_URL, causing migrations to hit the wrong DB
+            sudo cp config/.env config/.env.bak &&
+
+            # Check out PR branch to get the new migration files
             sudo git fetch origin &&
             sudo git checkout ${{ github.head_ref }} &&
+
+            # Restore the server's .env so migrations target the staging DB
+            sudo cp config/.env.bak config/.env &&
+
             sudo MIX_ENV=prod mix deps.get &&
             sudo MIX_ENV=prod mix ecto.migrate &&
-            echo '✅ Migrations completed successfully'
+            echo '✅ Migrations completed successfully' &&
+
+            # Switch back to main so the running server isn't on a random PR branch
+            sudo git checkout main &&
+            sudo cp config/.env.bak config/.env &&
+            sudo rm config/.env.bak
           "
