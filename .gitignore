@@ -50,3 +50,5 @@ priv/static
 config/service_account.json
 
 docs/ai
+
+.DS_Store
