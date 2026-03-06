@@ -40,12 +40,16 @@ defmodule Dbservice.Repo.Migrations.AddVisitActionsAndUpdateSchoolVisits do
            )
 
     # Soft delete only allowed for pending actions
-    create constraint(:lms_pm_school_visit_actions, :lms_pm_school_visit_actions_deleted_pending_check,
+    create constraint(
+             :lms_pm_school_visit_actions,
+             :lms_pm_school_visit_actions_deleted_pending_check,
              check: "deleted_at IS NULL OR status = 'pending'"
            )
 
     # Status ↔ timestamp consistency
-    create constraint(:lms_pm_school_visit_actions, :lms_pm_school_visit_actions_status_timestamps_check,
+    create constraint(
+             :lms_pm_school_visit_actions,
+             :lms_pm_school_visit_actions_status_timestamps_check,
              check: """
              (status = 'pending'     AND started_at IS NULL AND ended_at IS NULL) OR
              (status = 'in_progress' AND started_at IS NOT NULL AND ended_at IS NULL) OR
@@ -59,7 +63,9 @@ defmodule Dbservice.Repo.Migrations.AddVisitActionsAndUpdateSchoolVisits do
            )
 
     # Index for querying actions by visit
-    create index(:lms_pm_school_visit_actions, [:visit_id], name: :idx_school_visit_actions_visit_id)
+    create index(:lms_pm_school_visit_actions, [:visit_id],
+             name: :idx_school_visit_actions_visit_id
+           )
 
     # ── 0.2  Alter lms_pm_school_visits ─────────────────────────────────
 
