@@ -23,6 +23,7 @@ defmodule DbserviceWeb.ResourceController do
       SwaggerSchemaResource.resources()
     )
     |> Map.merge(SwaggerSchemaResource.problem_resource())
+    |> Map.merge(SwaggerSchemaResource.move_resources())
   end
 
   swagger_path :index do
@@ -127,6 +128,61 @@ defmodule DbserviceWeb.ResourceController do
     with {:ok, %Resource{} = resource} <-
            Resources.update_resource_and_associations(resource, params) do
       render(conn, :show, resource: resource)
+    end
+  end
+
+  swagger_path :move_resources do
+    post("/api/resources/move")
+
+    description(
+      "Move one or more problems to a new curriculum/grade/subject/chapter/topic. Same body as PATCH resource but with resource_ids array."
+    )
+
+    parameters do
+      body(:body, Schema.ref(:MoveResourcesRequest), "Resource IDs and target association params",
+        required: true
+      )
+    end
+
+    response(200, "OK", Schema.ref(:MoveResourcesResponse))
+  end
+
+  def move_resources(conn, params) do
+    resource_ids = params["resource_ids"] || []
+    # Association params only (no resource_ids)
+    association_params = Map.drop(params, ["resource_ids"])
+
+    if Enum.empty?(resource_ids) do
+      conn
+      |> put_status(:unprocessable_entity)
+      |> json(%{error: "resource_ids is required and must be a non-empty array"})
+    else
+      result =
+        Enum.reduce_while(resource_ids, {:ok, []}, fn id, {:ok, acc} ->
+          resource = Resources.get_resource!(id)
+
+          case Resources.update_resource_and_associations(resource, association_params) do
+            {:ok, updated} -> {:cont, {:ok, [updated | acc]}}
+            error -> {:halt, error}
+          end
+        end)
+
+      case result do
+        {:ok, resources} ->
+          conn
+          |> put_status(:ok)
+          |> render(:index, resource: Enum.reverse(resources))
+
+        {:error, %Ecto.Changeset{} = changeset} ->
+          conn
+          |> put_status(:unprocessable_entity)
+          |> json(%{errors: DbserviceWeb.ChangesetJSON.translate_errors(changeset)})
+
+        {:error, _} = err ->
+          conn
+          |> put_status(:unprocessable_entity)
+          |> json(%{error: inspect(err)})
+      end
     end
   end
 

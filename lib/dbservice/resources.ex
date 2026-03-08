@@ -307,6 +307,8 @@ defmodule Dbservice.Resources do
 
   defp update_resource_associations(resource, params) do
     update_resource_curriculums(resource, params)
+    update_resource_topic(resource, params)
+    update_resource_chapter(resource, params)
     update_resource_concepts(resource, params)
 
     if resource.type == "problem" do
@@ -314,16 +316,70 @@ defmodule Dbservice.Resources do
     end
   end
 
+  # When curriculum_grades (and optionally subject_id) are present, replace all resource_curriculum
+  # rows for this resource so that moving to a new curriculum/grade/subject works.
   defp update_resource_curriculums(resource, params) do
-    Enum.each(List.wrap(params["curriculum_grades"] || []), fn cg ->
-      rc =
-        Dbservice.ResourceCurriculums.get_resource_curriculum_by_resource_id_and_curriculum_id(
-          resource.id,
-          cg["curriculum_id"]
-        )
+    if Map.has_key?(params, "curriculum_grades") do
+      curriculum_grades = List.wrap(params["curriculum_grades"] || [])
 
-      if rc, do: Dbservice.ResourceCurriculums.update_resource_curriculum(rc, params)
-    end)
+      # Preserve difficulty_level from first existing if not in params (before we delete)
+      params =
+        if Map.has_key?(params, "difficulty_level") do
+          params
+        else
+          case Dbservice.ResourceCurriculums.list_resource_curriculums_by_resource_id(resource.id) do
+            [rc | _] -> Map.put(params, "difficulty_level", rc.difficulty_level)
+            [] -> params
+          end
+        end
+
+      # Replace: remove all existing, then create from params
+      from(rc in Dbservice.Resources.ResourceCurriculum, where: rc.resource_id == ^resource.id)
+      |> Repo.delete_all()
+
+      if not Enum.empty?(curriculum_grades) do
+        create_resource_curriculums_for_resource(resource, params)
+      end
+    else
+      # Legacy: only update existing rows that match curriculum_id
+      Enum.each(List.wrap(params["curriculum_grades"] || []), fn cg ->
+        rc =
+          Dbservice.ResourceCurriculums.get_resource_curriculum_by_resource_id_and_curriculum_id(
+            resource.id,
+            cg["curriculum_id"]
+          )
+
+        if rc, do: Dbservice.ResourceCurriculums.update_resource_curriculum(rc, params)
+      end)
+    end
+  end
+
+  defp update_resource_topic(resource, params) do
+    if Map.has_key?(params, "topic_id") do
+      from(rt in ResourceTopic, where: rt.resource_id == ^resource.id)
+      |> Repo.delete_all()
+
+      if topic_id = params["topic_id"] do
+        Dbservice.ResourceTopics.create_resource_topic(%{
+          "resource_id" => resource.id,
+          "topic_id" => topic_id
+        })
+      end
+    end
+  end
+
+  defp update_resource_chapter(resource, params) do
+    if Map.has_key?(params, "chapter_id") do
+      from(rch in ResourceChapter, where: rch.resource_id == ^resource.id)
+      |> Repo.delete_all()
+
+      if chapter_id = params["chapter_id"] do
+        Dbservice.ResourceChapters.create_resource_chapter(%{
+          "resource_id" => resource.id,
+          "chapter_id" => chapter_id
+        })
+      end
+    end
   end
 
   defp update_problem_language(resource, params) do
