@@ -12,6 +12,11 @@ defmodule Dbservice.Resources do
   alias Dbservice.Resources.{ResourceTopic, ResourceChapter, ResourceConcept}
   alias Dbservice.Utils.Util
   alias Dbservice.CmsStatuses
+  alias Dbservice.Chapters
+  alias Dbservice.Chapters.Chapter
+  alias Dbservice.Topics
+  alias Dbservice.Topics.Topic
+  alias Dbservice.ChapterCurriculums
 
   @doc """
   Returns the list of resource.
@@ -93,33 +98,155 @@ defmodule Dbservice.Resources do
   @doc """
   Extracts all problem IDs from a test's type_params structure.
   Keeps nesting depth at maximum of 2 levels.
+  Handles both string and atom keys (Ecto/DB may return either from jsonb).
   """
   def extract_problem_ids_from_test(type_params) do
-    subjects = Map.get(type_params, "subjects", [])
-    extract_problems_from_subjects(subjects)
+    type_params = ensure_map(type_params)
+    # Some tests have "subjects" at top level; others nest under "type_params" (e.g. test id 4).
+    subjects = get_attr(type_params, "subjects") || get_attr(type_params, :subjects)
+
+    subjects =
+      if is_nil(subjects) || subjects == [] do
+        inner = get_attr(type_params, "type_params") || get_attr(type_params, :type_params)
+        get_attr(ensure_map(inner), "subjects") || get_attr(ensure_map(inner), :subjects) || []
+      else
+        subjects
+      end
+
+    extract_problems_from_subjects(List.wrap(subjects))
   end
 
-  defp extract_problems_from_subjects(subjects) do
+  defp extract_problems_from_subjects(subjects) when is_list(subjects) do
     Enum.flat_map(subjects, fn subject ->
-      sections = Map.get(subject, "sections", [])
-      extract_problems_from_sections(sections)
+      sections = get_attr(subject, "sections") || get_attr(subject, :sections) || []
+      extract_problems_from_sections(List.wrap(sections))
     end)
   end
 
-  defp extract_problems_from_sections(sections) do
+  defp extract_problems_from_subjects(_), do: []
+
+  defp extract_problems_from_sections(sections) when is_list(sections) do
     Enum.flat_map(sections, fn section ->
       extract_problems_from_section(section)
     end)
   end
 
-  defp extract_problems_from_section(section) do
-    compulsory_problems = get_in(section, ["compulsory", "problems"]) || []
-    optional_problems = get_in(section, ["optional", "problems"]) || []
+  defp extract_problems_from_sections(_), do: []
 
-    (compulsory_problems ++ optional_problems)
-    |> Enum.map(fn problem -> Map.get(problem, "id") end)
-    |> Enum.reject(&is_nil/1)
+  defp extract_problems_from_section(section) do
+    compulsory = get_attr(section, "compulsory") || get_attr(section, :compulsory) || %{}
+    optional = get_attr(section, "optional") || get_attr(section, :optional) || %{}
+
+    compulsory_problems =
+      List.wrap(get_attr(compulsory, "problems") || get_attr(compulsory, :problems) || [])
+
+    optional_problems =
+      List.wrap(get_attr(optional, "problems") || get_attr(optional, :problems) || [])
+
+    ids =
+      (compulsory_problems ++ optional_problems)
+      |> Enum.map(fn problem ->
+        get_attr(problem, "id") || get_attr(problem, :id)
+      end)
+      |> Enum.reject(&is_nil/1)
+
+    ids
   end
+
+  # Ensure we have a map (decode JSON string if needed).
+  defp ensure_map(nil), do: %{}
+  defp ensure_map(%{} = m), do: m
+
+  defp ensure_map(bin) when is_binary(bin) do
+    case Jason.decode(bin) do
+      {:ok, map} when is_map(map) -> map
+      _ -> %{}
+    end
+  end
+
+  defp ensure_map(_), do: %{}
+
+  # Get map value by string or atom key (Ecto/DB may return either for jsonb).
+  defp get_attr(map, _key) when not is_map(map), do: nil
+
+  defp get_attr(map, key) when is_map(map) do
+    case Map.get(map, key) do
+      nil when is_binary(key) ->
+        try do
+          Map.get(map, String.to_existing_atom(key))
+        rescue
+          ArgumentError -> nil
+        end
+
+      nil when is_atom(key) ->
+        Map.get(map, Atom.to_string(key))
+
+      val ->
+        val
+    end
+  end
+
+  @doc """
+  Returns all tests that contain any of the given problem IDs.
+  Used to determine if selected problems can be moved (e.g. if they are part of a test).
+
+  ## Parameters
+    - problem_ids: List of resource (problem) IDs to look up.
+
+  ## Returns
+    - List of maps: `%{test_id: id, test: %Resource{}, problem_ids_in_test: [ids]}` where
+      `problem_ids_in_test` are the requested problem IDs that appear in that test.
+
+  ## Examples
+      iex> get_tests_containing_problems([5014, 5015])
+      [%{test_id: 100, test: %Resource{}, problem_ids_in_test: [5014]}, ...]
+  """
+  def get_tests_containing_problems(problem_ids) when is_list(problem_ids) do
+    requested_set =
+      problem_ids
+      |> Enum.map(&to_id/1)
+      |> Enum.reject(&is_nil/1)
+      |> MapSet.new()
+
+    if MapSet.size(requested_set) == 0 do
+      []
+    else
+      tests = from(r in Resource, where: r.type == "test", select: r) |> Repo.all()
+
+      tests
+      |> Enum.map(fn test ->
+        test_problem_ids = extract_problem_ids_from_test(test.type_params || %{})
+
+        contained =
+          test_problem_ids
+          |> Enum.map(&to_id/1)
+          |> Enum.reject(&is_nil/1)
+          |> Enum.filter(&MapSet.member?(requested_set, &1))
+          |> Enum.uniq()
+
+        {test, contained}
+      end)
+      |> Enum.reject(fn {_test, contained} -> contained == [] end)
+      |> Enum.map(fn {test, contained} ->
+        %{
+          test_id: test.id,
+          test: test,
+          problem_ids_in_test: contained
+        }
+      end)
+    end
+  end
+
+  defp to_id(id) when is_integer(id), do: id
+
+  defp to_id(id) when is_binary(id) do
+    case Integer.parse(id) do
+      {int, _} -> int
+      :error -> id
+    end
+  end
+
+  defp to_id(id), do: id
 
   @doc """
   Returns a list of unique subtypes for a given type.
@@ -283,6 +410,17 @@ defmodule Dbservice.Resources do
   end
 
   def update_resource_and_associations(resource, params) do
+    # Validate move params before any updates: topic must be under chapter, chapter under curriculum/grade/subject
+    case validate_move_association_params(params) do
+      :ok ->
+        do_update_resource_and_associations(resource, params)
+
+      {:error, _msg} = err ->
+        err
+    end
+  end
+
+  defp do_update_resource_and_associations(resource, params) do
     # Handle tags: resolve tag names to IDs if present
     params =
       if Map.has_key?(params, "tags") do
@@ -291,10 +429,8 @@ defmodule Dbservice.Resources do
         params
       end
 
-    # Update the resource itself
     result = update_resource(resource, params)
 
-    # If update successful, handle associations
     case result do
       {:ok, resource} ->
         update_resource_associations(resource, params)
@@ -302,6 +438,103 @@ defmodule Dbservice.Resources do
 
       error ->
         error
+    end
+  end
+
+  # Validates that move params are consistent: topic belongs to chapter, chapter belongs to curriculum/grade/subject.
+  # Returns :ok or {:error, message}.
+  defp validate_move_association_params(params) do
+    chapter_id = params["chapter_id"]
+    topic_id = params["topic_id"]
+    curriculum_grades = List.wrap(params["curriculum_grades"] || [])
+    subject_id = params["subject_id"]
+
+    with :ok <-
+           validate_chapter_belongs_to_curriculum(
+             chapter_id,
+             topic_id,
+             curriculum_grades,
+             subject_id
+           ),
+         :ok <- validate_topic_belongs_to_chapter(topic_id, chapter_id) do
+      :ok
+    end
+  end
+
+  defp validate_chapter_belongs_to_curriculum(chapter_id, topic_id, curriculum_grades, subject_id) do
+    # Need to validate chapter when: chapter_id is passed, or topic_id is passed (use topic's chapter)
+    # and curriculum_grades + subject_id are passed.
+    has_curriculum_info = (curriculum_grades != [] || subject_id) && subject_id != nil
+
+    unless has_curriculum_info do
+      :ok
+    else
+      chapter =
+        if chapter_id do
+          Repo.get(Chapter, chapter_id)
+        else
+          if topic_id do
+            topic = Repo.get(Topic, topic_id)
+            if topic, do: Repo.get(Chapter, topic.chapter_id), else: nil
+          else
+            nil
+          end
+        end
+
+      cond do
+        chapter_id && !chapter ->
+          {:error, "Chapter not found"}
+
+        topic_id && is_nil(Repo.get(Topic, topic_id)) ->
+          {:error, "Topic not found"}
+
+        has_curriculum_info && !chapter ->
+          {:error, if(chapter_id, do: "Chapter not found", else: "Topic's chapter not found")}
+
+        has_curriculum_info && chapter.subject_id != subject_id ->
+          {:error, "Chapter does not belong to the given subject"}
+
+        true ->
+          result =
+            Enum.reduce_while(curriculum_grades, :ok, fn cg, :ok ->
+              grade_id = cg["grade_id"] || cg[:grade_id]
+              curriculum_id = cg["curriculum_id"] || cg[:curriculum_id]
+
+              cond do
+                chapter.grade_id != grade_id ->
+                  {:halt, {:error, "Chapter does not belong to the given grade for curriculum"}}
+
+                is_nil(
+                  ChapterCurriculums.get_chapter_curriculum_by_chapter_id_and_curriculum_id(
+                    chapter.id,
+                    curriculum_id
+                  )
+                ) ->
+                  {:halt, {:error, "Chapter is not linked to the given curriculum"}}
+
+                true ->
+                  {:cont, :ok}
+              end
+            end)
+
+          if result == :ok, do: :ok, else: result
+      end
+    end
+  end
+
+  defp validate_topic_belongs_to_chapter(topic_id, chapter_id) do
+    if topic_id && chapter_id do
+      case Repo.get(Topic, topic_id) do
+        nil ->
+          {:error, "Topic not found"}
+
+        topic ->
+          if topic.chapter_id == chapter_id,
+            do: :ok,
+            else: {:error, "Topic does not belong to the given chapter"}
+      end
+    else
+      :ok
     end
   end
 
@@ -317,67 +550,100 @@ defmodule Dbservice.Resources do
   end
 
   # When curriculum_grades (and optionally subject_id) are present, replace all resource_curriculum
-  # rows for this resource so that moving to a new curriculum/grade/subject works.
+  # rows only if there is a change in at least one of curriculum, grade or subject.
   defp update_resource_curriculums(resource, params) do
     if Map.has_key?(params, "curriculum_grades") do
       curriculum_grades = List.wrap(params["curriculum_grades"] || [])
+      subject_id = params["subject_id"]
 
-      # Preserve difficulty_level from first existing if not in params (before we delete)
-      params =
-        if Map.has_key?(params, "difficulty_level") do
-          params
-        else
-          case Dbservice.ResourceCurriculums.list_resource_curriculums_by_resource_id(resource.id) do
-            [rc | _] -> Map.put(params, "difficulty_level", rc.difficulty_level)
-            [] -> params
+      requested_set =
+        curriculum_grades
+        |> Enum.map(fn cg ->
+          {cg["curriculum_id"] || cg[:curriculum_id], cg["grade_id"] || cg[:grade_id], subject_id}
+        end)
+        |> MapSet.new()
+
+      current_rcs =
+        Dbservice.ResourceCurriculums.list_resource_curriculums_by_resource_id(resource.id)
+
+      current_set =
+        current_rcs
+        |> Enum.map(fn rc -> {rc.curriculum_id, rc.grade_id, rc.subject_id} end)
+        |> MapSet.new()
+
+      if requested_set != current_set do
+        # Preserve difficulty_level from first existing if not in params (reuse current_rcs to avoid extra query)
+        params =
+          if Map.has_key?(params, "difficulty_level") do
+            params
+          else
+            case current_rcs do
+              [rc | _] -> Map.put(params, "difficulty_level", rc.difficulty_level)
+              [] -> params
+            end
           end
+
+        from(rc in Dbservice.Resources.ResourceCurriculum, where: rc.resource_id == ^resource.id)
+        |> Repo.delete_all()
+
+        if not Enum.empty?(curriculum_grades) do
+          create_resource_curriculums_for_resource(resource, params)
         end
-
-      # Replace: remove all existing, then create from params
-      from(rc in Dbservice.Resources.ResourceCurriculum, where: rc.resource_id == ^resource.id)
-      |> Repo.delete_all()
-
-      if not Enum.empty?(curriculum_grades) do
-        create_resource_curriculums_for_resource(resource, params)
       end
-    else
-      # Legacy: only update existing rows that match curriculum_id
-      Enum.each(List.wrap(params["curriculum_grades"] || []), fn cg ->
-        rc =
-          Dbservice.ResourceCurriculums.get_resource_curriculum_by_resource_id_and_curriculum_id(
-            resource.id,
-            cg["curriculum_id"]
-          )
-
-        if rc, do: Dbservice.ResourceCurriculums.update_resource_curriculum(rc, params)
-      end)
     end
   end
 
   defp update_resource_topic(resource, params) do
     if Map.has_key?(params, "topic_id") do
-      from(rt in ResourceTopic, where: rt.resource_id == ^resource.id)
-      |> Repo.delete_all()
+      requested_topic_id = params["topic_id"]
 
-      if topic_id = params["topic_id"] do
-        Dbservice.ResourceTopics.create_resource_topic(%{
-          "resource_id" => resource.id,
-          "topic_id" => topic_id
-        })
+      current_topic_ids =
+        from(rt in ResourceTopic, where: rt.resource_id == ^resource.id, select: rt.topic_id)
+        |> Repo.all()
+        |> MapSet.new()
+
+      requested_set =
+        if requested_topic_id, do: MapSet.new([requested_topic_id]), else: MapSet.new()
+
+      if requested_set != current_topic_ids do
+        from(rt in ResourceTopic, where: rt.resource_id == ^resource.id)
+        |> Repo.delete_all()
+
+        if requested_topic_id do
+          Dbservice.ResourceTopics.create_resource_topic(%{
+            "resource_id" => resource.id,
+            "topic_id" => requested_topic_id
+          })
+        end
       end
     end
   end
 
   defp update_resource_chapter(resource, params) do
     if Map.has_key?(params, "chapter_id") do
-      from(rch in ResourceChapter, where: rch.resource_id == ^resource.id)
-      |> Repo.delete_all()
+      requested_chapter_id = params["chapter_id"]
 
-      if chapter_id = params["chapter_id"] do
-        Dbservice.ResourceChapters.create_resource_chapter(%{
-          "resource_id" => resource.id,
-          "chapter_id" => chapter_id
-        })
+      current_chapter_ids =
+        from(rch in ResourceChapter,
+          where: rch.resource_id == ^resource.id,
+          select: rch.chapter_id
+        )
+        |> Repo.all()
+        |> MapSet.new()
+
+      requested_set =
+        if requested_chapter_id, do: MapSet.new([requested_chapter_id]), else: MapSet.new()
+
+      if requested_set != current_chapter_ids do
+        from(rch in ResourceChapter, where: rch.resource_id == ^resource.id)
+        |> Repo.delete_all()
+
+        if requested_chapter_id do
+          Dbservice.ResourceChapters.create_resource_chapter(%{
+            "resource_id" => resource.id,
+            "chapter_id" => requested_chapter_id
+          })
+        end
       end
     end
   end

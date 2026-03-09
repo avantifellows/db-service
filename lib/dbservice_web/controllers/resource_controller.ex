@@ -24,6 +24,7 @@ defmodule DbserviceWeb.ResourceController do
     )
     |> Map.merge(SwaggerSchemaResource.problem_resource())
     |> Map.merge(SwaggerSchemaResource.move_resources())
+    |> Map.merge(SwaggerSchemaResource.tests_containing_problems())
   end
 
   swagger_path :index do
@@ -147,6 +148,49 @@ defmodule DbserviceWeb.ResourceController do
     response(200, "OK", Schema.ref(:MoveResourcesResponse))
   end
 
+  swagger_path :tests_containing_problems do
+    post("/api/resources/tests-containing-problems")
+
+    description(
+      "Returns which tests contain any of the given problem IDs. Use to check if selected problems can be moved (e.g. they are used in tests)."
+    )
+
+    parameters do
+      body(:body, Schema.ref(:TestsContainingProblemsRequest), "List of problem (resource) IDs",
+        required: true
+      )
+    end
+
+    response(200, "OK", Schema.ref(:TestsContainingProblemsResponse))
+  end
+
+  def tests_containing_problems(conn, params) do
+    problem_ids = params["problem_ids"] || []
+
+    if Enum.empty?(problem_ids) do
+      conn
+      |> put_status(:unprocessable_entity)
+      |> json(%{error: "problem_ids is required and must be a non-empty array"})
+    else
+      results = Resources.get_tests_containing_problems(problem_ids)
+
+      conn
+      |> put_status(:ok)
+      |> json(%{
+        problem_ids: problem_ids,
+        tests:
+          Enum.map(results, fn %{test_id: id, test: test, problem_ids_in_test: pids} ->
+            %{
+              test_id: id,
+              code: test.code,
+              name: test.name,
+              problem_ids_in_test: pids
+            }
+          end)
+      })
+    end
+  end
+
   def move_resources(conn, params) do
     resource_ids = params["resource_ids"] || []
     # Association params only (no resource_ids)
@@ -177,6 +221,11 @@ defmodule DbserviceWeb.ResourceController do
           conn
           |> put_status(:unprocessable_entity)
           |> json(%{errors: DbserviceWeb.ChangesetJSON.translate_errors(changeset)})
+
+        {:error, msg} when is_binary(msg) ->
+          conn
+          |> put_status(:unprocessable_entity)
+          |> json(%{error: msg})
 
         {:error, _} = err ->
           conn
