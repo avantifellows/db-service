@@ -12,9 +12,7 @@ defmodule Dbservice.Resources do
   alias Dbservice.Resources.{ResourceTopic, ResourceChapter, ResourceConcept}
   alias Dbservice.Utils.Util
   alias Dbservice.CmsStatuses
-  alias Dbservice.Chapters
   alias Dbservice.Chapters.Chapter
-  alias Dbservice.Topics
   alias Dbservice.Topics.Topic
   alias Dbservice.ChapterCurriculums
 
