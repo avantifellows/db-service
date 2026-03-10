@@ -137,21 +137,16 @@ defmodule Dbservice.Resources do
     compulsory = get_attr(section, "compulsory") || get_attr(section, :compulsory) || %{}
     optional = get_attr(section, "optional") || get_attr(section, :optional) || %{}
 
-    compulsory_problems =
-      List.wrap(get_attr(compulsory, "problems") || get_attr(compulsory, :problems) || [])
-
-    optional_problems =
-      List.wrap(get_attr(optional, "problems") || get_attr(optional, :problems) || [])
-
-    ids =
-      (compulsory_problems ++ optional_problems)
-      |> Enum.map(fn problem ->
-        get_attr(problem, "id") || get_attr(problem, :id)
-      end)
-      |> Enum.reject(&is_nil/1)
-
-    ids
+    (problems_list_from_sub(compulsory) ++ problems_list_from_sub(optional))
+    |> Enum.map(&problem_id_from_map/1)
+    |> Enum.reject(&is_nil/1)
   end
+
+  defp problems_list_from_sub(sub) do
+    List.wrap(get_attr(sub, "problems") || get_attr(sub, :problems) || [])
+  end
+
+  defp problem_id_from_map(problem), do: get_attr(problem, "id") || get_attr(problem, :id)
 
   # Ensure we have a map (decode JSON string if needed).
   defp ensure_map(nil), do: %{}
@@ -455,86 +450,154 @@ defmodule Dbservice.Resources do
              topic_id,
              curriculum_grades,
              subject_id
-           ),
-         :ok <- validate_topic_belongs_to_chapter(topic_id, chapter_id) do
-      :ok
+           ) do
+      validate_topic_belongs_to_chapter(topic_id, chapter_id)
     end
   end
 
   defp validate_chapter_belongs_to_curriculum(chapter_id, topic_id, curriculum_grades, subject_id) do
-    # Need to validate chapter when: chapter_id is passed, or topic_id is passed (use topic's chapter)
-    # and curriculum_grades + subject_id are passed.
     has_curriculum_info = (curriculum_grades != [] || subject_id) && subject_id != nil
 
-    unless has_curriculum_info do
-      :ok
+    if has_curriculum_info do
+      chapter = resolve_chapter_for_validation(chapter_id, topic_id)
+
+      validate_chapter_and_curriculum(
+        chapter_id,
+        topic_id,
+        chapter,
+        curriculum_grades,
+        subject_id
+      )
     else
-      chapter =
-        if chapter_id do
-          Repo.get(Chapter, chapter_id)
-        else
-          if topic_id do
-            topic = Repo.get(Topic, topic_id)
-            if topic, do: Repo.get(Chapter, topic.chapter_id), else: nil
-          else
-            nil
-          end
-        end
+      :ok
+    end
+  end
 
-      cond do
-        chapter_id && !chapter ->
-          {:error, "Chapter not found"}
+  defp resolve_chapter_for_validation(chapter_id, _topic_id)
+       when not is_nil(chapter_id) and chapter_id != "" do
+    id = normalize_chapter_topic_id(chapter_id)
+    id && Repo.get(Chapter, id)
+  end
 
-        topic_id && is_nil(Repo.get(Topic, topic_id)) ->
-          {:error, "Topic not found"}
+  defp resolve_chapter_for_validation(_chapter_id, topic_id)
+       when not is_nil(topic_id) and topic_id != "" do
+    id = normalize_chapter_topic_id(topic_id)
 
-        has_curriculum_info && !chapter ->
-          {:error, if(chapter_id, do: "Chapter not found", else: "Topic's chapter not found")}
+    case id && Repo.get(Topic, id) do
+      nil -> nil
+      topic -> Repo.get(Chapter, topic.chapter_id)
+    end
+  end
 
-        has_curriculum_info && chapter.subject_id != subject_id ->
-          {:error, "Chapter does not belong to the given subject"}
+  defp resolve_chapter_for_validation(_, _), do: nil
 
-        true ->
-          result =
-            Enum.reduce_while(curriculum_grades, :ok, fn cg, :ok ->
-              grade_id = cg["grade_id"] || cg[:grade_id]
-              curriculum_id = cg["curriculum_id"] || cg[:curriculum_id]
+  defp normalize_chapter_topic_id(id) when is_integer(id), do: id
 
-              cond do
-                chapter.grade_id != grade_id ->
-                  {:halt, {:error, "Chapter does not belong to the given grade for curriculum"}}
+  defp normalize_chapter_topic_id(id) when is_binary(id) do
+    case Integer.parse(id) do
+      {int, _} -> int
+      :error -> nil
+    end
+  end
 
-                is_nil(
-                  ChapterCurriculums.get_chapter_curriculum_by_chapter_id_and_curriculum_id(
-                    chapter.id,
-                    curriculum_id
-                  )
-                ) ->
-                  {:halt, {:error, "Chapter is not linked to the given curriculum"}}
+  defp normalize_chapter_topic_id(_), do: nil
 
-                true ->
-                  {:cont, :ok}
-              end
-            end)
+  defp validate_chapter_and_curriculum(
+         chapter_id,
+         topic_id,
+         chapter,
+         curriculum_grades,
+         subject_id
+       ) do
+    case chapter_validation_error(chapter_id, topic_id, chapter, subject_id) do
+      nil -> validate_chapter_curriculum_grades(chapter, curriculum_grades)
+      err -> err
+    end
+  end
 
-          if result == :ok, do: :ok, else: result
-      end
+  defp chapter_validation_error(chapter_id, topic_id, chapter, subject_id) do
+    chapter_lookup_error(chapter_id, topic_id, chapter) ||
+      chapter_subject_error(chapter, subject_id)
+  end
+
+  defp chapter_lookup_error(chapter_id, topic_id, chapter) do
+    cond do
+      present?(chapter_id) && !chapter -> {:error, "Chapter not found"}
+      present?(topic_id) && topic_not_found?(topic_id) -> {:error, "Topic not found"}
+      !chapter -> {:error, "Topic's chapter not found"}
+      true -> nil
+    end
+  end
+
+  defp topic_not_found?(topic_id) do
+    tid = normalize_chapter_topic_id(topic_id)
+    is_nil(tid) || is_nil(Repo.get(Topic, tid))
+  end
+
+  defp chapter_subject_error(chapter, subject_id) do
+    if chapter && chapter.subject_id != subject_id do
+      {:error, "Chapter does not belong to the given subject"}
+    else
+      nil
+    end
+  end
+
+  defp present?(nil), do: false
+  defp present?(""), do: false
+  defp present?(_), do: true
+
+  defp validate_chapter_curriculum_grades(chapter, curriculum_grades) do
+    result =
+      Enum.reduce_while(curriculum_grades, :ok, fn cg, :ok ->
+        validate_one_curriculum_grade(chapter, cg)
+      end)
+
+    if result == :ok, do: :ok, else: result
+  end
+
+  defp validate_one_curriculum_grade(chapter, cg) do
+    grade_id = cg["grade_id"] || cg[:grade_id]
+    curriculum_id = cg["curriculum_id"] || cg[:curriculum_id]
+
+    cond do
+      chapter.grade_id != grade_id ->
+        {:halt, {:error, "Chapter does not belong to the given grade for curriculum"}}
+
+      is_nil(
+        ChapterCurriculums.get_chapter_curriculum_by_chapter_id_and_curriculum_id(
+          chapter.id,
+          curriculum_id
+        )
+      ) ->
+        {:halt, {:error, "Chapter is not linked to the given curriculum"}}
+
+      true ->
+        {:cont, :ok}
     end
   end
 
   defp validate_topic_belongs_to_chapter(topic_id, chapter_id) do
-    if topic_id && chapter_id do
-      case Repo.get(Topic, topic_id) do
-        nil ->
-          {:error, "Topic not found"}
+    if present?(topic_id) and present?(chapter_id) do
+      tid = normalize_chapter_topic_id(topic_id)
+      cid = normalize_chapter_topic_id(chapter_id)
 
-        topic ->
-          if topic.chapter_id == chapter_id,
-            do: :ok,
-            else: {:error, "Topic does not belong to the given chapter"}
-      end
+      if is_nil(tid) || is_nil(cid),
+        do: {:error, "Invalid topic or chapter id"},
+        else: do_validate_topic_belongs_to_chapter(tid, cid)
     else
       :ok
+    end
+  end
+
+  defp do_validate_topic_belongs_to_chapter(topic_id, chapter_id) do
+    case Repo.get(Topic, topic_id) do
+      nil ->
+        {:error, "Topic not found"}
+
+      topic ->
+        if topic.chapter_id == chapter_id,
+          do: :ok,
+          else: {:error, "Topic does not belong to the given chapter"}
     end
   end
 
@@ -572,23 +635,29 @@ defmodule Dbservice.Resources do
         |> MapSet.new()
 
       if requested_set != current_set do
-        # Preserve difficulty_level from first existing if not in params (reuse current_rcs to avoid extra query)
-        params =
-          if Map.has_key?(params, "difficulty_level") do
-            params
-          else
-            case current_rcs do
-              [rc | _] -> Map.put(params, "difficulty_level", rc.difficulty_level)
-              [] -> params
-            end
-          end
+        replace_resource_curriculums(resource, params, curriculum_grades, current_rcs)
+      end
+    end
+  end
 
-        from(rc in Dbservice.Resources.ResourceCurriculum, where: rc.resource_id == ^resource.id)
-        |> Repo.delete_all()
+  defp replace_resource_curriculums(resource, params, curriculum_grades, current_rcs) do
+    params = ensure_difficulty_level_in_params(params, current_rcs)
 
-        if not Enum.empty?(curriculum_grades) do
-          create_resource_curriculums_for_resource(resource, params)
-        end
+    from(rc in Dbservice.Resources.ResourceCurriculum, where: rc.resource_id == ^resource.id)
+    |> Repo.delete_all()
+
+    if not Enum.empty?(curriculum_grades) do
+      create_resource_curriculums_for_resource(resource, params)
+    end
+  end
+
+  defp ensure_difficulty_level_in_params(params, current_rcs) do
+    if Map.has_key?(params, "difficulty_level") do
+      params
+    else
+      case current_rcs do
+        [rc | _] -> Map.put(params, "difficulty_level", rc.difficulty_level)
+        [] -> params
       end
     end
   end

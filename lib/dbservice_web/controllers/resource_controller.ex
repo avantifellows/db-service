@@ -174,22 +174,62 @@ defmodule DbserviceWeb.ResourceController do
     else
       results = Resources.get_tests_containing_problems(problem_ids)
 
+      problem_tests =
+        Enum.map(problem_ids, fn raw_id ->
+          problem_id = normalize_id(raw_id)
+          problem = problem_id && Repo.get(Resource, problem_id)
+          problem_code = if problem, do: problem.code, else: nil
+
+          tests_for_problem =
+            results
+            |> Enum.filter(fn %{problem_ids_in_test: pids} -> problem_id in pids end)
+            |> Enum.map(fn %{test_id: id, test: test} ->
+              %{
+                test_id: id,
+                test_code: test.code,
+                name: format_resource_name(test.name)
+              }
+            end)
+            |> Enum.uniq_by(& &1.test_id)
+
+          %{
+            problem_id: problem_id,
+            problem_code: problem_code,
+            tests: tests_for_problem
+          }
+        end)
+        |> Enum.reject(fn %{problem_id: id} -> is_nil(id) end)
+
       conn
       |> put_status(:ok)
-      |> json(%{
-        problem_ids: problem_ids,
-        tests:
-          Enum.map(results, fn %{test_id: id, test: test, problem_ids_in_test: pids} ->
-            %{
-              test_id: id,
-              code: test.code,
-              name: test.name,
-              problem_ids_in_test: pids
-            }
-          end)
-      })
+      |> json(%{problem_tests: problem_tests})
     end
   end
+
+  defp normalize_id(id) when is_integer(id), do: id
+
+  defp normalize_id(id) when is_binary(id) do
+    case Integer.parse(id) do
+      {int, _} -> int
+      :error -> nil
+    end
+  end
+
+  defp normalize_id(_), do: nil
+
+  # Formats resource.name array to [%{lang_code: "en", resource: "..."}, ...]
+  defp format_resource_name(nil), do: []
+
+  defp format_resource_name(name) when is_list(name) do
+    Enum.map(name, fn item ->
+      item = item || %{}
+      lang_code = item["lang_code"] || item["lang"] || item[:lang_code] || item[:lang]
+      text = item["resource"] || item["value"] || item[:resource] || item[:value] || ""
+      %{lang_code: lang_code, resource: text}
+    end)
+  end
+
+  defp format_resource_name(_), do: []
 
   def move_resources(conn, params) do
     resource_ids = params["resource_ids"] || []
