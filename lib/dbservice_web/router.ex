@@ -111,6 +111,7 @@ defmodule DbserviceWeb.Router do
     post("/group-user/batch-process", GroupUserController, :batch_process)
     get("/resources/curriculum", ResourceController, :curriculum_resources)
     post("/resources/move", ResourceController, :move_resources)
+    post("/resources/tests-containing-problems", ResourceController, :tests_containing_problems)
     get("/resource/subtypes/:type", ResourceController, :get_subtypes)
     get("/problems/search", ResourceController, :search_problems)
 

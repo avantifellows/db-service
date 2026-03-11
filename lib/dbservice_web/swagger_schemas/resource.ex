@@ -377,4 +377,38 @@ defmodule DbserviceWeb.SwaggerSchema.Resource do
         end
     }
   end
+
+  def tests_containing_problems do
+    %{
+      TestsContainingProblemsRequest:
+        swagger_schema do
+          title("TestsContainingProblemsRequest")
+          description("Request body for listing which tests contain the given problem IDs")
+
+          properties do
+            problem_ids(
+              Schema.array(:integer),
+              "List of problem (resource) IDs to look up"
+            )
+          end
+
+          example(%{problem_ids: [5014, 5015]})
+        end,
+      TestsContainingProblemsResponse:
+        swagger_schema do
+          title("TestsContainingProblemsResponse")
+
+          description(
+            "For each requested problem ID: problem_id, problem_code, and list of tests that contain it"
+          )
+
+          properties do
+            problem_tests(
+              Schema.array(:object),
+              "One entry per requested problem: problem_id, problem_code, tests (array of test_id, test_code, name)"
+            )
+          end
+        end
+    }
+  end
 end
