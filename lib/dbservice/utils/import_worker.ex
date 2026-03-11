@@ -248,11 +248,15 @@ defmodule Dbservice.DataImport.ImportWorker do
 
   defp add_curriculum_id(record, row_number) do
     case Map.get(record, "curriculum") do
-      nil -> record
+      nil ->
+        record
+
       name when is_binary(name) ->
         name = String.trim(name)
         if name == "", do: record, else: do_add_curriculum_id(record, name, row_number)
-      _ -> record
+
+      _ ->
+        record
     end
   end
 
@@ -269,15 +273,22 @@ defmodule Dbservice.DataImport.ImportWorker do
 
   defp add_chapter_id(record, row_number) do
     case Map.get(record, "chapter_code") do
-      nil -> record
-      "" -> record
+      nil ->
+        record
+
+      "" ->
+        record
+
       code when is_binary(code) ->
         code = String.trim(code)
+
         case Chapters.get_chapter_by_code(code) do
           nil -> record
           chapter -> Map.put(record, "chapter_id", chapter.id)
         end
-      _ -> record
+
+      _ ->
+        record
     end
   rescue
     error ->
@@ -287,15 +298,22 @@ defmodule Dbservice.DataImport.ImportWorker do
 
   defp add_topic_id(record, row_number) do
     case Map.get(record, "topic_code") do
-      nil -> record
-      "" -> record
+      nil ->
+        record
+
+      "" ->
+        record
+
       code when is_binary(code) ->
         code = String.trim(code)
+
         case Topics.get_topic_by_code(code) do
           nil -> record
           topic -> Map.put(record, "topic_id", topic.id)
         end
-      _ -> record
+
+      _ ->
+        record
     end
   rescue
     error ->
@@ -305,18 +323,28 @@ defmodule Dbservice.DataImport.ImportWorker do
 
   defp add_purpose_ids_for_resource(record, _row_number) do
     case Map.get(record, "resource_purpose") do
-      nil -> record
-      "" -> record
+      nil ->
+        record
+
+      "" ->
+        record
+
       purpose_str when is_binary(purpose_str) ->
-        purpose_names = purpose_str |> String.split(",") |> Enum.map(&String.trim/1) |> Enum.reject(&(&1 == ""))
-        ids = Enum.flat_map(purpose_names, fn name ->
-          case Purposes.get_purpose_by_name(name) do
-            nil -> []
-            purpose -> [purpose.id]
-          end
-        end)
+        purpose_names =
+          purpose_str |> String.split(",") |> Enum.map(&String.trim/1) |> Enum.reject(&(&1 == ""))
+
+        ids =
+          Enum.flat_map(purpose_names, fn name ->
+            case Purposes.get_purpose_by_name(name) do
+              nil -> []
+              purpose -> [purpose.id]
+            end
+          end)
+
         if ids == [], do: record, else: Map.put(record, "purpose_ids", ids)
-      _ -> record
+
+      _ ->
+        record
     end
   end
 
@@ -813,7 +841,8 @@ defmodule Dbservice.DataImport.ImportWorker do
         {:error, "resourceName is required for row (code: #{code})"}
 
       is_nil(curriculum_id) ->
-        {:error, "Could not resolve curriculum for row (code: #{code}). Ensure curriculum value exists."}
+        {:error,
+         "Could not resolve curriculum for row (code: #{code}). Ensure curriculum value exists."}
 
       true ->
         name_array = build_resource_name_array(resource_name)
@@ -831,7 +860,8 @@ defmodule Dbservice.DataImport.ImportWorker do
           |> maybe_put("purpose_ids", record["purpose_ids"])
 
         with {:ok, resource} <- create_or_update_resource(resource_attrs, code),
-             :ok <- maybe_ensure_resource_curriculum(resource.id, curriculum_id, grade_id, subject_id),
+             :ok <-
+               maybe_ensure_resource_curriculum(resource.id, curriculum_id, grade_id, subject_id),
              :ok <- ensure_resource_chapter(resource.id, chapter_id),
              :ok <- ensure_resource_topic(resource.id, topic_id) do
           {:ok, resource}
@@ -878,12 +908,15 @@ defmodule Dbservice.DataImport.ImportWorker do
            resource_id,
            curriculum_id
          ) do
-      nil -> ResourceCurriculums.create_resource_curriculum(attrs) |> to_ok()
+      nil ->
+        ResourceCurriculums.create_resource_curriculum(attrs) |> to_ok()
+
       existing ->
         ResourceCurriculums.update_resource_curriculum(existing, %{
           "grade_id" => grade_id,
           "subject_id" => subject_id
-        }) |> to_ok()
+        })
+        |> to_ok()
     end
   end
 
@@ -891,9 +924,19 @@ defmodule Dbservice.DataImport.ImportWorker do
   defp ensure_resource_chapter(_resource_id, ""), do: :ok
 
   defp ensure_resource_chapter(resource_id, chapter_id) do
-    case ResourceChapters.get_resource_chapter_by_resource_id_and_chapter_id(resource_id, chapter_id) do
-      nil -> ResourceChapters.create_resource_chapter(%{"resource_id" => resource_id, "chapter_id" => chapter_id}) |> to_ok()
-      _ -> :ok
+    case ResourceChapters.get_resource_chapter_by_resource_id_and_chapter_id(
+           resource_id,
+           chapter_id
+         ) do
+      nil ->
+        ResourceChapters.create_resource_chapter(%{
+          "resource_id" => resource_id,
+          "chapter_id" => chapter_id
+        })
+        |> to_ok()
+
+      _ ->
+        :ok
     end
   end
 
@@ -902,8 +945,15 @@ defmodule Dbservice.DataImport.ImportWorker do
 
   defp ensure_resource_topic(resource_id, topic_id) do
     case ResourceTopics.get_resource_topic_by_resource_id_and_topic_id(resource_id, topic_id) do
-      nil -> ResourceTopics.create_resource_topic(%{"resource_id" => resource_id, "topic_id" => topic_id}) |> to_ok()
-      _ -> :ok
+      nil ->
+        ResourceTopics.create_resource_topic(%{
+          "resource_id" => resource_id,
+          "topic_id" => topic_id
+        })
+        |> to_ok()
+
+      _ ->
+        :ok
     end
   end
 
