@@ -175,38 +175,34 @@ defmodule Dbservice.DataImport.ImportWorker do
 
   defp add_grade_id(record, row_number) do
     case Map.get(record, "grade") do
-      nil ->
-        record
+      nil -> record
+      "" -> record
+      grade -> add_grade_id_from_value(record, grade, row_number)
+    end
+  end
 
-      grade when grade == "" ->
-        record
+  defp add_grade_id_from_value(record, grade, row_number) do
+    grade_number = parse_grade_number(grade)
+    grade_id = grade_id_from_parsed_number(grade_number)
 
-      grade ->
-        try do
-          grade_number = parse_grade_number(grade)
+    if grade_id do
+      Map.put(record, "grade_id", grade_id)
+    else
+      record
+    end
+  rescue
+    error ->
+      reraise "Failed to lookup grade '#{grade}' on row #{row_number}: #{Exception.message(error)}",
+              __STACKTRACE__
+  end
 
-          case grade_number do
-            nil ->
-              record
+  defp grade_id_from_parsed_number(nil), do: nil
 
-            num ->
-              case Grades.get_grade_by_number(num) do
-                %Dbservice.Grades.Grade{} = grade_record ->
-                  Map.put(record, "grade_id", grade_record.id)
-
-                {:ok, grade_record} ->
-                  Map.put(record, "grade_id", grade_record.id)
-
-                _ ->
-                  record
-              end
-          end
-        rescue
-          error ->
-            # Preserve original stacktrace while adding context
-            reraise "Failed to lookup grade '#{grade}' on row #{row_number}: #{Exception.message(error)}",
-                    __STACKTRACE__
-        end
+  defp grade_id_from_parsed_number(num) do
+    case Grades.get_grade_by_number(num) do
+      %Dbservice.Grades.Grade{} = g -> g.id
+      {:ok, g} -> g.id
+      _ -> nil
     end
   end
 
