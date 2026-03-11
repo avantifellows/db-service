@@ -174,26 +174,26 @@ defmodule Dbservice.DataImport.ImportWorker do
   end
 
   defp add_grade_id(record, row_number) do
-    case Map.get(record, "grade") do
-      nil -> record
-      "" -> record
-      grade -> add_grade_id_from_value(record, grade, row_number)
+    apply_grade_id_to_record(record, Map.get(record, "grade"), row_number)
+  end
+
+  defp apply_grade_id_to_record(record, nil, _row_number), do: record
+  defp apply_grade_id_to_record(record, "", _row_number), do: record
+
+  defp apply_grade_id_to_record(record, grade, row_number) do
+    try do
+      put_grade_id_if_found(record, grade)
+    rescue
+      error ->
+        reraise "Failed to lookup grade '#{grade}' on row #{row_number}: #{Exception.message(error)}",
+                __STACKTRACE__
     end
   end
 
-  defp add_grade_id_from_value(record, grade, row_number) do
+  defp put_grade_id_if_found(record, grade) do
     grade_number = parse_grade_number(grade)
     grade_id = grade_id_from_parsed_number(grade_number)
-
-    if grade_id do
-      Map.put(record, "grade_id", grade_id)
-    else
-      record
-    end
-  rescue
-    error ->
-      reraise "Failed to lookup grade '#{grade}' on row #{row_number}: #{Exception.message(error)}",
-              __STACKTRACE__
+    if grade_id, do: Map.put(record, "grade_id", grade_id), else: record
   end
 
   defp grade_id_from_parsed_number(nil), do: nil
