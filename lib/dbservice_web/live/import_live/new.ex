@@ -164,7 +164,10 @@ defmodule DbserviceWeb.ImportLive.New do
                   >
                     <option disabled value="">Select import type</option>
                     <option value="student" selected={@form[:type].value == "student"}>Student Addition</option>
-                    <option value="student_update" selected={@form[:type].value == "student_update"}>Update Student Details</option>        <option value="teacher_addition" selected={@form[:type].value == "teacher_addition"}>Teacher Addition</option>
+                    <option value="student_update" selected={@form[:type].value == "student_update"}>Update Student Details</option>                            <option value="teacher_addition" selected={@form[:type].value == "teacher_addition"}>Teacher Addition</option>
+                    <option value="chapter_addition" selected={@form[:type].value == "chapter_addition"}>Chapter Addition</option>
+                    <option value="subject_addition" selected={@form[:type].value == "subject_addition"}>Subject Addition</option>
+                    <option value="resource_addition" selected={@form[:type].value == "resource_addition"}>Resource Addition</option>
                     <option value="alumni_addition" selected={@form[:type].value == "alumni_addition"}>Alumni Addition</option>
                     <option value="batch_movement" selected={@form[:type].value == "batch_movement"}>Student Batch Movement</option>
                     <option value="dropout" selected={@form[:type].value == "dropout"}>Student Dropout</option>

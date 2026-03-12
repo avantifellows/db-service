@@ -21,6 +21,15 @@ defmodule Dbservice.DataImport.ImportWorker do
   alias Dbservice.Utils.ChangesetFormatter
   alias Dbservice.Colleges
   alias Dbservice.Branches
+  alias Dbservice.Chapters
+  alias Dbservice.Subjects
+  alias Dbservice.Curriculums
+  alias Dbservice.Topics
+  alias Dbservice.Purposes
+  alias Dbservice.Resources
+  alias Dbservice.ResourceCurriculums
+  alias Dbservice.ResourceChapters
+  alias Dbservice.ResourceTopics
 
   @impl Oban.Worker
   def perform(%Oban.Job{args: %{"id" => import_id}}) do
@@ -57,6 +66,9 @@ defmodule Dbservice.DataImport.ImportWorker do
   defp get_record_processor(import_type) do
     processor_map = %{
       "teacher_addition" => &process_teacher_record/1,
+      "chapter_addition" => &process_chapter_record/1,
+      "subject_addition" => &process_subject_record/1,
+      "resource_addition" => &process_resource_record/1,
       "student" => &process_student_record/1,
       "student_update" => &process_student_update_record/1,
       "batch_movement" => &process_batch_movement_record/1,
@@ -123,6 +135,10 @@ defmodule Dbservice.DataImport.ImportWorker do
       |> map_boolean_fields(import_type)
       |> add_grade_id(row_number)
       |> add_subject_id(row_number)
+      |> add_curriculum_id(row_number)
+      |> add_chapter_id(row_number)
+      |> add_topic_id(row_number)
+      |> add_purpose_ids_for_resource(row_number)
       |> add_college_ids(row_number)
       |> add_branch_ids(row_number)
     end
@@ -158,38 +174,61 @@ defmodule Dbservice.DataImport.ImportWorker do
   end
 
   defp add_grade_id(record, row_number) do
-    case Map.get(record, "grade") do
-      nil ->
-        record
+    apply_grade_id_to_record(record, Map.get(record, "grade"), row_number)
+  end
 
-      grade ->
-        try do
-          case Grades.get_grade_by_number(grade) do
-            %Dbservice.Grades.Grade{} = grade_record ->
-              Map.put(record, "grade_id", grade_record.id)
+  defp apply_grade_id_to_record(record, nil, _row_number), do: record
+  defp apply_grade_id_to_record(record, "", _row_number), do: record
 
-            {:ok, grade_record} ->
-              Map.put(record, "grade_id", grade_record.id)
-
-            _ ->
-              record
-          end
-        rescue
-          error ->
-            # Preserve original stacktrace while adding context
-            reraise "Failed to lookup grade '#{grade}' on row #{row_number}: #{Exception.message(error)}",
-                    __STACKTRACE__
-        end
+  defp apply_grade_id_to_record(record, grade, row_number) do
+    try do
+      put_grade_id_if_found(record, grade)
+    rescue
+      error ->
+        reraise "Failed to lookup grade '#{grade}' on row #{row_number}: #{Exception.message(error)}",
+                __STACKTRACE__
     end
   end
+
+  defp put_grade_id_if_found(record, grade) do
+    grade_number = parse_grade_number(grade)
+    grade_id = grade_id_from_parsed_number(grade_number)
+    if grade_id, do: Map.put(record, "grade_id", grade_id), else: record
+  end
+
+  defp grade_id_from_parsed_number(nil), do: nil
+
+  defp grade_id_from_parsed_number(num) do
+    case Grades.get_grade_by_number(num) do
+      %Dbservice.Grades.Grade{} = g -> g.id
+      {:ok, g} -> g.id
+      _ -> nil
+    end
+  end
+
+  # Parse grade from string "9", "10" etc. to integer for DB lookup (grade.number is integer)
+  defp parse_grade_number(grade) when is_integer(grade), do: grade
+
+  defp parse_grade_number(grade) when is_binary(grade) do
+    grade = String.trim(grade)
+
+    case Integer.parse(grade) do
+      {num, _} -> num
+      :error -> nil
+    end
+  end
+
+  defp parse_grade_number(_), do: nil
 
   defp add_subject_id(record, row_number) do
     case Map.get(record, "subject") do
       nil ->
         record
 
-      subject_name ->
+      subject_name when is_binary(subject_name) ->
         try do
+          subject_name = String.trim(subject_name)
+
           case DataImport.TeacherEnrollment.get_subject_id_by_name(subject_name) do
             nil -> record
             subject_id -> Map.put(record, "subject_id", subject_id)
@@ -200,6 +239,108 @@ defmodule Dbservice.DataImport.ImportWorker do
             reraise "Failed to lookup subject '#{subject_name}' on row #{row_number}: #{Exception.message(error)}",
                     __STACKTRACE__
         end
+    end
+  end
+
+  defp add_curriculum_id(record, row_number) do
+    case Map.get(record, "curriculum") do
+      nil ->
+        record
+
+      name when is_binary(name) ->
+        name = String.trim(name)
+        if name == "", do: record, else: do_add_curriculum_id(record, name, row_number)
+
+      _ ->
+        record
+    end
+  end
+
+  defp do_add_curriculum_id(record, name, row_number) do
+    case Curriculums.get_curriculum_by_name(name) do
+      nil -> record
+      curriculum -> Map.put(record, "curriculum_id", curriculum.id)
+    end
+  rescue
+    error ->
+      reraise "Failed to lookup curriculum '#{name}' on row #{row_number}: #{Exception.message(error)}",
+              __STACKTRACE__
+  end
+
+  defp add_chapter_id(record, row_number) do
+    case Map.get(record, "chapter_code") do
+      nil ->
+        record
+
+      "" ->
+        record
+
+      code when is_binary(code) ->
+        code = String.trim(code)
+
+        case Chapters.get_chapter_by_code(code) do
+          nil -> record
+          chapter -> Map.put(record, "chapter_id", chapter.id)
+        end
+
+      _ ->
+        record
+    end
+  rescue
+    error ->
+      reraise "Failed to lookup chapter by code on row #{row_number}: #{Exception.message(error)}",
+              __STACKTRACE__
+  end
+
+  defp add_topic_id(record, row_number) do
+    case Map.get(record, "topic_code") do
+      nil ->
+        record
+
+      "" ->
+        record
+
+      code when is_binary(code) ->
+        code = String.trim(code)
+
+        case Topics.get_topic_by_code(code) do
+          nil -> record
+          topic -> Map.put(record, "topic_id", topic.id)
+        end
+
+      _ ->
+        record
+    end
+  rescue
+    error ->
+      reraise "Failed to lookup topic by code on row #{row_number}: #{Exception.message(error)}",
+              __STACKTRACE__
+  end
+
+  defp add_purpose_ids_for_resource(record, _row_number) do
+    case Map.get(record, "resource_purpose") do
+      nil ->
+        record
+
+      "" ->
+        record
+
+      purpose_str when is_binary(purpose_str) ->
+        purpose_names =
+          purpose_str |> String.split(",") |> Enum.map(&String.trim/1) |> Enum.reject(&(&1 == ""))
+
+        ids =
+          Enum.flat_map(purpose_names, fn name ->
+            case Purposes.get_purpose_by_name(name) do
+              nil -> []
+              purpose -> [purpose.id]
+            end
+          end)
+
+        if ids == [], do: record, else: Map.put(record, "purpose_ids", ids)
+
+      _ ->
+        record
     end
   end
 
@@ -603,6 +744,217 @@ defmodule Dbservice.DataImport.ImportWorker do
         end
     end
   end
+
+  defp process_chapter_record(record) do
+    chapter_code = record["chapter_code"]
+    grade_id = record["grade_id"]
+    subject_id = record["subject_id"]
+    chapter_name = record["chapter_name"]
+
+    if is_nil(subject_id) do
+      {:error,
+       "Could not resolve subject for row (code: #{chapter_code}). Ensure the subject value exists in the database (e.g. 'General Knowledge & Current Affairs')."}
+    else
+      name_array = build_chapter_name_array(chapter_name)
+
+      attrs = %{
+        "code" => chapter_code,
+        "subject_id" => subject_id,
+        "name" => name_array
+      }
+
+      attrs =
+        if is_nil(grade_id) do
+          attrs
+        else
+          Map.put(attrs, "grade_id", grade_id)
+        end
+
+      case Chapters.get_chapter_by_code(chapter_code) do
+        nil ->
+          Chapters.create_chapter(attrs)
+
+        existing_chapter ->
+          Chapters.update_chapter(existing_chapter, attrs)
+      end
+    end
+  end
+
+  defp build_chapter_name_array(nil), do: [%{"lang_code" => "en", "chapter" => ""}]
+  defp build_chapter_name_array(""), do: [%{"lang_code" => "en", "chapter" => ""}]
+
+  defp build_chapter_name_array(chapter_name) when is_binary(chapter_name) do
+    [%{"lang_code" => "en", "chapter" => chapter_name}]
+  end
+
+  defp process_subject_record(record) do
+    subject_name = record["subject_name"]
+    code = Map.get(record, "code")
+
+    if is_nil(subject_name) or subject_name == "" do
+      {:error, "Subject name is required"}
+    else
+      name_array = build_subject_name_array(subject_name)
+      attrs = %{"name" => name_array}
+      attrs = if code != nil and code != "", do: Map.put(attrs, "code", code), else: attrs
+
+      case Subjects.get_subject_by_name(subject_name) do
+        nil ->
+          Subjects.create_subject(attrs)
+
+        existing_subject ->
+          Subjects.update_subject(existing_subject, attrs)
+      end
+    end
+  end
+
+  defp build_subject_name_array(nil), do: [%{"lang_code" => "en", "subject" => ""}]
+  defp build_subject_name_array(""), do: [%{"lang_code" => "en", "subject" => ""}]
+
+  defp build_subject_name_array(subject_name) when is_binary(subject_name) do
+    [%{"lang_code" => "en", "subject" => subject_name}]
+  end
+
+  defp process_resource_record(record) do
+    code = record["code"]
+    curriculum_id = record["curriculum_id"]
+    grade_id = record["grade_id"]
+    subject_id = record["subject_id"]
+    chapter_id = record["chapter_id"]
+    topic_id = record["topic_id"]
+    resource_name = record["resource_name"]
+    resource_type = record["resource_type"]
+    resource_link = record["resource_link"]
+
+    cond do
+      is_nil(resource_type) or resource_type == "" ->
+        {:error, "resourceType is required for row (code: #{code})"}
+
+      is_nil(resource_link) or resource_link == "" ->
+        {:error, "resourceLink is required for row (code: #{code})"}
+
+      is_nil(resource_name) or resource_name == "" ->
+        {:error, "resourceName is required for row (code: #{code})"}
+
+      is_nil(curriculum_id) ->
+        {:error,
+         "Could not resolve curriculum for row (code: #{code}). Ensure curriculum value exists."}
+
+      true ->
+        name_array = build_resource_name_array(resource_name)
+        type_params = %{"src_link" => String.trim(resource_link)}
+
+        resource_attrs =
+          %{
+            "code" => code,
+            "name" => name_array,
+            "type" => String.trim(resource_type),
+            "type_params" => type_params
+          }
+          |> maybe_put("subtype", record["resource_subtype"])
+          |> maybe_put("source", record["resource_source"])
+          |> maybe_put("purpose_ids", record["purpose_ids"])
+
+        with {:ok, resource} <- create_or_update_resource(resource_attrs, code),
+             :ok <-
+               maybe_ensure_resource_curriculum(resource.id, curriculum_id, grade_id, subject_id),
+             :ok <- ensure_resource_chapter(resource.id, chapter_id),
+             :ok <- ensure_resource_topic(resource.id, topic_id) do
+          {:ok, resource}
+        end
+    end
+  end
+
+  defp build_resource_name_array(nil), do: [%{"lang_code" => "en", "resource" => ""}]
+  defp build_resource_name_array(""), do: [%{"lang_code" => "en", "resource" => ""}]
+
+  defp build_resource_name_array(name) when is_binary(name) do
+    [%{"lang_code" => "en", "resource" => name}]
+  end
+
+  defp maybe_put(map, _key, nil), do: map
+  defp maybe_put(map, _key, ""), do: map
+  defp maybe_put(map, key, value), do: Map.put(map, key, value)
+
+  defp create_or_update_resource(attrs, code) do
+    case Resources.get_resource_by_code(code) do
+      nil -> Resources.create_resource(attrs)
+      existing -> Resources.update_resource(existing, attrs)
+    end
+  end
+
+  # Only create/update resource_curriculum when grade_id is present (grade is nullable for resource addition)
+  defp maybe_ensure_resource_curriculum(_resource_id, _curriculum_id, grade_id, _subject_id)
+       when is_nil(grade_id) or grade_id == "",
+       do: :ok
+
+  defp maybe_ensure_resource_curriculum(resource_id, curriculum_id, grade_id, subject_id) do
+    ensure_resource_curriculum(resource_id, curriculum_id, grade_id, subject_id)
+  end
+
+  defp ensure_resource_curriculum(resource_id, curriculum_id, grade_id, subject_id) do
+    attrs = %{
+      "resource_id" => resource_id,
+      "curriculum_id" => curriculum_id,
+      "grade_id" => grade_id,
+      "subject_id" => subject_id
+    }
+
+    case ResourceCurriculums.get_resource_curriculum_by_resource_id_and_curriculum_id(
+           resource_id,
+           curriculum_id
+         ) do
+      nil ->
+        ResourceCurriculums.create_resource_curriculum(attrs) |> to_ok()
+
+      existing ->
+        ResourceCurriculums.update_resource_curriculum(existing, %{
+          "grade_id" => grade_id,
+          "subject_id" => subject_id
+        })
+        |> to_ok()
+    end
+  end
+
+  defp ensure_resource_chapter(_resource_id, nil), do: :ok
+  defp ensure_resource_chapter(_resource_id, ""), do: :ok
+
+  defp ensure_resource_chapter(resource_id, chapter_id) do
+    case ResourceChapters.get_resource_chapter_by_resource_id_and_chapter_id(
+           resource_id,
+           chapter_id
+         ) do
+      nil ->
+        ResourceChapters.create_resource_chapter(%{
+          "resource_id" => resource_id,
+          "chapter_id" => chapter_id
+        })
+        |> to_ok()
+
+      _ ->
+        :ok
+    end
+  end
+
+  defp ensure_resource_topic(_resource_id, nil), do: :ok
+  defp ensure_resource_topic(_resource_id, ""), do: :ok
+
+  defp ensure_resource_topic(resource_id, topic_id) do
+    case ResourceTopics.get_resource_topic_by_resource_id_and_topic_id(resource_id, topic_id) do
+      nil ->
+        ResourceTopics.create_resource_topic(%{
+          "resource_id" => resource_id,
+          "topic_id" => topic_id
+        })
+        |> to_ok()
+
+      _ ->
+        :ok
+    end
+  end
+
+  defp to_ok({:ok, _}), do: :ok
+  defp to_ok({:error, changeset}), do: {:error, ChangesetFormatter.format_errors(changeset)}
 
   defp process_alumni_record(record) do
     student_identifier = Map.get(record, "student_id")
