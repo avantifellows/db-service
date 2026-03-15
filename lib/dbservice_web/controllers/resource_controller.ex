@@ -510,6 +510,7 @@ defmodule DbserviceWeb.ResourceController do
         join: rc in ResourceCurriculum,
         on: rc.resource_id == r.id,
         where: rc.curriculum_id == ^params["curriculum_id"],
+        distinct: r.id,
         order_by: [asc: r.id]
       )
 
