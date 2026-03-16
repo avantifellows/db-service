@@ -86,7 +86,7 @@ defmodule DbserviceWeb.ChapterController do
 
     chapter =
       Repo.all(query)
-      |> Repo.preload(chapter_curriculum: :curriculum)
+      |> Repo.preload(:chapter_curriculum)
 
     render(conn, :index, chapter: chapter)
   end
@@ -124,7 +124,7 @@ defmodule DbserviceWeb.ChapterController do
   def show(conn, %{"id" => id}) do
     chapter =
       Chapters.get_chapter!(id)
-      |> Repo.preload(chapter_curriculum: :curriculum)
+      |> Repo.preload(:chapter_curriculum)
 
     render(conn, :show, chapter: chapter)
   end
