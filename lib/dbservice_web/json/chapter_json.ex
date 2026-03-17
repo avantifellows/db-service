@@ -10,8 +10,8 @@ defmodule DbserviceWeb.ChapterJSON do
   end
 
   defp render(chapter) do
-    # Preload chapter_curriculum and nested curriculum
-    chapter = Repo.preload(chapter, chapter_curriculum: :curriculum)
+    # Preload chapter_curriculum
+    chapter = Repo.preload(chapter, :chapter_curriculum)
 
     # Base chapter fields
     chapter_json = %{
@@ -36,21 +36,11 @@ defmodule DbserviceWeb.ChapterJSON do
   end
 
   defp render_chapter_curriculum(cc) do
-    base = %{
+    %{
       curriculum_id: cc.curriculum_id,
       priority: cc.priority,
       priority_text: cc.priority_text,
       weightage: cc.weightage
     }
-
-    if Ecto.assoc_loaded?(cc.curriculum) && cc.curriculum do
-      Map.put(base, :curriculum, %{
-        id: cc.curriculum.id,
-        name: cc.curriculum.name,
-        code: cc.curriculum.code
-      })
-    else
-      base
-    end
   end
 end
