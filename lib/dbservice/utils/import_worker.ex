@@ -926,44 +926,59 @@ defmodule Dbservice.DataImport.ImportWorker do
   end
 
   defp process_auth_group_addition_record(record) do
-    name = record["name"]
-
-    if is_nil(name) or String.trim(name) == "" do
-      {:error, "Name is required for auth group addition"}
+    with {:ok, name} <- validate_auth_group_name(record["name"]),
+         attrs <- build_auth_group_attrs(record, name),
+         {:ok, ag} <- create_or_update_auth_group(name, attrs) do
+      {:ok, ag}
     else
-      name = String.trim(name)
-      input_schema = build_auth_group_input_schema(record)
-      locale_data = parse_auth_group_locale_data(Map.get(record, "auth_group_locale_data_raw"))
-      locale = record["locale"] |> auth_group_trim_or_nil()
+      {:error, %Ecto.Changeset{} = cs} -> {:error, ChangesetFormatter.format_errors(cs)}
+      {:error, msg} when is_binary(msg) -> {:error, msg}
+      {:error, other} -> {:error, inspect(other)}
+    end
+  end
 
-      attrs =
-        %{"name" => name}
-        |> maybe_put_auth_group_field("input_schema", input_schema)
-        |> maybe_put_auth_group_field("locale", locale)
-        |> maybe_put_auth_group_field("locale_data", locale_data)
+  defp validate_auth_group_name(nil), do: {:error, "Name is required for auth group addition"}
 
-      case AuthGroups.get_auth_group_by_name(name) do
-        nil ->
-          AuthGroups.create_auth_group_from_import(attrs)
+  defp validate_auth_group_name(name) when is_binary(name) do
+    if String.trim(name) == "",
+      do: {:error, "Name is required for auth group addition"},
+      else: {:ok, String.trim(name)}
+  end
 
-        existing ->
-          case AuthGroups.update_auth_group(existing, attrs) do
-            {:ok, ag} ->
-              if Groups.get_group_by_child_id_and_type(ag.id, "auth_group") do
-                _ = Util.update_users_for_group(ag.id, "auth_group")
-              end
+  defp validate_auth_group_name(_), do: {:error, "Name is required for auth group addition"}
 
-              {:ok, ag}
+  defp build_auth_group_attrs(record, name) do
+    input_schema = build_auth_group_input_schema(record)
+    locale_data = parse_auth_group_locale_data(Map.get(record, "auth_group_locale_data_raw"))
+    locale = record["locale"] |> auth_group_trim_or_nil()
 
-            err ->
-              err
-          end
-      end
-      |> case do
-        {:ok, ag} -> {:ok, ag}
-        {:error, %Ecto.Changeset{} = cs} -> {:error, ChangesetFormatter.format_errors(cs)}
-        {:error, other} -> {:error, inspect(other)}
-      end
+    %{"name" => name}
+    |> maybe_put_auth_group_field("input_schema", input_schema)
+    |> maybe_put_auth_group_field("locale", locale)
+    |> maybe_put_auth_group_field("locale_data", locale_data)
+  end
+
+  defp create_or_update_auth_group(name, attrs) do
+    case AuthGroups.get_auth_group_by_name(name) do
+      nil -> AuthGroups.create_auth_group_from_import(attrs)
+      existing -> update_auth_group_and_maybe_users(existing, attrs)
+    end
+  end
+
+  defp update_auth_group_and_maybe_users(existing, attrs) do
+    case AuthGroups.update_auth_group(existing, attrs) do
+      {:ok, ag} ->
+        maybe_update_users_for_auth_group(ag.id)
+        {:ok, ag}
+
+      err ->
+        err
+    end
+  end
+
+  defp maybe_update_users_for_auth_group(auth_group_id) do
+    if Groups.get_group_by_child_id_and_type(auth_group_id, "auth_group") do
+      _ = Util.update_users_for_group(auth_group_id, "auth_group")
     end
   end
 
@@ -1079,52 +1094,69 @@ defmodule Dbservice.DataImport.ImportWorker do
   defp maybe_put_program(attrs, key, value), do: Map.put(attrs, key, value)
 
   defp process_batch_addition_record(record) do
-    name = record["name"] |> trim_str()
-
-    if is_nil(name) or name == "" do
-      {:error, "Name is required for batch addition"}
+    with {:ok, name} <- validate_batch_name(record["name"]),
+         metadata <- batch_metadata_from_record(record),
+         attrs <- build_batch_attrs(record, name, metadata),
+         result <- create_or_update_batch(attrs) do
+      format_batch_result(result)
     else
-      metadata =
-        case record["is_parent_batch"] do
-          true -> %{"is_parent_batch" => true}
-          false -> %{"is_parent_batch" => false}
-          _ -> %{}
-        end
-
-      attrs =
-        %{"name" => name}
-        |> maybe_put_batch("batch_id", record["batch_id"] |> trim_str())
-        |> maybe_put_batch("contact_hours_per_week", parse_int(record["contact_hours_per_week"]))
-        |> maybe_put_batch("parent_id", record["parent_id"])
-        |> maybe_put_batch("start_date", parse_date(record["start_date"]))
-        |> maybe_put_batch("end_date", parse_date(record["end_date"]))
-        |> maybe_put_batch("program_id", record["program_id"])
-        |> maybe_put_batch("auth_group_id", record["auth_group_id"])
-        |> maybe_put_batch("metadata", (metadata != %{} && metadata) || nil)
-
-      batch_id_str = attrs["batch_id"]
-
-      existing =
-        if batch_id_str && batch_id_str != "" do
-          Batches.get_batch_by_batch_id_nil(batch_id_str)
-        else
-          nil
-        end
-
-      result =
-        if existing do
-          Batches.update_batch(existing, attrs)
-        else
-          Batches.create_batch_from_import(attrs)
-        end
-
-      case result do
-        {:ok, batch} -> {:ok, batch}
-        {:error, %Ecto.Changeset{} = cs} -> {:error, ChangesetFormatter.format_errors(cs)}
-        {:error, other} -> {:error, inspect(other)}
-      end
+      {:error, msg} when is_binary(msg) -> {:error, msg}
     end
   end
+
+  defp validate_batch_name(nil), do: {:error, "Name is required for batch addition"}
+
+  defp validate_batch_name(name) when is_binary(name) do
+    t = String.trim(name)
+    if t == "", do: {:error, "Name is required for batch addition"}, else: {:ok, t}
+  end
+
+  defp validate_batch_name(_), do: {:error, "Name is required for batch addition"}
+
+  defp batch_metadata_from_record(record) do
+    case record["is_parent_batch"] do
+      true -> %{"is_parent_batch" => true}
+      false -> %{"is_parent_batch" => false}
+      _ -> %{}
+    end
+  end
+
+  defp build_batch_attrs(record, name, metadata) do
+    metadata_value = if metadata != %{}, do: metadata, else: nil
+
+    %{"name" => name}
+    |> maybe_put_batch("batch_id", record["batch_id"] |> trim_str())
+    |> maybe_put_batch("contact_hours_per_week", parse_int(record["contact_hours_per_week"]))
+    |> maybe_put_batch("parent_id", record["parent_id"])
+    |> maybe_put_batch("start_date", parse_date(record["start_date"]))
+    |> maybe_put_batch("end_date", parse_date(record["end_date"]))
+    |> maybe_put_batch("program_id", record["program_id"])
+    |> maybe_put_batch("auth_group_id", record["auth_group_id"])
+    |> maybe_put_batch("metadata", metadata_value)
+  end
+
+  defp create_or_update_batch(attrs) do
+    existing = find_existing_batch(attrs["batch_id"])
+
+    if existing,
+      do: Batches.update_batch(existing, attrs),
+      else: Batches.create_batch_from_import(attrs)
+  end
+
+  defp find_existing_batch(nil), do: nil
+  defp find_existing_batch(""), do: nil
+
+  defp find_existing_batch(batch_id) when is_binary(batch_id),
+    do: Batches.get_batch_by_batch_id_nil(batch_id)
+
+  defp find_existing_batch(_), do: nil
+
+  defp format_batch_result({:ok, batch}), do: {:ok, batch}
+
+  defp format_batch_result({:error, %Ecto.Changeset{} = cs}),
+    do: {:error, ChangesetFormatter.format_errors(cs)}
+
+  defp format_batch_result({:error, other}), do: {:error, inspect(other)}
 
   defp maybe_put_batch(attrs, _key, nil), do: attrs
   defp maybe_put_batch(attrs, _key, ""), do: attrs
