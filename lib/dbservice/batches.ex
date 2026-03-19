@@ -59,6 +59,34 @@ defmodule Dbservice.Batches do
   end
 
   @doc """
+  Gets a batch by batch_id. Returns nil if not found.
+  """
+  def get_batch_by_batch_id_nil(batch_id) when is_binary(batch_id) do
+    batch_id = String.trim(batch_id)
+    if batch_id == "", do: nil, else: Repo.get_by(Batch, batch_id: batch_id)
+  end
+
+  def get_batch_by_batch_id_nil(_), do: nil
+
+  @doc """
+  Creates a batch and its group row (child_id = batch.id, type \"batch\").
+  Used by data import.
+  """
+  def create_batch_from_import(attrs) when is_map(attrs) do
+    Ecto.Multi.new()
+    |> Ecto.Multi.insert(:batch, Batch.changeset(%Batch{}, attrs))
+    |> Ecto.Multi.insert(:group, fn %{batch: b} ->
+      Group.changeset(%Group{}, %{type: "batch", child_id: b.id})
+    end)
+    |> Repo.transaction()
+    |> case do
+      {:ok, %{batch: b}} -> {:ok, b}
+      {:error, :batch, changeset, _} -> {:error, changeset}
+      {:error, :group, changeset, _} -> {:error, changeset}
+    end
+  end
+
+  @doc """
   Updates a batch.
   ## Examples
       iex> update_batch(batch, %{field: new_value})
