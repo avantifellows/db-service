@@ -1015,7 +1015,8 @@ defmodule Dbservice.Resources do
       on: pl.res_id == r.id,
       where:
         r.type == "problem" and
-          (ilike(fragment("?->>'text'", pl.meta_data), ^search_term) or
+          (ilike(r.code, ^search_term) or
+            ilike(fragment("?->>'text'", pl.meta_data), ^search_term) or
              ilike(fragment("?->>'hint'", pl.meta_data), ^search_term) or
              ilike(fragment("?->>'solution'", pl.meta_data), ^search_term))
     )
