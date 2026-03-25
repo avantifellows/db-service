@@ -971,6 +971,7 @@ defmodule Dbservice.Resources do
   """
   def search_problems(params \\ %{}) do
     ProblemLanguage
+    |> from(as: :pl)
     |> apply_problem_search_filters(params)
     |> apply_problem_sorting(params)
     |> apply_problem_pagination(params)
@@ -995,6 +996,7 @@ defmodule Dbservice.Resources do
 
   def count_problems(params \\ %{}) do
     ProblemLanguage
+    |> from(as: :pl)
     |> apply_problem_search_filters(params)
     |> select([pl], count(pl.id))
     |> Repo.one()
@@ -1015,7 +1017,8 @@ defmodule Dbservice.Resources do
       on: pl.res_id == r.id,
       where:
         r.type == "problem" and
-          (ilike(fragment("?->>'text'", pl.meta_data), ^search_term) or
+          (ilike(r.code, ^search_term) or
+             ilike(fragment("?->>'text'", pl.meta_data), ^search_term) or
              ilike(fragment("?->>'hint'", pl.meta_data), ^search_term) or
              ilike(fragment("?->>'solution'", pl.meta_data), ^search_term))
     )
@@ -1043,6 +1046,20 @@ defmodule Dbservice.Resources do
       join: l in Language,
       on: pl.lang_id == l.id,
       where: l.code == ^value
+    )
+  end
+
+  defp apply_problem_search_filter({"subject_id", value}, query)
+       when not is_nil(value) and value != "" do
+    from(q in query,
+      where:
+        exists(
+          from(rc in Dbservice.Resources.ResourceCurriculum,
+            where:
+              rc.resource_id == parent_as(:pl).res_id and
+                rc.subject_id == ^value
+          )
+        )
     )
   end
 
