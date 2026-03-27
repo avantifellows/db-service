@@ -81,6 +81,7 @@ defmodule Dbservice.DataImportTest do
       assert DataImport.format_type_name("chapter_addition") == "Chapter Addition"
       assert DataImport.format_type_name("subject_addition") == "Subject Addition"
       assert DataImport.format_type_name("resource_addition") == "Resource Addition"
+      assert DataImport.format_type_name("topic_addition") == "Topic Addition"
     end
 
     test "formats complex type names correctly" do

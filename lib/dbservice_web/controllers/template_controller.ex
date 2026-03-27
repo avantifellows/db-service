@@ -14,6 +14,7 @@ defmodule DbserviceWeb.TemplateController do
          "chapter_addition",
          "subject_addition",
          "resource_addition",
+         "topic_addition",
          "alumni_addition",
          "batch_movement",
          "dropout",
