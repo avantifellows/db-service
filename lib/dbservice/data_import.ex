@@ -20,6 +20,7 @@ defmodule Dbservice.DataImport do
   def format_type_name("chapter_addition"), do: "Chapter Addition"
   def format_type_name("subject_addition"), do: "Subject Addition"
   def format_type_name("resource_addition"), do: "Resource Addition"
+  def format_type_name("topic_addition"), do: "Topic Addition"
   def format_type_name("alumni_addition"), do: "Alumni Addition"
 
   def format_type_name("update_incorrect_batch_id_to_correct_batch_id"),
