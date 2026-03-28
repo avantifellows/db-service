@@ -111,7 +111,10 @@ defmodule DbserviceWeb.Router do
     post("/student/batch-process", StudentController, :batch_process)
     post("/group-user/batch-process", GroupUserController, :batch_process)
     get("/resources/curriculum", ResourceController, :curriculum_resources)
+    post("/resources/move", ResourceController, :move_resources)
+    post("/resources/tests-containing-problems", ResourceController, :tests_containing_problems)
     get("/resource/subtypes/:type", ResourceController, :get_subtypes)
+    get("/problems/search", ResourceController, :search_problems)
 
     # Some students were incorrectly marked as "dropouts" in our system. This endpoint was introduced to reverse this mistake by removing the dropout status from both the enrollment records and the student table
     patch("/student/remove-dropout-status/:student_id", StudentController, :remove_dropout_status)
@@ -137,6 +140,8 @@ defmodule DbserviceWeb.Router do
       ResourceController,
       :get_problem
     )
+
+    resources("/cms-status", CmsStatusController, except: [:new, :edit])
 
     def swagger_info do
       source(["config/.env"])

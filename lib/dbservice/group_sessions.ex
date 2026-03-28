@@ -51,6 +51,14 @@ defmodule Dbservice.GroupSessions do
   end
 
   @doc """
+    Gets a group-session by group ID and session ID.
+    Returns nil if the combination does not exist.
+  """
+  def get_group_session_by_group_id_and_session_id(group_id, session_id) do
+    Repo.get_by(GroupSession, group_id: group_id, session_id: session_id)
+  end
+
+  @doc """
     Gets all group-sessions by session ID.
     Returns an empty list if no GroupSessions exist for the given session ID.
     ## Examples

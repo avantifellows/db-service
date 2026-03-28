@@ -44,6 +44,21 @@ bash utils/fetch-data.sh
 
 See [Database Utils Guide](./utils/README.md) for setup and configuration.
 
+### Assigning Programs to Schools
+
+To assign `program_ids` to schools based on school category and codes, run:
+
+```bash
+./utils/assign_school_programs.sh [local|staging|production]
+```
+
+This script assigns:
+- **JNV NVS** program to all JNV schools (except 8 excluded UDISE codes)
+- **JNV CoE** program to 18 Centre of Excellence schools
+- **JNV Nodal** program to 13 Nodal schools (2025-26)
+
+**Note:** This script has likely already been run on production/staging. Running it again is safe (idempotent) but unnecessary.
+
 ## Documentation
 
 - **[Installation Guide](./docs/INSTALLATION.md)** - Complete setup instructions

@@ -33,6 +33,8 @@ defmodule DbserviceWeb.SwaggerSchema.Resource do
             skill_ids(:array, "Skill ids associated with the resource")
             teacher_id(:integer, "Teacher id associated with the resource")
             exam_ids(:array, "Exam ids associated with the resource")
+            cms_status(:string, "Status name from cms_status table. Also accepts cms_status_id.")
+            cms_status_id(:integer, "cms_status.id value to set status directly")
           end
 
           example(%{
@@ -50,7 +52,8 @@ defmodule DbserviceWeb.SwaggerSchema.Resource do
             tag_ids: [5, 7, 9],
             skill_ids: [1, 3, 7],
             teacher_id: 1,
-            exam_ids: [1, 2, 3]
+            exam_ids: [1, 2, 3],
+            cms_status: "archived"
           })
         end
     }
@@ -325,6 +328,86 @@ defmodule DbserviceWeb.SwaggerSchema.Resource do
               }
             ]
           })
+        end
+    }
+  end
+
+  def move_resources do
+    %{
+      MoveResourcesRequest:
+        swagger_schema do
+          title("MoveResourcesRequest")
+
+          description(
+            "Request body for moving one or more problems to a new curriculum/grade/subject/chapter/topic"
+          )
+
+          properties do
+            resource_ids(
+              Schema.array(:integer),
+              "List of resource (problem) IDs to move (required, non-empty)"
+            )
+
+            curriculum_grades(
+              Schema.array(:object),
+              "Target curriculum and grade(s); each item has curriculum_id and grade_id"
+            )
+
+            subject_id(:integer, "Target subject ID")
+            chapter_id(:integer, "Target chapter ID")
+            topic_id(:integer, "Target topic ID")
+            lang_code(:string, "Language code (e.g. en) for problem language")
+          end
+
+          example(%{
+            resource_ids: [5014, 5015],
+            curriculum_grades: [%{curriculum_id: 3, grade_id: 4}],
+            subject_id: 4,
+            topic_id: 616,
+            chapter_id: 220,
+            lang_code: "en"
+          })
+        end,
+      MoveResourcesResponse:
+        swagger_schema do
+          title("MoveResourcesResponse")
+          description("List of updated resources after move")
+          type(:array)
+          items(Schema.ref(:Resource))
+        end
+    }
+  end
+
+  def tests_containing_problems do
+    %{
+      TestsContainingProblemsRequest:
+        swagger_schema do
+          title("TestsContainingProblemsRequest")
+          description("Request body for listing which tests contain the given problem IDs")
+
+          properties do
+            problem_ids(
+              Schema.array(:integer),
+              "List of problem (resource) IDs to look up"
+            )
+          end
+
+          example(%{problem_ids: [5014, 5015]})
+        end,
+      TestsContainingProblemsResponse:
+        swagger_schema do
+          title("TestsContainingProblemsResponse")
+
+          description(
+            "For each requested problem ID: problem_id, problem_code, and list of tests that contain it"
+          )
+
+          properties do
+            problem_tests(
+              Schema.array(:object),
+              "One entry per requested problem: problem_id, problem_code, tests (array of test_id, test_code, name)"
+            )
+          end
         end
     }
   end

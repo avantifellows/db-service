@@ -360,7 +360,13 @@ defmodule Dbservice.Constants.Mappings do
         "update_incorrect_grade_to_correct_grade",
         "re_enrollment"
       ],
-      optional: ["batch_movement", "student_update"],
+      optional: [
+        "batch_movement",
+        "student_update",
+        "chapter_addition",
+        "resource_addition",
+        "topic_addition"
+      ],
       type: :string
     },
     "batch_id" => %{
@@ -411,8 +417,89 @@ defmodule Dbservice.Constants.Mappings do
     # Teacher creation fields
     "subject" => %{
       db_field: "subject",
-      required: ["teacher_addition"],
+      required: ["teacher_addition", "chapter_addition", "resource_addition"],
+      optional: ["topic_addition"],
+      type: :string
+    },
+    # Chapter addition fields
+    "chapterCode" => %{
+      db_field: "chapter_code",
+      required: ["chapter_addition"],
+      optional: ["resource_addition", "topic_addition"],
+      type: :string
+    },
+    "chapterName" => %{
+      db_field: "chapter_name",
+      required: ["chapter_addition"],
+      optional: ["resource_addition", "topic_addition"],
+      type: :string
+    },
+    # Subject addition fields (sheet: Subject; code is optional)
+    "Subject" => %{
+      db_field: "subject_name",
+      required: ["subject_addition"],
       optional: [],
+      type: :string
+    },
+    "code" => %{
+      db_field: "code",
+      required: ["resource_addition"],
+      optional: ["subject_addition", "topic_addition"],
+      type: :string
+    },
+    # Resource addition fields
+    "curriculum" => %{
+      db_field: "curriculum",
+      required: ["resource_addition", "topic_addition"],
+      optional: [],
+      type: :string
+    },
+    "topicName" => %{
+      db_field: "topic_name",
+      required: ["topic_addition"],
+      optional: ["resource_addition"],
+      type: :string
+    },
+    "topicCode" => %{
+      db_field: "topic_code",
+      required: ["topic_addition"],
+      optional: ["resource_addition"],
+      type: :string
+    },
+    "resourcePurpose" => %{
+      db_field: "resource_purpose",
+      required: [],
+      optional: ["resource_addition", "topic_addition"],
+      type: :string
+    },
+    "resourceSource" => %{
+      db_field: "resource_source",
+      required: [],
+      optional: ["resource_addition", "topic_addition"],
+      type: :string
+    },
+    "resourceName" => %{
+      db_field: "resource_name",
+      required: ["resource_addition"],
+      optional: ["topic_addition"],
+      type: :string
+    },
+    "resourceType" => %{
+      db_field: "resource_type",
+      required: ["resource_addition"],
+      optional: ["topic_addition"],
+      type: :string
+    },
+    "resourceSubType" => %{
+      db_field: "resource_subtype",
+      required: [],
+      optional: ["resource_addition", "topic_addition"],
+      type: :string
+    },
+    "resourceLink" => %{
+      db_field: "resource_link",
+      required: ["resource_addition"],
+      optional: ["topic_addition"],
       type: :string
     },
     "district_code" => %{

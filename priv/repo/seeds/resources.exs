@@ -89,9 +89,6 @@ resource_types = [
   }
 ]
 
-# CMS statuses
-cms_statuses = ["archived", "draft", "review", "final"]
-
 # Helper function to generate resource name with multiple languages
 generate_resource_name = fn topic ->
   # Create Hindi translations for common educational terms
@@ -164,7 +161,7 @@ resources = for i <- 1..100 do
     learning_objective_ids: learning_objective_ids,
     exam_ids: exam_ids,
     teacher_id: teacher_id,
-    cms_status: Enum.random(cms_statuses),
+    cms_status_id: Enum.random(1..5),
     inserted_at: DateTime.utc_now() |> DateTime.truncate(:second),
     updated_at: DateTime.utc_now() |> DateTime.truncate(:second)
   }

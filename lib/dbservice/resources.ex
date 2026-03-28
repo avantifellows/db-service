@@ -11,6 +11,10 @@ defmodule Dbservice.Resources do
   alias Dbservice.Languages.Language
   alias Dbservice.Resources.{ResourceTopic, ResourceChapter, ResourceConcept}
   alias Dbservice.Utils.Util
+  alias Dbservice.CmsStatuses
+  alias Dbservice.Chapters.Chapter
+  alias Dbservice.Topics.Topic
+  alias Dbservice.ChapterCurriculums
 
   @doc """
   Returns the list of resource.
@@ -45,84 +49,197 @@ defmodule Dbservice.Resources do
     - List of problem resources with their metadata from problem_lang table and difficulty_level from resource_curriculum
   """
   def get_problems_by_test_and_language(test_id, lang_code, curriculum_id) do
-    # Get the language by code
-    language =
-      from(l in Language, where: l.code == ^lang_code, select: l)
-      |> Repo.one()
+    language = from(l in Language, where: l.code == ^lang_code, select: l) |> Repo.one()
 
     case language do
-      nil ->
-        {:error, :language_not_found}
-
-      %Language{id: lang_id} ->
-        with %Resource{} = test_resource <- Repo.get(Resource, test_id),
-             true <- test_resource.type == "test" do
-          problem_ids = extract_problem_ids_from_test(test_resource.type_params)
-
-          # Query for all problems with those IDs, including ALL resource_curriculum data and chapter data
-          problems =
-            from(r in Resource,
-              where: r.id in ^problem_ids and r.type == "problem",
-              preload: [
-                # preload all curriculum mappings
-                :resource_curriculum,
-                # preload chapters via the many_to_many association
-                :chapter,
-                # keyword preload must come last in the list
-                problem_language: ^from(pl in ProblemLanguage, where: pl.lang_id == ^lang_id)
-              ]
-            )
-            |> Repo.all()
-
-          Enum.map(problems, fn resource ->
-            problem_lang = Enum.find(resource.problem_language, &(&1.lang_id == lang_id))
-
-            %{
-              resource: resource,
-              # always a list
-              resource_curriculums: resource.resource_curriculum,
-              problem_lang: problem_lang || %{},
-              requested_curriculum_id: curriculum_id
-            }
-          end)
-        else
-          nil -> {:error, :test_not_found}
-          false -> {:error, :resource_not_test_type}
-          error -> error
-        end
+      nil -> {:error, :language_not_found}
+      %Language{id: lang_id} -> get_problems_for_test(test_id, lang_id, curriculum_id)
     end
+  end
+
+  defp get_problems_for_test(test_id, lang_id, curriculum_id) do
+    test_resource = Repo.get(Resource, test_id)
+
+    cond do
+      is_nil(test_resource) -> {:error, :test_not_found}
+      test_resource.type != "test" -> {:error, :resource_not_test_type}
+      true -> fetch_and_format_problems(test_resource, lang_id, curriculum_id)
+    end
+  end
+
+  defp fetch_and_format_problems(test_resource, lang_id, curriculum_id) do
+    problem_ids = extract_problem_ids_from_test(test_resource.type_params)
+
+    problems =
+      from(r in Resource,
+        where: r.id in ^problem_ids and r.type == "problem",
+        preload: [
+          :resource_curriculum,
+          :chapter,
+          problem_language: ^from(pl in ProblemLanguage, where: pl.lang_id == ^lang_id)
+        ]
+      )
+      |> Repo.all()
+
+    Enum.map(problems, fn resource ->
+      problem_lang = Enum.find(resource.problem_language, &(&1.lang_id == lang_id))
+
+      %{
+        resource: resource,
+        resource_curriculums: resource.resource_curriculum,
+        problem_lang: problem_lang || %{},
+        requested_curriculum_id: curriculum_id
+      }
+    end)
   end
 
   @doc """
   Extracts all problem IDs from a test's type_params structure.
   Keeps nesting depth at maximum of 2 levels.
+  Handles both string and atom keys (Ecto/DB may return either from jsonb).
   """
   def extract_problem_ids_from_test(type_params) do
-    subjects = Map.get(type_params, "subjects", [])
-    extract_problems_from_subjects(subjects)
+    type_params = ensure_map(type_params)
+    # Some tests have "subjects" at top level; others nest under "type_params" (e.g. test id 4).
+    subjects = get_attr(type_params, "subjects") || get_attr(type_params, :subjects)
+
+    subjects =
+      if is_nil(subjects) || subjects == [] do
+        inner = get_attr(type_params, "type_params") || get_attr(type_params, :type_params)
+        get_attr(ensure_map(inner), "subjects") || get_attr(ensure_map(inner), :subjects) || []
+      else
+        subjects
+      end
+
+    extract_problems_from_subjects(List.wrap(subjects))
   end
 
-  defp extract_problems_from_subjects(subjects) do
+  defp extract_problems_from_subjects(subjects) when is_list(subjects) do
     Enum.flat_map(subjects, fn subject ->
-      sections = Map.get(subject, "sections", [])
-      extract_problems_from_sections(sections)
+      sections = get_attr(subject, "sections") || get_attr(subject, :sections) || []
+      extract_problems_from_sections(List.wrap(sections))
     end)
   end
 
-  defp extract_problems_from_sections(sections) do
+  defp extract_problems_from_subjects(_), do: []
+
+  defp extract_problems_from_sections(sections) when is_list(sections) do
     Enum.flat_map(sections, fn section ->
       extract_problems_from_section(section)
     end)
   end
 
-  defp extract_problems_from_section(section) do
-    compulsory_problems = get_in(section, ["compulsory", "problems"]) || []
-    optional_problems = get_in(section, ["optional", "problems"]) || []
+  defp extract_problems_from_sections(_), do: []
 
-    (compulsory_problems ++ optional_problems)
-    |> Enum.map(fn problem -> Map.get(problem, "id") end)
+  defp extract_problems_from_section(section) do
+    compulsory = get_attr(section, "compulsory") || get_attr(section, :compulsory) || %{}
+    optional = get_attr(section, "optional") || get_attr(section, :optional) || %{}
+
+    (problems_list_from_sub(compulsory) ++ problems_list_from_sub(optional))
+    |> Enum.map(&problem_id_from_map/1)
     |> Enum.reject(&is_nil/1)
   end
+
+  defp problems_list_from_sub(sub) do
+    List.wrap(get_attr(sub, "problems") || get_attr(sub, :problems) || [])
+  end
+
+  defp problem_id_from_map(problem), do: get_attr(problem, "id") || get_attr(problem, :id)
+
+  # Ensure we have a map (decode JSON string if needed).
+  defp ensure_map(nil), do: %{}
+  defp ensure_map(%{} = m), do: m
+
+  defp ensure_map(bin) when is_binary(bin) do
+    case Jason.decode(bin) do
+      {:ok, map} when is_map(map) -> map
+      _ -> %{}
+    end
+  end
+
+  defp ensure_map(_), do: %{}
+
+  # Get map value by string or atom key (Ecto/DB may return either for jsonb).
+  defp get_attr(map, _key) when not is_map(map), do: nil
+
+  defp get_attr(map, key) when is_map(map) do
+    case Map.get(map, key) do
+      nil when is_binary(key) ->
+        try do
+          Map.get(map, String.to_existing_atom(key))
+        rescue
+          ArgumentError -> nil
+        end
+
+      nil when is_atom(key) ->
+        Map.get(map, Atom.to_string(key))
+
+      val ->
+        val
+    end
+  end
+
+  @doc """
+  Returns all tests that contain any of the given problem IDs.
+  Used to determine if selected problems can be moved (e.g. if they are part of a test).
+
+  ## Parameters
+    - problem_ids: List of resource (problem) IDs to look up.
+
+  ## Returns
+    - List of maps: `%{test_id: id, test: %Resource{}, problem_ids_in_test: [ids]}` where
+      `problem_ids_in_test` are the requested problem IDs that appear in that test.
+
+  ## Examples
+      iex> get_tests_containing_problems([5014, 5015])
+      [%{test_id: 100, test: %Resource{}, problem_ids_in_test: [5014]}, ...]
+  """
+  def get_tests_containing_problems(problem_ids) when is_list(problem_ids) do
+    requested_set =
+      problem_ids
+      |> Enum.map(&to_id/1)
+      |> Enum.reject(&is_nil/1)
+      |> MapSet.new()
+
+    if MapSet.size(requested_set) == 0 do
+      []
+    else
+      tests = from(r in Resource, where: r.type == "test", select: r) |> Repo.all()
+
+      tests
+      |> Enum.map(fn test ->
+        test_problem_ids = extract_problem_ids_from_test(test.type_params || %{})
+
+        contained =
+          test_problem_ids
+          |> Enum.map(&to_id/1)
+          |> Enum.reject(&is_nil/1)
+          |> Enum.filter(&MapSet.member?(requested_set, &1))
+          |> Enum.uniq()
+
+        {test, contained}
+      end)
+      |> Enum.reject(fn {_test, contained} -> contained == [] end)
+      |> Enum.map(fn {test, contained} ->
+        %{
+          test_id: test.id,
+          test: test,
+          problem_ids_in_test: contained
+        }
+      end)
+    end
+  end
+
+  defp to_id(id) when is_integer(id), do: id
+
+  defp to_id(id) when is_binary(id) do
+    case Integer.parse(id) do
+      {int, _} -> int
+      :error -> id
+    end
+  end
+
+  defp to_id(id), do: id
 
   @doc """
   Returns a list of unique subtypes for a given type.
@@ -195,9 +312,11 @@ defmodule Dbservice.Resources do
       {:error, %Ecto.Changeset{}}
   """
   def create_resource(attrs \\ %{}) do
-    %Resource{}
-    |> Resource.changeset(attrs)
-    |> Repo.insert()
+    with {:ok, attrs} <- CmsStatuses.ensure_cms_status_id(attrs) do
+      %Resource{}
+      |> Resource.changeset(attrs)
+      |> Repo.insert()
+    end
   end
 
   @doc """
@@ -209,9 +328,11 @@ defmodule Dbservice.Resources do
       {:error, %Ecto.Changeset{}}
   """
   def update_resource(%Resource{} = resource, attrs) do
-    resource
-    |> Resource.changeset(attrs)
-    |> Repo.update()
+    with {:ok, attrs} <- CmsStatuses.ensure_cms_status_id(attrs) do
+      resource
+      |> Resource.changeset(attrs)
+      |> Repo.update()
+    end
   end
 
   @doc """
@@ -282,6 +403,17 @@ defmodule Dbservice.Resources do
   end
 
   def update_resource_and_associations(resource, params) do
+    # Validate move params before any updates: topic must be under chapter, chapter under curriculum/grade/subject
+    case validate_move_association_params(params) do
+      :ok ->
+        do_update_resource_and_associations(resource, params)
+
+      {:error, _msg} = err ->
+        err
+    end
+  end
+
+  defp do_update_resource_and_associations(resource, params) do
     # Handle tags: resolve tag names to IDs if present
     params =
       if Map.has_key?(params, "tags") do
@@ -290,10 +422,8 @@ defmodule Dbservice.Resources do
         params
       end
 
-    # Update the resource itself
     result = update_resource(resource, params)
 
-    # If update successful, handle associations
     case result do
       {:ok, resource} ->
         update_resource_associations(resource, params)
@@ -304,8 +434,175 @@ defmodule Dbservice.Resources do
     end
   end
 
+  # Validates that move params are consistent: topic belongs to chapter, chapter belongs to curriculum/grade/subject.
+  # Returns :ok or {:error, message}.
+  defp validate_move_association_params(params) do
+    chapter_id = params["chapter_id"]
+    topic_id = params["topic_id"]
+    curriculum_grades = List.wrap(params["curriculum_grades"] || [])
+    subject_id = params["subject_id"]
+
+    with :ok <-
+           validate_chapter_belongs_to_curriculum(
+             chapter_id,
+             topic_id,
+             curriculum_grades,
+             subject_id
+           ) do
+      validate_topic_belongs_to_chapter(topic_id, chapter_id)
+    end
+  end
+
+  defp validate_chapter_belongs_to_curriculum(chapter_id, topic_id, curriculum_grades, subject_id) do
+    has_curriculum_info = (curriculum_grades != [] || subject_id) && subject_id != nil
+
+    if has_curriculum_info do
+      chapter = resolve_chapter_for_validation(chapter_id, topic_id)
+
+      validate_chapter_and_curriculum(
+        chapter_id,
+        topic_id,
+        chapter,
+        curriculum_grades,
+        subject_id
+      )
+    else
+      :ok
+    end
+  end
+
+  defp resolve_chapter_for_validation(chapter_id, _topic_id)
+       when not is_nil(chapter_id) and chapter_id != "" do
+    id = normalize_chapter_topic_id(chapter_id)
+    id && Repo.get(Chapter, id)
+  end
+
+  defp resolve_chapter_for_validation(_chapter_id, topic_id)
+       when not is_nil(topic_id) and topic_id != "" do
+    id = normalize_chapter_topic_id(topic_id)
+
+    case id && Repo.get(Topic, id) do
+      nil -> nil
+      topic -> Repo.get(Chapter, topic.chapter_id)
+    end
+  end
+
+  defp resolve_chapter_for_validation(_, _), do: nil
+
+  defp normalize_chapter_topic_id(id) when is_integer(id), do: id
+
+  defp normalize_chapter_topic_id(id) when is_binary(id) do
+    case Integer.parse(id) do
+      {int, _} -> int
+      :error -> nil
+    end
+  end
+
+  defp normalize_chapter_topic_id(_), do: nil
+
+  defp validate_chapter_and_curriculum(
+         chapter_id,
+         topic_id,
+         chapter,
+         curriculum_grades,
+         subject_id
+       ) do
+    case chapter_validation_error(chapter_id, topic_id, chapter, subject_id) do
+      nil -> validate_chapter_curriculum_grades(chapter, curriculum_grades)
+      err -> err
+    end
+  end
+
+  defp chapter_validation_error(chapter_id, topic_id, chapter, subject_id) do
+    chapter_lookup_error(chapter_id, topic_id, chapter) ||
+      chapter_subject_error(chapter, subject_id)
+  end
+
+  defp chapter_lookup_error(chapter_id, topic_id, chapter) do
+    cond do
+      present?(chapter_id) && !chapter -> {:error, "Chapter not found"}
+      present?(topic_id) && topic_not_found?(topic_id) -> {:error, "Topic not found"}
+      !chapter -> {:error, "Topic's chapter not found"}
+      true -> nil
+    end
+  end
+
+  defp topic_not_found?(topic_id) do
+    tid = normalize_chapter_topic_id(topic_id)
+    is_nil(tid) || is_nil(Repo.get(Topic, tid))
+  end
+
+  defp chapter_subject_error(chapter, subject_id) do
+    if chapter && chapter.subject_id != subject_id do
+      {:error, "Chapter does not belong to the given subject"}
+    else
+      nil
+    end
+  end
+
+  defp present?(nil), do: false
+  defp present?(""), do: false
+  defp present?(_), do: true
+
+  defp validate_chapter_curriculum_grades(chapter, curriculum_grades) do
+    result =
+      Enum.reduce_while(curriculum_grades, :ok, fn cg, :ok ->
+        validate_one_curriculum_grade(chapter, cg)
+      end)
+
+    if result == :ok, do: :ok, else: result
+  end
+
+  defp validate_one_curriculum_grade(chapter, cg) do
+    grade_id = cg["grade_id"] || cg[:grade_id]
+    curriculum_id = cg["curriculum_id"] || cg[:curriculum_id]
+
+    cond do
+      chapter.grade_id != grade_id ->
+        {:halt, {:error, "Chapter does not belong to the given grade for curriculum"}}
+
+      is_nil(
+        ChapterCurriculums.get_chapter_curriculum_by_chapter_id_and_curriculum_id(
+          chapter.id,
+          curriculum_id
+        )
+      ) ->
+        {:halt, {:error, "Chapter is not linked to the given curriculum"}}
+
+      true ->
+        {:cont, :ok}
+    end
+  end
+
+  defp validate_topic_belongs_to_chapter(topic_id, chapter_id) do
+    if present?(topic_id) and present?(chapter_id) do
+      tid = normalize_chapter_topic_id(topic_id)
+      cid = normalize_chapter_topic_id(chapter_id)
+
+      if is_nil(tid) || is_nil(cid),
+        do: {:error, "Invalid topic or chapter id"},
+        else: do_validate_topic_belongs_to_chapter(tid, cid)
+    else
+      :ok
+    end
+  end
+
+  defp do_validate_topic_belongs_to_chapter(topic_id, chapter_id) do
+    case Repo.get(Topic, topic_id) do
+      nil ->
+        {:error, "Topic not found"}
+
+      topic ->
+        if topic.chapter_id == chapter_id,
+          do: :ok,
+          else: {:error, "Topic does not belong to the given chapter"}
+    end
+  end
+
   defp update_resource_associations(resource, params) do
     update_resource_curriculums(resource, params)
+    update_resource_topic(resource, params)
+    update_resource_chapter(resource, params)
     update_resource_concepts(resource, params)
 
     if resource.type == "problem" do
@@ -313,16 +610,109 @@ defmodule Dbservice.Resources do
     end
   end
 
+  # When curriculum_grades (and optionally subject_id) are present, replace all resource_curriculum
+  # rows only if there is a change in at least one of curriculum, grade or subject.
   defp update_resource_curriculums(resource, params) do
-    Enum.each(List.wrap(params["curriculum_grades"] || []), fn cg ->
-      rc =
-        Dbservice.ResourceCurriculums.get_resource_curriculum_by_resource_id_and_curriculum_id(
-          resource.id,
-          cg["curriculum_id"]
-        )
+    if Map.has_key?(params, "curriculum_grades") do
+      curriculum_grades = List.wrap(params["curriculum_grades"] || [])
+      subject_id = params["subject_id"]
 
-      if rc, do: Dbservice.ResourceCurriculums.update_resource_curriculum(rc, params)
-    end)
+      requested_set =
+        curriculum_grades
+        |> Enum.map(fn cg ->
+          {cg["curriculum_id"] || cg[:curriculum_id], cg["grade_id"] || cg[:grade_id], subject_id}
+        end)
+        |> MapSet.new()
+
+      current_rcs =
+        Dbservice.ResourceCurriculums.list_resource_curriculums_by_resource_id(resource.id)
+
+      current_set =
+        current_rcs
+        |> Enum.map(fn rc -> {rc.curriculum_id, rc.grade_id, rc.subject_id} end)
+        |> MapSet.new()
+
+      if requested_set != current_set do
+        replace_resource_curriculums(resource, params, curriculum_grades, current_rcs)
+      end
+    end
+  end
+
+  defp replace_resource_curriculums(resource, params, curriculum_grades, current_rcs) do
+    params = ensure_difficulty_level_in_params(params, current_rcs)
+
+    from(rc in Dbservice.Resources.ResourceCurriculum, where: rc.resource_id == ^resource.id)
+    |> Repo.delete_all()
+
+    if not Enum.empty?(curriculum_grades) do
+      create_resource_curriculums_for_resource(resource, params)
+    end
+  end
+
+  defp ensure_difficulty_level_in_params(params, current_rcs) do
+    if Map.has_key?(params, "difficulty_level") do
+      params
+    else
+      case current_rcs do
+        [rc | _] -> Map.put(params, "difficulty_level", rc.difficulty_level)
+        [] -> params
+      end
+    end
+  end
+
+  defp update_resource_topic(resource, params) do
+    if Map.has_key?(params, "topic_id") do
+      requested_topic_id = params["topic_id"]
+
+      current_topic_ids =
+        from(rt in ResourceTopic, where: rt.resource_id == ^resource.id, select: rt.topic_id)
+        |> Repo.all()
+        |> MapSet.new()
+
+      requested_set =
+        if requested_topic_id, do: MapSet.new([requested_topic_id]), else: MapSet.new()
+
+      if requested_set != current_topic_ids do
+        from(rt in ResourceTopic, where: rt.resource_id == ^resource.id)
+        |> Repo.delete_all()
+
+        if requested_topic_id do
+          Dbservice.ResourceTopics.create_resource_topic(%{
+            "resource_id" => resource.id,
+            "topic_id" => requested_topic_id
+          })
+        end
+      end
+    end
+  end
+
+  defp update_resource_chapter(resource, params) do
+    if Map.has_key?(params, "chapter_id") do
+      requested_chapter_id = params["chapter_id"]
+
+      current_chapter_ids =
+        from(rch in ResourceChapter,
+          where: rch.resource_id == ^resource.id,
+          select: rch.chapter_id
+        )
+        |> Repo.all()
+        |> MapSet.new()
+
+      requested_set =
+        if requested_chapter_id, do: MapSet.new([requested_chapter_id]), else: MapSet.new()
+
+      if requested_set != current_chapter_ids do
+        from(rch in ResourceChapter, where: rch.resource_id == ^resource.id)
+        |> Repo.delete_all()
+
+        if requested_chapter_id do
+          Dbservice.ResourceChapters.create_resource_chapter(%{
+            "resource_id" => resource.id,
+            "chapter_id" => requested_chapter_id
+          })
+        end
+      end
+    end
   end
 
   defp update_problem_language(resource, params) do
@@ -566,4 +956,158 @@ defmodule Dbservice.Resources do
 
   defp get_offset(params), do: params["offset"]
   defp get_limit(params), do: params["limit"]
+
+  @doc """
+  Searches for problems with optional filtering, sorting and pagination.
+  Searches in problem_lang table and includes resource + resource_curriculum details.
+
+  ## Examples
+
+      iex> search_problems(%{"search" => "che", "limit" => 10, "offset" => 0, "sort_by" => "subtype", "sort_order" => "asc"})
+      [%{resource: %Resource{}, problem_lang: %ProblemLanguage{}, resource_curriculums: [%ResourceCurriculum{}]}, ...]
+
+      iex> count_problems(%{"search" => "che"})
+      25
+  """
+  def search_problems(params \\ %{}) do
+    ProblemLanguage
+    |> from(as: :pl)
+    |> apply_problem_search_filters(params)
+    |> apply_problem_sorting(params)
+    |> apply_problem_pagination(params)
+    |> Repo.all()
+    |> Enum.map(fn problem_lang ->
+      resource = Repo.get!(Resource, problem_lang.res_id)
+
+      resource_curriculums =
+        Repo.all(
+          from(rc in Dbservice.Resources.ResourceCurriculum,
+            where: rc.resource_id == ^resource.id
+          )
+        )
+
+      %{
+        resource: resource,
+        problem_lang: problem_lang,
+        resource_curriculums: resource_curriculums
+      }
+    end)
+  end
+
+  def count_problems(params \\ %{}) do
+    ProblemLanguage
+    |> from(as: :pl)
+    |> apply_problem_search_filters(params)
+    |> select([pl], count(pl.id))
+    |> Repo.one()
+  end
+
+  # Private query building functions for problem search
+
+  defp apply_problem_search_filters(query, params) do
+    Enum.reduce(params, query, &apply_problem_search_filter/2)
+  end
+
+  defp apply_problem_search_filter({"search", value}, query)
+       when not is_nil(value) and value != "" do
+    search_term = "%#{value}%"
+
+    from(pl in query,
+      join: r in Resource,
+      on: pl.res_id == r.id,
+      where:
+        r.type == "problem" and
+          (ilike(r.code, ^search_term) or
+             ilike(fragment("?->>'text'", pl.meta_data), ^search_term) or
+             ilike(fragment("?->>'hint'", pl.meta_data), ^search_term) or
+             ilike(fragment("?->>'solution'", pl.meta_data), ^search_term))
+    )
+  end
+
+  defp apply_problem_search_filter({"type", value}, query) when not is_nil(value) do
+    from(pl in query,
+      join: r in Resource,
+      on: pl.res_id == r.id,
+      where: r.type == ^value
+    )
+  end
+
+  defp apply_problem_search_filter({"subtype", value}, query) when not is_nil(value) do
+    from(pl in query,
+      join: r in Resource,
+      on: pl.res_id == r.id,
+      where: r.subtype == ^value
+    )
+  end
+
+  defp apply_problem_search_filter({"lang_code", value}, query)
+       when not is_nil(value) and value != "" do
+    from(pl in query,
+      join: l in Language,
+      on: pl.lang_id == l.id,
+      where: l.code == ^value
+    )
+  end
+
+  defp apply_problem_search_filter({"subject_id", value}, query)
+       when not is_nil(value) and value != "" do
+    from(q in query,
+      where:
+        exists(
+          from(rc in Dbservice.Resources.ResourceCurriculum,
+            where:
+              rc.resource_id == parent_as(:pl).res_id and
+                rc.subject_id == ^value
+          )
+        )
+    )
+  end
+
+  defp apply_problem_search_filter({key, _value}, query)
+       when key in ["offset", "limit", "sort_by", "sort_order"] do
+    query
+  end
+
+  defp apply_problem_search_filter({_key, _value}, query) do
+    query
+  end
+
+  defp apply_problem_sorting(query, params) do
+    sort_by = params["sort_by"]
+    sort_order = get_sort_order(params["sort_order"])
+
+    case sort_by do
+      "code" ->
+        from(pl in query,
+          join: r in Resource,
+          on: pl.res_id == r.id,
+          order_by: [{^sort_order, r.code}],
+          select: pl
+        )
+
+      "subtype" ->
+        from(pl in query,
+          join: r in Resource,
+          on: pl.res_id == r.id,
+          order_by: [{^sort_order, r.subtype}],
+          select: pl
+        )
+
+      "text" ->
+        from(pl in query,
+          order_by: [{^sort_order, fragment("?->>'text'", pl.meta_data)}]
+        )
+
+      _ ->
+        # Default sorting by id
+        from(pl in query, order_by: [asc: pl.id])
+    end
+  end
+
+  defp apply_problem_pagination(query, params) do
+    from(pl in query,
+      offset: ^get_offset(params),
+      limit: ^get_limit(params)
+    )
+  end
 end

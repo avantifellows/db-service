@@ -23,6 +23,8 @@ defmodule DbserviceWeb.ResourceController do
       SwaggerSchemaResource.resources()
     )
     |> Map.merge(SwaggerSchemaResource.problem_resource())
+    |> Map.merge(SwaggerSchemaResource.move_resources())
+    |> Map.merge(SwaggerSchemaResource.tests_containing_problems())
   end
 
   swagger_path :index do
@@ -130,6 +132,149 @@ defmodule DbserviceWeb.ResourceController do
     end
   end
 
+  swagger_path :move_resources do
+    post("/api/resources/move")
+
+    description(
+      "Move one or more problems to a new curriculum/grade/subject/chapter/topic. Same body as PATCH resource but with resource_ids array."
+    )
+
+    parameters do
+      body(:body, Schema.ref(:MoveResourcesRequest), "Resource IDs and target association params",
+        required: true
+      )
+    end
+
+    response(200, "OK", Schema.ref(:MoveResourcesResponse))
+  end
+
+  swagger_path :tests_containing_problems do
+    post("/api/resources/tests-containing-problems")
+
+    description(
+      "Returns which tests contain any of the given problem IDs. Use to check if selected problems can be moved (e.g. they are used in tests)."
+    )
+
+    parameters do
+      body(:body, Schema.ref(:TestsContainingProblemsRequest), "List of problem (resource) IDs",
+        required: true
+      )
+    end
+
+    response(200, "OK", Schema.ref(:TestsContainingProblemsResponse))
+  end
+
+  def tests_containing_problems(conn, params) do
+    problem_ids = params["problem_ids"] || []
+
+    if Enum.empty?(problem_ids) do
+      conn
+      |> put_status(:unprocessable_entity)
+      |> json(%{error: "problem_ids is required and must be a non-empty array"})
+    else
+      results = Resources.get_tests_containing_problems(problem_ids)
+
+      problem_tests =
+        Enum.map(problem_ids, fn raw_id ->
+          problem_id = normalize_id(raw_id)
+          problem = problem_id && Repo.get(Resource, problem_id)
+          problem_code = if problem, do: problem.code, else: nil
+
+          tests_for_problem =
+            results
+            |> Enum.filter(fn %{problem_ids_in_test: pids} -> problem_id in pids end)
+            |> Enum.map(fn %{test_id: id, test: test} ->
+              %{
+                test_id: id,
+                test_code: test.code,
+                name: format_resource_name(test.name)
+              }
+            end)
+            |> Enum.uniq_by(& &1.test_id)
+
+          %{
+            problem_id: problem_id,
+            problem_code: problem_code,
+            tests: tests_for_problem
+          }
+        end)
+        |> Enum.reject(fn %{problem_id: id} -> is_nil(id) end)
+
+      conn
+      |> put_status(:ok)
+      |> json(%{problem_tests: problem_tests})
+    end
+  end
+
+  defp normalize_id(id) when is_integer(id), do: id
+
+  defp normalize_id(id) when is_binary(id) do
+    case Integer.parse(id) do
+      {int, _} -> int
+      :error -> nil
+    end
+  end
+
+  defp normalize_id(_), do: nil
+
+  # Formats resource.name array to [%{lang_code: "en", resource: "..."}, ...]
+  defp format_resource_name(nil), do: []
+
+  defp format_resource_name(name) when is_list(name) do
+    Enum.map(name, fn item ->
+      item = item || %{}
+      lang_code = item["lang_code"] || item["lang"] || item[:lang_code] || item[:lang]
+      text = item["resource"] || item["value"] || item[:resource] || item[:value] || ""
+      %{lang_code: lang_code, resource: text}
+    end)
+  end
+
+  defp format_resource_name(_), do: []
+
+  def move_resources(conn, params) do
+    resource_ids = params["resource_ids"] || []
+    # Association params only (no resource_ids)
+    association_params = Map.drop(params, ["resource_ids"])
+
+    if Enum.empty?(resource_ids) do
+      conn
+      |> put_status(:unprocessable_entity)
+      |> json(%{error: "resource_ids is required and must be a non-empty array"})
+    else
+      result =
+        Enum.reduce_while(resource_ids, {:ok, []}, fn id, {:ok, acc} ->
+          resource = Resources.get_resource!(id)
+
+          case Resources.update_resource_and_associations(resource, association_params) do
+            {:ok, updated} -> {:cont, {:ok, [updated | acc]}}
+            error -> {:halt, error}
+          end
+        end)
+
+      case result do
+        {:ok, resources} ->
+          conn
+          |> put_status(:ok)
+          |> render(:index, resource: Enum.reverse(resources))
+
+        {:error, %Ecto.Changeset{} = changeset} ->
+          conn
+          |> put_status(:unprocessable_entity)
+          |> json(%{errors: DbserviceWeb.ChangesetJSON.translate_errors(changeset)})
+
+        {:error, msg} when is_binary(msg) ->
+          conn
+          |> put_status(:unprocessable_entity)
+          |> json(%{error: msg})
+
+        {:error, _} = err ->
+          conn
+          |> put_status(:unprocessable_entity)
+          |> json(%{error: inspect(err)})
+      end
+    end
+  end
+
   swagger_path :delete do
     PhoenixSwagger.Path.delete("/api/resource/{resourceId}")
 
@@ -173,6 +318,11 @@ defmodule DbserviceWeb.ResourceController do
         conn
         |> put_status(:unprocessable_entity)
         |> json(%{error: "Failed to create resource curriculum entries: #{inspect(reason)}"})
+
+      {:error, {:cms_status_error, reason}} ->
+        conn
+        |> put_status(:unprocessable_entity)
+        |> json(%{error: reason})
     end
   end
 
@@ -184,6 +334,9 @@ defmodule DbserviceWeb.ResourceController do
 
       {:error, %Ecto.Changeset{} = changeset} ->
         Repo.rollback({:changeset_error, changeset})
+
+      {:error, reason} ->
+        Repo.rollback({:cms_status_error, reason})
     end
   end
 
@@ -357,6 +510,7 @@ defmodule DbserviceWeb.ResourceController do
         join: rc in ResourceCurriculum,
         on: rc.resource_id == r.id,
         where: rc.curriculum_id == ^params["curriculum_id"],
+        distinct: r.id,
         order_by: [asc: r.id]
       )
 
@@ -498,11 +652,6 @@ defmodule DbserviceWeb.ResourceController do
         |> put_status(:bad_request)
         |> json(%{error: "The specified resource is not a test"})
 
-      {:error, :curriculum_not_found} ->
-        conn
-        |> put_status(:not_found)
-        |> json(%{error: "Curriculum not found"})
-
       problems ->
         conn
         |> put_status(:ok)
@@ -626,5 +775,53 @@ defmodule DbserviceWeb.ResourceController do
             )
         end
     end
+  end
+
+  swagger_path :search_problems do
+    get("/api/problems/search")
+
+    parameters do
+      query(:string, "search", "Search term to find in problem text, hint, or solution",
+        required: false
+      )
+
+      query(:string, "type", "Resource type (e.g., 'problem')", required: false)
+
+      query(:string, "subtype", "Resource subtype", required: false)
+
+      query(:string, "lang_code", "Language code for the problem (e.g., 'en', 'hi')",
+        required: false
+      )
+
+      query(:integer, "limit", "Number of results per page", required: false)
+
+      query(:integer, "offset", "Number of results to skip", required: false)
+
+      query(:string, "sort_by", "Field to sort by (e.g., 'subtype', 'text')", required: false)
+
+      query(:string, "sort_order", "Sort order: 'asc' or 'desc'", required: false)
+
+      query(:string, "subject_id", "Subject id of the Resource", required: false)
+    end
+
+    response(200, "OK")
+  end
+
+  def search_problems(conn, params) do
+    # Ensure type is set to "problem" for problem search
+    params = Map.put(params, "type", "problem")
+
+    # Ensure default values for pagination
+    params =
+      params
+      |> Map.put_new("limit", 10)
+      |> Map.put_new("offset", 0)
+
+    total_count = Resources.count_problems(params)
+    problems = Resources.search_problems(params)
+
+    conn
+    |> put_resp_header("x-total-count", Integer.to_string(total_count))
+    |> render("problems.json", problems: problems)
   end
 end

@@ -8,6 +8,7 @@ defmodule Dbservice.Topics.Topic do
   alias Dbservice.Concepts.Concept
   alias Dbservice.Resources.Resource
   alias Dbservice.TopicCurriculums.TopicCurriculum
+  alias Dbservice.CmsStatuses.CmsStatus
 
   schema "topic" do
     field :name, {:array, :map}
@@ -19,6 +20,7 @@ defmodule Dbservice.Topics.Topic do
     belongs_to(:chapter, Chapter)
     many_to_many(:resource, Resource, join_through: "resource_topic", on_replace: :delete)
     has_many(:topic_curriculum, TopicCurriculum)
+    belongs_to(:cms_status, CmsStatus)
   end
 
   @doc false
@@ -27,7 +29,8 @@ defmodule Dbservice.Topics.Topic do
     |> cast(attrs, [
       :name,
       :code,
-      :chapter_id
+      :chapter_id,
+      :cms_status_id
     ])
   end
 end

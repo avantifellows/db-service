@@ -9,6 +9,7 @@ defmodule Dbservice.Topics do
   alias Dbservice.Topics.Topic
   alias Dbservice.TopicCurriculums.TopicCurriculum
   alias Dbservice.TopicCurriculums
+  alias Dbservice.CmsStatuses
 
   @doc """
   Returns the list of topic.
@@ -58,9 +59,11 @@ defmodule Dbservice.Topics do
       {:error, %Ecto.Changeset{}}
   """
   def create_topic(attrs \\ %{}) do
-    %Topic{}
-    |> Topic.changeset(attrs)
-    |> Repo.insert()
+    with {:ok, attrs} <- CmsStatuses.ensure_cms_status_id(attrs) do
+      %Topic{}
+      |> Topic.changeset(attrs)
+      |> Repo.insert()
+    end
   end
 
   @doc """
@@ -120,31 +123,34 @@ defmodule Dbservice.Topics do
 
     if curriculum_id do
       with {:ok, %Topic{} = updated_topic} <- update_topic(topic, attrs) do
-        topic_curriculum_attrs = %{
-          "topic_id" => updated_topic.id,
-          "curriculum_id" => curriculum_id,
-          "priority" => Map.get(attrs, "priority"),
-          "priority_text" => Map.get(attrs, "priority_text")
-        }
-
-        case TopicCurriculums.get_topic_curriculum_by_topic_id_and_curriculum_id(
-               updated_topic.id,
-               curriculum_id
-             ) do
-          nil ->
-            TopicCurriculums.create_topic_curriculum(topic_curriculum_attrs)
-
-          existing_topic_curriculum ->
-            TopicCurriculums.update_topic_curriculum(
-              existing_topic_curriculum,
-              topic_curriculum_attrs
-            )
-        end
-
+        update_topic_curriculum_mapping(updated_topic, curriculum_id, attrs)
         {:ok, updated_topic}
       end
     else
       update_topic(topic, attrs)
+    end
+  end
+
+  defp update_topic_curriculum_mapping(topic, curriculum_id, attrs) do
+    topic_curriculum_attrs = %{
+      "topic_id" => topic.id,
+      "curriculum_id" => curriculum_id,
+      "priority" => Map.get(attrs, "priority"),
+      "priority_text" => Map.get(attrs, "priority_text")
+    }
+
+    case TopicCurriculums.get_topic_curriculum_by_topic_id_and_curriculum_id(
+           topic.id,
+           curriculum_id
+         ) do
+      nil ->
+        TopicCurriculums.create_topic_curriculum(topic_curriculum_attrs)
+
+      existing_topic_curriculum ->
+        TopicCurriculums.update_topic_curriculum(
+          existing_topic_curriculum,
+          topic_curriculum_attrs
+        )
     end
   end
 
@@ -157,9 +163,11 @@ defmodule Dbservice.Topics do
       {:error, %Ecto.Changeset{}}
   """
   def update_topic(%Topic{} = topic, attrs) do
-    topic
-    |> Topic.changeset(attrs)
-    |> Repo.update()
+    with {:ok, attrs} <- CmsStatuses.ensure_cms_status_id(attrs) do
+      topic
+      |> Topic.changeset(attrs)
+      |> Repo.update()
+    end
   end
 
   @doc """
