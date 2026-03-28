@@ -45,6 +45,8 @@ priv/static
 !priv/static/favicon.ico
 
 # Ignore ElixirLS files
+.elixir_lscontext_for_ai/
+
 .elixir_ls
 
 config/service_account.json

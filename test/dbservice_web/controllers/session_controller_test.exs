@@ -279,6 +279,100 @@ defmodule DbserviceWeb.SessionControllerTest do
     end
   end
 
+  describe "search" do
+    test "returns sessions matching platform_ids", %{conn: conn} do
+      # Create test sessions with specific platform_ids
+      session1 = session_fixture(%{platform: "quiz", platform_id: "quiz-001"})
+      session2 = session_fixture(%{platform: "quiz", platform_id: "quiz-002"})
+      _session3 = session_fixture(%{platform: "quiz", platform_id: "quiz-003"})
+
+      # Search for specific platform_ids
+      conn =
+        post(conn, ~p"/api/session/search", %{
+          "platform" => "quiz",
+          "platform_ids" => ["quiz-001", "quiz-002"]
+        })
+
+      response = json_response(conn, 200)
+      assert is_list(response)
+      assert length(response) == 2
+
+      returned_platform_ids = Enum.map(response, & &1["platform_id"])
+      assert session1.platform_id in returned_platform_ids
+      assert session2.platform_id in returned_platform_ids
+    end
+
+    test "returns sessions matching platform filter only", %{conn: conn} do
+      _quiz_session = session_fixture(%{platform: "quiz", platform_id: "quiz-filter-test"})
+      _meet_session = session_fixture(%{platform: "meet", platform_id: "meet-filter-test"})
+
+      conn = post(conn, ~p"/api/session/search", %{"platform" => "quiz"})
+
+      response = json_response(conn, 200)
+      assert is_list(response)
+      # All returned sessions should have platform "quiz"
+      assert Enum.all?(response, fn s -> s["platform"] == "quiz" end)
+    end
+
+    test "returns empty list for non-matching platform_ids", %{conn: conn} do
+      conn =
+        post(conn, ~p"/api/session/search", %{
+          "platform_ids" => ["non-existent-id-1", "non-existent-id-2"]
+        })
+
+      assert json_response(conn, 200) == []
+    end
+
+    test "returns all sessions when no filters provided", %{conn: conn} do
+      _session = session_fixture()
+
+      conn = post(conn, ~p"/api/session/search", %{})
+
+      response = json_response(conn, 200)
+      assert is_list(response)
+      assert response != []
+    end
+
+    test "respects limit parameter", %{conn: conn} do
+      # Create multiple sessions
+      Enum.each(1..5, fn i ->
+        session_fixture(%{platform_id: "limit-test-#{i}"})
+      end)
+
+      conn = post(conn, ~p"/api/session/search", %{"limit" => 2})
+
+      response = json_response(conn, 200)
+      assert length(response) == 2
+    end
+
+    test "respects sort_order parameter", %{conn: conn} do
+      session1 = session_fixture(%{platform_id: "sort-test-1"})
+      session2 = session_fixture(%{platform_id: "sort-test-2"})
+
+      # Test ascending order
+      conn_asc =
+        post(conn, ~p"/api/session/search", %{
+          "platform_ids" => ["sort-test-1", "sort-test-2"],
+          "sort_order" => "asc"
+        })
+
+      response_asc = json_response(conn_asc, 200)
+      assert length(response_asc) == 2
+      assert hd(response_asc)["id"] == session1.id
+
+      # Test descending order
+      conn_desc =
+        post(conn, ~p"/api/session/search", %{
+          "platform_ids" => ["sort-test-1", "sort-test-2"],
+          "sort_order" => "desc"
+        })
+
+      response_desc = json_response(conn_desc, 200)
+      assert length(response_desc) == 2
+      assert hd(response_desc)["id"] == session2.id
+    end
+  end
+
   defp create_session(_) do
     session = session_fixture()
     %{session: session}
