@@ -26,6 +26,7 @@ defmodule Dbservice.DataImport.ImportWorker do
   alias Dbservice.Subjects
   alias Dbservice.Curriculums
   alias Dbservice.Topics
+  alias Dbservice.TopicCurriculums
   alias Dbservice.Purposes
   alias Dbservice.Resources
   alias Dbservice.ResourceCurriculums
@@ -75,6 +76,7 @@ defmodule Dbservice.DataImport.ImportWorker do
       "chapter_addition" => &process_chapter_record/1,
       "subject_addition" => &process_subject_record/1,
       "resource_addition" => &process_resource_record/1,
+      "topic_addition" => &process_topic_record/1,
       "auth_group_addition" => &process_auth_group_addition_record/1,
       "product_addition" => &process_product_addition_record/1,
       "program_addition" => &process_program_addition_record/1,
@@ -149,6 +151,7 @@ defmodule Dbservice.DataImport.ImportWorker do
       |> add_chapter_id(row_number)
       |> add_topic_id(row_number)
       |> add_purpose_ids_for_resource(row_number)
+      |> add_resource_id_from_code_for_topic(import_type, row_number)
       |> add_product_id(row_number)
       |> add_program_id(row_number)
       |> add_auth_group_id_batch(row_number)
@@ -357,6 +360,33 @@ defmodule Dbservice.DataImport.ImportWorker do
         record
     end
   end
+
+  defp add_resource_id_from_code_for_topic(record, "topic_addition", row_number) do
+    case Map.get(record, "code") do
+      nil ->
+        record
+
+      "" ->
+        record
+
+      code when is_binary(code) ->
+        code = String.trim(code)
+
+        case Resources.get_resource_by_code(code) do
+          nil -> record
+          resource -> Map.put(record, "resource_id", resource.id)
+        end
+
+      _ ->
+        record
+    end
+  rescue
+    error ->
+      reraise "Failed to lookup resource by code on row #{row_number}: #{Exception.message(error)}",
+              __STACKTRACE__
+  end
+
+  defp add_resource_id_from_code_for_topic(record, _import_type, _row_number), do: record
 
   defp add_product_id(record, row_number) do
     case Map.get(record, "product_code") do
@@ -923,6 +953,96 @@ defmodule Dbservice.DataImport.ImportWorker do
 
   defp build_subject_name_array(subject_name) when is_binary(subject_name) do
     [%{"lang_code" => "en", "subject" => subject_name}]
+  end
+
+  defp process_topic_record(record) do
+    topic_code = trim_optional(record["topic_code"])
+    topic_name = trim_optional(record["topic_name"])
+    curriculum_id = record["curriculum_id"]
+    chapter_id = record["chapter_id"]
+    resource_id = record["resource_id"]
+
+    cond do
+      is_nil(topic_code) or is_nil(topic_name) ->
+        # Shared sheets can have many non-topic rows or partial topic data.
+        # Skip any row that does not have both topicCode and topicName.
+        {:ok, :skipped_topic_row}
+
+      is_nil(curriculum_id) ->
+        {:error,
+         "Could not resolve curriculum for row (topicCode: #{topic_code}). Ensure curriculum value exists."}
+
+      true ->
+        attrs =
+          %{
+            "code" => topic_code,
+            "name" => build_topic_name_array(topic_name)
+          }
+          |> maybe_put("chapter_id", chapter_id)
+
+        with {:ok, topic} <- create_or_update_topic(attrs, topic_code),
+             :ok <- ensure_topic_curriculum(topic.id, curriculum_id),
+             :ok <- ensure_topic_resource(topic.id, resource_id) do
+          {:ok, topic}
+        end
+    end
+  end
+
+  defp trim_optional(nil), do: nil
+  defp trim_optional(""), do: nil
+
+  defp trim_optional(value) when is_binary(value) do
+    trimmed = String.trim(value)
+    if trimmed == "", do: nil, else: trimmed
+  end
+
+  defp trim_optional(value), do: value
+
+  defp build_topic_name_array(nil), do: [%{"lang_code" => "en", "topic" => ""}]
+  defp build_topic_name_array(""), do: [%{"lang_code" => "en", "topic" => ""}]
+
+  defp build_topic_name_array(topic_name) when is_binary(topic_name),
+    do: [%{"lang_code" => "en", "topic" => topic_name}]
+
+  defp create_or_update_topic(attrs, topic_code) do
+    case Topics.get_topic_by_code(topic_code) do
+      nil -> Topics.create_topic(attrs)
+      existing -> Topics.update_topic(existing, attrs)
+    end
+  end
+
+  defp ensure_topic_curriculum(topic_id, curriculum_id) do
+    case TopicCurriculums.get_topic_curriculum_by_topic_id_and_curriculum_id(
+           topic_id,
+           curriculum_id
+         ) do
+      nil ->
+        TopicCurriculums.create_topic_curriculum(%{
+          "topic_id" => topic_id,
+          "curriculum_id" => curriculum_id
+        })
+        |> to_ok()
+
+      _ ->
+        :ok
+    end
+  end
+
+  defp ensure_topic_resource(_topic_id, nil), do: :ok
+  defp ensure_topic_resource(_topic_id, ""), do: :ok
+
+  defp ensure_topic_resource(topic_id, resource_id) do
+    case ResourceTopics.get_resource_topic_by_resource_id_and_topic_id(resource_id, topic_id) do
+      nil ->
+        ResourceTopics.create_resource_topic(%{
+          "resource_id" => resource_id,
+          "topic_id" => topic_id
+        })
+        |> to_ok()
+
+      _ ->
+        :ok
+    end
   end
 
   defp process_auth_group_addition_record(record) do

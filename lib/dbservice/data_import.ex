@@ -20,6 +20,7 @@ defmodule Dbservice.DataImport do
   def format_type_name("chapter_addition"), do: "Chapter Addition"
   def format_type_name("subject_addition"), do: "Subject Addition"
   def format_type_name("resource_addition"), do: "Resource Addition"
+  def format_type_name("topic_addition"), do: "Topic Addition"
   def format_type_name("auth_group_addition"), do: "Auth Group Addition"
   def format_type_name("product_addition"), do: "Product Addition"
   def format_type_name("program_addition"), do: "Program Addition"

@@ -800,6 +800,8 @@ defmodule DbserviceWeb.ResourceController do
       query(:string, "sort_by", "Field to sort by (e.g., 'subtype', 'text')", required: false)
 
       query(:string, "sort_order", "Sort order: 'asc' or 'desc'", required: false)
+
+      query(:string, "subject_id", "Subject id of the Resource", required: false)
     end
 
     response(200, "OK")
