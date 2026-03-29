@@ -8,6 +8,9 @@ defmodule DbserviceWeb.ResourceController do
   alias Dbservice.Resources.ResourceTopic
   alias Dbservice.Resources.ResourceChapter
   alias Dbservice.Resources.ResourceCurriculum
+  alias Dbservice.Topics.Topic
+  alias Dbservice.TopicCurriculums.TopicCurriculum
+  alias Dbservice.Chapters.Chapter
   alias Dbservice.Languages.Language
   alias Dbservice.Resources.ProblemLanguage
 
@@ -506,26 +509,125 @@ defmodule DbserviceWeb.ResourceController do
 
   def curriculum_resources(conn, params) do
     query =
-      from(r in Resource,
-        join: rc in ResourceCurriculum,
-        on: rc.resource_id == r.id,
-        where: rc.curriculum_id == ^params["curriculum_id"],
-        distinct: r.id,
-        order_by: [asc: r.id]
-      )
+      if topic_scoped_curriculum_request?(params) do
+        build_topic_scoped_curriculum_query(params)
+      else
+        build_default_curriculum_resources_query(params)
+      end
 
     query =
       query
-      |> filter_by_grade(params)
-      |> filter_by_subject(params)
-      |> filter_by_chapter(params)
-      |> filter_by_topic(params)
       |> filter_by_type(params)
       |> filter_by_subtype(params)
       |> apply_pagination(params)
 
     resources = Repo.all(query)
     render(conn, "index.json", resource: resources)
+  end
+
+  defp topic_scoped_curriculum_request?(params) do
+    case Map.get(params, "topic_id") do
+      nil -> false
+      "" -> false
+      _ -> true
+    end
+  end
+
+  # Topic-level resources often have resource_topic but no resource_curriculum row.
+  # Treat the resource as in-curriculum if either resource_curriculum matches or the
+  # topic is linked to that curriculum via topic_curriculum.
+  defp build_topic_scoped_curriculum_query(params) do
+    curriculum_id = param_as_integer!(params, "curriculum_id")
+    topic_id = param_as_integer!(params, "topic_id")
+
+    query =
+      from r in Resource,
+        as: :resource,
+        join: rt in ResourceTopic,
+        on: rt.resource_id == r.id,
+        join: t in Topic,
+        on: t.id == rt.topic_id,
+        where: rt.topic_id == ^topic_id,
+        where:
+          exists(
+            from rc in ResourceCurriculum,
+              where:
+                rc.resource_id == parent_as(:resource).id and rc.curriculum_id == ^curriculum_id
+          ) or
+          exists(
+            from tc in TopicCurriculum,
+              where: tc.topic_id == ^topic_id and tc.curriculum_id == ^curriculum_id
+          ),
+        distinct: r.id,
+        order_by: [asc: r.id]
+
+    query =
+      case param_as_integer(params, "chapter_id") do
+        nil -> query
+        chapter_id -> from [r, rt, t] in query, where: t.chapter_id == ^chapter_id
+      end
+
+    filter_topic_scoped_by_grade_and_subject(query, params)
+  end
+
+  defp build_default_curriculum_resources_query(params) do
+    curriculum_id = param_as_integer!(params, "curriculum_id")
+
+    from(r in Resource,
+      join: rc in ResourceCurriculum,
+      on: rc.resource_id == r.id,
+      where: rc.curriculum_id == ^curriculum_id,
+      distinct: r.id,
+      order_by: [asc: r.id]
+    )
+    |> filter_by_grade(params)
+    |> filter_by_subject(params)
+    |> filter_by_chapter(params)
+  end
+
+  defp filter_topic_scoped_by_grade_and_subject(query, params) do
+    grade_id = param_as_integer(params, "grade_id")
+    subject_id = param_as_integer(params, "subject_id")
+
+    cond do
+      grade_id != nil && subject_id != nil ->
+        from [r, rt, t] in query,
+          join: ch in Chapter,
+          on: ch.id == t.chapter_id,
+          where: ch.grade_id == ^grade_id,
+          where: ch.subject_id == ^subject_id
+
+      grade_id != nil ->
+        from [r, rt, t] in query,
+          join: ch in Chapter,
+          on: ch.id == t.chapter_id,
+          where: ch.grade_id == ^grade_id
+
+      subject_id != nil ->
+        from [r, rt, t] in query,
+          join: ch in Chapter,
+          on: ch.id == t.chapter_id,
+          where: ch.subject_id == ^subject_id
+
+      true ->
+        query
+    end
+  end
+
+  defp param_as_integer(params, key) do
+    case Map.get(params, key) do
+      nil -> nil
+      "" -> nil
+      v when is_integer(v) -> v
+      v when is_binary(v) -> String.to_integer(v)
+    end
+  end
+
+  defp param_as_integer!(params, key) do
+    case param_as_integer(params, key) do
+      nil -> raise ArgumentError, "missing or invalid query param: #{key}"
+      v -> v
+    end
   end
 
   # Helper functions for each filter
@@ -547,16 +649,6 @@ defmodule DbserviceWeb.ResourceController do
   end
 
   defp filter_by_chapter(query, _), do: query
-
-  defp filter_by_topic(query, %{"topic_id" => topic_id}) when not is_nil(topic_id) do
-    from(r in query,
-      join: rt in ResourceTopic,
-      on: rt.resource_id == r.id,
-      where: rt.topic_id == ^topic_id
-    )
-  end
-
-  defp filter_by_topic(query, _), do: query
 
   defp filter_by_grade(query, %{"grade_id" => grade_id}) when not is_nil(grade_id) do
     from([r, rc] in query,
