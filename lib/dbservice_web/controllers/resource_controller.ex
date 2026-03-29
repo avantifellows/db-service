@@ -525,17 +525,10 @@ defmodule DbserviceWeb.ResourceController do
     render(conn, "index.json", resource: resources)
   end
 
-  defp topic_scoped_curriculum_request?(params) do
-    case Map.get(params, "topic_id") do
-      nil -> false
-      "" -> false
-      _ -> true
-    end
-  end
+  defp topic_scoped_curriculum_request?(params),
+    do: Map.get(params, "topic_id") not in [nil, ""]
 
-  # Topic-level resources often have resource_topic but no resource_curriculum row.
-  # Treat the resource as in-curriculum if either resource_curriculum matches or the
-  # topic is linked to that curriculum via topic_curriculum.
+  # In-curriculum if resource_curriculum matches OR topic_curriculum links this topic.
   defp build_topic_scoped_curriculum_query(params) do
     curriculum_id = param_as_integer!(params, "curriculum_id")
     topic_id = param_as_integer!(params, "topic_id")
@@ -554,10 +547,10 @@ defmodule DbserviceWeb.ResourceController do
               where:
                 rc.resource_id == parent_as(:resource).id and rc.curriculum_id == ^curriculum_id
           ) or
-          exists(
-            from tc in TopicCurriculum,
-              where: tc.topic_id == ^topic_id and tc.curriculum_id == ^curriculum_id
-          ),
+            exists(
+              from tc in TopicCurriculum,
+                where: tc.topic_id == ^topic_id and tc.curriculum_id == ^curriculum_id
+            ),
         distinct: r.id,
         order_by: [asc: r.id]
 
@@ -589,28 +582,22 @@ defmodule DbserviceWeb.ResourceController do
     grade_id = param_as_integer(params, "grade_id")
     subject_id = param_as_integer(params, "subject_id")
 
-    cond do
-      grade_id != nil && subject_id != nil ->
-        from [r, rt, t] in query,
-          join: ch in Chapter,
-          on: ch.id == t.chapter_id,
-          where: ch.grade_id == ^grade_id,
-          where: ch.subject_id == ^subject_id
-
-      grade_id != nil ->
-        from [r, rt, t] in query,
-          join: ch in Chapter,
-          on: ch.id == t.chapter_id,
-          where: ch.grade_id == ^grade_id
-
-      subject_id != nil ->
-        from [r, rt, t] in query,
-          join: ch in Chapter,
-          on: ch.id == t.chapter_id,
-          where: ch.subject_id == ^subject_id
-
-      true ->
+    case {grade_id, subject_id} do
+      {nil, nil} ->
         query
+
+      {g, s} ->
+        dyn =
+          case {g, s} do
+            {g, nil} -> dynamic([_, _, _, ch], ch.grade_id == ^g)
+            {nil, s} -> dynamic([_, _, _, ch], ch.subject_id == ^s)
+            {g, s} -> dynamic([_, _, _, ch], ch.grade_id == ^g and ch.subject_id == ^s)
+          end
+
+        from [r, rt, t] in query,
+          join: ch in Chapter,
+          on: ch.id == t.chapter_id,
+          where: ^dyn
     end
   end
 
@@ -630,7 +617,6 @@ defmodule DbserviceWeb.ResourceController do
     end
   end
 
-  # Helper functions for each filter
   defp filter_by_subject(query, %{"subject_id" => subject_id})
        when not is_nil(subject_id) do
     from([r, rc] in query,
