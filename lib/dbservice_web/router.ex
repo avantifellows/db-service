@@ -34,12 +34,16 @@ defmodule DbserviceWeb.Router do
     get "/templates/:type/download", TemplateController, :download_csv_template
   end
 
-  # Protected endpoint for dropout imports only
+  # Protected endpoints
   scope "/", DbserviceWeb do
     pipe_through [:browser, :dashboard_auth]
 
     post "/imports/dropout", ImportController, :create_dropout_import
     post "/imports/re_enrollment", ImportController, :create_re_enrollment_import
+
+    post "/imports/remove-wrong-enrollment-records",
+         ImportController,
+         :create_remove_wrong_enrollment_records_import
   end
 
   scope "/api", DbserviceWeb do
