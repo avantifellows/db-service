@@ -13,6 +13,7 @@ defmodule DbserviceWeb.ResourceController do
   alias Dbservice.Chapters.Chapter
   alias Dbservice.Languages.Language
   alias Dbservice.Resources.ProblemLanguage
+  alias Dbservice.Topics.Topic
 
   action_fallback(DbserviceWeb.FallbackController)
 
@@ -768,6 +769,8 @@ defmodule DbserviceWeb.ResourceController do
         from(r in Resource,
           join: rt in ResourceTopic,
           on: rt.resource_id == r.id,
+          join: t in Topic,
+          on: t.id == rt.topic_id,
           join: rc in ResourceCurriculum,
           on: rc.resource_id == r.id,
           join: pl in ProblemLanguage,
@@ -781,6 +784,7 @@ defmodule DbserviceWeb.ResourceController do
           select: %{
             resource: r,
             resource_topic: rt,
+            chapter_id: t.chapter_id,
             resource_curriculums: [rc],
             requested_curriculum_id: ^curriculum_id,
             problem_lang: pl
