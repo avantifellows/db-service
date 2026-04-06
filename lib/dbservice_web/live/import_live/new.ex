@@ -61,17 +61,20 @@ defmodule DbserviceWeb.ImportLive.New do
   defp handle_save(%{"import" => import_params}, socket) do
     import_type = Map.get(import_params, "type", "")
 
-    # Check if this is a dropout or re-enrollment import (both require admin auth)
-    if import_type in ["dropout", "re_enrollment"] do
-      # For dropout and re-enrollment imports, use JavaScript to submit form to authenticated endpoint
-      # This will prompt for basic auth credentials
-      event_name =
-        if import_type == "dropout",
-          do: "submit_dropout_import",
-          else: "submit_re_enrollment_import"
+    # Protected import types require basic auth (dropout, re_enrollment, auth_group, product, program, batch)
+    protected_import_config = %{
+      "dropout" => "submit_dropout_import",
+      "re_enrollment" => "submit_re_enrollment_import",
+      "auth_group_addition" => "submit_auth_group_import",
+      "product_addition" => "submit_product_import",
+      "program_addition" => "submit_program_import",
+      "batch_addition" => "submit_batch_import"
+    }
 
-      url =
-        if import_type == "dropout", do: ~p"/imports/dropout", else: ~p"/imports/re_enrollment"
+    if Map.has_key?(protected_import_config, import_type) do
+      # Submit to authenticated endpoint; browser will prompt for basic auth
+      event_name = Map.fetch!(protected_import_config, import_type)
+      url = get_protected_import_url(import_type)
 
       {:noreply,
        socket
@@ -118,6 +121,14 @@ defmodule DbserviceWeb.ImportLive.New do
      |> clear_flash()
      |> put_flash(:error, "Invalid form submission. Please try again.")}
   end
+
+  defp get_protected_import_url("dropout"), do: ~p"/imports/dropout"
+  defp get_protected_import_url("re_enrollment"), do: ~p"/imports/re_enrollment"
+  defp get_protected_import_url("auth_group_addition"), do: ~p"/imports/auth_group"
+  defp get_protected_import_url("product_addition"), do: ~p"/imports/product"
+  defp get_protected_import_url("program_addition"), do: ~p"/imports/program"
+  defp get_protected_import_url("batch_addition"), do: ~p"/imports/batch"
+  defp get_protected_import_url(_), do: ~p"/imports"
 
   def render(assigns) do
     ~H"""
@@ -169,6 +180,10 @@ defmodule DbserviceWeb.ImportLive.New do
                     <option value="subject_addition" selected={@form[:type].value == "subject_addition"}>Subject Addition</option>
                     <option value="resource_addition" selected={@form[:type].value == "resource_addition"}>Resource Addition</option>
                     <option value="topic_addition" selected={@form[:type].value == "topic_addition"}>Topic Addition</option>
+                    <option value="auth_group_addition" selected={@form[:type].value == "auth_group_addition"}>Auth Group Addition</option>
+                    <option value="product_addition" selected={@form[:type].value == "product_addition"}>Product Addition</option>
+                    <option value="program_addition" selected={@form[:type].value == "program_addition"}>Program Addition</option>
+                    <option value="batch_addition" selected={@form[:type].value == "batch_addition"}>Batch Addition</option>
                     <option value="alumni_addition" selected={@form[:type].value == "alumni_addition"}>Alumni Addition</option>
                     <option value="batch_movement" selected={@form[:type].value == "batch_movement"}>Student Batch Movement</option>
                     <option value="dropout" selected={@form[:type].value == "dropout"}>Student Dropout</option>

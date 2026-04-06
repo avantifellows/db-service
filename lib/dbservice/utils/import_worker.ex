@@ -19,6 +19,7 @@ defmodule Dbservice.DataImport.ImportWorker do
   alias Dbservice.Services.DropoutService
   alias Dbservice.Services.ReEnrollmentService
   alias Dbservice.Utils.ChangesetFormatter
+  alias Dbservice.Utils.Util
   alias Dbservice.Colleges
   alias Dbservice.Branches
   alias Dbservice.Chapters
@@ -31,6 +32,11 @@ defmodule Dbservice.DataImport.ImportWorker do
   alias Dbservice.ResourceCurriculums
   alias Dbservice.ResourceChapters
   alias Dbservice.ResourceTopics
+  alias Dbservice.AuthGroups
+  alias Dbservice.Groups
+  alias Dbservice.Products
+  alias Dbservice.Programs
+  alias Dbservice.Batches
 
   @impl Oban.Worker
   def perform(%Oban.Job{args: %{"id" => import_id}}) do
@@ -71,6 +77,10 @@ defmodule Dbservice.DataImport.ImportWorker do
       "subject_addition" => &process_subject_record/1,
       "resource_addition" => &process_resource_record/1,
       "topic_addition" => &process_topic_record/1,
+      "auth_group_addition" => &process_auth_group_addition_record/1,
+      "product_addition" => &process_product_addition_record/1,
+      "program_addition" => &process_program_addition_record/1,
+      "batch_addition" => &process_batch_addition_record/1,
       "student" => &process_student_record/1,
       "student_update" => &process_student_update_record/1,
       "batch_movement" => &process_batch_movement_record/1,
@@ -142,6 +152,10 @@ defmodule Dbservice.DataImport.ImportWorker do
       |> add_topic_id(row_number)
       |> add_purpose_ids_for_resource(row_number)
       |> add_resource_id_from_code_for_topic(import_type, row_number)
+      |> add_product_id(row_number)
+      |> add_program_id(row_number)
+      |> add_auth_group_id_batch(row_number)
+      |> add_parent_batch_id(row_number)
       |> add_college_ids(row_number)
       |> add_branch_ids(row_number)
     end
@@ -373,6 +387,102 @@ defmodule Dbservice.DataImport.ImportWorker do
   end
 
   defp add_resource_id_from_code_for_topic(record, _import_type, _row_number), do: record
+
+  defp add_product_id(record, row_number) do
+    case Map.get(record, "product_code") do
+      nil ->
+        record
+
+      "" ->
+        record
+
+      code when is_binary(code) ->
+        code = String.trim(code)
+        if code == "", do: record, else: do_add_product_id(record, code, row_number)
+
+      _ ->
+        record
+    end
+  end
+
+  defp do_add_product_id(record, code, _row_number) do
+    case Products.get_product_by_code(code) do
+      nil -> record
+      product -> Map.put(record, "product_id", product.id)
+    end
+  end
+
+  defp add_program_id(record, row_number) do
+    case Map.get(record, "program_name") do
+      nil ->
+        record
+
+      "" ->
+        record
+
+      name when is_binary(name) ->
+        name = String.trim(name)
+        if name == "", do: record, else: do_add_program_id(record, name, row_number)
+
+      _ ->
+        record
+    end
+  end
+
+  defp do_add_program_id(record, name, _row_number) do
+    case Programs.get_program_by_name(name) do
+      nil -> record
+      program -> Map.put(record, "program_id", program.id)
+    end
+  end
+
+  defp add_auth_group_id_batch(record, row_number) do
+    case Map.get(record, "auth_group") do
+      nil ->
+        record
+
+      "" ->
+        record
+
+      name when is_binary(name) ->
+        name = String.trim(name)
+        if name == "", do: record, else: do_add_auth_group_id_batch(record, name, row_number)
+
+      _ ->
+        record
+    end
+  end
+
+  defp do_add_auth_group_id_batch(record, name, _row_number) do
+    case AuthGroups.get_auth_group_by_name(name) do
+      nil -> record
+      auth_group -> Map.put(record, "auth_group_id", auth_group.id)
+    end
+  end
+
+  defp add_parent_batch_id(record, row_number) do
+    case Map.get(record, "parent_batch_id") do
+      nil ->
+        record
+
+      "" ->
+        record
+
+      batch_id when is_binary(batch_id) ->
+        batch_id = String.trim(batch_id)
+        if batch_id == "", do: record, else: do_add_parent_batch_id(record, batch_id, row_number)
+
+      _ ->
+        record
+    end
+  end
+
+  defp do_add_parent_batch_id(record, batch_id, _row_number) do
+    case Batches.get_batch_by_batch_id_nil(batch_id) do
+      nil -> record
+      parent_batch -> Map.put(record, "parent_id", parent_batch.id)
+    end
+  end
 
   defp add_college_ids(record, row_number) do
     record
@@ -934,6 +1044,281 @@ defmodule Dbservice.DataImport.ImportWorker do
         :ok
     end
   end
+
+  defp process_auth_group_addition_record(record) do
+    with {:ok, name} <- validate_auth_group_name(record["name"]),
+         attrs <- build_auth_group_attrs(record, name),
+         {:ok, ag} <- create_or_update_auth_group(name, attrs) do
+      {:ok, ag}
+    else
+      {:error, %Ecto.Changeset{} = cs} -> {:error, ChangesetFormatter.format_errors(cs)}
+      {:error, msg} when is_binary(msg) -> {:error, msg}
+      {:error, other} -> {:error, inspect(other)}
+    end
+  end
+
+  defp validate_auth_group_name(nil), do: {:error, "Name is required for auth group addition"}
+
+  defp validate_auth_group_name(name) when is_binary(name) do
+    if String.trim(name) == "",
+      do: {:error, "Name is required for auth group addition"},
+      else: {:ok, String.trim(name)}
+  end
+
+  defp validate_auth_group_name(_), do: {:error, "Name is required for auth group addition"}
+
+  defp build_auth_group_attrs(record, name) do
+    input_schema = build_auth_group_input_schema(record)
+    locale_data = parse_auth_group_locale_data(Map.get(record, "auth_group_locale_data_raw"))
+    locale = record["locale"] |> auth_group_trim_or_nil()
+
+    %{"name" => name}
+    |> maybe_put_auth_group_field("input_schema", input_schema)
+    |> maybe_put_auth_group_field("locale", locale)
+    |> maybe_put_auth_group_field("locale_data", locale_data)
+  end
+
+  defp create_or_update_auth_group(name, attrs) do
+    case AuthGroups.get_auth_group_by_name(name) do
+      nil -> AuthGroups.create_auth_group_from_import(attrs)
+      existing -> update_auth_group_and_maybe_users(existing, attrs)
+    end
+  end
+
+  defp update_auth_group_and_maybe_users(existing, attrs) do
+    case AuthGroups.update_auth_group(existing, attrs) do
+      {:ok, ag} ->
+        maybe_update_users_for_auth_group(ag.id)
+        {:ok, ag}
+
+      err ->
+        err
+    end
+  end
+
+  defp maybe_update_users_for_auth_group(auth_group_id) do
+    if Groups.get_group_by_child_id_and_type(auth_group_id, "auth_group") do
+      _ = Util.update_users_for_group(auth_group_id, "auth_group")
+    end
+  end
+
+  defp build_auth_group_input_schema(record) do
+    %{}
+    |> put_input_schema_if_present("images", record["auth_group_images"])
+    |> put_input_schema_if_present("user_type", record["auth_group_user_type"])
+    |> put_input_schema_if_present("auth_type", record["auth_group_auth_type"])
+    |> put_input_schema_if_present("default_locale", record["auth_group_default_locale"])
+    |> put_input_schema_if_present("tech_pm", record["auth_group_tech_pm"])
+  end
+
+  defp put_input_schema_if_present(map, _key, nil), do: map
+  defp put_input_schema_if_present(map, _key, ""), do: map
+
+  defp put_input_schema_if_present(map, key, v) when is_binary(v) do
+    v = String.trim(v)
+    if v == "", do: map, else: Map.put(map, key, v)
+  end
+
+  defp put_input_schema_if_present(map, key, v), do: Map.put(map, key, v)
+
+  defp parse_auth_group_locale_data(nil), do: nil
+  defp parse_auth_group_locale_data(""), do: nil
+
+  defp parse_auth_group_locale_data(raw) when is_binary(raw) do
+    raw = String.trim(raw)
+
+    case Jason.decode(raw) do
+      {:ok, %{} = m} -> m
+      {:ok, _} -> %{"_value" => raw}
+      {:error, _} -> %{"_raw" => raw}
+    end
+  end
+
+  defp parse_auth_group_locale_data(_), do: nil
+
+  defp auth_group_trim_or_nil(nil), do: nil
+
+  defp auth_group_trim_or_nil(s) when is_binary(s) do
+    t = String.trim(s)
+    if t == "", do: nil, else: t
+  end
+
+  defp maybe_put_auth_group_field(attrs, _key, nil), do: attrs
+  defp maybe_put_auth_group_field(attrs, "input_schema", m) when map_size(m) == 0, do: attrs
+  defp maybe_put_auth_group_field(attrs, key, v), do: Map.put(attrs, key, v)
+
+  defp process_product_addition_record(record) do
+    name = record["name"] |> trim_str()
+    code = record["code"] |> trim_str()
+
+    if is_nil(name) or name == "" do
+      {:error, "Name is required for product addition"}
+    else
+      attrs =
+        %{"name" => name}
+        |> maybe_put_product("code", code)
+        |> maybe_put_product("mode", record["mode"] |> trim_str())
+        |> maybe_put_product("model", record["model"] |> trim_str())
+        |> maybe_put_product("tech_modules", record["tech_modules"] |> trim_str())
+        |> maybe_put_product("type", record["type"] |> trim_str())
+        |> maybe_put_product("led_by", record["led_by"] |> trim_str())
+        |> maybe_put_product("goal", record["goal"] |> trim_str())
+
+      case Products.get_product_by_name_and_code(name, code) do
+        nil ->
+          Products.create_product_from_import(attrs)
+
+        existing ->
+          Products.update_product(existing, attrs)
+      end
+      |> case do
+        {:ok, product} -> {:ok, product}
+        {:error, %Ecto.Changeset{} = cs} -> {:error, ChangesetFormatter.format_errors(cs)}
+        {:error, other} -> {:error, inspect(other)}
+      end
+    end
+  end
+
+  defp process_program_addition_record(record) do
+    name = record["name"] |> trim_str()
+
+    if is_nil(name) or name == "" do
+      {:error, "Program Name is required for program addition"}
+    else
+      attrs =
+        %{"name" => name}
+        |> maybe_put_program("target_outreach", parse_int(record["target_outreach"]))
+        |> maybe_put_program("donor", record["donor"] |> trim_str())
+        |> maybe_put_program("state", record["state"] |> trim_str())
+        |> maybe_put_program("product_id", record["product_id"])
+        |> maybe_put_program("model", record["model"] |> trim_str())
+        |> maybe_put_program("is_current", record["is_current"])
+
+      case Programs.get_program_by_name(name) do
+        nil ->
+          Programs.create_program_from_import(attrs)
+
+        existing ->
+          Programs.update_program(existing, attrs)
+      end
+      |> case do
+        {:ok, program} -> {:ok, program}
+        {:error, %Ecto.Changeset{} = cs} -> {:error, ChangesetFormatter.format_errors(cs)}
+        {:error, other} -> {:error, inspect(other)}
+      end
+    end
+  end
+
+  defp maybe_put_program(attrs, _key, nil), do: attrs
+  defp maybe_put_program(attrs, _key, ""), do: attrs
+  defp maybe_put_program(attrs, key, value), do: Map.put(attrs, key, value)
+
+  defp process_batch_addition_record(record) do
+    with {:ok, name} <- validate_batch_name(record["name"]),
+         metadata <- batch_metadata_from_record(record),
+         attrs <- build_batch_attrs(record, name, metadata),
+         result <- create_or_update_batch(attrs) do
+      format_batch_result(result)
+    else
+      {:error, msg} when is_binary(msg) -> {:error, msg}
+    end
+  end
+
+  defp validate_batch_name(nil), do: {:error, "Name is required for batch addition"}
+
+  defp validate_batch_name(name) when is_binary(name) do
+    t = String.trim(name)
+    if t == "", do: {:error, "Name is required for batch addition"}, else: {:ok, t}
+  end
+
+  defp validate_batch_name(_), do: {:error, "Name is required for batch addition"}
+
+  defp batch_metadata_from_record(record) do
+    case record["is_parent_batch"] do
+      true -> %{"is_parent_batch" => true}
+      false -> %{"is_parent_batch" => false}
+      _ -> %{}
+    end
+  end
+
+  defp build_batch_attrs(record, name, metadata) do
+    metadata_value = if metadata != %{}, do: metadata, else: nil
+
+    %{"name" => name}
+    |> maybe_put_batch("batch_id", record["batch_id"] |> trim_str())
+    |> maybe_put_batch("contact_hours_per_week", parse_int(record["contact_hours_per_week"]))
+    |> maybe_put_batch("parent_id", record["parent_id"])
+    |> maybe_put_batch("start_date", parse_date(record["start_date"]))
+    |> maybe_put_batch("end_date", parse_date(record["end_date"]))
+    |> maybe_put_batch("program_id", record["program_id"])
+    |> maybe_put_batch("auth_group_id", record["auth_group_id"])
+    |> maybe_put_batch("metadata", metadata_value)
+  end
+
+  defp create_or_update_batch(attrs) do
+    existing = find_existing_batch(attrs["batch_id"])
+
+    if existing,
+      do: Batches.update_batch(existing, attrs),
+      else: Batches.create_batch_from_import(attrs)
+  end
+
+  defp find_existing_batch(nil), do: nil
+  defp find_existing_batch(""), do: nil
+
+  defp find_existing_batch(batch_id) when is_binary(batch_id),
+    do: Batches.get_batch_by_batch_id_nil(batch_id)
+
+  defp find_existing_batch(_), do: nil
+
+  defp format_batch_result({:ok, batch}), do: {:ok, batch}
+
+  defp format_batch_result({:error, %Ecto.Changeset{} = cs}),
+    do: {:error, ChangesetFormatter.format_errors(cs)}
+
+  defp format_batch_result({:error, other}), do: {:error, inspect(other)}
+
+  defp maybe_put_batch(attrs, _key, nil), do: attrs
+  defp maybe_put_batch(attrs, _key, ""), do: attrs
+  defp maybe_put_batch(attrs, key, value), do: Map.put(attrs, key, value)
+
+  defp parse_int(nil), do: nil
+  defp parse_int(""), do: nil
+  defp parse_int(n) when is_integer(n), do: n
+
+  defp parse_int(s) when is_binary(s) do
+    s = String.trim(s)
+
+    case Integer.parse(s) do
+      {num, _} -> num
+      :error -> nil
+    end
+  end
+
+  defp parse_int(_), do: nil
+
+  defp parse_date(nil), do: nil
+  defp parse_date(""), do: nil
+  defp parse_date(%Date{} = d), do: d
+
+  defp parse_date(s) when is_binary(s) do
+    s = String.trim(s)
+
+    case Date.from_iso8601(s) do
+      {:ok, date} -> date
+      {:error, _} -> nil
+    end
+  end
+
+  defp parse_date(_), do: nil
+
+  defp trim_str(nil), do: nil
+  defp trim_str(s) when is_binary(s), do: String.trim(s)
+  defp trim_str(s), do: s
+
+  defp maybe_put_product(attrs, _key, nil), do: attrs
+  defp maybe_put_product(attrs, _key, ""), do: attrs
+  defp maybe_put_product(attrs, key, v), do: Map.put(attrs, key, v)
 
   defp process_resource_record(record) do
     code = record["code"]
