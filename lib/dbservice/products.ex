@@ -44,6 +44,16 @@ defmodule Dbservice.Products do
   end
 
   @doc """
+  Gets a product by code. Returns nil if not found.
+  """
+  def get_product_by_code(code) when is_binary(code) do
+    code = String.trim(code)
+    if code == "", do: nil, else: Repo.get_by(Product, code: code)
+  end
+
+  def get_product_by_code(_), do: nil
+
+  @doc """
   Creates a product.
   ## Examples
       iex> create_product(%{field: value})
@@ -56,6 +66,24 @@ defmodule Dbservice.Products do
     |> Product.changeset(attrs)
     |> Ecto.Changeset.put_assoc(:group, [%Group{type: "product", child_id: attrs["id"]}])
     |> Repo.insert()
+  end
+
+  @doc """
+  Creates a product and its `group` row (child_id = product.id, type "product").
+  Used by data import.
+  """
+  def create_product_from_import(attrs) when is_map(attrs) do
+    Ecto.Multi.new()
+    |> Ecto.Multi.insert(:product, Product.changeset(%Product{}, attrs))
+    |> Ecto.Multi.insert(:group, fn %{product: p} ->
+      Group.changeset(%Group{}, %{type: "product", child_id: p.id})
+    end)
+    |> Repo.transaction()
+    |> case do
+      {:ok, %{product: p}} -> {:ok, p}
+      {:error, :product, changeset, _} -> {:error, changeset}
+      {:error, :group, changeset, _} -> {:error, changeset}
+    end
   end
 
   @doc """

@@ -54,6 +54,24 @@ defmodule Dbservice.Programs do
   end
 
   @doc """
+  Creates a program and its group row (child_id = program.id, type \"program\").
+  Used by data import.
+  """
+  def create_program_from_import(attrs) when is_map(attrs) do
+    Ecto.Multi.new()
+    |> Ecto.Multi.insert(:program, Program.changeset(%Program{}, attrs))
+    |> Ecto.Multi.insert(:group, fn %{program: p} ->
+      Group.changeset(%Group{}, %{type: "program", child_id: p.id})
+    end)
+    |> Repo.transaction()
+    |> case do
+      {:ok, %{program: p}} -> {:ok, p}
+      {:error, :program, changeset, _} -> {:error, changeset}
+      {:error, :group, changeset, _} -> {:error, changeset}
+    end
+  end
+
+  @doc """
   Updates a program.
   ## Examples
       iex> update_program(program, %{field: new_value})

@@ -63,6 +63,24 @@ defmodule Dbservice.AuthGroups do
   end
 
   @doc """
+  Creates an auth group and its `group` row (child_id = auth_group.id, type \"auth_group\").
+  Used by data import where `put_assoc` with attrs[\"id\"] is not valid.
+  """
+  def create_auth_group_from_import(attrs) when is_map(attrs) do
+    Ecto.Multi.new()
+    |> Ecto.Multi.insert(:auth_group, AuthGroup.changeset(%AuthGroup{}, attrs))
+    |> Ecto.Multi.insert(:group, fn %{auth_group: ag} ->
+      Group.changeset(%Group{}, %{type: "auth_group", child_id: ag.id})
+    end)
+    |> Repo.transaction()
+    |> case do
+      {:ok, %{auth_group: ag}} -> {:ok, ag}
+      {:error, :auth_group, changeset, _} -> {:error, changeset}
+      {:error, :group, changeset, _} -> {:error, changeset}
+    end
+  end
+
+  @doc """
   Updates an auth group.
   ## Examples
       iex> update_auth_group(auth_group, %{field: new_value})

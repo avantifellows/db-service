@@ -1,29 +1,41 @@
 name: Deploy to EC2 staging
 
-# on:
-#   push:
-#     branches: ["main"]
+on:
+  pull_request:
+    branches: [main]
+  workflow_dispatch:
+    inputs:
+      branch:
+        description: 'Branch to deploy'
+        required: true
+        default: 'main'
 
 jobs:
-  build:
+  deploy:
     runs-on: ubuntu-latest
+    environment: staging
 
     steps:
-      - uses: actions/checkout@v2
+      - uses: actions/checkout@v4
 
-  Deploy:
-    needs: build
-    runs-on: ubuntu-latest
+      - name: Determine branch to deploy
+        id: branch
+        run: |
+          if [ "${{ github.event_name }}" = "pull_request" ]; then
+            echo "name=${{ github.head_ref }}" >> $GITHUB_OUTPUT
+          else
+            echo "name=${{ github.event.inputs.branch || 'main' }}" >> $GITHUB_OUTPUT
+          fi
 
-    steps:
-      - uses: actions/checkout@v2
-      - name: Deploy in EC2
+      - name: Deploy to EC2
         env:
           PRIVATE_KEY: ${{ secrets.SSH_PRIVATE_KEY }}
           HOSTNAME: ${{ secrets.HOSTNAME }}
           USER_NAME: ${{ secrets.USER_NAME }}
 
         run: |
+          DEPLOY_BRANCH="${{ steps.branch.outputs.name }}"
+          echo "Deploying branch: $DEPLOY_BRANCH"
           echo "$PRIVATE_KEY" > private_key && chmod 600 private_key
           ssh -o StrictHostKeyChecking=no -i private_key ${USER_NAME}@${HOSTNAME} "
             cd /var/www/html/db-service/config
@@ -34,17 +46,26 @@ jobs:
             sed -i 's|POOL_SIZE=.*|POOL_SIZE=${{ secrets.STAGING_POOL_SIZE }}|' .env
             sed -i 's|PORT=.*|PORT=${{ secrets.STAGING_PORT }}|' .env
             sed -i 's|BEARER_TOKEN=.*|BEARER_TOKEN=${{ secrets.STAGING_BEARER_TOKEN }}|' .env
-            cd /var/www/html
-            sudo ./kill_process_on_port_4000.sh
             cd /var/www/html/db-service &&
+            sudo fuser -k 4000/tcp 2>/dev/null || true &&
+            sleep 2 &&
             sudo git checkout . &&
             if [ -f /var/www/html/db-service/priv/static/swagger.json ]; then
               sudo rm /var/www/html/db-service/priv/static/swagger.json
             fi
-            sudo git pull origin main &&
-            sudo MIX_ENV=prod mix deps.get &&
-            sudo MIX_ENV=prod mix deps.compile &&
-            sudo MIX_ENV=prod mix ecto.migrate &&
-            sudo MIX_ENV=prod mix phx.swagger.generate &&
-            sudo MIX_ENV=prod elixir --erl "-detached" -S mix phx.server
+            sudo git fetch origin &&
+            sudo git checkout $DEPLOY_BRANCH &&
+            sudo git pull origin $DEPLOY_BRANCH &&
+            # Uncomment the line below if you encounter compilation errors or corrupted .beam files
+            # sudo rm -rf _build deps &&
+            sudo env MIX_ENV=prod mix deps.get &&
+            sudo env MIX_ENV=prod mix deps.compile &&
+            sudo env MIX_ENV=prod mix ecto.migrate || true &&
+            sudo env MIX_ENV=prod mix phx.swagger.generate &&
+            sudo env MIX_ENV=prod mix assets.deploy &&
+            sudo fuser -k 4000/tcp 2>/dev/null || true &&
+            sleep 2 &&
+            nohup sudo env MIX_ENV=prod elixir --erl \"-detached\" -S mix phx.server > /tmp/phx_server.log 2>&1 &
+            sleep 5 &&
+            curl -s -o /dev/null -w '%{http_code}' http://localhost:4000/api/session?limit=1 | grep -q '200' && echo 'Server started successfully' || echo 'Warning: Server may not have started'
           "
