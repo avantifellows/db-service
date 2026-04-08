@@ -32,8 +32,7 @@ defmodule Dbservice.Resources.ResourceCurriculum do
     ])
     |> validate_required([
       :resource_id,
-      :curriculum_id,
-      :grade_id
+      :curriculum_id
     ])
   end
 end
