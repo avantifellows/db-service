@@ -1350,54 +1350,66 @@ defmodule Dbservice.DataImport.ImportWorker do
   defp maybe_put_product(attrs, key, v), do: Map.put(attrs, key, v)
 
   defp process_resource_record(record) do
+    case validate_resource_fields(record) do
+      {:error, _} = error -> error
+      :ok -> do_process_resource_record(record)
+    end
+  end
+
+  defp validate_resource_fields(record) do
     code = record["code"]
-    curriculum_ids = record["curriculum_ids"]
-    grade_id = record["grade_id"]
-    subject_id = record["subject_id"]
-    chapter_id = record["chapter_id"]
-    topic_id = record["topic_id"]
-    resource_name = record["resource_name"]
-    resource_type = record["resource_type"]
-    resource_link = record["resource_link"]
 
     cond do
-      is_nil(resource_type) or resource_type == "" ->
+      blank?(record["resource_type"]) ->
         {:error, "resourceType is required for row (code: #{code})"}
 
-      is_nil(resource_link) or resource_link == "" ->
+      blank?(record["resource_link"]) ->
         {:error, "resourceLink is required for row (code: #{code})"}
 
-      is_nil(resource_name) or resource_name == "" ->
+      blank?(record["resource_name"]) ->
         {:error, "resourceName is required for row (code: #{code})"}
 
-      is_nil(curriculum_ids) or curriculum_ids == [] ->
+      is_nil(record["curriculum_ids"]) or record["curriculum_ids"] == [] ->
         {:error,
          "Could not resolve curriculum for row (code: #{code}). Ensure curriculum value exists."}
 
       true ->
-        name_array = build_resource_name_array(resource_name)
-        type_params = %{"src_link" => String.trim(resource_link)}
-
-        resource_attrs =
-          %{
-            "code" => code,
-            "name" => name_array,
-            "type" => String.trim(resource_type),
-            "type_params" => type_params
-          }
-          |> maybe_put("subtype", record["resource_subtype"])
-          |> maybe_put("source", record["resource_source"])
-          |> maybe_put("purpose_ids", record["purpose_ids"])
-
-        with {:ok, resource} <- create_or_update_resource(resource_attrs, code),
-             :ok <-
-               ensure_resource_curriculums(resource.id, curriculum_ids, grade_id, subject_id),
-             :ok <- ensure_resource_chapter(resource.id, chapter_id),
-             :ok <- ensure_resource_topic(resource.id, topic_id) do
-          {:ok, resource}
-        end
+        :ok
     end
   end
+
+  defp do_process_resource_record(record) do
+    name_array = build_resource_name_array(record["resource_name"])
+    type_params = %{"src_link" => String.trim(record["resource_link"])}
+
+    resource_attrs =
+      %{
+        "code" => record["code"],
+        "name" => name_array,
+        "type" => String.trim(record["resource_type"]),
+        "type_params" => type_params
+      }
+      |> maybe_put("subtype", record["resource_subtype"])
+      |> maybe_put("source", record["resource_source"])
+      |> maybe_put("purpose_ids", record["purpose_ids"])
+
+    with {:ok, resource} <- create_or_update_resource(resource_attrs, record["code"]),
+         :ok <-
+           ensure_resource_curriculums(
+             resource.id,
+             record["curriculum_ids"],
+             record["grade_id"],
+             record["subject_id"]
+           ),
+         :ok <- ensure_resource_chapter(resource.id, record["chapter_id"]),
+         :ok <- ensure_resource_topic(resource.id, record["topic_id"]) do
+      {:ok, resource}
+    end
+  end
+
+  defp blank?(nil), do: true
+  defp blank?(""), do: true
+  defp blank?(_), do: false
 
   defp build_resource_name_array(nil), do: [%{"lang_code" => "en", "resource" => ""}]
   defp build_resource_name_array(""), do: [%{"lang_code" => "en", "resource" => ""}]
