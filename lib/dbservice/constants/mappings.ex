@@ -650,7 +650,7 @@ defmodule Dbservice.Constants.Mappings do
       optional: ["program_addition"],
       type: :string
     },
-    "If yes, product in DB" => %{
+    "If yes product in DB" => %{
       db_field: "program_product_in_db",
       required: [],
       optional: ["program_addition"],
