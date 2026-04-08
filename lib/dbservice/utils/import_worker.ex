@@ -1431,9 +1431,8 @@ defmodule Dbservice.DataImport.ImportWorker do
     end
   end
 
-  defp ensure_resource_curriculums(_resource_id, _curriculum_ids, grade_id, _subject_id)
-       when is_nil(grade_id) or grade_id == "",
-       do: :ok
+  defp ensure_resource_curriculums(_resource_id, nil, _grade_id, _subject_id), do: :ok
+  defp ensure_resource_curriculums(_resource_id, [], _grade_id, _subject_id), do: :ok
 
   defp ensure_resource_curriculums(resource_id, curriculum_ids, grade_id, subject_id) do
     Enum.reduce_while(curriculum_ids, :ok, fn cid, :ok ->
