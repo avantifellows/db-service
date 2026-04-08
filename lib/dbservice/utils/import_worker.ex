@@ -1393,6 +1393,8 @@ defmodule Dbservice.DataImport.ImportWorker do
       |> maybe_put("source", record["resource_source"])
       |> maybe_put("purpose_ids", record["purpose_ids"])
 
+    topic_id = record["topic_id"]
+
     with {:ok, resource} <- create_or_update_resource(resource_attrs, record["code"]),
          :ok <-
            ensure_resource_curriculums(
@@ -1401,8 +1403,8 @@ defmodule Dbservice.DataImport.ImportWorker do
              record["grade_id"],
              record["subject_id"]
            ),
-         :ok <- ensure_resource_chapter(resource.id, record["chapter_id"]),
-         :ok <- ensure_resource_topic(resource.id, record["topic_id"]) do
+         :ok <- maybe_ensure_resource_chapter(resource.id, record["chapter_id"], topic_id),
+         :ok <- ensure_resource_topic(resource.id, topic_id) do
       {:ok, resource}
     end
   end
@@ -1465,6 +1467,13 @@ defmodule Dbservice.DataImport.ImportWorker do
         |> to_ok()
     end
   end
+
+  defp maybe_ensure_resource_chapter(_resource_id, _chapter_id, topic_id)
+       when not is_nil(topic_id) and topic_id != "",
+       do: :ok
+
+  defp maybe_ensure_resource_chapter(resource_id, chapter_id, _topic_id),
+    do: ensure_resource_chapter(resource_id, chapter_id)
 
   defp ensure_resource_chapter(_resource_id, nil), do: :ok
   defp ensure_resource_chapter(_resource_id, ""), do: :ok
