@@ -264,23 +264,45 @@ defmodule Dbservice.DataImport.ImportWorker do
       nil ->
         record
 
-      name when is_binary(name) ->
-        name = String.trim(name)
-        if name == "", do: record, else: do_add_curriculum_id(record, name, row_number)
+      value when is_binary(value) ->
+        value = String.trim(value)
+        if value == "", do: record, else: do_add_curriculum_ids(record, value, row_number)
 
       _ ->
         record
     end
   end
 
-  defp do_add_curriculum_id(record, name, row_number) do
-    case Curriculums.get_curriculum_by_name(name) do
-      nil -> record
-      curriculum -> Map.put(record, "curriculum_id", curriculum.id)
+  defp do_add_curriculum_ids(record, value, row_number) do
+    names =
+      value
+      |> String.split(",")
+      |> Enum.map(&String.trim/1)
+      |> Enum.reject(&(&1 == ""))
+
+    ids =
+      Enum.reduce_while(names, [], fn name, acc ->
+        case Curriculums.get_curriculum_by_name(name) do
+          nil -> {:halt, {:error, name}}
+          curriculum -> {:cont, acc ++ [curriculum.id]}
+        end
+      end)
+
+    case ids do
+      {:error, bad_name} ->
+        reraise_msg =
+          "Failed to lookup curriculum '#{bad_name}' on row #{row_number}: curriculum not found in database"
+
+        raise bad_name <> " — " <> reraise_msg
+
+      resolved_ids when is_list(resolved_ids) ->
+        record
+        |> Map.put("curriculum_ids", resolved_ids)
+        |> Map.put("curriculum_id", List.first(resolved_ids))
     end
   rescue
     error ->
-      reraise "Failed to lookup curriculum '#{name}' on row #{row_number}: #{Exception.message(error)}",
+      reraise "Failed to lookup curriculum on row #{row_number}: #{Exception.message(error)}",
               __STACKTRACE__
   end
 
@@ -958,17 +980,15 @@ defmodule Dbservice.DataImport.ImportWorker do
   defp process_topic_record(record) do
     topic_code = trim_optional(record["topic_code"])
     topic_name = trim_optional(record["topic_name"])
-    curriculum_id = record["curriculum_id"]
+    curriculum_ids = record["curriculum_ids"]
     chapter_id = record["chapter_id"]
     resource_id = record["resource_id"]
 
     cond do
       is_nil(topic_code) or is_nil(topic_name) ->
-        # Shared sheets can have many non-topic rows or partial topic data.
-        # Skip any row that does not have both topicCode and topicName.
         {:ok, :skipped_topic_row}
 
-      is_nil(curriculum_id) ->
+      is_nil(curriculum_ids) or curriculum_ids == [] ->
         {:error,
          "Could not resolve curriculum for row (topicCode: #{topic_code}). Ensure curriculum value exists."}
 
@@ -981,7 +1001,7 @@ defmodule Dbservice.DataImport.ImportWorker do
           |> maybe_put("chapter_id", chapter_id)
 
         with {:ok, topic} <- create_or_update_topic(attrs, topic_code),
-             :ok <- ensure_topic_curriculum(topic.id, curriculum_id),
+             :ok <- ensure_topic_curriculums(topic.id, curriculum_ids),
              :ok <- ensure_topic_resource(topic.id, resource_id) do
           {:ok, topic}
         end
@@ -1009,6 +1029,15 @@ defmodule Dbservice.DataImport.ImportWorker do
       nil -> Topics.create_topic(attrs)
       existing -> Topics.update_topic(existing, attrs)
     end
+  end
+
+  defp ensure_topic_curriculums(topic_id, curriculum_ids) do
+    Enum.reduce_while(curriculum_ids, :ok, fn cid, :ok ->
+      case ensure_topic_curriculum(topic_id, cid) do
+        :ok -> {:cont, :ok}
+        error -> {:halt, error}
+      end
+    end)
   end
 
   defp ensure_topic_curriculum(topic_id, curriculum_id) do
@@ -1322,7 +1351,7 @@ defmodule Dbservice.DataImport.ImportWorker do
 
   defp process_resource_record(record) do
     code = record["code"]
-    curriculum_id = record["curriculum_id"]
+    curriculum_ids = record["curriculum_ids"]
     grade_id = record["grade_id"]
     subject_id = record["subject_id"]
     chapter_id = record["chapter_id"]
@@ -1341,7 +1370,7 @@ defmodule Dbservice.DataImport.ImportWorker do
       is_nil(resource_name) or resource_name == "" ->
         {:error, "resourceName is required for row (code: #{code})"}
 
-      is_nil(curriculum_id) ->
+      is_nil(curriculum_ids) or curriculum_ids == [] ->
         {:error,
          "Could not resolve curriculum for row (code: #{code}). Ensure curriculum value exists."}
 
@@ -1362,7 +1391,7 @@ defmodule Dbservice.DataImport.ImportWorker do
 
         with {:ok, resource} <- create_or_update_resource(resource_attrs, code),
              :ok <-
-               maybe_ensure_resource_curriculum(resource.id, curriculum_id, grade_id, subject_id),
+               ensure_resource_curriculums(resource.id, curriculum_ids, grade_id, subject_id),
              :ok <- ensure_resource_chapter(resource.id, chapter_id),
              :ok <- ensure_resource_topic(resource.id, topic_id) do
           {:ok, resource}
@@ -1388,13 +1417,17 @@ defmodule Dbservice.DataImport.ImportWorker do
     end
   end
 
-  # Only create/update resource_curriculum when grade_id is present (grade is nullable for resource addition)
-  defp maybe_ensure_resource_curriculum(_resource_id, _curriculum_id, grade_id, _subject_id)
+  defp ensure_resource_curriculums(_resource_id, _curriculum_ids, grade_id, _subject_id)
        when is_nil(grade_id) or grade_id == "",
        do: :ok
 
-  defp maybe_ensure_resource_curriculum(resource_id, curriculum_id, grade_id, subject_id) do
-    ensure_resource_curriculum(resource_id, curriculum_id, grade_id, subject_id)
+  defp ensure_resource_curriculums(resource_id, curriculum_ids, grade_id, subject_id) do
+    Enum.reduce_while(curriculum_ids, :ok, fn cid, :ok ->
+      case ensure_resource_curriculum(resource_id, cid, grade_id, subject_id) do
+        :ok -> {:cont, :ok}
+        error -> {:halt, error}
+      end
+    end)
   end
 
   defp ensure_resource_curriculum(resource_id, curriculum_id, grade_id, subject_id) do
