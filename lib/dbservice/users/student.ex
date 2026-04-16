@@ -52,6 +52,7 @@ defmodule Dbservice.Users.Student do
     field(:planned_competitive_exams, {:array, :integer})
     field(:status, :string)
     field(:board_stream, :string)
+    field(:g12_graduating_year, :integer)
     field(:school_medium, :string)
     field(:apaar_id, :string)
 
@@ -108,6 +109,7 @@ defmodule Dbservice.Users.Student do
       :planned_competitive_exams,
       :status,
       :board_stream,
+      :g12_graduating_year,
       :school_medium,
       :apaar_id
     ])

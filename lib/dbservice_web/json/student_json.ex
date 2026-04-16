@@ -64,6 +64,7 @@ defmodule DbserviceWeb.StudentJSON do
       user: if(student.user, do: UserJSON.render(student.user), else: nil),
       status: student.status,
       board_stream: student.board_stream,
+      g12_graduating_year: student.g12_graduating_year,
       planned_competitive_exams: student.planned_competitive_exams,
       school_medium: student.school_medium,
       apaar_id: student.apaar_id
