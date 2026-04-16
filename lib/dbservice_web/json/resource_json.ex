@@ -113,18 +113,29 @@ defmodule DbserviceWeb.ResourceJSON do
     # Get the base resource data using your existing pattern
     topic_id = Map.get(resource_topic, :topic_id, nil)
 
+    chapter_id = Map.get(problem, :chapter_id)
+
     # Get chapter information from preloaded data or fallback to query
     chapter_data =
-      if Ecto.assoc_loaded?(resource.chapter) && not Enum.empty?(resource.chapter) do
-        chapter = List.first(resource.chapter)
+      cond do
+        Ecto.assoc_loaded?(resource.chapter) && not Enum.empty?(resource.chapter) ->
+          chapter = List.first(resource.chapter)
 
-        %{
-          chapter_id: chapter.id,
-          chapter_code: chapter.code,
-          chapter_name: chapter.name
-        }
-      else
-        %{chapter_id: nil, chapter_code: nil, chapter_name: nil}
+          %{
+            chapter_id: chapter.id,
+            chapter_code: chapter.code,
+            chapter_name: chapter.name
+          }
+
+        chapter_id ->
+          %{
+            chapter_id: chapter_id,
+            chapter_code: nil,
+            chapter_name: nil
+          }
+
+        true ->
+          %{chapter_id: nil, chapter_code: nil, chapter_name: nil}
       end
 
     # Build curriculum_grades from resource_curriculums

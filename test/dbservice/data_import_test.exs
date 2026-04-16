@@ -78,6 +78,14 @@ defmodule Dbservice.DataImportTest do
       assert DataImport.format_type_name("batch_movement") == "Student Batch Movement"
       assert DataImport.format_type_name("teacher_batch_assignment") == "Teacher Batch Assignment"
       assert DataImport.format_type_name("teacher_addition") == "Teacher Addition"
+      assert DataImport.format_type_name("chapter_addition") == "Chapter Addition"
+      assert DataImport.format_type_name("subject_addition") == "Subject Addition"
+      assert DataImport.format_type_name("resource_addition") == "Resource Addition"
+      assert DataImport.format_type_name("topic_addition") == "Topic Addition"
+      assert DataImport.format_type_name("auth_group_addition") == "Auth Group Addition"
+      assert DataImport.format_type_name("product_addition") == "Product Addition"
+      assert DataImport.format_type_name("program_addition") == "Program Addition"
+      assert DataImport.format_type_name("batch_addition") == "Batch Addition"
     end
 
     test "formats complex type names correctly" do

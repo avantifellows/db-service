@@ -35,6 +35,7 @@ defmodule DbserviceWeb.SwaggerSchema.Student do
             )
 
             school_medium(:string, "Medium of student's school")
+            g12_graduating_year(:integer, "Expected Grade 12 graduating year")
             apaar_id(:string, "APAAR ID of a student")
           end
 
@@ -59,6 +60,7 @@ defmodule DbserviceWeb.SwaggerSchema.Student do
             primary_smartphone_owner_profession: "Employed",
             board_stream: "PCM",
             school_medium: "Hindi",
+            g12_graduating_year: 2027,
             apaar_id: "123456789101"
           })
         end
@@ -267,6 +269,7 @@ defmodule DbserviceWeb.SwaggerSchema.Student do
             mother_name(:string, "Mother's name", required: false)
 
             # Enrollment fields
+            g12_graduating_year(:integer, "Expected Grade 12 graduating year", required: false)
             auth_group(:string, "Auth group name", required: false)
             school_code(:string, "School code", required: false)
             batch_id(:string, "Batch ID", required: false)
@@ -286,6 +289,7 @@ defmodule DbserviceWeb.SwaggerSchema.Student do
             date_of_birth: "2005-05-15",
             gender: "Male",
             student_id: "STU12345",
+            g12_graduating_year: 2027,
             category: "Gen",
             auth_group: "EnableStudents",
             school_code: "19062",
