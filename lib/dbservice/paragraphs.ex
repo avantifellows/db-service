@@ -25,16 +25,10 @@ defmodule Dbservice.Paragraphs do
   end
 
   def list_problem_langs_for_paragraph(paragraph_id, lang_id \\ nil) do
-    # We store paragraph linkage in `resource.type_params` since it is not language-dependent.
-    #
-    # Expected shape for problem resources:
-    # type_params: %{ "paragraph_id" => <paragraph_id> }
     from(pl in ProblemLanguage,
       join: r in Resource,
       on: r.id == pl.res_id,
-      where:
-        r.type == "problem" and
-          fragment("?->>'paragraph_id' = ?", r.type_params, ^to_string(paragraph_id)),
+      where: r.type == "problem" and pl.paragraph_id == ^paragraph_id,
       where: is_nil(^lang_id) or pl.lang_id == ^lang_id,
       order_by: [asc: pl.id]
     )
