@@ -16,6 +16,14 @@ defmodule Dbservice.Resources do
   alias Dbservice.Topics.Topic
   alias Dbservice.ChapterCurriculums
 
+  # Type + subtype → code_prefix; keep in sync with resource_types in priv/repo/seeds/resources.exs
+  @non_problem_code_prefixes %{
+    {"document", "Module"} => "M",
+    {"video", "Video Lectures"} => "V",
+    {"quiz", "Assessment"} => "Q",
+    {"document", "Previous Year Questions"} => "PYQ"
+  }
+
   @doc """
   Returns the list of resource.
   ## Examples
@@ -316,6 +324,64 @@ defmodule Dbservice.Resources do
       %Resource{}
       |> Resource.changeset(attrs)
       |> Repo.insert()
+    end
+  end
+
+  @doc """
+  After insert: problems always get `P` + zero-padded id; other types get `<prefix>-<id>` when `code` is blank.
+  Prefix comes from type/subtype (see seeds `resource_types`); unknown combinations use the first letter of `type`.
+  """
+  def assign_code_after_insert(%Resource{type: "problem"} = resource) do
+    code = generate_next_resource_code(resource.id)
+
+    case update_resource(resource, %{code: code}) do
+      {:ok, updated} -> updated
+      {:error, _} -> resource
+    end
+  end
+
+  def assign_code_after_insert(%Resource{} = resource) do
+    if code_blank?(resource.code) do
+      prefix = code_prefix_for_non_problem(resource)
+      new_code = "#{prefix}-#{resource.id}"
+
+      case update_resource(resource, %{code: new_code}) do
+        {:ok, updated} -> updated
+        {:error, _} -> resource
+      end
+    else
+      resource
+    end
+  end
+
+  defp code_blank?(nil), do: true
+  defp code_blank?(""), do: true
+
+  defp code_blank?(s) when is_binary(s) do
+    s |> String.trim() |> Kernel.==("")
+  end
+
+  defp code_blank?(_), do: true
+
+  defp code_prefix_for_non_problem(%Resource{type: type, subtype: subtype}) do
+    t = normalize_type_subtype_string(type)
+    s = normalize_type_subtype_string(subtype)
+
+    Map.get(@non_problem_code_prefixes, {t, s}) || fallback_code_prefix(t)
+  end
+
+  defp normalize_type_subtype_string(nil), do: ""
+  defp normalize_type_subtype_string(s) when is_binary(s), do: String.trim(s)
+
+  defp normalize_type_subtype_string(s),
+    do: s |> to_string() |> String.trim()
+
+  defp fallback_code_prefix(""), do: "R"
+
+  defp fallback_code_prefix(t) do
+    case String.first(t) do
+      nil -> "R"
+      c -> String.upcase(c)
     end
   end
 
