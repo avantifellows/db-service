@@ -5,6 +5,8 @@ defmodule DbserviceWeb.TopicController do
   alias Dbservice.Repo
   alias Dbservice.Topics
   alias Dbservice.Topics.Topic
+  alias Dbservice.TopicCurriculums.TopicCurriculum
+  alias Dbservice.Resources.ResourceTopic
   alias Dbservice.Utils.Util
 
   action_fallback(DbserviceWeb.FallbackController)
@@ -147,10 +149,28 @@ defmodule DbserviceWeb.TopicController do
   end
 
   def delete(conn, %{"id" => id}) do
-    topic = Topics.get_topic!(id)
+    Repo.transaction(fn ->
+      # First delete related topic_curriculum records
+      from(tc in TopicCurriculum, where: tc.topic_id == ^id)
+      |> Repo.delete_all()
 
-    with {:ok, %Topic{}} <- Topics.delete_topic(topic) do
-      send_resp(conn, :no_content, "")
+      # Delete related resource_topic records
+      from(rt in ResourceTopic, where: rt.topic_id == ^id)
+      |> Repo.delete_all()
+
+      # Then retrieve and delete the topic
+      topic = Topics.get_topic!(id)
+      Topics.delete_topic(topic)
+    end)
+    |> case do
+      {:ok, {:ok, %Topic{}}} ->
+        send_resp(conn, :no_content, "")
+
+      _ ->
+        conn
+        |> put_status(:unprocessable_entity)
+        |> put_view(DbserviceWeb.ErrorView)
+        |> render("422.json", message: "Failed to delete topic")
     end
   end
 
