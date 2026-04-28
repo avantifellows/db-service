@@ -410,7 +410,39 @@ defmodule Dbservice.Resources do
       {:error, %Ecto.Changeset{}}
   """
   def delete_resource(%Resource{} = resource) do
-    Repo.delete(resource)
+    Repo.transaction(fn ->
+      from(rch in Dbservice.Resources.ResourceChapter, where: rch.resource_id == ^resource.id)
+      |> Repo.delete_all()
+
+      from(rc in Dbservice.Resources.ResourceCurriculum, where: rc.resource_id == ^resource.id)
+      |> Repo.delete_all()
+
+      from(rt in Dbservice.Resources.ResourceTopic, where: rt.resource_id == ^resource.id)
+      |> Repo.delete_all()
+
+      from(rco in Dbservice.Resources.ResourceConcept, where: rco.resource_id == ^resource.id)
+      |> Repo.delete_all()
+
+      from(pl in Dbservice.Resources.ProblemLanguage, where: pl.res_id == ^resource.id)
+      |> Repo.delete_all()
+
+      resource
+      |> Ecto.Changeset.change()
+      |> Ecto.Changeset.foreign_key_constraint(:id,
+        name: "resource_chapter_resource_id_fkey",
+        message: "cannot delete: linked to a chapter (resource_chapter)"
+      )
+      |> Ecto.Changeset.foreign_key_constraint(:id,
+        name: "resource_curriculum_resource_id_fkey",
+        message: "cannot delete: linked to a curriculum/grade/subject (resource_curriculum)"
+      )
+      |> Repo.delete()
+    end)
+    |> case do
+      {:ok, {:ok, deleted}} -> {:ok, deleted}
+      {:ok, {:error, %Ecto.Changeset{} = changeset}} -> {:error, changeset}
+      {:error, reason} -> {:error, inspect(reason)}
+    end
   end
 
   @doc """
