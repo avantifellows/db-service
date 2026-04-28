@@ -16,36 +16,21 @@ defmodule DbserviceWeb.AuthenticationMiddleware do
   def call(conn, _opts) do
     source(["config/.env", "config/.env"])
 
-    referer =
-      get_req_header(conn, "referer")
-      |> List.first()
-      |> to_string()
+    # Only enforce Bearer-token auth for the JSON API.
+    # Browser routes (imports UI, swagger UI, live dashboard, etc.) should be protected
+    # via their own dedicated auth mechanisms at the router level.
+    if String.starts_with?(conn.request_path, "/api") do
+      api_key = get_req_header(conn, "authorization")
 
-    request_path = conn.request_path
-
-    api_key = get_req_header(conn, "authorization")
-
-    if api_key == ["Bearer " <> env!("BEARER_TOKEN", :string!)] ||
-         contains_swagger_request?(referer, request_path) ||
-         contains_phoneix_livedashboard?(referer, request_path) ||
-         contains_imports_path?(request_path) do
-      conn
+      if api_key == ["Bearer " <> env!("BEARER_TOKEN", :string!)] do
+        conn
+      else
+        conn
+        |> send_resp(401, "Not Authorized")
+        |> halt()
+      end
     else
       conn
-      |> send_resp(401, "Not Authorized")
-      |> halt()
     end
-  end
-
-  defp contains_swagger_request?(referer, request_path) do
-    String.contains?(referer, "swagger") || String.contains?(request_path, "swagger")
-  end
-
-  defp contains_phoneix_livedashboard?(referer, request_path) do
-    String.contains?(referer, "dashboard") || String.contains?(request_path, "dashboard")
-  end
-
-  defp contains_imports_path?(request_path) do
-    String.contains?(request_path, "/imports") || String.contains?(request_path, "/templates")
   end
 end
