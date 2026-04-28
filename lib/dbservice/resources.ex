@@ -411,20 +411,7 @@ defmodule Dbservice.Resources do
   """
   def delete_resource(%Resource{} = resource) do
     Repo.transaction(fn ->
-      from(rch in Dbservice.Resources.ResourceChapter, where: rch.resource_id == ^resource.id)
-      |> Repo.delete_all()
-
-      from(rc in Dbservice.Resources.ResourceCurriculum, where: rc.resource_id == ^resource.id)
-      |> Repo.delete_all()
-
-      from(rt in Dbservice.Resources.ResourceTopic, where: rt.resource_id == ^resource.id)
-      |> Repo.delete_all()
-
-      from(rco in Dbservice.Resources.ResourceConcept, where: rco.resource_id == ^resource.id)
-      |> Repo.delete_all()
-
-      from(pl in Dbservice.Resources.ProblemLanguage, where: pl.res_id == ^resource.id)
-      |> Repo.delete_all()
+      delete_resource_associations(resource.id)
 
       resource
       |> Ecto.Changeset.change()
@@ -443,6 +430,20 @@ defmodule Dbservice.Resources do
       {:ok, {:error, %Ecto.Changeset{} = changeset}} -> {:error, changeset}
       {:error, reason} -> {:error, inspect(reason)}
     end
+  end
+
+  defp delete_resource_associations(resource_id) do
+    [
+      {Dbservice.Resources.ResourceChapter, :resource_id},
+      {Dbservice.Resources.ResourceCurriculum, :resource_id},
+      {Dbservice.Resources.ResourceTopic, :resource_id},
+      {Dbservice.Resources.ResourceConcept, :resource_id},
+      {Dbservice.Resources.ProblemLanguage, :res_id}
+    ]
+    |> Enum.each(fn {schema, fk_field} ->
+      from(r in schema, where: field(r, ^fk_field) == ^resource_id)
+      |> Repo.delete_all()
+    end)
   end
 
   @doc """
