@@ -410,7 +410,40 @@ defmodule Dbservice.Resources do
       {:error, %Ecto.Changeset{}}
   """
   def delete_resource(%Resource{} = resource) do
-    Repo.delete(resource)
+    Repo.transaction(fn ->
+      delete_resource_associations(resource.id)
+
+      resource
+      |> Ecto.Changeset.change()
+      |> Ecto.Changeset.foreign_key_constraint(:id,
+        name: "resource_chapter_resource_id_fkey",
+        message: "cannot delete: linked to a chapter (resource_chapter)"
+      )
+      |> Ecto.Changeset.foreign_key_constraint(:id,
+        name: "resource_curriculum_resource_id_fkey",
+        message: "cannot delete: linked to a curriculum/grade/subject (resource_curriculum)"
+      )
+      |> Repo.delete()
+    end)
+    |> case do
+      {:ok, {:ok, deleted}} -> {:ok, deleted}
+      {:ok, {:error, %Ecto.Changeset{} = changeset}} -> {:error, changeset}
+      {:error, reason} -> {:error, inspect(reason)}
+    end
+  end
+
+  defp delete_resource_associations(resource_id) do
+    [
+      {Dbservice.Resources.ResourceChapter, :resource_id},
+      {Dbservice.Resources.ResourceCurriculum, :resource_id},
+      {Dbservice.Resources.ResourceTopic, :resource_id},
+      {Dbservice.Resources.ResourceConcept, :resource_id},
+      {Dbservice.Resources.ProblemLanguage, :res_id}
+    ]
+    |> Enum.each(fn {schema, fk_field} ->
+      from(r in schema, where: field(r, ^fk_field) == ^resource_id)
+      |> Repo.delete_all()
+    end)
   end
 
   @doc """
