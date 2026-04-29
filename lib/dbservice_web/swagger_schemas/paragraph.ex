@@ -8,7 +8,11 @@ defmodule DbserviceWeb.SwaggerSchema.Paragraph do
       Paragraph:
         swagger_schema do
           title("Paragraph")
-          description("Instructional paragraph text with optional linked problem_lang rows")
+
+          description(
+            "Instructional paragraph text; problems are linked via problem_lang.paragraph_id " <>
+              "(each problem_lang row carries lang_id)"
+          )
 
           properties do
             body(
@@ -19,16 +23,13 @@ defmodule DbserviceWeb.SwaggerSchema.Paragraph do
                 %{lang: "hi", value: "निम्नलिखित पढ़ें और नीचे दिए प्रश्नों के उत्तर दें।"}
               ]
             )
-
-            lang_id(:integer, "Language id for this paragraph record")
           end
 
           example(%{
             body: [
               %{lang: "en", value: "Read the passage carefully."},
               %{lang: "hi", value: "पैराग्राफ ध्यान से पढ़ें।"}
-            ],
-            lang_id: 1
+            ]
           })
         end
     }

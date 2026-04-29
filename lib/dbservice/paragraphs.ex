@@ -1,6 +1,7 @@
 defmodule Dbservice.Paragraphs do
   @moduledoc """
-  Paragraphs bundle multilingual instructional text with linked `problem_lang` rows.
+  Paragraphs store multilingual instructional text (`body`); linked problems use
+  `problem_lang` rows with `paragraph_id` (language per problem is `problem_lang.lang_id`).
   """
 
   import Ecto.Query, warn: false
@@ -20,16 +21,15 @@ defmodule Dbservice.Paragraphs do
 
   def get_paragraph_with_problem_langs!(id) do
     paragraph = Repo.get!(Paragraph, id)
-    problem_langs = list_problem_langs_for_paragraph(id, paragraph.lang_id)
+    problem_langs = list_problem_langs_for_paragraph(id)
     %{paragraph: paragraph, problem_langs: problem_langs}
   end
 
-  def list_problem_langs_for_paragraph(paragraph_id, lang_id \\ nil) do
+  def list_problem_langs_for_paragraph(paragraph_id) do
     from(pl in ProblemLanguage,
       join: r in Resource,
       on: r.id == pl.res_id,
       where: r.type == "problem" and pl.paragraph_id == ^paragraph_id,
-      where: is_nil(^lang_id) or pl.lang_id == ^lang_id,
       order_by: [asc: pl.id]
     )
     |> Repo.all()

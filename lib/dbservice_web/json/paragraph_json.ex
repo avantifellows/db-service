@@ -13,8 +13,7 @@ defmodule DbserviceWeb.ParagraphJSON do
     base =
       %{
         id: paragraph.id,
-        body: paragraph.body,
-        lang_id: paragraph.lang_id
+        body: paragraph.body
       }
 
     if is_list(problem_langs) do
