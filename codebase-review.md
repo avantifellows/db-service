@@ -119,24 +119,6 @@ Import management pages (`/imports`, `/imports/new`, `/imports/:id`) are in the 
 
 **Fix:** Add `:dashboard_auth` to the LiveView scope, or implement a LiveView-compatible auth check in `mount/3`.
 
-### SEC-07 Database credentials committed to repository in plaintext [Critical]
-*Found by: Phase 1 (Claude)*
-
-**File:** `utils/.env`
-
-Production and staging database credentials (hostnames, usernames, passwords, ports) are stored in plaintext in `utils/.env` and committed to the git repository. Anyone with repo access has full database credentials:
-- Production RDS host, DB name, username, password, and port
-- Staging RDS host, DB name, username, password, and port
-
-**Impact:** Full read/write access to production and staging databases for anyone with repository access. Credential rotation is also complicated since the history persists in git.
-
-**Fix:**
-1. Add `utils/.env` to `.gitignore` immediately
-2. Rotate all database passwords (both production and staging)
-3. Remove the file from git history using `git filter-branch` or BFG Repo-Cleaner
-4. Use AWS Secrets Manager or SSM Parameter Store for credential management
-5. Keep only `utils/.env.example` with placeholder values in the repo
-
 ### SEC-08 Student identifier uniqueness enforced only in application code [Critical]
 *Found by: Phase 1 (Codex)*
 
@@ -1065,7 +1047,6 @@ Use compile-time MapSet of upcased values.
 | SEC-04 | Critical | Security | `runtime.exs:27` | `debug_errors: true` in production | Phase 1 (Claude) |
 | SEC-05 | Critical | Security | `runtime.exs:28` | `check_origin: false` in production | Phase 1 (Claude) |
 | SEC-06 | Critical | Security | `router.ex:26-35` | LiveView `/imports` routes unauthenticated | Phase 1 (Claude) |
-| SEC-07 | Critical | Security | `utils/.env` | DB credentials in plaintext in repo | Phase 1 (Claude) |
 | SEC-08 | Critical | Security | `users.ex:347-368, 487-529` | Student ID uniqueness not DB-enforced | Phase 1 (Codex) |
 | TXN-01 | Critical | Data Integrity | `batch_enrollment_service.ex`, `dropout_service.ex`, `re_enrollment_service.ex` | Multi-step enrollment writes without transaction | Phase 1 + 2 (Both) |
 | TXN-02 | Critical | Data Integrity | `users.ex:292-300, 654-662, 811, 833` | Orphan user rows on failed student/teacher/candidate create | Phase 1 (Claude) + Phase 2 (Codex) |
@@ -1152,7 +1133,7 @@ Use compile-time MapSet of upcased values.
 | DEP-07 | Low | Code Quality | `util.ex:165-170` | Linear scan with String.upcase per validation | Phase 2 (Claude) |
 | DEP-08 | Low | Code Quality | `import_live/index.ex`, `show.ex` | Duplicate LiveView helper functions | Phase 2 (Claude) |
 
-**Total findings: 80** (18 Critical, 30 High, 23 Medium, 9 Low)
+**Total findings: 79** (17 Critical, 30 High, 23 Medium, 9 Low)
 
 ---
 
@@ -1163,7 +1144,6 @@ Use compile-time MapSet of upcased values.
 | ID | Issue | Impact | Effort | Found By |
 |---|---|---|---|---|
 | SEC-01 | Re-enable authentication middleware | All APIs unauthenticated | 1 min | Both |
-| SEC-07 | Remove DB credentials from repo + rotate | Full DB access for anyone with repo | 2 hrs | Claude |
 | SEC-04 | Remove `debug_errors: true` in prod | Stack traces leaked to clients | 1 min | Claude |
 | SEC-02 | Fix auth bypass vulnerabilities | Auth bypassed via Referer header | 30 min | Claude |
 | SEC-05 | Disable `check_origin: false` in prod | CSRF on LiveView sessions | 5 min | Claude |
