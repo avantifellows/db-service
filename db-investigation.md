@@ -30,7 +30,7 @@
 
 ## 1. PostgreSQL Configuration Issues
 
-**Severity: CRITICAL**
+**Severity: CRITICAL** | Tracked in: [#488](https://github.com/avantifellows/db-service/issues/488)
 *Source: Phase 1*
 
 The database is running on the **default.postgres14** parameter group with **zero custom tuning**. Several settings are severely misconfigured for SSD-backed storage and the current workload.
@@ -116,7 +116,7 @@ pg_stat_statements reveals the queries consuming the most cumulative database ti
 
 ### 2.1 `group_user` composite lookup -- #1 cumulative time consumer
 
-*Found by: Both phases*
+*Found by: Both phases* | Tracked in: [#489](https://github.com/avantifellows/db-service/issues/489)
 
 **Stats:** 4.58M calls, 82,938 seconds (23.0 hours) total, 18.12ms mean, 508ms max, 0.99 rows/call
 
@@ -150,7 +150,7 @@ Current sampled plans are fast (0.083ms), but the historical 18ms mean across 4.
 
 ### 2.2 `student` lookup by `student_id` -- #2 cumulative time consumer
 
-*Found by: Both phases*
+*Found by: Both phases* | Tracked in: [#490](https://github.com/avantifellows/db-service/issues/490) | Severity adjusted: Critical → High (council consensus: most of the cost is from random_page_cost, tracked in #488)
 
 **Stats:** 12.2M calls, 74,442 seconds (20.7 hours) total, 6.10ms mean
 
@@ -174,7 +174,7 @@ The index lookup is fast (0.079ms). The 6.10ms historical average comes from **b
 
 ### 2.3a `session_occurrence` active-window query WITHOUT session_id -- 565x speedup available
 
-*Found by: Phase 2 (Codex)*
+*Found by: Phase 2 (Codex)* | Tracked in: [#491](https://github.com/avantifellows/db-service/issues/491)
 
 The active-window query **without `session_id`** is extremely sensitive to `ORDER BY id`:
 
@@ -203,7 +203,7 @@ Execution Time: 0.455 ms
 
 ### 2.3b `session_occurrence` hot query WITH session_id -- #3 cumulative time consumer
 
-*Found by: Both phases*
+*Found by: Both phases* | Tracked in: [#492](https://github.com/avantifellows/db-service/issues/492)
 
 **Stats:** 2.05M calls, 39,748 seconds (11.0 hours) total, 19.35ms mean
 
@@ -232,7 +232,7 @@ Current sampled plans are fast (0.278ms), but cumulative stats show 11 hours of 
 
 ### 2.4 `user_session` WHERE user_id -- 244ms parallel full-table scan
 
-*Found by: Phase 2 (Claude)*
+*Found by: Phase 2 (Claude)* | Tracked in: [#493](https://github.com/avantifellows/db-service/issues/493)
 
 **EXPLAIN ANALYZE:**
 ```
@@ -976,19 +976,19 @@ Every finding from both investigation phases, organized by category with severit
 
 | # | Category | Finding | Severity | Source | Action # |
 |---|---|---|---|---|---|
-| F1 | PG Config | `random_page_cost` = 4.0 (should be 1.1) | Critical | Phase 1 | 5 |
-| F2 | PG Config | `effective_cache_size` = 3,809 MB (should be ~6 GB) | High | Phase 1 | 6 |
-| F3 | PG Config | `work_mem` = 4 MB; 5.5 TB cumulative temp writes | High | Phase 1 | 7 |
-| F4 | PG Config | `max_connections` = 838 (should be 100-150) | Medium | Phase 1 | 34 |
-| F5 | PG Config | `effective_io_concurrency` = 1 (should be 200) | Medium | Phase 1 | 8 |
-| F6 | PG Config | `maintenance_work_mem` = 125 MB (should be 256 MB) | Medium | Phase 1 | 21 |
-| F7 | PG Config | `statement_timeout` disabled | Medium | Phase 1 | 23 |
-| F8 | PG Config | `idle_in_transaction_session_timeout` = 24 hrs | Low | Phase 1 | 24 |
-| F9 | Query Perf | `group_user` lookup: 4.58M calls, 23 hrs total | Critical | Both | 2 |
-| F10 | Query Perf | `student` lookup: 12.2M calls, 20.7 hrs total, SELECT * | Critical | Both | 27 |
-| F11 | Query Perf | `session_occurrence` ORDER BY id: 565x slower than ORDER BY end_time | Critical | Phase 2 | 1 |
-| F12 | Query Perf | `session_occurrence` with session_id: 2.05M calls, 11 hrs total | Critical | Both | 4 |
-| F13 | Query Perf | `user_session` WHERE user_id: 244ms full-table scan | Critical | Phase 2 | 3 |
+| F1 | PG Config | `random_page_cost` = 4.0 (should be 1.1) | Critical | Phase 1 | 5 | Tracked in: #488 |
+| F2 | PG Config | `effective_cache_size` = 3,809 MB (should be ~6 GB) | High | Phase 1 | 6 | Tracked in: #488 |
+| F3 | PG Config | `work_mem` = 4 MB; 5.5 TB cumulative temp writes | High | Phase 1 | 7 | Tracked in: #488 |
+| F4 | PG Config | `max_connections` = 838 (should be 100-150) | Medium | Phase 1 | 34 | Tracked in: #488 |
+| F5 | PG Config | `effective_io_concurrency` = 1 (should be 200) | Medium | Phase 1 | 8 | Tracked in: #488 |
+| F6 | PG Config | `maintenance_work_mem` = 125 MB (should be 256 MB) | Medium | Phase 1 | 21 | Tracked in: #488 |
+| F7 | PG Config | `statement_timeout` disabled | Medium | Phase 1 | 23 | Tracked in: #488 |
+| F8 | PG Config | `idle_in_transaction_session_timeout` = 24 hrs | Low | Phase 1 | 24 | Tracked in: #488 |
+| F9 | Query Perf | `group_user` lookup: 4.58M calls, 23 hrs total | Critical | Both | 2 | Tracked in: #489 |
+| F10 | Query Perf | `student` lookup: 12.2M calls, 20.7 hrs total, SELECT * | High (↓) | Both | 27 | Tracked in: #490 |
+| F11 | Query Perf | `session_occurrence` ORDER BY id: 565x slower than ORDER BY end_time | Critical | Phase 2 | 1 | Tracked in: #491 |
+| F12 | Query Perf | `session_occurrence` with session_id: 2.05M calls, 11 hrs total | Critical | Both | 4 | Tracked in: #492 |
+| F13 | Query Perf | `user_session` WHERE user_id: 244ms full-table scan | Critical | Phase 2 | 3 | Tracked in: #493 |
 | F14 | Query Perf | `session_occurrence` JOIN session CASE: 421K calls, 1.9 hrs, 304MB temp | High | Phase 2 | 29 |
 | F15 | Query Perf | Session lookups: 297M calls (chatty) | Medium | Phase 1 | -- |
 | F16 | Query Perf | Oban polling: 28M pg_notify, 23.3M queue polls | Medium | Phase 1 | 39 |
@@ -1027,7 +1027,7 @@ Every finding from both investigation phases, organized by category with severit
 | F49 | Patterns | Partitioning guidance (user_session, enrollment_record viable; group_user not) | Low | Phase 2 | 41 |
 | F50 | AWS | Instance publicly accessible | High | Phase 1 | 36 |
 | F51 | AWS | CPU credits depleted after downsize | Medium | Phase 1 | -- |
-| F52 | AWS | Default parameter group | Critical | Phase 1 | 5-8 |
+| F52 | AWS | Default parameter group | Critical | Phase 1 | 5-8 | Tracked in: #488 |
 | F53 | AWS | Storage gp2, not gp3 | Medium | Phase 1 | 35 |
 | F54 | AWS | Enhanced Monitoring disabled | Medium | Phase 1 | 37 |
 | F55 | AWS | No Multi-AZ | Low | Phase 1 | -- |
