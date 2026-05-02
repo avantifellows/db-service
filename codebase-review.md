@@ -23,42 +23,11 @@
 12. [Dependencies & Code Quality](#12-dependencies--code-quality)
 13. [Master Summary Table](#13-master-summary-table)
 14. [Priority Action Plan](#14-priority-action-plan)
+15. [Resolved](#15-resolved)
 
 ---
 
 ## 1. Security
-
-### SEC-01 Authentication middleware is DISABLED [Critical]
-*Found by: Phase 1 (Both)*
-
-**File:** `lib/dbservice_web/endpoint.ex:48`
-
-```elixir
-# plug DbserviceWeb.AuthenticationMiddleware
-```
-
-The bearer token authentication plug is **commented out**. All API endpoints are completely unauthenticated in the running application. Any client can perform CRUD operations on all entities without authorization.
-
-**Fix:** Uncomment this line. If disabled for development convenience, conditionally enable:
-```elixir
-if Application.get_env(:dbservice, :environment) != :dev do
-  plug DbserviceWeb.AuthenticationMiddleware
-end
-```
-
-### SEC-02 Authentication middleware bypass vulnerabilities [Critical]
-*Found by: Phase 1 (Claude)*
-
-**File:** `lib/dbservice_web/plugs/authentication_middleware_plug.ex`
-
-Even when enabled, the middleware has dangerous bypasses:
-- **Line 41:** Any request with `Referer` header containing `"swagger"` bypasses auth entirely
-- **Line 44:** Same for `"dashboard"` in referer or path
-- **Line 48:** Any path containing `/imports` or `/templates` bypasses auth
-
-An attacker can set `Referer: swagger` on any API request to skip authentication.
-
-**Fix:** Remove referer-based bypasses. Use path-prefix matching (`String.starts_with?`) scoped to exact paths instead of `String.contains?`.
 
 ### SEC-03 Unsafe dynamic field filtering (50+ controllers) [Critical]
 *Found by: Phase 1 (Both) + Phase 2 (Claude)*
@@ -101,6 +70,8 @@ Leaks internal error details (stack traces, request data) to clients. Both a sec
 
 **Fix:** Remove or set to `false`.
 
+**Tracked in:** [#472](https://github.com/avantifellows/db-service/issues/472)
+
 ### SEC-05 `check_origin: false` in production [Critical]
 *Found by: Phase 1 (Claude)*
 
@@ -110,6 +81,8 @@ Disables WebSocket origin checking, enabling CSRF attacks against LiveView sessi
 
 **Fix:** Set `check_origin` to a list of allowed origins: `check_origin: ["https://#{host}"]`.
 
+**Tracked in:** [#472](https://github.com/avantifellows/db-service/issues/472)
+
 ### SEC-06 LiveView `/imports` routes lack authentication [Critical]
 *Found by: Phase 1 (Claude)*
 
@@ -118,6 +91,8 @@ Disables WebSocket origin checking, enabling CSRF attacks against LiveView sessi
 Import management pages (`/imports`, `/imports/new`, `/imports/:id`) are in the `:browser` pipeline without the `:dashboard_auth` plug. Anyone with network access can view, create, and halt data imports.
 
 **Fix:** Add `:dashboard_auth` to the LiveView scope, or implement a LiveView-compatible auth check in `mount/3`.
+
+**Tracked in:** [#474](https://github.com/avantifellows/db-service/issues/474)
 
 ### SEC-08 Student identifier uniqueness enforced only in application code [Critical]
 *Found by: Phase 1 (Codex)*
@@ -156,6 +131,8 @@ Specific patterns:
 
 **Fix:** Wrap in `Repo.transaction/1` or use `Ecto.Multi`.
 
+**Tracked in:** [#475](https://github.com/avantifellows/db-service/issues/475)
+
 ### TXN-02 Student/teacher/candidate creation leaves orphan user rows [Critical]
 *Found by: Phase 1 (Claude) + Phase 2 (Codex)*
 
@@ -165,6 +142,8 @@ Specific patterns:
 Creates a User record first, then a Student/Teacher/Candidate record. If the second insert fails, the User record is orphaned. Same issue in update flows.
 
 **Fix:** Use `Ecto.Multi` for all user/student, user/teacher, and user/candidate create/update flows.
+
+**Tracked in:** [#477](https://github.com/avantifellows/db-service/issues/477)
 
 ### TXN-03 Resource association updates can silently fail and lack transaction [Critical]
 *Found by: Phase 2 (Both — Claude: missing transaction; Codex: ignored return values)*
@@ -177,6 +156,8 @@ Creates a User record first, then a Student/Teacher/Candidate record. If the sec
 
 **Fix:** Wrap in `Ecto.Multi`/`Repo.transaction`. Check and propagate every association operation result.
 
+**Tracked in:** [#478](https://github.com/avantifellows/db-service/issues/478)
+
 ### TXN-04 Batch movement reports success even when DB operations fail [Critical]
 *Found by: Phase 2 (Codex)*
 
@@ -188,6 +169,8 @@ Return values from enrollment inserts, group-user updates, and student grade upd
 
 **Fix:** Chain operations with `with`, return the first error, wrap in a transaction.
 
+**Tracked in:** [#480](https://github.com/avantifellows/db-service/issues/480)
+
 ### TXN-05 `create_new_group_user` — enrollment record without group mapping [Critical]
 *Found by: Phase 1 (Codex)*
 
@@ -195,12 +178,16 @@ Return values from enrollment inserts, group-user updates, and student grade upd
 
 Creates an `EnrollmentRecord` then creates a `GroupUser` outside a transaction. If the second insert fails, the enrollment record remains without the corresponding group mapping.
 
+**Tracked in:** [#481](https://github.com/avantifellows/db-service/issues/481)
+
 ### TXN-06 Race condition in exclusive enrollment validation [Critical]
 *Found by: Phase 1 (Codex)*
 
 **File:** `lib/dbservice/services/enrollment_service.ex:62-74, 91-108`
 
 Checks for existing current enrollment, then inserts/updates separately. Two concurrent requests can both see no conflict and create two current records.
+
+**Tracked in:** [#482](https://github.com/avantifellows/db-service/issues/482)
 
 **Fix (applies to all TXN-01 through TXN-06):** Wrap in `Repo.transaction/1` or use `Ecto.Multi`. Enforce exclusivity with database constraints (partial unique indexes) as a safety net.
 
@@ -234,6 +221,8 @@ Additionally, `render_problem/1` (line 105) and `problem_lang/1` (line 204) each
 
 **Fix:** Preload all associations at the query level in the controller. The serializer should never execute DB queries.
 
+**Tracked in:** [#476](https://github.com/avantifellows/db-service/issues/476)
+
 ### NP1-02 Lazy-loading Preloads in JSON Serializers (10+ serializers) [High]
 *Found by: Phase 1 (Both) + Phase 2 (Claude)*
 
@@ -258,6 +247,8 @@ Additionally, `batch_result` in `student_json.ex:85-104` re-preloads per student
 ```elixir
 students = Repo.all(query) |> Repo.preload(:user)
 ```
+
+**Tracked in:** [#479](https://github.com/avantifellows/db-service/issues/479)
 
 ### NP1-03 `search_problems/1` — 1 + 2N queries per request [High]
 *Found by: Phase 1 (Codex) + Phase 2 (Both)*
@@ -321,8 +312,11 @@ Preloads ALL `resource_curriculum` rows for a resource then `Enum.find`s the req
 
 ## 4. Missing Database Indexes
 
-### IDX-01 Foreign key indexes absent on multiple join tables [Critical]
+### IDX-01 Foreign key indexes absent on multiple join tables [High]
 *Found by: Phase 1 (Both)*
+*Verified against staging + production databases on 2026-05-02*
+
+**Tracked in:** [#483](https://github.com/avantifellows/db-service/issues/483)
 
 | Table | Missing Index | Used By |
 |---|---|---|
@@ -537,6 +531,8 @@ Additionally, `count_total_rows` (lines 1572-1617) reads the entire file separat
 
 **Fix:** Process records lazily. Return `{records_stream, count}` from parsing, or count during `Enum.reduce_while`. For `count_total_rows`, use `File.stream!` with `Enum.count`.
 
+**Tracked in:** [#485](https://github.com/avantifellows/db-service/issues/485)
+
 ### IMP-02 Per-row DB poll for halt status [Critical]
 *Found by: Phase 1 (Both) + Phase 2 (Both)*
 
@@ -551,6 +547,8 @@ if rem(index, 50) == 0 do
   if current_import.status == "stopped", do: {:halt, ...}
 end
 ```
+
+**Tracked in:** [#486](https://github.com/avantifellows/db-service/issues/486)
 
 ### IMP-03 Per-row progress updates [Medium]
 *Found by: Phase 1 (Both) + Phase 2 (Both)*
@@ -570,6 +568,8 @@ if rem(index, 25) == 0 or index == total_rows do
 end
 ```
 Use per-import topics for detail pages. Include enough payload data to update assigns without re-querying.
+
+**Tracked in:** [#487](https://github.com/avantifellows/db-service/issues/487)
 
 ### IMP-04 Double CSV parse [High]
 *Found by: Phase 1 (Claude)*
@@ -793,6 +793,8 @@ Returns "Failed to process dropout" with zero diagnostic value.
 Pool size = 10, Oban imports queue = 10. A burst of imports saturates the pool entirely. Web API requests then queue at `queue_target: 15_000` (15 seconds!) before getting a DB connection.
 
 **Fix:** Reduce Oban to `[imports: 3]` or `[imports: 5]`. Ensure import concurrency is at most 30-50% of pool size. Consider a separate Oban repo for background jobs.
+
+**Tracked in:** [#484](https://github.com/avantifellows/db-service/issues/484)
 
 ### CFG-02 Excessively high query timeout [Medium]
 *Found by: Phase 1 (Both)*
@@ -1041,18 +1043,16 @@ Use compile-time MapSet of upcased values.
 
 | ID | Severity | Category | File(s) | Issue | Source |
 |----|----------|----------|---------|-------|--------|
-| SEC-01 | Critical | Security | `endpoint.ex:48` | Authentication middleware commented out | Phase 1 (Both) |
-| SEC-02 | Critical | Security | `authentication_middleware_plug.ex` | Auth bypass via Referer header | Phase 1 (Claude) |
 | SEC-03 | Critical | Security | 50+ controllers, `resources.ex:948-956` | Unsafe dynamic field filtering, no allowlist | Phase 1 (Both) + Phase 2 (Claude) |
 | SEC-04 | Critical | Security | `runtime.exs:27` | `debug_errors: true` in production | Phase 1 (Claude) |
 | SEC-05 | Critical | Security | `runtime.exs:28` | `check_origin: false` in production | Phase 1 (Claude) |
 | SEC-06 | Critical | Security | `router.ex:26-35` | LiveView `/imports` routes unauthenticated | Phase 1 (Claude) |
 | SEC-08 | Critical | Security | `users.ex:347-368, 487-529` | Student ID uniqueness not DB-enforced | Phase 1 (Codex) |
 | TXN-01 | Critical | Data Integrity | `batch_enrollment_service.ex`, `dropout_service.ex`, `re_enrollment_service.ex` | Multi-step enrollment writes without transaction | Phase 1 + 2 (Both) |
-| TXN-02 | Critical | Data Integrity | `users.ex:292-300, 654-662, 811, 833` | Orphan user rows on failed student/teacher/candidate create | Phase 1 (Claude) + Phase 2 (Codex) |
+| TXN-02 | High | Data Integrity | `users.ex:292-300, 654-662, 811, 833` | Orphan user rows on failed student/teacher/candidate create | Phase 1 (Claude) + Phase 2 (Codex) |
 | TXN-03 | Critical | Data Integrity | `resources.ex:491-501, 710-795` | Resource association updates silently fail + no txn | Phase 2 (Both) |
 | TXN-04 | Critical | Data Integrity | `batch_movement.ex:66-78`, `teacher_batch_assignment.ex:55-66` | Success returned when DB ops fail | Phase 2 (Codex) |
-| TXN-05 | Critical | Data Integrity | `enrollment_service.ex:131-149` | Enrollment record without group mapping | Phase 1 (Codex) |
+| TXN-05 | High | Data Integrity | `enrollment_service.ex:131-149` | Enrollment record without group mapping | Phase 1 (Codex) |
 | TXN-06 | Critical | Data Integrity | `enrollment_service.ex:62-74, 91-108` | Race condition in exclusive enrollment | Phase 1 (Codex) |
 | TXN-07 | High | Data Integrity | `batch_movement.ex:57-81` | Race condition in batch movement | Phase 1 (Claude) |
 | NP1-01 | Critical | N+1 Query | `resource_json.ex:26-98` | 4+ DB queries per resource render | Phase 1 (Both) |
@@ -1062,7 +1062,7 @@ Use compile-time MapSet of upcased values.
 | NP1-05 | High | N+1 Query | `resources.ex:205-239` | Full table scan for test-problem lookup | Phase 1 + 2 (Both) |
 | NP1-06 | High | N+1 Query | `util.ex:82-106` | SELECT + UPDATE per group user | Phase 1 (Claude) + Phase 2 (Both) |
 | NP1-07 | High | N+1 Query | `resource_controller.ex:814-846` | Over-fetches all resource curriculums | Phase 1 (Codex) |
-| IDX-01 | Critical | Missing Index | 12+ tables | Foreign key indexes absent on join tables | Phase 1 (Both) |
+| IDX-01 | High | Missing Index | 12+ tables | Foreign key indexes absent on join tables | Phase 1 (Both) |
 | IDX-02 | Critical | Missing Index | `enrollment_record` | Missing composite indexes for hot queries | Phase 1 (Both) |
 | IDX-03 | Critical | Missing Index | `resource_concept`, `problem_lang` | Missing uniqueness constraints on join tables | Phase 1 (Codex) |
 | IDX-04 | Critical | Missing Index | `resource`, `problem_lang` | Missing JSONB/text search indexes | Phase 1 (Codex) |
@@ -1081,7 +1081,7 @@ Use compile-time MapSet of upcased values.
 | LOOP-09 | Medium | Bulk Ops | `import_worker.ex:287` | O(N^2) list concatenation | Phase 2 (Claude) |
 | IMP-01 | Critical | Import Worker | `import_worker.ex:598` | CSV loaded into memory + double scan | Phase 1 + 2 (Both) |
 | IMP-02 | Critical | Import Worker | `import_worker.ex:619-643` | Per-row DB poll for halt status | Phase 1 + 2 (Both) |
-| IMP-03 | Medium | Import Worker | `import_worker.ex:1619-1633`, `import_live/index.ex:110` | Per-row progress update + PubSub amplification | Phase 1 + 2 (Both) |
+| IMP-03 | High | Import Worker | `import_worker.ex:1619-1633`, `import_live/index.ex:110` | Per-row progress update + PubSub amplification | Phase 1 + 2 (Both) |
 | IMP-04 | High | Import Worker | `import_worker.ex:57-69, 104-134` | Double CSV parse | Phase 1 (Claude) |
 | IMP-05 | High | Import Worker | `data_import.ex:314-325` | CSV validation reads entire file into memory | Phase 1 (Claude) |
 | IMP-06 | High | Import Worker | `import_worker.ex:12` | Oban retries on non-transient failures | Phase 1 (Claude) |
@@ -1103,7 +1103,7 @@ Use compile-time MapSet of upcased values.
 | BUG-10 | Medium | Logic Bug | `re_enrollment_service.ex:105-112` | rescue _ swallows all exceptions | Phase 2 (Claude) |
 | BUG-11 | Medium | Logic Bug | `data_import.ex:164` | start_row parse crash | Phase 2 (Codex) |
 | BUG-12 | Low | Logic Bug | `dropout_service.ex:79-85` | Generic error message, no diagnostics | Phase 2 (Claude) |
-| CFG-01 | Critical | Infrastructure | `config.exs:60-69`, `runtime.exs:6-9` | Pool size = Oban concurrency, zero headroom | Phase 1 + 2 (Both) |
+| CFG-01 | High | Infrastructure | `config.exs:60-69`, `runtime.exs:6-9` | Pool size = Oban concurrency, zero headroom | Phase 1 + 2 (Both) |
 | CFG-02 | Medium | Infrastructure | `config.exs:60-63` | 120s query timeout masks slow queries | Phase 1 (Both) |
 | CFG-03 | Medium | Infrastructure | `config.exs:62-63` | queue_target 15s hides pool saturation | Phase 1 (Both) |
 | CFG-04 | Medium | Infrastructure | `config.exs:68` | Missing Oban Lifeline plugin | Phase 1 (Claude) |
@@ -1133,7 +1133,7 @@ Use compile-time MapSet of upcased values.
 | DEP-07 | Low | Code Quality | `util.ex:165-170` | Linear scan with String.upcase per validation | Phase 2 (Claude) |
 | DEP-08 | Low | Code Quality | `import_live/index.ex`, `show.ex` | Duplicate LiveView helper functions | Phase 2 (Claude) |
 
-**Total findings: 79** (17 Critical, 30 High, 23 Medium, 9 Low)
+**Total findings: 77 open** (11 Critical, 35 High, 22 Medium, 9 Low) — 2 resolved
 
 ---
 
@@ -1143,9 +1143,7 @@ Use compile-time MapSet of upcased values.
 
 | ID | Issue | Impact | Effort | Found By |
 |---|---|---|---|---|
-| SEC-01 | Re-enable authentication middleware | All APIs unauthenticated | 1 min | Both |
 | SEC-04 | Remove `debug_errors: true` in prod | Stack traces leaked to clients | 1 min | Claude |
-| SEC-02 | Fix auth bypass vulnerabilities | Auth bypassed via Referer header | 30 min | Claude |
 | SEC-05 | Disable `check_origin: false` in prod | CSRF on LiveView sessions | 5 min | Claude |
 | SEC-06 | Add auth to LiveView `/imports` routes | Anyone can create/halt imports | 30 min | Claude |
 | NP1-01 | Fix ResourceJSON N+1 (4+ queries/render) | 400+ queries per 100-item list | 2-3 hrs | Both |
@@ -1249,3 +1247,12 @@ Use compile-time MapSet of upcased values.
 ---
 
 *This document is the authoritative, consolidated codebase review combining Phase 1 (broad sweep) and Phase 2 (deep dive). All findings from both phases are preserved. Where both phases identified the same issue, findings were merged with combined file references and the more detailed description retained. Severity follows Phase 2 where conflicts existed.*
+
+---
+
+## 15. Resolved
+
+| ID | Severity | Issue | Resolution | GitHub Issue | Status |
+|----|----------|-------|------------|--------------|--------|
+| SEC-01 | Critical | Authentication middleware was commented out — all API endpoints publicly accessible | Authentication middleware re-enabled in `endpoint.ex:48`. Bearer token auth now enforced on all `/api` routes. | [#459](https://github.com/avantifellows/db-service/issues/459) | Closed |
+| SEC-02 | Critical | Auth bypass via Referer header — setting `Referer: swagger` skipped authentication | Middleware rewritten to use path-prefix matching (`String.starts_with?` on `/api`). All Referer-based bypasses removed. | No issue was created | Fixed |
