@@ -5,7 +5,7 @@ defmodule Dbservice.Resources.Paragraph do
   import Ecto.Changeset
 
   schema "paragraph" do
-    field(:body, {:array, :map})
+    field(:body, :string)
 
     timestamps()
   end

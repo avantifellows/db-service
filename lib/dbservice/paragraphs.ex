@@ -1,6 +1,6 @@
 defmodule Dbservice.Paragraphs do
   @moduledoc """
-  Paragraphs store multilingual instructional text (`body`); linked problems use
+  Paragraphs store instructional text (`body`); linked problems use
   `problem_lang` rows with `paragraph_id` (language per problem is `problem_lang.lang_id`).
   """
 

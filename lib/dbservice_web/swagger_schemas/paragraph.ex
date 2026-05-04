@@ -16,20 +16,14 @@ defmodule DbserviceWeb.SwaggerSchema.Paragraph do
 
           properties do
             body(
-              Schema.array(:object),
-              "Multilingual paragraph body, each entry with lang and value",
-              example: [
-                %{lang: "en", value: "Read the following and answer the questions below."},
-                %{lang: "hi", value: "निम्नलिखित पढ़ें और नीचे दिए प्रश्नों के उत्तर दें।"}
-              ]
+              :string,
+              "Instructional paragraph body (plain text)",
+              example: "Read the following and answer the questions below."
             )
           end
 
           example(%{
-            body: [
-              %{lang: "en", value: "Read the passage carefully."},
-              %{lang: "hi", value: "पैराग्राफ ध्यान से पढ़ें।"}
-            ]
+            body: "Read the passage carefully."
           })
         end
     }

@@ -3,7 +3,7 @@ defmodule Dbservice.Repo.Migrations.CreateParagraphTables do
 
   def change do
     create table(:paragraph) do
-      add :body, :jsonb, null: false
+      add(:body, :text, null: false)
       timestamps()
     end
   end
