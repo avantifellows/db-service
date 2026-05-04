@@ -1,28 +1,23 @@
 defmodule DbserviceWeb.AuthenticationMiddleware do
   @moduledoc """
-  This module provides a Plug middleware for handling API key-based authentication.
+  Plug for API Bearer-token authentication.
 
-  The middleware checks the 'Authorization' header of incoming HTTP requests to ensure that
-  it matches a predefined API key stored in the 'BEARER_TOKEN' environment variable.
+  Only requests whose path starts with `"/api"` are checked. The expected header
+  value is `Bearer <BEARER_TOKEN>` as configured once in `config/runtime.exs`
+  (`:api_expected_authorization`). Browser routes (imports UI, Swagger UI, Live
+  Dashboard, etc.) are left to other auth at the router / pipeline level.
 
-  If the API key is valid, the request is allowed to proceed; otherwise, a '401 Unauthorized'
-  response is sent, and further processing is halted.
+  Unauthorized API requests receive `401` and the pipeline stops.
   """
   import Plug.Conn
-  import Dotenvy
 
-  def init(_opts), do: %{}
+  def init(_opts), do: Application.fetch_env!(:dbservice, :api_expected_authorization)
 
-  def call(conn, _opts) do
-    source(["config/.env", "config/.env"])
-
-    # Only enforce Bearer-token auth for the JSON API.
-    # Browser routes (imports UI, swagger UI, live dashboard, etc.) should be protected
-    # via their own dedicated auth mechanisms at the router level.
+  def call(conn, expected_authorization_header) when is_binary(expected_authorization_header) do
     if String.starts_with?(conn.request_path, "/api") do
       api_key = get_req_header(conn, "authorization")
 
-      if api_key == ["Bearer " <> env!("BEARER_TOKEN", :string!)] do
+      if api_key == [expected_authorization_header] do
         conn
       else
         conn

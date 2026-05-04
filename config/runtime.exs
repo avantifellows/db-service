@@ -3,6 +3,9 @@ import Dotenvy
 
 source(["config/.env", "config/.env.#{config_env()}"])
 
+# Read once at config time; plugs must not reload .env per request (see AuthenticationMiddleware).
+config :dbservice, :api_expected_authorization, "Bearer " <> env!("BEARER_TOKEN", :string!)
+
 if config_env() == :prod do
   config :dbservice, Dbservice.Repo,
     url: env!("DATABASE_URL", :string!),
@@ -24,6 +27,6 @@ if config_env() == :prod do
       port: port
     ],
     secret_key_base: secret_key_base,
-    debug_errors: true,
+    debug_errors: false,
     check_origin: false
 end
