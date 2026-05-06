@@ -299,49 +299,59 @@ defmodule Dbservice.Paragraphs do
   defp attrs_for_comprehension_update(params, pl) do
     case paragraph_body_for_comprehension(params) do
       body when is_binary(body) ->
-        case upsert_paragraph_for_problem_lang(pl.paragraph_id, body) do
-          {:ok, %Paragraph{id: pid}} ->
-            meta =
-              merge_meta(Map.get(params, "meta_data") || pl.meta_data, %{"paragraph_id" => pid})
-
-            Map.merge(params, %{"meta_data" => meta, "paragraph_id" => pid})
-
-          {:error, _} ->
-            params
-        end
+        attrs_after_passage_upsert(params, pl, body)
 
       _ ->
-        meta_base = Map.get(params, "meta_data")
-
-        merged =
-          cond do
-            is_map(meta_base) && is_integer(pl.paragraph_id) ->
-              merge_meta(meta_base, %{"paragraph_id" => pl.paragraph_id})
-
-            is_map(meta_base) ->
-              meta_base
-
-            is_integer(pl.paragraph_id) ->
-              merge_meta(pl.meta_data || %{}, %{"paragraph_id" => pl.paragraph_id})
-
-            true ->
-              meta_base || pl.meta_data
-          end
-
-        out =
-          if is_nil(merged) do
-            params
-          else
-            Map.merge(params, %{"meta_data" => merged})
-          end
-
-        if is_integer(pl.paragraph_id) do
-          Map.put(out, "paragraph_id", pl.paragraph_id)
-        else
-          out
-        end
+        attrs_sync_meta_only(params, pl)
     end
   end
+
+  @doc false
+  defp attrs_after_passage_upsert(params, pl, body) do
+    case upsert_paragraph_for_problem_lang(pl.paragraph_id, body) do
+      {:ok, %Paragraph{id: pid}} ->
+        meta =
+          merge_meta(Map.get(params, "meta_data") || pl.meta_data, %{"paragraph_id" => pid})
+
+        Map.merge(params, %{"meta_data" => meta, "paragraph_id" => pid})
+
+      {:error, _} ->
+        params
+    end
+  end
+
+  @doc false
+  defp attrs_sync_meta_only(params, pl) do
+    merged = merged_meta_without_new_passage(Map.get(params, "meta_data"), pl)
+
+    params
+    |> merge_params_meta(merged)
+    |> maybe_put_paragraph_id(pl.paragraph_id)
+  end
+
+  @doc false
+  defp merged_meta_without_new_passage(meta_base, pl)
+       when is_map(meta_base) and is_integer(pl.paragraph_id),
+       do: merge_meta(meta_base, %{"paragraph_id" => pl.paragraph_id})
+
+  defp merged_meta_without_new_passage(meta_base, _pl) when is_map(meta_base), do: meta_base
+
+  defp merged_meta_without_new_passage(_meta_base, pl) when is_integer(pl.paragraph_id),
+    do: merge_meta(pl.meta_data || %{}, %{"paragraph_id" => pl.paragraph_id})
+
+  defp merged_meta_without_new_passage(meta_base, pl), do: meta_base || pl.meta_data
+
+  @doc false
+  defp merge_params_meta(params, nil), do: params
+
+  defp merge_params_meta(params, merged),
+    do: Map.merge(params, %{"meta_data" => merged})
+
+  @doc false
+  defp maybe_put_paragraph_id(out, pid) when is_integer(pid),
+    do: Map.put(out, "paragraph_id", pid)
+
+  defp maybe_put_paragraph_id(out, _), do: out
 
   @doc false
   defp upsert_paragraph_for_problem_lang(nil, body),
