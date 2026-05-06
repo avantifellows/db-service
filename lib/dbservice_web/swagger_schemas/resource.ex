@@ -267,6 +267,12 @@ defmodule DbserviceWeb.SwaggerSchema.Resource do
             skill_ids(:array, "Skill ids associated with the resource")
             teacher_id(:integer, "Teacher id associated with the resource")
             meta_data(:map, "Additional meta data for the session")
+
+            paragraph_body(
+              :string,
+              "Reading passage for comprehension (`type_params.resource_type` = comprehension); stored in `paragraph` and linked via `problem_lang.paragraph_id` + `meta_data.paragraph_id`"
+            )
+
             curriculum_id(:integer, "Curriculum id associated with the resource")
             grade_id(:integer, "Grade id associated with the resource")
             subject_id(:integer, "Subject id associated with the resource")

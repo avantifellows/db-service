@@ -13,6 +13,7 @@ defmodule DbserviceWeb.ResourceController do
   alias Dbservice.Chapters.Chapter
   alias Dbservice.Languages.Language
   alias Dbservice.Resources.ProblemLanguage
+  alias Dbservice.Paragraphs
   alias Dbservice.Topics.Topic
 
   action_fallback(DbserviceWeb.FallbackController)
@@ -327,6 +328,11 @@ defmodule DbserviceWeb.ResourceController do
         conn
         |> put_status(:unprocessable_entity)
         |> json(%{error: reason})
+
+      {:error, {:comprehension_error, reason}} ->
+        conn
+        |> put_status(:unprocessable_entity)
+        |> json(%{error: reason})
     end
   end
 
@@ -361,11 +367,19 @@ defmodule DbserviceWeb.ResourceController do
   defp insert_problem_language(resource, %{"lang_code" => lang_code} = params)
        when not is_nil(lang_code) do
     if language = Repo.get_by(Language, code: lang_code) do
-      Dbservice.ProblemLanguages.create_problem_language(%{
-        res_id: resource.id,
-        lang_id: language.id,
-        meta_data: Map.get(params, "meta_data")
-      })
+      case Paragraphs.problem_language_insert_attrs(resource, params, language.id) do
+        {:ok, attrs} ->
+          case Dbservice.ProblemLanguages.create_problem_language(attrs) do
+            {:ok, _} -> :ok
+            {:error, cs} -> Repo.rollback({:changeset_error, cs})
+          end
+
+        {:error, %Ecto.Changeset{} = cs} ->
+          Repo.rollback({:changeset_error, cs})
+
+        {:error, {:missing_paragraph_body, msg}} ->
+          Repo.rollback({:comprehension_error, msg})
+      end
     end
   end
 
@@ -525,7 +539,7 @@ defmodule DbserviceWeb.ResourceController do
     topic_id = param_as_integer!(params, "topic_id")
 
     query =
-      from r in Resource,
+      from(r in Resource,
         as: :resource,
         join: rt in ResourceTopic,
         on: rt.resource_id == r.id,
@@ -534,21 +548,24 @@ defmodule DbserviceWeb.ResourceController do
         where: rt.topic_id == ^topic_id,
         where:
           exists(
-            from rc in ResourceCurriculum,
+            from(rc in ResourceCurriculum,
               where:
                 rc.resource_id == parent_as(:resource).id and rc.curriculum_id == ^curriculum_id
+            )
           ) or
             exists(
-              from tc in TopicCurriculum,
+              from(tc in TopicCurriculum,
                 where: tc.topic_id == ^topic_id and tc.curriculum_id == ^curriculum_id
+              )
             ),
         distinct: r.id,
         order_by: [asc: r.id]
+      )
 
     query =
       case param_as_integer(params, "chapter_id") do
         nil -> query
-        chapter_id -> from [r, rt, t] in query, where: t.chapter_id == ^chapter_id
+        chapter_id -> from([r, rt, t] in query, where: t.chapter_id == ^chapter_id)
       end
 
     filter_topic_scoped_by_grade_and_subject(query, params)
@@ -585,10 +602,11 @@ defmodule DbserviceWeb.ResourceController do
             {g, s} -> dynamic([_, _, _, ch], ch.grade_id == ^g and ch.subject_id == ^s)
           end
 
-        from [r, rt, t] in query,
+        from([r, rt, t] in query,
           join: ch in Chapter,
           on: ch.id == t.chapter_id,
           where: ^dyn
+        )
     end
   end
 
@@ -812,13 +830,14 @@ defmodule DbserviceWeb.ResourceController do
         "curriculum_id" => curriculum_id
       }) do
     query =
-      from p in ProblemLanguage,
+      from(p in ProblemLanguage,
         join: r in Resource,
         on: r.id == p.res_id,
         join: l in Language,
         on: l.id == p.lang_id,
         where: p.res_id == ^res_id and l.code == ^lang_code,
         preload: [resource: {r, [:resource_curriculum]}, language: l]
+      )
 
     case Repo.one(query) do
       nil ->
