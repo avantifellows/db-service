@@ -4,10 +4,14 @@ defmodule Dbservice.Resources.Paragraph do
   use Ecto.Schema
   import Ecto.Changeset
 
+  alias Dbservice.Resources.ProblemLanguage
+
   schema "paragraph" do
     field(:body, :string)
 
     timestamps()
+
+    has_many(:problem_lang, ProblemLanguage, foreign_key: :paragraph_id)
   end
 
   @doc false

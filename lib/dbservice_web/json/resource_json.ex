@@ -26,10 +26,11 @@ defmodule DbserviceWeb.ResourceJSON do
   defp render(resource) do
     topic_id =
       Repo.one(
-        from rt in ResourceTopic,
+        from(rt in ResourceTopic,
           where: rt.resource_id == ^resource.id,
           select: rt.topic_id,
           limit: 1
+        )
       )
 
     exam_details =
@@ -38,10 +39,11 @@ defmodule DbserviceWeb.ResourceJSON do
 
     chapter_id =
       Repo.one(
-        from rt in ResourceChapter,
+        from(rt in ResourceChapter,
           where: rt.resource_id == ^resource.id,
           select: rt.chapter_id,
           limit: 1
+        )
       )
 
     # Fetch all resource_curriculum records for this resource
@@ -186,7 +188,8 @@ defmodule DbserviceWeb.ResourceJSON do
     problem_map =
       Map.merge(resource_with_curriculum, %{
         meta_data: Map.get(problem_lang, :meta_data, nil),
-        lang_id: Map.get(problem_lang, :lang_id, nil)
+        lang_id: Map.get(problem_lang, :lang_id, nil),
+        paragraph_id: Map.get(problem_lang, :paragraph_id, nil)
       })
 
     # Fetch concept information

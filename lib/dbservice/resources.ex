@@ -825,7 +825,16 @@ defmodule Dbservice.Resources do
           lang_id
         )
 
-      if pl, do: Dbservice.ProblemLanguages.update_problem_language(pl, params)
+      if pl do
+        attrs =
+          Dbservice.Paragraphs.problem_language_update_attrs(
+            resource,
+            params,
+            pl
+          )
+
+        Dbservice.ProblemLanguages.update_problem_language(pl, attrs)
+      end
     end
   end
 
