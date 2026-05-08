@@ -61,7 +61,7 @@ defmodule DbserviceWeb.ParagraphController do
       conn
       |> put_status(:created)
       |> put_resp_header("location", ~p"/api/paragraph/#{paragraph}")
-      |> render(:show, Paragraphs.get_paragraph_with_problem_langs!(paragraph.id))
+      |> render(:show, Paragraphs.get_paragraph_with_problem_lang!(paragraph.id))
     end
   end
 
@@ -76,7 +76,7 @@ defmodule DbserviceWeb.ParagraphController do
   end
 
   def show(conn, %{"id" => id}) do
-    render(conn, :show, Paragraphs.get_paragraph_with_problem_langs!(id))
+    render(conn, :show, Paragraphs.get_paragraph_with_problem_lang!(id))
   end
 
   swagger_path :update do
@@ -94,7 +94,7 @@ defmodule DbserviceWeb.ParagraphController do
     paragraph = Paragraphs.fetch_paragraph!(params["id"])
 
     with {:ok, %Paragraph{} = paragraph} <- Paragraphs.update_paragraph(paragraph, params) do
-      render(conn, :show, Paragraphs.get_paragraph_with_problem_langs!(paragraph.id))
+      render(conn, :show, Paragraphs.get_paragraph_with_problem_lang!(paragraph.id))
     end
   end
 
