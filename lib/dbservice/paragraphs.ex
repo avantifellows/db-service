@@ -150,8 +150,10 @@ defmodule Dbservice.Paragraphs do
   @doc """
   Builds attrs for inserting a `problem_lang` row when creating a resource.
 
-  For comprehension problems, requires a `paragraph` body, creates a paragraph row,
-  and sets `paragraph_id` on the `problem_lang` row. `meta_data` is forwarded as-is.
+  For comprehension problems, the linked `paragraph_id` is resolved in this order:
+  1. `params["paragraph_id"]` when an integer (e.g. injected by batch endpoint with a shared paragraph).
+  2. `params["paragraph"]` body string — a new paragraph row is created and its id used.
+  3. Otherwise, returns `{:error, {:missing_paragraph_body, _}}`.
 
   ## Examples
 
@@ -180,25 +182,37 @@ defmodule Dbservice.Paragraphs do
 
   @doc false
   defp build_comprehension_insert_attrs(resource, params, lang_id) do
+    case Map.get(params, "paragraph_id") do
+      pid when is_integer(pid) ->
+        {:ok, comprehension_attrs(resource, params, lang_id, pid)}
+
+      _ ->
+        build_comprehension_insert_attrs_from_body(resource, params, lang_id)
+    end
+  end
+
+  @doc false
+  defp build_comprehension_insert_attrs_from_body(resource, params, lang_id) do
     case paragraph_body_for_comprehension(params) do
       body when is_binary(body) ->
         case create_paragraph(%{"body" => body}) do
-          {:ok, %Paragraph{id: pid}} ->
-            {:ok,
-             %{
-               "res_id" => resource.id,
-               "lang_id" => lang_id,
-               "meta_data" => Map.get(params, "meta_data"),
-               "paragraph_id" => pid
-             }}
-
-          {:error, cs} ->
-            {:error, cs}
+          {:ok, %Paragraph{id: pid}} -> {:ok, comprehension_attrs(resource, params, lang_id, pid)}
+          {:error, cs} -> {:error, cs}
         end
 
       _ ->
         {:error, {:missing_paragraph_body, "`paragraph` is required for comprehension problems"}}
     end
+  end
+
+  @doc false
+  defp comprehension_attrs(resource, params, lang_id, paragraph_id) do
+    %{
+      "res_id" => resource.id,
+      "lang_id" => lang_id,
+      "meta_data" => Map.get(params, "meta_data"),
+      "paragraph_id" => paragraph_id
+    }
   end
 
   @doc false

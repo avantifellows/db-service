@@ -425,17 +425,40 @@ defmodule DbserviceWeb.SwaggerSchema.Resource do
           title("ProblemsBatchCreateRequest")
 
           description(
-            "Batch create problems; each element matches POST /api/resource for type problem (type may be omitted)."
+            "Batch create problems. Optional top-level `paragraph` is created once and shared by all " <>
+              "comprehension problems in the same request. Each `problems[i]` matches POST /api/resource " <>
+              "for type problem (type may be omitted)."
           )
 
           properties do
+            paragraph(
+              :string,
+              "Optional reading-comprehension passage; created once and linked to every comprehension problem in this batch"
+            )
+
             problems(
               Schema.array(:object),
               "Payloads for each problem to create (same shape as ProblemResource)"
             )
           end
 
-          example(%{problems: [%{type: "problem", subtype: "mcq", lang_code: "en"}]})
+          example(%{
+            paragraph: "This is the shared reading passage for the comprehension set.",
+            problems: [
+              %{
+                subtype: "comprehension",
+                lang_code: "en",
+                name: [%{lang_code: "en", resource: "Q1"}],
+                meta_data: %{text: "q1", answer: ["2"], options: ["o1", "o2"]}
+              },
+              %{
+                subtype: "comprehension",
+                lang_code: "en",
+                name: [%{lang_code: "en", resource: "Q2"}],
+                meta_data: %{text: "q2", answer: ["1"], options: ["o1", "o2"]}
+              }
+            ]
+          })
         end,
       ProblemsBatchResponse:
         swagger_schema do

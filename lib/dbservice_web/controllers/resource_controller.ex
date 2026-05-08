@@ -174,12 +174,17 @@ defmodule DbserviceWeb.ResourceController do
     post("/api/resources/problems/batch")
 
     description(
-      "Create multiple problems in one request. Each entry uses the same body shape as POST /api/resource " <>
-        "for type problem. Returns created resources and per-index failures (partial success)."
+      "Create multiple problems in one request. Optional top-level `paragraph` is created once and shared " <>
+        "by all comprehension problems in the same request (no duplicate paragraph rows). Each `problems[i]` " <>
+        "entry uses the same body shape as POST /api/resource for type problem. " <>
+        "Returns created resources and per-index failures (partial success)."
     )
 
     parameters do
-      body(:body, Schema.ref(:ProblemsBatchCreateRequest), "Array of problem payloads",
+      body(
+        :body,
+        Schema.ref(:ProblemsBatchCreateRequest),
+        "Top-level `paragraph` and `problems` array",
         required: true
       )
     end
@@ -195,20 +200,66 @@ defmodule DbserviceWeb.ResourceController do
       |> put_status(:unprocessable_entity)
       |> json(%{error: "problems must be a non-empty array"})
     else
-      {created, failed} =
-        problems
-        |> Enum.with_index()
-        |> Enum.reduce({[], []}, &accumulate_batch_create/2)
-
-      conn
-      |> put_status(:ok)
-      |> json(%{
-        created:
-          Enum.map(Enum.reverse(created), &DbserviceWeb.ResourceJSON.show(%{resource: &1})),
-        failed: Enum.reverse(failed)
-      })
+      handle_batch_create_with_shared_paragraph(conn, problems, params)
     end
   end
+
+  defp handle_batch_create_with_shared_paragraph(conn, problems, params) do
+    case resolve_shared_paragraph_id(params) do
+      {:ok, shared_paragraph_id} ->
+        run_batch_create(conn, problems, shared_paragraph_id)
+
+      {:error, %Ecto.Changeset{} = cs} ->
+        conn
+        |> put_status(:unprocessable_entity)
+        |> json(%{errors: DbserviceWeb.ChangesetJSON.translate_errors(cs)})
+    end
+  end
+
+  defp run_batch_create(conn, problems, shared_paragraph_id) do
+    {created, failed} =
+      problems
+      |> Enum.with_index()
+      |> Enum.map(fn {item, idx} ->
+        {inject_shared_paragraph_id(item, shared_paragraph_id), idx}
+      end)
+      |> Enum.reduce({[], []}, &accumulate_batch_create/2)
+
+    conn
+    |> put_status(:ok)
+    |> json(%{
+      created: Enum.map(Enum.reverse(created), &DbserviceWeb.ResourceJSON.show(%{resource: &1})),
+      failed: Enum.reverse(failed)
+    })
+  end
+
+  defp resolve_shared_paragraph_id(params) do
+    case nonempty_string(params["paragraph"]) do
+      nil ->
+        {:ok, nil}
+
+      body ->
+        case Paragraphs.create_paragraph(%{"body" => body}) do
+          {:ok, %{id: pid}} -> {:ok, pid}
+          {:error, _} = err -> err
+        end
+    end
+  end
+
+  defp inject_shared_paragraph_id(item, nil), do: item
+
+  defp inject_shared_paragraph_id(item, paragraph_id) when is_integer(paragraph_id) do
+    item
+    |> Map.drop(["paragraph"])
+    |> Map.put_new("paragraph_id", paragraph_id)
+  end
+
+  defp nonempty_string(s) when is_binary(s) do
+    t = String.trim(s)
+    if t == "", do: nil, else: t
+  end
+
+  defp nonempty_string(_), do: nil
 
   swagger_path :update_problems_batch do
     PhoenixSwagger.Path.patch("/api/resources/problems/batch")
