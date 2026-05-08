@@ -430,8 +430,8 @@ defmodule DbserviceWeb.SwaggerSchema.Resource do
 
           properties do
             problems(
-              Schema.array(Schema.ref(:ProblemResource)),
-              "Payloads for each problem to create"
+              Schema.array(:object),
+              "Payloads for each problem to create (same shape as ProblemResource)"
             )
           end
 
@@ -443,7 +443,7 @@ defmodule DbserviceWeb.SwaggerSchema.Resource do
           description("Created resources (same shape as GET resource) and per-index failures")
 
           properties do
-            created(Schema.array(:object), "Successfully created problems")
+            created(Schema.array(:object), "Successfully created problems (Resource shape)")
             failed(Schema.array(:object), "Entries with index and error or errors")
           end
         end,
@@ -471,7 +471,7 @@ defmodule DbserviceWeb.SwaggerSchema.Resource do
           title("ProblemsBatchUpdateResponse")
 
           properties do
-            updated(Schema.array(:object), "Successfully updated resources")
+            updated(Schema.array(:object), "Successfully updated resources (Resource shape)")
             failed(Schema.array(:object), "Entries with index and error or errors")
           end
         end
