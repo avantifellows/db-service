@@ -814,6 +814,11 @@ defmodule Dbservice.Resources do
     end
   end
 
+  defp update_problem_language(_resource, %{"lang_code" => nil}), do: :ok
+
+  defp update_problem_language(_resource, %{} = params) when not is_map_key(params, "lang_code"),
+    do: :ok
+
   defp update_problem_language(resource, params) do
     lang = Dbservice.Languages.get_language_by_code(params["lang_code"])
     lang_id = lang && lang.id

@@ -417,4 +417,64 @@ defmodule DbserviceWeb.SwaggerSchema.Resource do
         end
     }
   end
+
+  def problems_batch do
+    %{
+      ProblemsBatchCreateRequest:
+        swagger_schema do
+          title("ProblemsBatchCreateRequest")
+
+          description(
+            "Batch create problems; each element matches POST /api/resource for type problem (type may be omitted)."
+          )
+
+          properties do
+            problems(
+              Schema.array(Schema.ref(:ProblemResource)),
+              "Payloads for each problem to create"
+            )
+          end
+
+          example(%{problems: [%{type: "problem", subtype: "mcq", lang_code: "en"}]})
+        end,
+      ProblemsBatchResponse:
+        swagger_schema do
+          title("ProblemsBatchResponse")
+          description("Created resources (same shape as GET resource) and per-index failures")
+
+          properties do
+            created(Schema.array(:object), "Successfully created problems")
+            failed(Schema.array(:object), "Entries with index and error or errors")
+          end
+        end,
+      ProblemsBatchUpdateRequest:
+        swagger_schema do
+          title("ProblemsBatchUpdateRequest")
+
+          description(
+            "Batch update; each object includes id (resource id) and PATCH fields like PATCH /api/resource"
+          )
+
+          properties do
+            problems(Schema.array(:object), "Problem patches with id")
+          end
+
+          example(%{
+            problems: [
+              %{id: 5014, meta_data: %{text: "updated"}},
+              %{id: 5015, chapter_id: 100}
+            ]
+          })
+        end,
+      ProblemsBatchUpdateResponse:
+        swagger_schema do
+          title("ProblemsBatchUpdateResponse")
+
+          properties do
+            updated(Schema.array(:object), "Successfully updated resources")
+            failed(Schema.array(:object), "Entries with index and error or errors")
+          end
+        end
+    }
+  end
 end
