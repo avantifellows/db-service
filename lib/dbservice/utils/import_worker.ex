@@ -102,11 +102,13 @@ defmodule Dbservice.DataImport.ImportWorker do
 
   # Generic import processing function
   defp process_import(import_record, record_processor_fn) do
-    with {:ok, path} <- Dbservice.Storage.local_path(import_record.filename) do
-      start_row = import_record.start_row || 2
-      do_process_import(import_record, record_processor_fn, path, start_row)
-    else
-      {:error, reason} -> {:error, "Failed to fetch import file: #{inspect(reason)}"}
+    case Dbservice.Storage.local_path(import_record.filename) do
+      {:ok, path} ->
+        start_row = import_record.start_row || 2
+        do_process_import(import_record, record_processor_fn, path, start_row)
+
+      {:error, reason} ->
+        {:error, "Failed to fetch import file: #{inspect(reason)}"}
     end
   end
 
