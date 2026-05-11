@@ -13,6 +13,7 @@ if config_env() == :prod do
   host = env!("PHX_HOST", :string!)
 
   config :dbservice, DbserviceWeb.Endpoint,
+    server: System.get_env("PHX_SERVER") in ~w(1 true),
     load_from_system_env: false,
     url: [host: host, port: 443],
     http: [
