@@ -102,9 +102,15 @@ defmodule Dbservice.DataImport.ImportWorker do
 
   # Generic import processing function
   defp process_import(import_record, record_processor_fn) do
-    path = Path.join(["priv", "static", "uploads", import_record.filename])
-    start_row = import_record.start_row || 2
+    with {:ok, path} <- Dbservice.Storage.local_path(import_record.filename) do
+      start_row = import_record.start_row || 2
+      do_process_import(import_record, record_processor_fn, path, start_row)
+    else
+      {:error, reason} -> {:error, "Failed to fetch import file: #{inspect(reason)}"}
+    end
+  end
 
+  defp do_process_import(import_record, record_processor_fn, path, start_row) do
     case parse_csv_records(path, start_row, import_record.type) do
       {:ok, parsed_records} ->
         try do
@@ -1570,8 +1576,13 @@ defmodule Dbservice.DataImport.ImportWorker do
   end
 
   defp count_total_rows(filename, start_row) do
-    path = Path.join(["priv", "static", "uploads", filename])
+    case Dbservice.Storage.local_path(filename) do
+      {:ok, path} -> count_total_rows_from_path(path, start_row)
+      {:error, _reason} -> 0
+    end
+  end
 
+  defp count_total_rows_from_path(path, start_row) do
     try do
       count =
         path
