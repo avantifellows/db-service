@@ -14,6 +14,12 @@ import Config
 # Do not print debug messages in production
 config :logger, level: :warn
 
+# Override the global :console + LoggerFileBackend setup so prod only writes
+# to stdout. On Fargate, the awslogs driver captures stdout/stderr to
+# CloudWatch Logs automatically; the file backend would just write to the
+# task's ephemeral filesystem and disappear when the task is replaced.
+config :logger, backends: [:console]
+
 # ## SSL Support
 #
 # To get SSL working, you will need to add the `https` key

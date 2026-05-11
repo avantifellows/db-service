@@ -1,10 +1,11 @@
 name: Deploy to ECS (Production)
 
-# Manual trigger only for now. The auto trigger (on push-to-release) and the
-# rename of the old SSH-based production_deploy.yml happen in the cutover PR
-# once Fargate is validated on staging. Until then, the legacy workflow keeps
-# deploying to EC2 and this workflow is hand-fired for validation.
+# Auto-deploys to production on every push to the release branch. Manual
+# workflow_dispatch stays available as a fallback (e.g. to redeploy a
+# specific SHA or roll forward without retagging release).
 on:
+  push:
+    branches: [release]
   workflow_dispatch:
     inputs:
       ref:
