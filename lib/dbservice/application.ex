@@ -9,7 +9,7 @@ defmodule Dbservice.Application do
 
   @impl true
   def start(_type, _args) do
-    source(["config/.env"])
+    source(["config/.env", System.get_env()])
 
     children = [
       # Start the Ecto repository

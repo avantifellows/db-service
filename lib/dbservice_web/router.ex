@@ -151,7 +151,7 @@ defmodule DbserviceWeb.Router do
     resources("/cms-status", CmsStatusController, except: [:new, :edit])
 
     def swagger_info do
-      source(["config/.env"])
+      source(["config/.env", System.get_env()])
 
       host =
         if Application.get_env(:dbservice, :environment) == :dev do
@@ -206,7 +206,7 @@ defmodule DbserviceWeb.Router do
   end
 
   defp admin_basic_auth(conn, _opts) do
-    source(["config/.env"])
+    source(["config/.env", System.get_env()])
 
     username = env!("DASHBOARD_USER", :string!)
     password = env!("DASHBOARD_PASS", :string!)

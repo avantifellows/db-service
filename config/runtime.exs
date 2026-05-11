@@ -1,7 +1,7 @@
 import Config
 import Dotenvy
 
-source(["config/.env", "config/.env.#{config_env()}"])
+source(["config/.env", "config/.env.#{config_env()}", System.get_env()])
 
 if config_env() == :prod do
   config :dbservice, Dbservice.Repo,

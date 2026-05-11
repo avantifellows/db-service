@@ -14,7 +14,7 @@ defmodule DbserviceWeb.AuthenticationMiddleware do
   def init(_opts), do: %{}
 
   def call(conn, _opts) do
-    source(["config/.env", "config/.env"])
+    source(["config/.env", System.get_env()])
 
     # Only enforce Bearer-token auth for the JSON API.
     # Browser routes (imports UI, swagger UI, live dashboard, etc.) should be protected
