@@ -211,7 +211,8 @@ defmodule Dbservice.UsersTest do
         mother_phone: "some mother_phone",
         stream: "medical",
         physically_handicapped: false,
-        annual_family_income: "some family income",
+        family_income: "some family income",
+        annual_family_income: "some annual family income",
         father_profession: "some father profession",
         father_education_level: "some father education level",
         mother_profession: "some mother profession",
@@ -231,7 +232,8 @@ defmodule Dbservice.UsersTest do
       assert student.mother_phone == "some mother_phone"
       assert student.stream == "medical"
       assert student.physically_handicapped == false
-      assert student.annual_family_income == "some family income"
+      assert student.family_income == "some family income"
+      assert student.annual_family_income == "some annual family income"
       assert student.father_profession == "some father profession"
       assert student.father_education_level == "some father education level"
       assert student.mother_profession == "some mother profession"
@@ -259,7 +261,8 @@ defmodule Dbservice.UsersTest do
         mother_phone: "some updated mother_phone",
         stream: "pcm",
         physically_handicapped: false,
-        annual_family_income: "some updated family income",
+        family_income: "some updated family income",
+        annual_family_income: "some updated annual family income",
         father_profession: "some updated father profession",
         father_education_level: "some updated father education level",
         mother_profession: "some updated mother profession",
@@ -278,7 +281,8 @@ defmodule Dbservice.UsersTest do
       assert student.mother_phone == "some updated mother_phone"
       assert student.stream == "pcm"
       assert student.physically_handicapped == false
-      assert student.annual_family_income == "some updated family income"
+      assert student.family_income == "some updated family income"
+      assert student.annual_family_income == "some updated annual family income"
       assert student.father_profession == "some updated father profession"
       assert student.father_education_level == "some updated father education level"
       assert student.mother_profession == "some updated mother profession"

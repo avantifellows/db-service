@@ -43,6 +43,7 @@ defmodule DbserviceWeb.StudentJSON do
       stream: student.stream,
       physically_handicapped: student.physically_handicapped,
       physically_handicapped_certificate: student.physically_handicapped_certificate,
+      family_income: student.family_income,
       annual_family_income: student.annual_family_income,
       monthly_family_income: student.monthly_family_income,
       time_of_device_availability: student.time_of_device_availability,
