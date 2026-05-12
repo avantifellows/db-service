@@ -133,6 +133,7 @@ defmodule DbserviceWeb.Router do
     resources("/resource-topic", ResourceTopicController, except: [:new, :edit])
     resources("/resource-concept", ResourceConceptController, except: [:new, :edit])
     resources("/problem-language", ProblemLanguageController, except: [:new, :edit])
+    resources("/paragraph", ParagraphController, except: [:new, :edit])
     get("/resource/test/:id/problems", ResourceController, :test_problems)
     get("/problems", ResourceController, :fetch_problems)
     resources("/test-rule", TestRuleController, except: [:new, :edit])

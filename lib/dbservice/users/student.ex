@@ -31,6 +31,7 @@ defmodule Dbservice.Users.Student do
     field(:stream, :string)
     field(:physically_handicapped, :boolean)
     field(:physically_handicapped_certificate, :string)
+    field(:family_income, :string)
     field(:annual_family_income, :string)
     field(:monthly_family_income, :string)
     field(:time_of_device_availability, :string)
@@ -88,6 +89,7 @@ defmodule Dbservice.Users.Student do
       :stream,
       :physically_handicapped,
       :physically_handicapped_certificate,
+      :family_income,
       :annual_family_income,
       :monthly_family_income,
       :time_of_device_availability,

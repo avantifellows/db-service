@@ -7,11 +7,12 @@ defmodule DbserviceWeb.ProblemLanguageJSON do
     render(problem_language)
   end
 
-  defp render(problem_language) do
+  def render(problem_language) do
     %{
       id: problem_language.id,
       res_id: problem_language.res_id,
       lang_id: problem_language.lang_id,
+      paragraph_id: problem_language.paragraph_id,
       meta_data: problem_language.meta_data
     }
   end
