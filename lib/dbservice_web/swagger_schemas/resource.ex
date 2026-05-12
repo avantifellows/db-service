@@ -479,10 +479,16 @@ defmodule DbserviceWeb.SwaggerSchema.Resource do
           )
 
           properties do
+            paragraph(
+              :string,
+              "Optional reading-comprehension passage; updates the shared paragraph linked to every comprehension problem in this batch"
+            )
+
             problems(Schema.array(:object), "Problem patches with id")
           end
 
           example(%{
+            paragraph: "Updated shared reading passage for the comprehension set.",
             problems: [
               %{id: 5014, meta_data: %{text: "updated"}},
               %{id: 5015, chapter_id: 100}

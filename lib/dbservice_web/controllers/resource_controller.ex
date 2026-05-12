@@ -266,7 +266,9 @@ defmodule DbserviceWeb.ResourceController do
 
     description(
       "Update multiple problems in one request. Each entry must include id (resource id) " <>
-        "and the same fields as PATCH /api/resource. Only resources with type problem are updated."
+        "and the same fields as PATCH /api/resource. Only resources with type problem are updated. " <>
+        "Optional top-level `paragraph` updates the body of the shared paragraph(s) linked to the " <>
+        "comprehension problems being updated."
     )
 
     parameters do
@@ -286,6 +288,8 @@ defmodule DbserviceWeb.ResourceController do
       |> put_status(:unprocessable_entity)
       |> json(%{error: "problems must be a non-empty array"})
     else
+      update_shared_paragraph_if_provided(problems, params["paragraph"])
+
       {updated, failed} =
         problems
         |> Enum.with_index()
@@ -299,6 +303,37 @@ defmodule DbserviceWeb.ResourceController do
         failed: Enum.reverse(failed)
       })
     end
+  end
+
+  defp update_shared_paragraph_if_provided(problems, paragraph) do
+    case nonempty_string(paragraph) do
+      nil ->
+        :ok
+
+      body ->
+        problem_ids =
+          problems
+          |> Enum.map(&extract_batch_problem_id/1)
+          |> Enum.reject(&is_nil/1)
+
+        update_paragraphs_for_problem_ids(problem_ids, body)
+    end
+  end
+
+  defp update_paragraphs_for_problem_ids([], _body), do: :ok
+
+  defp update_paragraphs_for_problem_ids(problem_ids, body) do
+    from(pl in ProblemLanguage,
+      where: pl.res_id in ^problem_ids and not is_nil(pl.paragraph_id),
+      select: pl.paragraph_id,
+      distinct: true
+    )
+    |> Repo.all()
+    |> Enum.each(fn pid ->
+      pid
+      |> Paragraphs.fetch_paragraph!()
+      |> Paragraphs.update_paragraph(%{"body" => body})
+    end)
   end
 
   def tests_containing_problems(conn, params) do
