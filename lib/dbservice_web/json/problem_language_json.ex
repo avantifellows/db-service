@@ -1,4 +1,6 @@
 defmodule DbserviceWeb.ProblemLanguageJSON do
+  alias Dbservice.Paragraphs
+
   def index(%{problem_language: problem_language}) do
     for(pl <- problem_language, do: render(pl))
   end
@@ -15,5 +17,9 @@ defmodule DbserviceWeb.ProblemLanguageJSON do
       paragraph_id: problem_language.paragraph_id,
       meta_data: problem_language.meta_data
     }
+    |> Paragraphs.maybe_put_paragraph(
+      Map.get(problem_language, :resource),
+      Map.get(problem_language, :paragraph)
+    )
   end
 end

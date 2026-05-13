@@ -799,7 +799,12 @@ defmodule DbserviceWeb.ResourceController do
           }
         )
 
-      problems = Repo.all(query)
+      problems =
+        query
+        |> Repo.all()
+        |> Enum.map(fn p ->
+          %{p | problem_lang: Repo.preload(p.problem_lang, :paragraph)}
+        end)
 
       render(conn, "problems.json", problems: problems)
     end
@@ -836,7 +841,7 @@ defmodule DbserviceWeb.ResourceController do
         join: l in Language,
         on: l.id == p.lang_id,
         where: p.res_id == ^res_id and l.code == ^lang_code,
-        preload: [resource: {r, [:resource_curriculum]}, language: l]
+        preload: [:paragraph, resource: {r, [:resource_curriculum]}, language: l]
       )
 
     case Repo.one(query) do
@@ -862,7 +867,8 @@ defmodule DbserviceWeb.ResourceController do
               resource: problem_lang.resource,
               meta_data: problem_lang.meta_data,
               lang_code: problem_lang.language.code,
-              resource_curriculum: rc
+              resource_curriculum: rc,
+              paragraph: problem_lang.paragraph
             )
         end
     end

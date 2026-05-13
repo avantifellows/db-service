@@ -3,6 +3,7 @@ defmodule DbserviceWeb.ResourceJSON do
   alias Dbservice.Resources.ResourceTopic
   alias Dbservice.Resources.ResourceChapter
   alias Dbservice.Concepts
+  alias Dbservice.Paragraphs
   alias Dbservice.ResourceConcepts
   alias Dbservice.ResourceCurriculums
   alias Dbservice.Repo
@@ -201,15 +202,19 @@ defmodule DbserviceWeb.ResourceJSON do
         ConceptJSON.render(concept)
       end)
 
-    Map.put(problem_map, :concepts, concepts)
+    problem_map
+    |> Map.put(:concepts, concepts)
+    |> Paragraphs.maybe_put_paragraph(resource, Map.get(problem_lang, :paragraph))
   end
 
-  def problem_lang(%{
-        resource: resource,
-        meta_data: meta_data,
-        lang_code: lang_code,
-        resource_curriculum: rc
-      }) do
+  def problem_lang(
+        %{
+          resource: resource,
+          meta_data: meta_data,
+          lang_code: lang_code,
+          resource_curriculum: rc
+        } = assigns
+      ) do
     base = render(resource)
 
     # Fetch concept information
@@ -231,5 +236,6 @@ defmodule DbserviceWeb.ResourceJSON do
       difficulty_level: rc.difficulty_level,
       concepts: concepts
     })
+    |> Paragraphs.maybe_put_paragraph(resource, Map.get(assigns, :paragraph))
   end
 end
