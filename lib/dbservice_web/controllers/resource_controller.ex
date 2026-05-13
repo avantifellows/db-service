@@ -799,7 +799,12 @@ defmodule DbserviceWeb.ResourceController do
           }
         )
 
-      problems = Repo.all(query)
+      problems =
+        query
+        |> Repo.all()
+        |> Enum.map(fn p ->
+          %{p | problem_lang: Repo.preload(p.problem_lang, :paragraph)}
+        end)
 
       render(conn, "problems.json", problems: problems)
     end

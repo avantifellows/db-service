@@ -78,13 +78,16 @@ defmodule Dbservice.Resources do
   defp fetch_and_format_problems(test_resource, lang_id, curriculum_id) do
     problem_ids = extract_problem_ids_from_test(test_resource.type_params)
 
+    problem_lang_query =
+      from(pl in ProblemLanguage, where: pl.lang_id == ^lang_id, preload: :paragraph)
+
     problems =
       from(r in Resource,
         where: r.id in ^problem_ids and r.type == "problem",
         preload: [
           :resource_curriculum,
           :chapter,
-          problem_language: ^from(pl in ProblemLanguage, where: pl.lang_id == ^lang_id)
+          problem_language: ^problem_lang_query
         ]
       )
       |> Repo.all()
@@ -1084,6 +1087,7 @@ defmodule Dbservice.Resources do
     |> apply_problem_sorting(params)
     |> apply_problem_pagination(params)
     |> Repo.all()
+    |> Repo.preload(:paragraph)
     |> Enum.map(fn problem_lang ->
       resource = Repo.get!(Resource, problem_lang.res_id)
 

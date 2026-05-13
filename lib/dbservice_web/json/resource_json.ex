@@ -202,8 +202,19 @@ defmodule DbserviceWeb.ResourceJSON do
         ConceptJSON.render(concept)
       end)
 
-    Map.put(problem_map, :concepts, concepts)
+    problem_map
+    |> Map.put(:concepts, concepts)
+    |> maybe_put_paragraph(resource, extract_paragraph(problem_lang))
   end
+
+  defp extract_paragraph(problem_lang) when is_map(problem_lang) do
+    case Map.get(problem_lang, :paragraph) do
+      %Dbservice.Resources.Paragraph{} = paragraph -> paragraph
+      _ -> nil
+    end
+  end
+
+  defp extract_paragraph(_), do: nil
 
   def problem_lang(
         %{
