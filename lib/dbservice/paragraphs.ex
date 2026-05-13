@@ -127,6 +127,24 @@ defmodule Dbservice.Paragraphs do
   def comprehension_problem?(_, _), do: false
 
   @doc """
+  Adds `paragraph: %{id, body}` to `map` when `resource` is a comprehension
+  problem and `paragraph` is a loaded `%Paragraph{}`. Returns `map` unchanged
+  otherwise — including when `paragraph` is `nil` or `%Ecto.Association.NotLoaded{}`.
+
+  Lets JSON renderers pass `Map.get(problem_lang, :paragraph)` directly without
+  pre-checking whether the association was preloaded.
+  """
+  def maybe_put_paragraph(map, %Resource{} = resource, %Paragraph{} = paragraph) do
+    if comprehension_problem?(resource, %{}) do
+      Map.put(map, :paragraph, %{id: paragraph.id, body: paragraph.body})
+    else
+      map
+    end
+  end
+
+  def maybe_put_paragraph(map, _resource, _paragraph), do: map
+
+  @doc """
   Returns the reading-passage body from `params["paragraph"]`, trimmed.
   Returns `nil` for non-map params, missing key, or blank string.
 

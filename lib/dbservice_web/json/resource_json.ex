@@ -204,17 +204,8 @@ defmodule DbserviceWeb.ResourceJSON do
 
     problem_map
     |> Map.put(:concepts, concepts)
-    |> maybe_put_paragraph(resource, extract_paragraph(problem_lang))
+    |> Paragraphs.maybe_put_paragraph(resource, Map.get(problem_lang, :paragraph))
   end
-
-  defp extract_paragraph(problem_lang) when is_map(problem_lang) do
-    case Map.get(problem_lang, :paragraph) do
-      %Dbservice.Resources.Paragraph{} = paragraph -> paragraph
-      _ -> nil
-    end
-  end
-
-  defp extract_paragraph(_), do: nil
 
   def problem_lang(
         %{
@@ -245,16 +236,6 @@ defmodule DbserviceWeb.ResourceJSON do
       difficulty_level: rc.difficulty_level,
       concepts: concepts
     })
-    |> maybe_put_paragraph(resource, Map.get(assigns, :paragraph))
+    |> Paragraphs.maybe_put_paragraph(resource, Map.get(assigns, :paragraph))
   end
-
-  defp maybe_put_paragraph(map, resource, %Dbservice.Resources.Paragraph{} = paragraph) do
-    if Paragraphs.comprehension_problem?(resource, %{}) do
-      Map.put(map, :paragraph, %{id: paragraph.id, body: paragraph.body})
-    else
-      map
-    end
-  end
-
-  defp maybe_put_paragraph(map, _resource, _paragraph), do: map
 end
