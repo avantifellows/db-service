@@ -700,12 +700,31 @@ defmodule Dbservice.Resources do
 
   defp update_resource_associations(resource, params) do
     update_resource_curriculums(resource, params)
+    update_resource_curriculum_difficulty_level(resource, params)
     update_resource_topic(resource, params)
     update_resource_chapter(resource, params)
     update_resource_concepts(resource, params)
 
     if resource.type == "problem" do
       update_problem_language(resource, params)
+    end
+  end
+
+  # When only `difficulty_level` is sent (no `curriculum_grades`), `update_resource_curriculums`
+  # is skipped — but difficulty_level lives on resource_curriculum, so we update existing rows here.
+  defp update_resource_curriculum_difficulty_level(resource, params) do
+    if Map.has_key?(params, "difficulty_level") and not Map.has_key?(params, "curriculum_grades") do
+      difficulty_level = Map.get(params, "difficulty_level")
+
+      resource.id
+      |> Dbservice.ResourceCurriculums.list_resource_curriculums_by_resource_id()
+      |> Enum.each(fn rc ->
+        if rc.difficulty_level != difficulty_level do
+          Dbservice.ResourceCurriculums.update_resource_curriculum(rc, %{
+            difficulty_level: difficulty_level
+          })
+        end
+      end)
     end
   end
 
@@ -814,12 +833,27 @@ defmodule Dbservice.Resources do
     end
   end
 
-  defp update_problem_language(_resource, %{"lang_code" => nil}), do: :ok
-
-  defp update_problem_language(_resource, %{} = params) when not is_map_key(params, "lang_code"),
-    do: :ok
-
   defp update_problem_language(resource, params) do
+    cond do
+      has_lang_code?(params) ->
+        update_problem_language_for_lang(resource, params)
+
+      has_problem_language_fields?(params) ->
+        update_all_problem_languages(resource, params)
+
+      true ->
+        :ok
+    end
+  end
+
+  defp has_lang_code?(%{"lang_code" => code}) when is_binary(code) and code != "", do: true
+  defp has_lang_code?(_), do: false
+
+  defp has_problem_language_fields?(params) do
+    Map.has_key?(params, "meta_data") or Map.has_key?(params, "paragraph")
+  end
+
+  defp update_problem_language_for_lang(resource, params) do
     lang = Dbservice.Languages.get_language_by_code(params["lang_code"])
     lang_id = lang && lang.id
 
@@ -830,17 +864,19 @@ defmodule Dbservice.Resources do
           lang_id
         )
 
-      if pl do
-        attrs =
-          Dbservice.Paragraphs.problem_language_update_attrs(
-            resource,
-            params,
-            pl
-          )
-
-        Dbservice.ProblemLanguages.update_problem_language(pl, attrs)
-      end
+      if pl, do: do_update_problem_language(resource, params, pl)
     end
+  end
+
+  defp update_all_problem_languages(resource, params) do
+    from(pl in ProblemLanguage, where: pl.res_id == ^resource.id)
+    |> Repo.all()
+    |> Enum.each(&do_update_problem_language(resource, params, &1))
+  end
+
+  defp do_update_problem_language(resource, params, pl) do
+    attrs = Dbservice.Paragraphs.problem_language_update_attrs(resource, params, pl)
+    Dbservice.ProblemLanguages.update_problem_language(pl, attrs)
   end
 
   def resolve_tag_ids(tags) do
