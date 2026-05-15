@@ -417,4 +417,93 @@ defmodule DbserviceWeb.SwaggerSchema.Resource do
         end
     }
   end
+
+  def problems_batch do
+    %{
+      ProblemsBatchCreateRequest:
+        swagger_schema do
+          title("ProblemsBatchCreateRequest")
+
+          description(
+            "Batch create problems. Optional top-level `paragraph` is created once and shared by all " <>
+              "comprehension problems in the same request. Each `problems[i]` matches POST /api/resource " <>
+              "for type problem (type may be omitted)."
+          )
+
+          properties do
+            paragraph(
+              :string,
+              "Optional reading-comprehension passage; created once and linked to every comprehension problem in this batch"
+            )
+
+            problems(
+              Schema.array(:object),
+              "Payloads for each problem to create (same shape as ProblemResource)"
+            )
+          end
+
+          example(%{
+            paragraph: "This is the shared reading passage for the comprehension set.",
+            problems: [
+              %{
+                subtype: "comprehension",
+                lang_code: "en",
+                name: [%{lang_code: "en", resource: "Q1"}],
+                meta_data: %{text: "q1", answer: ["2"], options: ["o1", "o2"]}
+              },
+              %{
+                subtype: "comprehension",
+                lang_code: "en",
+                name: [%{lang_code: "en", resource: "Q2"}],
+                meta_data: %{text: "q2", answer: ["1"], options: ["o1", "o2"]}
+              }
+            ]
+          })
+        end,
+      ProblemsBatchResponse:
+        swagger_schema do
+          title("ProblemsBatchResponse")
+          description("Created resources (same shape as GET resource) and per-index failures")
+
+          properties do
+            created(Schema.array(:object), "Successfully created problems (Resource shape)")
+            failed(Schema.array(:object), "Entries with index and error or errors")
+          end
+        end,
+      ProblemsBatchUpdateRequest:
+        swagger_schema do
+          title("ProblemsBatchUpdateRequest")
+
+          description(
+            "Batch update; each object includes id (resource id) and PATCH fields like PATCH /api/resource"
+          )
+
+          properties do
+            paragraph(
+              :string,
+              "Optional reading-comprehension passage; updates the shared paragraph linked to every comprehension problem in this batch"
+            )
+
+            problems(Schema.array(:object), "Problem patches with id")
+          end
+
+          example(%{
+            paragraph: "Updated shared reading passage for the comprehension set.",
+            problems: [
+              %{id: 5014, meta_data: %{text: "updated"}},
+              %{id: 5015, chapter_id: 100}
+            ]
+          })
+        end,
+      ProblemsBatchUpdateResponse:
+        swagger_schema do
+          title("ProblemsBatchUpdateResponse")
+
+          properties do
+            updated(Schema.array(:object), "Successfully updated resources (Resource shape)")
+            failed(Schema.array(:object), "Entries with index and error or errors")
+          end
+        end
+    }
+  end
 end

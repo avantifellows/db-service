@@ -2,18 +2,18 @@ defmodule DbserviceWeb.ResourceController do
   use DbserviceWeb, :controller
 
   import Ecto.Query
-  alias Dbservice.Repo
-  alias Dbservice.Resources
-  alias Dbservice.Resources.Resource
-  alias Dbservice.Resources.ResourceTopic
-  alias Dbservice.Resources.ResourceChapter
-  alias Dbservice.Resources.ResourceCurriculum
-  alias Dbservice.Topics.Topic
-  alias Dbservice.TopicCurriculums.TopicCurriculum
+
   alias Dbservice.Chapters.Chapter
   alias Dbservice.Languages.Language
-  alias Dbservice.Resources.ProblemLanguage
   alias Dbservice.Paragraphs
+  alias Dbservice.Repo
+  alias Dbservice.Resources
+  alias Dbservice.Resources.ProblemLanguage
+  alias Dbservice.Resources.Resource
+  alias Dbservice.Resources.ResourceChapter
+  alias Dbservice.Resources.ResourceCurriculum
+  alias Dbservice.Resources.ResourceTopic
+  alias Dbservice.TopicCurriculums.TopicCurriculum
   alias Dbservice.Topics.Topic
 
   action_fallback(DbserviceWeb.FallbackController)
@@ -30,6 +30,7 @@ defmodule DbserviceWeb.ResourceController do
     |> Map.merge(SwaggerSchemaResource.problem_resource())
     |> Map.merge(SwaggerSchemaResource.move_resources())
     |> Map.merge(SwaggerSchemaResource.tests_containing_problems())
+    |> Map.merge(SwaggerSchemaResource.problems_batch())
   end
 
   swagger_path :index do
@@ -169,6 +170,172 @@ defmodule DbserviceWeb.ResourceController do
     response(200, "OK", Schema.ref(:TestsContainingProblemsResponse))
   end
 
+  swagger_path :create_problems_batch do
+    post("/api/resources/problems/batch")
+
+    description(
+      "Create multiple problems in one request. Optional top-level `paragraph` is created once and shared " <>
+        "by all comprehension problems in the same request (no duplicate paragraph rows). Each `problems[i]` " <>
+        "entry uses the same body shape as POST /api/resource for type problem. " <>
+        "Returns created resources and per-index failures (partial success)."
+    )
+
+    parameters do
+      body(
+        :body,
+        Schema.ref(:ProblemsBatchCreateRequest),
+        "Top-level `paragraph` and `problems` array",
+        required: true
+      )
+    end
+
+    response(200, "OK", Schema.ref(:ProblemsBatchResponse))
+  end
+
+  def create_problems_batch(conn, params) do
+    problems = params["problems"] || []
+
+    if problems == [] do
+      conn
+      |> put_status(:unprocessable_entity)
+      |> json(%{error: "problems must be a non-empty array"})
+    else
+      handle_batch_create_with_shared_paragraph(conn, problems, params)
+    end
+  end
+
+  defp handle_batch_create_with_shared_paragraph(conn, problems, params) do
+    case resolve_shared_paragraph_id(params) do
+      {:ok, shared_paragraph_id} ->
+        run_batch_create(conn, problems, shared_paragraph_id)
+
+      {:error, %Ecto.Changeset{} = cs} ->
+        conn
+        |> put_status(:unprocessable_entity)
+        |> json(%{errors: DbserviceWeb.ChangesetJSON.translate_errors(cs)})
+    end
+  end
+
+  defp run_batch_create(conn, problems, shared_paragraph_id) do
+    {created, failed} =
+      problems
+      |> Enum.with_index()
+      |> Enum.map(fn {item, idx} ->
+        {inject_shared_paragraph_id(item, shared_paragraph_id), idx}
+      end)
+      |> Enum.reduce({[], []}, &accumulate_batch_create/2)
+
+    conn
+    |> put_status(:ok)
+    |> json(%{
+      created: Enum.map(Enum.reverse(created), &DbserviceWeb.ResourceJSON.show(%{resource: &1})),
+      failed: Enum.reverse(failed)
+    })
+  end
+
+  defp resolve_shared_paragraph_id(params) do
+    case nonempty_string(params["paragraph"]) do
+      nil ->
+        {:ok, nil}
+
+      body ->
+        case Paragraphs.create_paragraph(%{"body" => body}) do
+          {:ok, %{id: pid}} -> {:ok, pid}
+          {:error, _} = err -> err
+        end
+    end
+  end
+
+  defp inject_shared_paragraph_id(item, nil), do: item
+
+  defp inject_shared_paragraph_id(item, paragraph_id) when is_integer(paragraph_id) do
+    item
+    |> Map.drop(["paragraph"])
+    |> Map.put_new("paragraph_id", paragraph_id)
+  end
+
+  defp nonempty_string(s) when is_binary(s) do
+    t = String.trim(s)
+    if t == "", do: nil, else: t
+  end
+
+  defp nonempty_string(_), do: nil
+
+  swagger_path :update_problems_batch do
+    PhoenixSwagger.Path.patch("/api/resources/problems/batch")
+
+    description(
+      "Update multiple problems in one request. Each entry must include id (resource id) " <>
+        "and the same fields as PATCH /api/resource. Only resources with type problem are updated. " <>
+        "Optional top-level `paragraph` updates the body of the shared paragraph(s) linked to the " <>
+        "comprehension problems being updated."
+    )
+
+    parameters do
+      body(:body, Schema.ref(:ProblemsBatchUpdateRequest), "Array of problem patches with id",
+        required: true
+      )
+    end
+
+    response(200, "OK", Schema.ref(:ProblemsBatchUpdateResponse))
+  end
+
+  def update_problems_batch(conn, params) do
+    problems = params["problems"] || []
+
+    if problems == [] do
+      conn
+      |> put_status(:unprocessable_entity)
+      |> json(%{error: "problems must be a non-empty array"})
+    else
+      update_shared_paragraph_if_provided(problems, params["paragraph"])
+
+      {updated, failed} =
+        problems
+        |> Enum.with_index()
+        |> Enum.reduce({[], []}, &accumulate_batch_update/2)
+
+      conn
+      |> put_status(:ok)
+      |> json(%{
+        updated:
+          Enum.map(Enum.reverse(updated), &DbserviceWeb.ResourceJSON.show(%{resource: &1})),
+        failed: Enum.reverse(failed)
+      })
+    end
+  end
+
+  defp update_shared_paragraph_if_provided(problems, paragraph) do
+    case nonempty_string(paragraph) do
+      nil ->
+        :ok
+
+      body ->
+        problem_ids =
+          problems
+          |> Enum.map(&extract_batch_problem_id/1)
+          |> Enum.reject(&is_nil/1)
+
+        update_paragraphs_for_problem_ids(problem_ids, body)
+    end
+  end
+
+  defp update_paragraphs_for_problem_ids([], _body), do: :ok
+
+  defp update_paragraphs_for_problem_ids(problem_ids, body) do
+    from(pl in ProblemLanguage,
+      where: pl.res_id in ^problem_ids and not is_nil(pl.paragraph_id),
+      select: pl.paragraph_id,
+      distinct: true
+    )
+    |> Repo.all()
+    |> Enum.each(fn pid ->
+      pid
+      |> Paragraphs.fetch_paragraph!()
+      |> Paragraphs.update_paragraph(%{"body" => body})
+    end)
+  end
+
   def tests_containing_problems(conn, params) do
     problem_ids = params["problem_ids"] || []
 
@@ -298,14 +465,17 @@ defmodule DbserviceWeb.ResourceController do
     end
   end
 
-  defp create_new_resource(conn, params) do
-    result =
-      Repo.transaction(fn ->
-        params =
-          Map.put(params, "tag_ids", Dbservice.Resources.resolve_tag_ids(params["tags"] || []))
+  defp transaction_create_resource(params) do
+    Repo.transaction(fn ->
+      params =
+        Map.put(params, "tag_ids", Dbservice.Resources.resolve_tag_ids(params["tags"] || []))
 
-        handle_resource_creation_and_association(params)
-      end)
+      handle_resource_creation_and_association(params)
+    end)
+  end
+
+  defp create_new_resource(conn, params) do
+    result = transaction_create_resource(params)
 
     case result do
       {:ok, resource} ->
@@ -334,6 +504,108 @@ defmodule DbserviceWeb.ResourceController do
         |> put_status(:unprocessable_entity)
         |> json(%{error: reason})
     end
+  end
+
+  defp accumulate_batch_create({item, index}, {created_acc, failed_acc}) do
+    case safe_batch_call(fn -> batch_create_one_problem(item, index) end, index) do
+      {:ok, resource} -> {[resource | created_acc], failed_acc}
+      {:error, row} -> {created_acc, [row | failed_acc]}
+    end
+  end
+
+  defp batch_create_one_problem(item, index) do
+    item = Map.put_new(item, "type", "problem")
+
+    if item["type"] != "problem" do
+      {:error, %{index: index, error: "type must be \"problem\""}}
+    else
+      case transaction_create_resource(item) do
+        {:ok, resource} ->
+          {:ok, resource}
+
+        {:error, reason} ->
+          {:error, Map.merge(%{index: index}, format_batch_transaction_error(reason))}
+      end
+    end
+  end
+
+  defp accumulate_batch_update({item, index}, {ok_acc, failed_acc}) do
+    case safe_batch_call(fn -> batch_update_one_problem(item, index) end, index) do
+      {:ok, resource} -> {[resource | ok_acc], failed_acc}
+      {:error, row} -> {ok_acc, [row | failed_acc]}
+    end
+  end
+
+  defp safe_batch_call(fun, index) do
+    fun.()
+  rescue
+    e ->
+      {:error, %{index: index, error: Exception.message(e)}}
+  end
+
+  defp batch_update_one_problem(item, index) do
+    id = extract_batch_problem_id(item)
+
+    if is_nil(id) do
+      {:error, %{index: index, error: "id is required"}}
+    else
+      do_batch_update_one_problem(item, index, id)
+    end
+  end
+
+  defp extract_batch_problem_id(item) do
+    id = Map.get(item, "id") || Map.get(item, :id)
+    normalize_id(id)
+  end
+
+  defp do_batch_update_one_problem(item, index, id) do
+    case Repo.get(Resource, id) do
+      nil ->
+        {:error, %{index: index, error: "resource not found"}}
+
+      %Resource{type: "problem"} = resource ->
+        item_with_id = Map.put(item, "id", id)
+        apply_problem_batch_update(resource, item_with_id, index)
+
+      _ ->
+        {:error, %{index: index, error: "resource #{id} is not type problem"}}
+    end
+  end
+
+  defp apply_problem_batch_update(resource, item_with_id, index) do
+    case Resources.update_resource_and_associations(resource, item_with_id) do
+      {:ok, %Resource{} = u} ->
+        {:ok, u}
+
+      {:error, %Ecto.Changeset{} = cs} ->
+        {:error, %{index: index, errors: DbserviceWeb.ChangesetJSON.translate_errors(cs)}}
+
+      {:error, msg} when is_binary(msg) ->
+        {:error, %{index: index, error: msg}}
+
+      {:error, other} ->
+        {:error, %{index: index, error: inspect(other)}}
+    end
+  end
+
+  defp format_batch_transaction_error({:changeset_error, changeset}) do
+    %{errors: DbserviceWeb.ChangesetJSON.translate_errors(changeset)}
+  end
+
+  defp format_batch_transaction_error({:curriculum_error, reason}) do
+    %{error: "Failed to create resource curriculum entries: #{inspect(reason)}"}
+  end
+
+  defp format_batch_transaction_error({:cms_status_error, reason}) do
+    %{error: reason}
+  end
+
+  defp format_batch_transaction_error({:comprehension_error, reason}) do
+    %{error: reason}
+  end
+
+  defp format_batch_transaction_error(other) do
+    %{error: inspect(other)}
   end
 
   defp handle_resource_creation_and_association(params) do

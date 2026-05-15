@@ -11,7 +11,7 @@ defmodule DbserviceWeb.Router do
   end
 
   pipeline :browser do
-    plug :accepts, ["html"]
+    plug(:accepts, ["html"])
     plug(:fetch_session)
     plug(:fetch_live_flash)
     plug(:put_root_layout, {DbserviceWeb.Layouts, :root})
@@ -20,30 +20,30 @@ defmodule DbserviceWeb.Router do
   end
 
   pipeline :dashboard_auth do
-    plug :admin_basic_auth
+    plug(:admin_basic_auth)
   end
 
   scope "/", DbserviceWeb do
-    pipe_through :browser
+    pipe_through(:browser)
 
-    live "/imports", ImportLive.Index
-    live "/imports/new", ImportLive.New
-    live "/imports/:id", ImportLive.Show
+    live("/imports", ImportLive.Index)
+    live("/imports/new", ImportLive.New)
+    live("/imports/:id", ImportLive.Show)
 
     # Add route for CSV template downloads
-    get "/templates/:type/download", TemplateController, :download_csv_template
+    get("/templates/:type/download", TemplateController, :download_csv_template)
   end
 
   # Protected endpoints (basic auth) for dropout, re-enrollment, auth group, product, program, batch imports
   scope "/", DbserviceWeb do
-    pipe_through [:browser, :dashboard_auth]
+    pipe_through([:browser, :dashboard_auth])
 
-    post "/imports/dropout", ImportController, :create_dropout_import
-    post "/imports/re_enrollment", ImportController, :create_re_enrollment_import
-    post "/imports/auth_group", ImportController, :create_auth_group_import
-    post "/imports/product", ImportController, :create_product_import
-    post "/imports/program", ImportController, :create_program_import
-    post "/imports/batch", ImportController, :create_batch_import
+    post("/imports/dropout", ImportController, :create_dropout_import)
+    post("/imports/re_enrollment", ImportController, :create_re_enrollment_import)
+    post("/imports/auth_group", ImportController, :create_auth_group_import)
+    post("/imports/product", ImportController, :create_product_import)
+    post("/imports/program", ImportController, :create_program_import)
+    post("/imports/batch", ImportController, :create_batch_import)
   end
 
   scope "/api", DbserviceWeb do
@@ -117,6 +117,8 @@ defmodule DbserviceWeb.Router do
     get("/resources/curriculum", ResourceController, :curriculum_resources)
     post("/resources/move", ResourceController, :move_resources)
     post("/resources/tests-containing-problems", ResourceController, :tests_containing_problems)
+    post("/resources/problems/batch", ResourceController, :create_problems_batch)
+    patch("/resources/problems/batch", ResourceController, :update_problems_batch)
     get("/resource/subtypes/:type", ResourceController, :get_subtypes)
     get("/problems/search", ResourceController, :search_problems)
 
