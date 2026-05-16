@@ -39,7 +39,8 @@ defmodule DbserviceWeb.ProblemLanguageController do
       from(m in ProblemLanguage,
         order_by: [asc: m.id],
         offset: ^params["offset"],
-        limit: ^params["limit"]
+        limit: ^params["limit"],
+        preload: [:paragraph, :resource]
       )
 
     query =
@@ -89,7 +90,10 @@ defmodule DbserviceWeb.ProblemLanguageController do
   end
 
   def show(conn, %{"id" => id}) do
-    problem_language = ProblemLanguages.get_problem_language!(id)
+    problem_language =
+      ProblemLanguages.get_problem_language!(id)
+      |> Repo.preload([:paragraph, :resource])
+
     render(conn, "show.json", problem_language: problem_language)
   end
 
@@ -109,6 +113,7 @@ defmodule DbserviceWeb.ProblemLanguageController do
 
     with {:ok, %ProblemLanguage{} = problem_language} <-
            ProblemLanguages.update_problem_language(problem_language, params) do
+      problem_language = Repo.preload(problem_language, [:paragraph, :resource])
       render(conn, "show.json", problem_language: problem_language)
     end
   end
@@ -134,6 +139,8 @@ defmodule DbserviceWeb.ProblemLanguageController do
   defp create_new_problem_language(conn, params) do
     with {:ok, %ProblemLanguage{} = problem_language} <-
            ProblemLanguages.create_problem_language(params) do
+      problem_language = Repo.preload(problem_language, [:paragraph, :resource])
+
       conn
       |> put_status(:created)
       |> put_resp_header("location", ~p"/api/problem-language/#{problem_language}")
@@ -144,6 +151,8 @@ defmodule DbserviceWeb.ProblemLanguageController do
   defp update_existing_problem_language(conn, existing_problem_language, params) do
     with {:ok, %ProblemLanguage{} = problem_language} <-
            ProblemLanguages.update_problem_language(existing_problem_language, params) do
+      problem_language = Repo.preload(problem_language, [:paragraph, :resource])
+
       conn
       |> put_status(:ok)
       |> render("show.json", problem_language: problem_language)
