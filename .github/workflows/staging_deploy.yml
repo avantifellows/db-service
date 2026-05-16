@@ -31,13 +31,13 @@ jobs:
       - name: Verify target server
         run: |
           echo "Resolving deployment hostname..."
-          nslookup ${{ secrets.HOSTNAME }}
+          nslookup ${{ secrets.STAGING_HOSTNAME }}
           echo "Done."
 
       - name: Deploy to EC2
         env:
           PRIVATE_KEY: ${{ secrets.SSH_PRIVATE_KEY }}
-          HOSTNAME: ${{ secrets.HOSTNAME }}
+          HOSTNAME: ${{ secrets.STAGING_HOSTNAME }}
           USER_NAME: ${{ secrets.USER_NAME }}
 
         run: |
