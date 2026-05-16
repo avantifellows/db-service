@@ -39,9 +39,10 @@ jobs:
             # which lacks DATABASE_URL, causing migrations to hit the wrong DB
             sudo cp config/.env config/.env.bak &&
 
-            # Check out PR branch to get the new migration files
+            # Check out PR branch and pull latest to get the new migration files
             sudo git fetch origin &&
             sudo git checkout ${{ github.head_ref }} &&
+            sudo git pull origin ${{ github.head_ref }} &&
 
             # Restore the server's .env so migrations target the staging DB
             sudo cp config/.env.bak config/.env &&
