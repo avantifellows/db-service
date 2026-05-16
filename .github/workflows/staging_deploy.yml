@@ -27,13 +27,6 @@ jobs:
             echo "name=${{ github.event.inputs.branch || 'main' }}" >> $GITHUB_OUTPUT
           fi
 
-      # Temporary debug step
-      - name: Verify target server
-        run: |
-          echo "Resolving deployment hostname..."
-          nslookup ${{ secrets.STAGING_HOSTNAME }}
-          echo "Done."
-
       - name: Deploy to EC2
         env:
           PRIVATE_KEY: ${{ secrets.STAGING_SSH_PRIVATE_KEY }}
@@ -54,8 +47,6 @@ jobs:
             sed -i 's|PORT=.*|PORT=${{ secrets.STAGING_PORT }}|' .env
             sed -i 's|BEARER_TOKEN=.*|BEARER_TOKEN=${{ secrets.STAGING_BEARER_TOKEN }}|' .env
             cd /var/www/html/db-service &&
-            sudo fuser -k 4000/tcp 2>/dev/null || true &&
-            sleep 2 &&
             sudo git checkout . &&
             if [ -f /var/www/html/db-service/priv/static/swagger.json ]; then
               sudo rm /var/www/html/db-service/priv/static/swagger.json
@@ -67,7 +58,7 @@ jobs:
             # sudo rm -rf _build deps &&
             sudo env MIX_ENV=prod mix deps.get &&
             sudo env MIX_ENV=prod mix deps.compile &&
-            sudo env MIX_ENV=prod mix ecto.migrate || true &&
+            sudo env MIX_ENV=prod mix ecto.migrate &&
             sudo env MIX_ENV=prod mix phx.swagger.generate &&
             sudo env MIX_ENV=prod mix assets.deploy &&
             sudo fuser -k 4000/tcp 2>/dev/null || true &&
