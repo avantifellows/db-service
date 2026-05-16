@@ -27,6 +27,13 @@ jobs:
             echo "name=${{ github.event.inputs.branch || 'main' }}" >> $GITHUB_OUTPUT
           fi
 
+      # Temporary debug step
+      - name: Verify target server
+        run: |
+          echo "Resolving deployment hostname..."
+          nslookup ${{ secrets.HOSTNAME }}
+          echo "Done."
+
       - name: Deploy to EC2
         env:
           PRIVATE_KEY: ${{ secrets.SSH_PRIVATE_KEY }}
