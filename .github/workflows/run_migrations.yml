@@ -47,7 +47,6 @@ jobs:
             # Restore the server's .env so migrations target the staging DB
             sudo cp config/.env.bak config/.env &&
 
-            echo 'DEBUG: DB host from .env:' && grep DATABASE_URL config/.env | sed 's/.*@//;s/:.*//' &&
             sudo MIX_ENV=prod mix deps.get &&
             sudo MIX_ENV=prod mix ecto.migrate &&
             echo '✅ Migrations completed successfully' &&
