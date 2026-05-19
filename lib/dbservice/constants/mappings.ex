@@ -355,7 +355,7 @@ defmodule Dbservice.Constants.Mappings do
         "dropout",
         "re_enrollment"
       ],
-      optional: [],
+      optional: ["school_addition"],
       type: :string
     },
     "grade" => %{
@@ -390,20 +390,85 @@ defmodule Dbservice.Constants.Mappings do
     },
     "school_code" => %{
       db_field: "school_code",
-      required: ["student", "update_incorrect_school_to_correct_school", "re_enrollment"],
+      required: [
+        "student",
+        "update_incorrect_school_to_correct_school",
+        "re_enrollment",
+        "school_addition"
+      ],
       optional: [],
       type: :string
     },
     "udise_code" => %{
       db_field: "udise_code",
       required: [],
-      optional: ["student"],
+      optional: ["student", "school_addition"],
       type: :string
     },
     "school_name" => %{
       db_field: "school_name",
-      required: ["student"],
+      required: ["student", "school_addition"],
       optional: [],
+      type: :string
+    },
+    "school_gender_type" => %{
+      db_field: "school_gender_type",
+      required: [],
+      optional: ["school_addition"],
+      type: :string
+    },
+    "af_school_category" => %{
+      db_field: "af_school_category",
+      required: ["school_addition"],
+      optional: [],
+      type: :string
+    },
+    "region" => %{
+      db_field: "region",
+      required: [],
+      optional: ["school_addition"],
+      type: :string
+    },
+    "State_code" => %{
+      db_field: "state_code",
+      required: ["school_addition"],
+      optional: [],
+      type: :string
+    },
+    "state" => %{
+      db_field: "school_state",
+      required: ["school_addition"],
+      optional: [],
+      type: :string
+    },
+    "district" => %{
+      db_field: "school_district",
+      required: ["school_addition"],
+      optional: [],
+      type: :string
+    },
+    "board" => %{
+      db_field: "school_board",
+      required: [],
+      optional: ["school_addition"],
+      type: :string
+    },
+    "board_medium" => %{
+      db_field: "school_board_medium",
+      required: [],
+      optional: ["school_addition"],
+      type: :string
+    },
+    "update_date" => %{
+      db_field: "school_update_date",
+      required: [],
+      optional: ["school_addition"],
+      type: :string
+    },
+    "group" => %{
+      db_field: "school_group",
+      required: [],
+      optional: ["school_addition"],
       type: :string
     },
     "start_date" => %{
@@ -629,7 +694,7 @@ defmodule Dbservice.Constants.Mappings do
     "program_model" => %{
       db_field: "model",
       required: [],
-      optional: ["program_addition"],
+      optional: ["program_addition", "school_addition"],
       type: :string
     },
     "is_current" => %{
@@ -725,7 +790,7 @@ defmodule Dbservice.Constants.Mappings do
     },
     "district_code" => %{
       db_field: "district_code",
-      required: ["teacher_addition"],
+      required: ["teacher_addition", "school_addition"],
       optional: [],
       type: :string
     },

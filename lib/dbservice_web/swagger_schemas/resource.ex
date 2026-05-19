@@ -35,6 +35,11 @@ defmodule DbserviceWeb.SwaggerSchema.Resource do
             exam_ids(:array, "Exam ids associated with the resource")
             cms_status(:string, "Status name from cms_status table. Also accepts cms_status_id.")
             cms_status_id(:integer, "cms_status.id value to set status directly")
+
+            paragraph(
+              :string,
+              "Reading passage for comprehension problems (PATCH only). Upserts the shared paragraph linked to every `problem_lang` row of this resource via `paragraph_id`; ignored for non-comprehension subtypes."
+            )
           end
 
           example(%{

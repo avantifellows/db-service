@@ -68,7 +68,8 @@ defmodule DbserviceWeb.ImportLive.New do
       "auth_group_addition" => "submit_auth_group_import",
       "product_addition" => "submit_product_import",
       "program_addition" => "submit_program_import",
-      "batch_addition" => "submit_batch_import"
+      "batch_addition" => "submit_batch_import",
+      "school_addition" => "submit_school_import"
     }
 
     if Map.has_key?(protected_import_config, import_type) do
@@ -128,6 +129,7 @@ defmodule DbserviceWeb.ImportLive.New do
   defp get_protected_import_url("product_addition"), do: ~p"/imports/product"
   defp get_protected_import_url("program_addition"), do: ~p"/imports/program"
   defp get_protected_import_url("batch_addition"), do: ~p"/imports/batch"
+  defp get_protected_import_url("school_addition"), do: ~p"/imports/school"
   defp get_protected_import_url(_), do: ~p"/imports"
 
   def render(assigns) do
@@ -184,6 +186,7 @@ defmodule DbserviceWeb.ImportLive.New do
                     <option value="product_addition" selected={@form[:type].value == "product_addition"}>Product Addition</option>
                     <option value="program_addition" selected={@form[:type].value == "program_addition"}>Program Addition</option>
                     <option value="batch_addition" selected={@form[:type].value == "batch_addition"}>Batch Addition</option>
+                    <option value="school_addition" selected={@form[:type].value == "school_addition"}>School Addition</option>
                     <option value="alumni_addition" selected={@form[:type].value == "alumni_addition"}>Alumni Addition</option>
                     <option value="batch_movement" selected={@form[:type].value == "batch_movement"}>Student Batch Movement</option>
                     <option value="dropout" selected={@form[:type].value == "dropout"}>Student Dropout</option>
