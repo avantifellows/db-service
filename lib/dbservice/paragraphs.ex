@@ -85,6 +85,33 @@ defmodule Dbservice.Paragraphs do
   end
 
   @doc """
+  Updates the body of every distinct paragraph linked to any `problem_lang`
+  row whose `res_id` is in `resource_ids`. Returns `:ok`; no-ops on an empty
+  list or non-binary body. Shared by the single PATCH and batch endpoints so
+  one shared paragraph is updated once even when many problem_lang rows
+  reference it.
+  """
+  def update_paragraphs_for_resources([], _body), do: :ok
+  def update_paragraphs_for_resources(_resource_ids, body) when not is_binary(body), do: :ok
+
+  def update_paragraphs_for_resources(resource_ids, body)
+      when is_list(resource_ids) and is_binary(body) do
+    from(pl in ProblemLanguage,
+      where: pl.res_id in ^resource_ids and not is_nil(pl.paragraph_id),
+      select: pl.paragraph_id,
+      distinct: true
+    )
+    |> Repo.all()
+    |> Enum.each(fn pid ->
+      pid
+      |> fetch_paragraph!()
+      |> update_paragraph(%{"body" => body})
+    end)
+
+    :ok
+  end
+
+  @doc """
   Deletes a paragraph.
 
   ## Examples

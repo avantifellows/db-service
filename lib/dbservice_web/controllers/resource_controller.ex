@@ -320,21 +320,8 @@ defmodule DbserviceWeb.ResourceController do
     end
   end
 
-  defp update_paragraphs_for_problem_ids([], _body), do: :ok
-
-  defp update_paragraphs_for_problem_ids(problem_ids, body) do
-    from(pl in ProblemLanguage,
-      where: pl.res_id in ^problem_ids and not is_nil(pl.paragraph_id),
-      select: pl.paragraph_id,
-      distinct: true
-    )
-    |> Repo.all()
-    |> Enum.each(fn pid ->
-      pid
-      |> Paragraphs.fetch_paragraph!()
-      |> Paragraphs.update_paragraph(%{"body" => body})
-    end)
-  end
+  defp update_paragraphs_for_problem_ids(problem_ids, body),
+    do: Paragraphs.update_paragraphs_for_resources(problem_ids, body)
 
   def tests_containing_problems(conn, params) do
     problem_ids = params["problem_ids"] || []

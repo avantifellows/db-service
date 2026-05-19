@@ -8,6 +8,7 @@ defmodule Dbservice.Resources do
 
   alias Dbservice.Resources.Resource
   alias Dbservice.Resources.ProblemLanguage
+  alias Dbservice.Resources.Paragraph
   alias Dbservice.Languages.Language
   alias Dbservice.Resources.{ResourceTopic, ResourceChapter, ResourceConcept}
   alias Dbservice.Utils.Util
@@ -15,6 +16,7 @@ defmodule Dbservice.Resources do
   alias Dbservice.Chapters.Chapter
   alias Dbservice.Topics.Topic
   alias Dbservice.ChapterCurriculums
+  alias Dbservice.Paragraphs
 
   # Type + subtype → code_prefix; keep in sync with resource_types in priv/repo/seeds/resources.exs
   @non_problem_code_prefixes %{
@@ -839,13 +841,61 @@ defmodule Dbservice.Resources do
   defp update_problem_language(resource, params) do
     cond do
       has_lang_code?(params) ->
+        params = pre_sync_shared_paragraph(resource, params)
         update_problem_language_for_lang(resource, params)
 
       has_problem_language_fields?(params) ->
+        params = pre_sync_shared_paragraph(resource, params)
         update_all_problem_languages(resource, params)
 
       true ->
         :ok
+    end
+  end
+
+  # When `params["paragraph"]` carries a body for a comprehension problem, upsert the
+  # shared paragraph once. Existing distinct paragraphs are updated via a single helper;
+  # if no problem_lang row has a paragraph yet, one is created and injected via
+  # `paragraph_id` so per-row updates assign it. `paragraph` is then stripped so the
+  # per-row update path doesn't redundantly re-upsert.
+  defp pre_sync_shared_paragraph(resource, params) do
+    body = Paragraphs.paragraph_body_for_comprehension(params)
+
+    if is_binary(body) and Paragraphs.comprehension_problem?(resource, params) do
+      do_pre_sync_shared_paragraph(resource, params, body)
+    else
+      params
+    end
+  end
+
+  defp do_pre_sync_shared_paragraph(resource, params, body) do
+    existing_paragraph_ids =
+      from(pl in ProblemLanguage,
+        where: pl.res_id == ^resource.id and not is_nil(pl.paragraph_id),
+        select: pl.paragraph_id,
+        distinct: true
+      )
+      |> Repo.all()
+
+    case existing_paragraph_ids do
+      [] ->
+        inject_new_shared_paragraph(params, body)
+
+      _ ->
+        :ok = Paragraphs.update_paragraphs_for_resources([resource.id], body)
+        Map.drop(params, ["paragraph"])
+    end
+  end
+
+  defp inject_new_shared_paragraph(params, body) do
+    case Paragraphs.create_paragraph(%{"body" => body}) do
+      {:ok, %Paragraph{id: pid}} ->
+        params
+        |> Map.drop(["paragraph"])
+        |> Map.put("paragraph_id", pid)
+
+      _ ->
+        params
     end
   end
 
