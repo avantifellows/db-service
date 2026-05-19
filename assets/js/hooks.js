@@ -78,6 +78,7 @@ const Hooks = {
       this.handleEvent("submit_product_import", submitAuthenticatedImport);
       this.handleEvent("submit_program_import", submitAuthenticatedImport);
       this.handleEvent("submit_batch_import", submitAuthenticatedImport);
+      this.handleEvent("submit_school_import", submitAuthenticatedImport);
     }
   }
 };
