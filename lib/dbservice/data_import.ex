@@ -25,6 +25,7 @@ defmodule Dbservice.DataImport do
   def format_type_name("product_addition"), do: "Product Addition"
   def format_type_name("program_addition"), do: "Program Addition"
   def format_type_name("batch_addition"), do: "Batch Addition"
+  def format_type_name("school_addition"), do: "School Addition"
   def format_type_name("alumni_addition"), do: "Alumni Addition"
 
   def format_type_name("update_incorrect_batch_id_to_correct_batch_id"),

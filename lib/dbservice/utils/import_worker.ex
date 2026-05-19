@@ -37,6 +37,7 @@ defmodule Dbservice.DataImport.ImportWorker do
   alias Dbservice.Products
   alias Dbservice.Programs
   alias Dbservice.Batches
+  alias Dbservice.Schools
 
   @impl Oban.Worker
   def perform(%Oban.Job{args: %{"id" => import_id}}) do
@@ -81,6 +82,7 @@ defmodule Dbservice.DataImport.ImportWorker do
       "product_addition" => &process_product_addition_record/1,
       "program_addition" => &process_program_addition_record/1,
       "batch_addition" => &process_batch_addition_record/1,
+      "school_addition" => &process_school_addition_record/1,
       "student" => &process_student_record/1,
       "student_update" => &process_student_update_record/1,
       "batch_movement" => &process_batch_movement_record/1,
@@ -1310,6 +1312,57 @@ defmodule Dbservice.DataImport.ImportWorker do
   defp maybe_put_batch(attrs, _key, nil), do: attrs
   defp maybe_put_batch(attrs, _key, ""), do: attrs
   defp maybe_put_batch(attrs, key, value), do: Map.put(attrs, key, value)
+
+  defp process_school_addition_record(record) do
+    with {:ok, code} <- validate_school_code(record["school_code"]),
+         attrs <- build_school_attrs(record, code),
+         result <- create_or_update_school(code, attrs) do
+      format_school_result(result)
+    else
+      {:error, msg} when is_binary(msg) -> {:error, msg}
+    end
+  end
+
+  defp validate_school_code(nil), do: {:error, "school_code is required for school addition"}
+
+  defp validate_school_code(code) when is_binary(code) do
+    t = String.trim(code)
+    if t == "", do: {:error, "school_code is required for school addition"}, else: {:ok, t}
+  end
+
+  defp validate_school_code(_), do: {:error, "school_code is required for school addition"}
+
+  defp build_school_attrs(record, code) do
+    %{"code" => code}
+    |> maybe_put_school("name", record["school_name"] |> trim_str())
+    |> maybe_put_school("udise_code", record["udise_code"] |> trim_str())
+    |> maybe_put_school("gender_type", record["school_gender_type"] |> trim_str())
+    |> maybe_put_school("af_school_category", record["af_school_category"] |> trim_str())
+    |> maybe_put_school("region", record["region"] |> trim_str())
+    |> maybe_put_school("state_code", record["state_code"] |> trim_str())
+    |> maybe_put_school("state", record["school_state"] |> trim_str())
+    |> maybe_put_school("district_code", record["district_code"] |> trim_str())
+    |> maybe_put_school("district", record["school_district"] |> trim_str())
+    |> maybe_put_school("board", record["school_board"] |> trim_str())
+  end
+
+  defp create_or_update_school(code, attrs) do
+    case Schools.get_school_by_code(code) do
+      nil -> Schools.create_school(attrs)
+      existing -> Schools.update_school(existing, attrs)
+    end
+  end
+
+  defp format_school_result({:ok, school}), do: {:ok, school}
+
+  defp format_school_result({:error, %Ecto.Changeset{} = cs}),
+    do: {:error, ChangesetFormatter.format_errors(cs)}
+
+  defp format_school_result({:error, other}), do: {:error, inspect(other)}
+
+  defp maybe_put_school(attrs, _key, nil), do: attrs
+  defp maybe_put_school(attrs, _key, ""), do: attrs
+  defp maybe_put_school(attrs, key, value), do: Map.put(attrs, key, value)
 
   defp parse_int(nil), do: nil
   defp parse_int(""), do: nil
