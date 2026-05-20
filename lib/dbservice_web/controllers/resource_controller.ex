@@ -1054,19 +1054,21 @@ defmodule DbserviceWeb.ResourceController do
     end
   end
 
-  defp problems_query(topic_id, curriculum_id, lang_code) do
+  defp problems_base_query(curriculum_id, lang_code) do
     from(r in Resource,
+      as: :resource,
       join: rt in ResourceTopic,
+      as: :resource_topic,
       on: rt.resource_id == r.id,
       join: t in Topic,
       on: t.id == rt.topic_id,
       join: rc in ResourceCurriculum,
       on: rc.resource_id == r.id,
       join: pl in ProblemLanguage,
+      as: :problem_lang,
       on: pl.res_id == r.id,
       join: l in Language,
       on: l.id == pl.lang_id,
-      where: rt.topic_id == ^topic_id,
       where: rc.curriculum_id == ^curriculum_id,
       where: l.code == ^lang_code,
       where: r.type == "problem",
@@ -1078,6 +1080,12 @@ defmodule DbserviceWeb.ResourceController do
         requested_curriculum_id: ^curriculum_id,
         problem_lang: pl
       }
+    )
+  end
+
+  defp problems_query(topic_id, curriculum_id, lang_code) do
+    from([resource_topic: rt] in problems_base_query(curriculum_id, lang_code),
+      where: rt.topic_id == ^topic_id
     )
   end
 
@@ -1118,29 +1126,8 @@ defmodule DbserviceWeb.ResourceController do
   end
 
   defp paragraph_siblings_query(paragraph_ids, curriculum_id, lang_code) do
-    from(r in Resource,
-      join: rt in ResourceTopic,
-      on: rt.resource_id == r.id,
-      join: t in Topic,
-      on: t.id == rt.topic_id,
-      join: rc in ResourceCurriculum,
-      on: rc.resource_id == r.id,
-      join: pl in ProblemLanguage,
-      on: pl.res_id == r.id,
-      join: l in Language,
-      on: l.id == pl.lang_id,
-      where: pl.paragraph_id in ^paragraph_ids,
-      where: rc.curriculum_id == ^curriculum_id,
-      where: l.code == ^lang_code,
-      where: r.type == "problem",
-      select: %{
-        resource: r,
-        resource_topic: rt,
-        chapter_id: t.chapter_id,
-        resource_curriculums: [rc],
-        requested_curriculum_id: ^curriculum_id,
-        problem_lang: pl
-      }
+    from([problem_lang: pl] in problems_base_query(curriculum_id, lang_code),
+      where: pl.paragraph_id in ^paragraph_ids
     )
   end
 
