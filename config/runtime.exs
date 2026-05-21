@@ -6,7 +6,7 @@ source(["config/.env", "config/.env.#{config_env()}"])
 if config_env() == :prod do
   config :dbservice, Dbservice.Repo,
     url: env!("DATABASE_URL", :string!),
-    ssl: System.get_env("DATABASE_SSL") == "true",
+    ssl: true,
     pool_size: env!("POOL_SIZE", :integer) || 10
 
   secret_key_base = env!("SECRET_KEY_BASE", :string!)
