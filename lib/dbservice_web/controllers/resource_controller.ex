@@ -1014,16 +1014,28 @@ defmodule DbserviceWeb.ResourceController do
       topic_id(:query, :integer, "Topic ID", required: true)
       curriculum_id(:query, :integer, "Curriculum ID", required: true)
       lang_code(:query, :string, "Language code", required: true)
+
+      include_paragraph_siblings(
+        :query,
+        :boolean,
+        "When true, also include comprehension problems that share a paragraph with any " <>
+          "comprehension problem in the result, even if they belong to a different topic " <>
+          "(curriculum_id and lang_code still apply)",
+        required: false
+      )
     end
 
     response(200, "OK", Schema.ref(:ProblemResource))
   end
 
-  def fetch_problems(conn, %{
-        "topic_id" => topic_id,
-        "curriculum_id" => curriculum_id,
-        "lang_code" => lang_code
-      }) do
+  def fetch_problems(
+        conn,
+        %{
+          "topic_id" => topic_id,
+          "curriculum_id" => curriculum_id,
+          "lang_code" => lang_code
+        } = params
+      ) do
     language = Repo.get_by(Language, code: lang_code)
 
     if is_nil(language) do
@@ -1031,42 +1043,92 @@ defmodule DbserviceWeb.ResourceController do
       |> put_status(:not_found)
       |> json(%{error: "Language not found"})
     else
-      # First build the query to get the correct resources
-      query =
-        from(r in Resource,
-          join: rt in ResourceTopic,
-          on: rt.resource_id == r.id,
-          join: t in Topic,
-          on: t.id == rt.topic_id,
-          join: rc in ResourceCurriculum,
-          on: rc.resource_id == r.id,
-          join: pl in ProblemLanguage,
-          on: pl.res_id == r.id,
-          join: l in Language,
-          on: l.id == pl.lang_id,
-          where: rt.topic_id == ^topic_id,
-          where: rc.curriculum_id == ^curriculum_id,
-          where: l.code == ^lang_code,
-          where: r.type == "problem",
-          select: %{
-            resource: r,
-            resource_topic: rt,
-            chapter_id: t.chapter_id,
-            resource_curriculums: [rc],
-            requested_curriculum_id: ^curriculum_id,
-            problem_lang: pl
-          }
-        )
-
       problems =
-        query
+        topic_id
+        |> problems_query(curriculum_id, lang_code)
         |> Repo.all()
-        |> Enum.map(fn p ->
-          %{p | problem_lang: Repo.preload(p.problem_lang, :paragraph)}
-        end)
+        |> preload_paragraphs()
+        |> maybe_add_paragraph_siblings(params, curriculum_id, lang_code)
 
       render(conn, "problems.json", problems: problems)
     end
+  end
+
+  defp problems_base_query(curriculum_id, lang_code) do
+    from(r in Resource,
+      as: :resource,
+      join: rt in ResourceTopic,
+      as: :resource_topic,
+      on: rt.resource_id == r.id,
+      join: t in Topic,
+      on: t.id == rt.topic_id,
+      join: rc in ResourceCurriculum,
+      on: rc.resource_id == r.id,
+      join: pl in ProblemLanguage,
+      as: :problem_lang,
+      on: pl.res_id == r.id,
+      join: l in Language,
+      on: l.id == pl.lang_id,
+      where: rc.curriculum_id == ^curriculum_id,
+      where: l.code == ^lang_code,
+      where: r.type == "problem",
+      select: %{
+        resource: r,
+        resource_topic: rt,
+        chapter_id: t.chapter_id,
+        resource_curriculums: [rc],
+        requested_curriculum_id: ^curriculum_id,
+        problem_lang: pl
+      }
+    )
+  end
+
+  defp problems_query(topic_id, curriculum_id, lang_code) do
+    from([resource_topic: rt] in problems_base_query(curriculum_id, lang_code),
+      where: rt.topic_id == ^topic_id
+    )
+  end
+
+  defp preload_paragraphs(problems) do
+    Enum.map(problems, fn p ->
+      %{p | problem_lang: Repo.preload(p.problem_lang, :paragraph)}
+    end)
+  end
+
+  defp maybe_add_paragraph_siblings(problems, params, curriculum_id, lang_code) do
+    if params["include_paragraph_siblings"] == "true" do
+      paragraph_ids =
+        problems
+        |> Enum.map(fn p -> Map.get(p.problem_lang, :paragraph_id) end)
+        |> Enum.reject(&is_nil/1)
+        |> Enum.uniq()
+
+      add_paragraph_siblings(problems, paragraph_ids, curriculum_id, lang_code)
+    else
+      problems
+    end
+  end
+
+  defp add_paragraph_siblings(problems, [], _curriculum_id, _lang_code), do: problems
+
+  defp add_paragraph_siblings(problems, paragraph_ids, curriculum_id, lang_code) do
+    existing_res_ids = MapSet.new(Enum.map(problems, & &1.resource.id))
+
+    siblings =
+      paragraph_ids
+      |> paragraph_siblings_query(curriculum_id, lang_code)
+      |> Repo.all()
+      |> Enum.reject(fn p -> MapSet.member?(existing_res_ids, p.resource.id) end)
+      |> Enum.uniq_by(& &1.resource.id)
+      |> preload_paragraphs()
+
+    problems ++ siblings
+  end
+
+  defp paragraph_siblings_query(paragraph_ids, curriculum_id, lang_code) do
+    from([problem_lang: pl] in problems_base_query(curriculum_id, lang_code),
+      where: pl.paragraph_id in ^paragraph_ids
+    )
   end
 
   swagger_path :get_problem do
