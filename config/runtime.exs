@@ -1,7 +1,7 @@
 import Config
 import Dotenvy
 
-source(["config/.env", "config/.env.#{config_env()}"])
+source(["config/.env", "config/.env.#{config_env()}", System.get_env()])
 
 if config_env() == :prod do
   config :dbservice, Dbservice.Repo,
@@ -13,6 +13,7 @@ if config_env() == :prod do
   host = env!("PHX_HOST", :string!)
 
   config :dbservice, DbserviceWeb.Endpoint,
+    server: System.get_env("PHX_SERVER") in ~w(1 true),
     load_from_system_env: false,
     url: [host: host, port: 443],
     http: [
@@ -24,6 +25,6 @@ if config_env() == :prod do
       port: port
     ],
     secret_key_base: secret_key_base,
-    debug_errors: true,
-    check_origin: false
+    debug_errors: false,
+    check_origin: ["//#{host}"]
 end

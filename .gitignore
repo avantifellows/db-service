@@ -32,9 +32,6 @@ dbservice-*.tar
 # Ignore log file
 /logs/info.log
 
-# Ignore mix.lock file
-mix.lock
-
 # Ignore node_modules
 /assets/node_modules
 
