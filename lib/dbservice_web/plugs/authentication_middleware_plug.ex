@@ -13,24 +13,34 @@ defmodule DbserviceWeb.AuthenticationMiddleware do
 
   def init(_opts), do: %{}
 
+  # Public endpoints exempt from bearer-token auth. The ALB target group
+  # health check has no way to inject an auth header, so /api/health must
+  # respond on plain GETs.
+  @public_paths ["/api/health"]
+
   def call(conn, _opts) do
-    source(["config/.env", "config/.env"])
+    source(["config/.env", System.get_env()])
 
     # Only enforce Bearer-token auth for the JSON API.
     # Browser routes (imports UI, swagger UI, live dashboard, etc.) should be protected
     # via their own dedicated auth mechanisms at the router level.
-    if String.starts_with?(conn.request_path, "/api") do
-      api_key = get_req_header(conn, "authorization")
+    cond do
+      conn.request_path in @public_paths ->
+        conn
 
-      if api_key == ["Bearer " <> env!("BEARER_TOKEN", :string!)] do
+      String.starts_with?(conn.request_path, "/api") ->
+        api_key = get_req_header(conn, "authorization")
+
+        if api_key == ["Bearer " <> env!("BEARER_TOKEN", :string!)] do
+          conn
+        else
+          conn
+          |> send_resp(401, "Not Authorized")
+          |> halt()
+        end
+
+      true ->
         conn
-      else
-        conn
-        |> send_resp(401, "Not Authorized")
-        |> halt()
-      end
-    else
-      conn
     end
   end
 end
