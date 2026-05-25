@@ -66,7 +66,8 @@ config :dbservice, Dbservice.Repo,
 config :dbservice, Oban,
   repo: Dbservice.Repo,
   plugins: [Oban.Plugins.Pruner],
-  queues: [imports: 10]
+  queues: [imports: 10],
+  shutdown_grace_period: 120_000
 
 # Tailwind configuration
 config :tailwind,

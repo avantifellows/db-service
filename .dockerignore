@@ -1,0 +1,46 @@
+# Version control
+.git
+.gitignore
+.github
+
+# Build / dependency caches — Docker fetches its own clean copies
+_build
+deps
+.elixir_ls
+.elixir_lscontext_for_ai
+.fetch
+.formatter.exs.bak
+assets/node_modules
+
+# Logs / runtime artifacts
+logs
+tmp
+priv/static/uploads
+
+# Local config & secrets — never bake into images
+config/.env
+config/.env.*
+config/service_account.json
+config/etl-flow-key.json
+utils/.env
+.env
+.env.*
+
+# Editor / IDE
+.vscode
+.idea
+*.swp
+*.swo
+
+# Project tooling not needed at build time
+docs
+utils
+*.md
+elixir_buildpack.config
+install.sh
+start_server_macos.sh
+
+# Infra / CI
+terraform
+Dockerfile
+.dockerignore
