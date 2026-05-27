@@ -32,14 +32,26 @@ dbservice-*.tar
 # Ignore log file
 /logs/info.log
 
-# Ignore mix.lock file
-mix.lock
-
 # Ignore node_modules
 /assets/node_modules
 
 # Static asset builds
 priv/static
+
+# Terraform
+**/.terraform/
+**/.terraform.lock.hcl
+*.tfstate
+*.tfstate.*
+crash.log
+crash.*.log
+override.tf
+override.tf.json
+*_override.tf
+*_override.tf.json
+# Anything ending in .secrets.tfvars or *secrets*.tfvars is treated as private
+**/*secrets*.tfvars
+**/*.auto.tfvars
 
 # Keep favicon.ico
 !priv/static/favicon.ico

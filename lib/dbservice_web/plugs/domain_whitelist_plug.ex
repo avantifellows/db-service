@@ -24,7 +24,7 @@ defmodule DbserviceWeb.DomainWhitelistPlug do
   end
 
   defp allowed_domains?(conn) do
-    source(["config/.env", "config/.env"])
+    source(["config/.env", System.get_env()])
 
     whitelisted_domains = env!("WHITELISTED_DOMAINS", :string!)
 

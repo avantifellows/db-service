@@ -204,9 +204,7 @@ defmodule Dbservice.DataImport do
   """
   def cleanup_import_file(%Import{} = import_record) do
     if import_record.filename do
-      path = Path.join(["priv", "static", "uploads", import_record.filename])
-
-      case File.rm(path) do
+      case Dbservice.Storage.delete(import_record.filename) do
         :ok ->
           # Update the import record to indicate the file has been removed
           update_import(import_record, %{filename: nil})
@@ -215,7 +213,11 @@ defmodule Dbservice.DataImport do
         {:error, reason} ->
           # Log the error but don't fail the import process
           require Logger
-          Logger.warning("Failed to delete import file #{path}: #{inspect(reason)}")
+
+          Logger.warning(
+            "Failed to delete import file #{import_record.filename}: #{inspect(reason)}"
+          )
+
           {:error, "Failed to delete file: #{inspect(reason)}"}
       end
     else
@@ -313,9 +315,7 @@ defmodule Dbservice.DataImport do
   Checks if the headers match the expected format and validates start row.
   """
   def validate_csv_format(filename, type, start_row \\ 2) do
-    path = Path.join(["priv", "static", "uploads", filename])
-
-    case File.read(path) do
+    case Dbservice.Storage.read(filename) do
       {:ok, content} ->
         validate_csv_content(content, type, start_row)
 
@@ -466,21 +466,15 @@ defmodule Dbservice.DataImport do
   end
 
   defp save_csv_file(content) do
-    filename = "#{Ecto.UUID.generate()}.csv"
-    path = Path.join(["priv", "static", "uploads", filename])
+    if byte_size(content) == 0 do
+      {:error, "Failed to write file: empty content"}
+    else
+      filename = "#{Ecto.UUID.generate()}.csv"
 
-    File.mkdir_p!(Path.dirname(path))
-
-    case File.write(path, content) do
-      :ok -> validate_file(path, filename)
-      {:error, reason} -> {:error, "Failed to write file: #{reason}"}
-    end
-  end
-
-  defp validate_file(path, filename) do
-    case File.stat(path) do
-      {:ok, %{size: size}} when size > 0 -> {:ok, filename}
-      _ -> {:error, "File was created but is empty"}
+      case Dbservice.Storage.put(content, filename) do
+        {:ok, ^filename} -> {:ok, filename}
+        {:error, reason} -> {:error, "Failed to write file: #{inspect(reason)}"}
+      end
     end
   end
 

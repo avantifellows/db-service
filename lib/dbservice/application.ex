@@ -9,7 +9,7 @@ defmodule Dbservice.Application do
 
   @impl true
   def start(_type, _args) do
-    source(["config/.env"])
+    source(["config/.env", System.get_env()])
 
     children = [
       # Start the Ecto repository
@@ -33,9 +33,15 @@ defmodule Dbservice.Application do
   end
 
   defp goth_child_spec do
-    case env!("PATH_TO_CREDENTIALS", :string, nil) do
-      nil -> handle_missing_credentials()
-      json_path -> load_credentials(json_path)
+    case env!("GOOGLE_CREDENTIALS_JSON", :string, nil) do
+      nil ->
+        case env!("PATH_TO_CREDENTIALS", :string, nil) do
+          nil -> handle_missing_credentials()
+          json_path -> load_credentials_from_file(json_path)
+        end
+
+      json_string ->
+        build_goth_spec(json_string)
     end
   end
 
@@ -43,11 +49,11 @@ defmodule Dbservice.Application do
     if Application.get_env(:dbservice, :environment) == :test do
       []
     else
-      raise "PATH_TO_CREDENTIALS environment variable is required"
+      raise "GOOGLE_CREDENTIALS_JSON or PATH_TO_CREDENTIALS environment variable is required"
     end
   end
 
-  defp load_credentials(json_path) do
+  defp load_credentials_from_file(json_path) do
     case File.read(json_path) do
       {:ok, content} -> build_goth_spec(content)
       {:error, reason} -> handle_credentials_error(reason)
