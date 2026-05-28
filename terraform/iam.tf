@@ -68,6 +68,12 @@ resource "aws_iam_role_policy" "task_s3" {
 resource "aws_iam_user" "ci" {
   count = var.create_ci_user ? 1 : 0
   name  = "db-service-ci-deploy"
+
+  # Once created, the user backs GitHub Secrets. Flipping create_ci_user back
+  # to false must not silently delete it (and the access key the CI relies on).
+  lifecycle {
+    prevent_destroy = true
+  }
 }
 
 resource "aws_iam_access_key" "ci" {
@@ -113,6 +119,21 @@ data "aws_iam_policy_document" "ci_policy" {
       "ecs:DescribeTasks",
       "ecs:ListTasks",
       "ecs:StopTask",
+    ]
+    resources = ["*"]
+  }
+
+  # Needed by the deploy workflow to resolve the task security group/subnets
+  # for the one-off migration RunTask, and to smoke-check via the ALB.
+  statement {
+    sid    = "Discovery"
+    effect = "Allow"
+    actions = [
+      "ec2:DescribeSecurityGroups",
+      "ec2:DescribeSubnets",
+      "elasticloadbalancing:DescribeLoadBalancers",
+      "elasticloadbalancing:DescribeTargetGroups",
+      "elasticloadbalancing:DescribeTargetHealth",
     ]
     resources = ["*"]
   }

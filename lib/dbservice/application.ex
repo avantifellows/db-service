@@ -33,9 +33,9 @@ defmodule Dbservice.Application do
   end
 
   defp goth_child_spec do
-    case env!("GOOGLE_CREDENTIALS_JSON", :string, nil) do
+    case blank_to_nil(env!("GOOGLE_CREDENTIALS_JSON", :string, nil)) do
       nil ->
-        case env!("PATH_TO_CREDENTIALS", :string, nil) do
+        case blank_to_nil(env!("PATH_TO_CREDENTIALS", :string, nil)) do
           nil -> handle_missing_credentials()
           json_path -> load_credentials_from_file(json_path)
         end
@@ -44,6 +44,17 @@ defmodule Dbservice.Application do
         build_goth_spec(json_string)
     end
   end
+
+  # Env vars injected as empty strings (e.g. a blank ECS task override) should
+  # be treated as "not set" rather than a present-but-empty path/JSON.
+  defp blank_to_nil(value) when is_binary(value) do
+    case String.trim(value) do
+      "" -> nil
+      trimmed -> trimmed
+    end
+  end
+
+  defp blank_to_nil(value), do: value
 
   defp handle_missing_credentials do
     if Application.get_env(:dbservice, :environment) == :test do
@@ -73,6 +84,13 @@ defmodule Dbservice.Application do
             "https://www.googleapis.com/auth/drive.readonly"
           ]}}
     ]
+  rescue
+    error ->
+      # Don't let malformed Google credentials crash the whole service — the
+      # REST API and health check must stay up even if Sheets auth is broken.
+      require Logger
+      Logger.error("Goth init failed, starting without Google auth: #{inspect(error)}")
+      []
   end
 
   defp handle_credentials_error(reason) do
