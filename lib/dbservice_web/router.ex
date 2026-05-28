@@ -143,6 +143,11 @@ defmodule DbserviceWeb.Router do
     get("/problems", ResourceController, :fetch_problems)
     resources("/test-rule", TestRuleController, except: [:new, :edit])
     resources("/alumni", AlumniController, except: [:new, :edit])
+
+    resources("/lms-student-document", LmsStudentDocumentController,
+      only: [:index, :create, :show, :delete]
+    )
+
     post("/student/create-with-enrollments", StudentController, :create_with_enrollments)
 
     get(
