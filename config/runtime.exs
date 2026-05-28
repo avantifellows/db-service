@@ -14,7 +14,6 @@ if config_env() == :prod do
   host = env!("PHX_HOST", :string!)
 
   config :dbservice, DbserviceWeb.Endpoint,
-    server: System.get_env("PHX_SERVER") in ~w(1 true),
     load_from_system_env: false,
     url: [host: host, port: 443],
     http: [
@@ -28,4 +27,13 @@ if config_env() == :prod do
     secret_key_base: secret_key_base,
     debug_errors: false,
     check_origin: ["//#{host}"]
+
+  # `mix phx.server` (the EC2 deploy) turns serving on by itself, so leave
+  # :server unset on that path. OTP releases (ECS) don't, so flip it on when
+  # PHX_SERVER is set — rel/env.sh.eex exports it for `bin/dbservice start`.
+  # Setting `server: false` explicitly (the previous behaviour) overrode
+  # mix phx.server and stopped the EC2 deploy from ever listening.
+  if System.get_env("PHX_SERVER") in ~w(1 true) do
+    config :dbservice, DbserviceWeb.Endpoint, server: true
+  end
 end
