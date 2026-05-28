@@ -24,14 +24,22 @@ defmodule Dbservice.LmsStudentDocuments do
   end
 
   defp filter_by(query, params) do
-    Enum.reduce(params, query, fn
-      {"student_id", value}, acc -> where(acc, [d], d.student_id == ^value)
-      {:student_id, value}, acc -> where(acc, [d], d.student_id == ^value)
-      {"document_type", value}, acc -> where(acc, [d], d.document_type == ^value)
-      {:document_type, value}, acc -> where(acc, [d], d.document_type == ^value)
-      _, acc -> acc
+    Enum.reduce(params, query, fn {key, value}, acc ->
+      case normalize_key(key) do
+        :student_id -> where(acc, [d], d.student_id == ^value)
+        :document_type -> where(acc, [d], d.document_type == ^value)
+        _ -> acc
+      end
     end)
   end
+
+  defp normalize_key(key) when is_binary(key) do
+    String.to_existing_atom(key)
+  rescue
+    ArgumentError -> :unknown
+  end
+
+  defp normalize_key(key), do: key
 
   @doc """
   Gets a single document. Returns `nil` if not found or soft-deleted.
