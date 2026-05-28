@@ -32,6 +32,7 @@ locals {
   image    = "${aws_ecr_repository.this.repository_url}:${var.image_tag}"
 
   container_env = [
+    { name = "PHX_SERVER", value = "true" },
     { name = "PORT", value = tostring(var.app_port) },
     { name = "PHX_HOST", value = local.phx_host },
     { name = "POOL_SIZE", value = var.pool_size },
@@ -98,6 +99,10 @@ resource "aws_ecs_service" "this" {
   platform_version = "LATEST"
 
   enable_execute_command = true
+
+  # Give the Phoenix release time to boot before the ALB starts failing the
+  # task on health checks. Without this, a slow cold start gets killed.
+  health_check_grace_period_seconds = 120
 
   deployment_minimum_healthy_percent = 100
   deployment_maximum_percent         = 200

@@ -2,6 +2,10 @@ resource "aws_ecr_repository" "this" {
   name                 = "db-service-${var.environment}"
   image_tag_mutability = "MUTABLE"
 
+  # Allow `terraform destroy` to remove the repo even when it still holds
+  # images pushed by the deploy pipeline.
+  force_delete = true
+
   image_scanning_configuration {
     scan_on_push = true
   }

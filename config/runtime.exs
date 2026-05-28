@@ -7,10 +7,10 @@ if config_env() == :prod do
   config :dbservice, Dbservice.Repo,
     url: env!("DATABASE_URL", :string!),
     ssl: true,
-    pool_size: env!("POOL_SIZE", :integer) || 10
+    pool_size: env!("POOL_SIZE", :integer, 10)
 
   secret_key_base = env!("SECRET_KEY_BASE", :string!)
-  port = env!("PORT", :integer) || 4000
+  port = env!("PORT", :integer, 4000)
   host = env!("PHX_HOST", :string!)
 
   config :dbservice, DbserviceWeb.Endpoint,

@@ -21,6 +21,10 @@ env:
   CONTAINER_NAME: db-service
   SUBNETS: subnet-84ffe8ec,subnet-434c080f,subnet-5cd65827
   SECURITY_GROUP_NAME: db-service-staging-sg
+  # Smoke check hits the shared ALB directly (Host header) so it doesn't depend
+  # on public DNS (which lives in Cloudflare, not Route53).
+  SERVICE_HOST: staging-database.avantifellows.org
+  ALB_NAME: af-load-balancer
 
 concurrency:
   group: deploy-staging-ecs
@@ -160,8 +164,15 @@ jobs:
       - name: Smoke check
         run: |
           set -euo pipefail
+          ALB_DNS=$(aws elbv2 describe-load-balancers \
+            --names "$ALB_NAME" \
+            --query 'LoadBalancers[0].DNSName' --output text)
+          ALB_IP=$(getent hosts "$ALB_DNS" | awk '{print $1; exit}')
+          echo "Resolving ${SERVICE_HOST} -> ${ALB_DNS} (${ALB_IP})"
           for i in 1 2 3 4 5 6; do
-            CODE=$(curl -sk -o /dev/null -w "%{http_code}" https://staging-db.avantifellows.org/api/health || echo "000")
+            CODE=$(curl -sk -o /dev/null -w "%{http_code}" \
+              --resolve "${SERVICE_HOST}:443:${ALB_IP}" \
+              "https://${SERVICE_HOST}/api/health" || echo "000")
             echo "attempt $i: HTTP $CODE"
             if [ "$CODE" = "200" ]; then exit 0; fi
             sleep 10
