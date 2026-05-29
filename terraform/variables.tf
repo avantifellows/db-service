@@ -73,9 +73,9 @@ variable "aws_region" {
 }
 
 variable "app_port" {
-  description = "Port the container listens on."
+  description = "Port the container listens on. Must be 8080 — the shared ALB's security group only permits egress to targets on 8080."
   type        = number
-  default     = 4000
+  default     = 8080
 }
 
 variable "cpu" {
