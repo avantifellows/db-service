@@ -4,8 +4,6 @@ defmodule Dbservice.LmsStudentDocuments.LmsStudentDocument do
   use Ecto.Schema
   import Ecto.Changeset
 
-  @document_types ~w(research_consent id_proof bonafide other)
-
   schema "lms_student_documents" do
     field :document_type, :string
     field :pages, {:array, :map}, default: []
@@ -30,11 +28,9 @@ defmodule Dbservice.LmsStudentDocuments.LmsStudentDocument do
       :deleted_at
     ])
     |> validate_required([:student_id, :document_type, :pages, :uploaded_by])
-    |> validate_inclusion(:document_type, @document_types)
+    |> validate_length(:document_type, min: 1, max: 64)
     |> validate_pages()
   end
-
-  def document_types, do: @document_types
 
   defp validate_pages(changeset) do
     case get_field(changeset, :pages) do

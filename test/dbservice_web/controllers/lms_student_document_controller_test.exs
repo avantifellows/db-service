@@ -42,8 +42,24 @@ defmodule DbserviceWeb.LmsStudentDocumentControllerTest do
       assert length(resp["pages"]) == 1
     end
 
-    test "rejects unknown document_type", %{conn: conn, create_attrs: attrs} do
-      conn = post(conn, ~p"/api/lms-student-document", %{attrs | document_type: "phony"})
+    test "accepts any non-empty document_type (free string)", %{conn: conn, create_attrs: attrs} do
+      conn = post(conn, ~p"/api/lms-student-document", %{attrs | document_type: "anything_goes"})
+      resp = json_response(conn, 201)
+      assert resp["document_type"] == "anything_goes"
+    end
+
+    test "rejects blank document_type", %{conn: conn, create_attrs: attrs} do
+      conn = post(conn, ~p"/api/lms-student-document", %{attrs | document_type: ""})
+      assert json_response(conn, 422)["errors"] != %{}
+    end
+
+    test "rejects oversized document_type (>64 chars)", %{conn: conn, create_attrs: attrs} do
+      conn =
+        post(conn, ~p"/api/lms-student-document", %{
+          attrs
+          | document_type: String.duplicate("x", 65)
+        })
+
       assert json_response(conn, 422)["errors"] != %{}
     end
 
