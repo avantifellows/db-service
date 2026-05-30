@@ -45,6 +45,7 @@ defmodule Dbservice.Repo.Migrations.CreateLmsCurriculumTrackingTables do
            )
 
     create table(:lms_curriculum_logs) do
+      # Not an FK: school.code is the LMS-facing identifier but is not unique today.
       add :school_code, :string, size: 255, null: false
       add :program_id, references(:program, on_delete: :nothing), null: false
       add :grade_id, references(:grade, on_delete: :nothing), null: false
@@ -106,6 +107,7 @@ defmodule Dbservice.Repo.Migrations.CreateLmsCurriculumTrackingTables do
            )
 
     create table(:lms_curriculum_chapter_completions) do
+      # Not an FK: school.code is the LMS-facing identifier but is not unique today.
       add :school_code, :string, size: 255, null: false
       add :program_id, references(:program, on_delete: :nothing), null: false
       add :chapter_id, references(:chapter, on_delete: :nothing), null: false

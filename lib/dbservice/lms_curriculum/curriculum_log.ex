@@ -1,5 +1,11 @@
 defmodule Dbservice.LmsCurriculum.CurriculumLog do
-  @moduledoc false
+  @moduledoc """
+  Teacher-entered curriculum session log.
+
+  `school_code` is intentionally stored as plain text because the LMS uses school
+  codes as its school identifier and `school.code` is not unique enough to support
+  a database foreign key today.
+  """
 
   use Ecto.Schema
   import Ecto.Changeset

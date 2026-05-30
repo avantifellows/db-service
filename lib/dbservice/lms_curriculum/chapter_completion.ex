@@ -1,5 +1,11 @@
 defmodule Dbservice.LmsCurriculum.ChapterCompletion do
-  @moduledoc false
+  @moduledoc """
+  Durable chapter completion state for a school/program/chapter/exam-track scope.
+
+  `school_code` is intentionally stored as plain text because the LMS uses school
+  codes as its school identifier and `school.code` is not unique enough to support
+  a database foreign key today.
+  """
 
   use Ecto.Schema
   import Ecto.Changeset
