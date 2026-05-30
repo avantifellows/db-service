@@ -21,33 +21,38 @@ defmodule Dbservice.LmsCurriculum.ChapterExamConfigLoader do
 
     with :ok <- validate_embedded_counts(rows) do
       repo.transaction(fn ->
-        chapter_map = chapter_map(repo, rows)
-
-        case validate_chapters(rows, chapter_map) do
-          :ok ->
-            warnings = name_mismatch_warnings(rows, chapter_map)
-            Enum.each(warnings, fn warning -> Logger.warning(format_warning(warning)) end)
-
-            {count, _} =
-              repo.insert_all(
-                ChapterExamConfig,
-                upsert_rows(rows, chapter_map, inserted_by_email, updated_by_email),
-                conflict_target: [:chapter_id, :exam_track],
-                on_conflict: {:replace, conflict_replace_fields()}
-              )
-
-            %{
-              version: ChapterExamConfigData.version(),
-              row_count: length(rows),
-              upserted_count: count,
-              warnings: warnings
-            }
-
-          {:error, reason} ->
-            repo.rollback(reason)
-        end
+        load_rows(repo, rows, inserted_by_email, updated_by_email)
       end)
     end
+  end
+
+  defp load_rows(repo, rows, inserted_by_email, updated_by_email) do
+    chapter_map = chapter_map(repo, rows)
+
+    case validate_chapters(rows, chapter_map) do
+      :ok -> upsert_configs(repo, rows, chapter_map, inserted_by_email, updated_by_email)
+      {:error, reason} -> repo.rollback(reason)
+    end
+  end
+
+  defp upsert_configs(repo, rows, chapter_map, inserted_by_email, updated_by_email) do
+    warnings = name_mismatch_warnings(rows, chapter_map)
+    Enum.each(warnings, fn warning -> Logger.warning(format_warning(warning)) end)
+
+    {count, _} =
+      repo.insert_all(
+        ChapterExamConfig,
+        upsert_rows(rows, chapter_map, inserted_by_email, updated_by_email),
+        conflict_target: [:chapter_id, :exam_track],
+        on_conflict: {:replace, conflict_replace_fields()}
+      )
+
+    %{
+      version: ChapterExamConfigData.version(),
+      row_count: length(rows),
+      upserted_count: count,
+      warnings: warnings
+    }
   end
 
   defp validate_embedded_counts(rows) do

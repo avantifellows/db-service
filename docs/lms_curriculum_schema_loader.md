@@ -38,21 +38,21 @@ Local:
 
 ```bash
 mix ecto.migrate
-mix lms.load_chapter_exam_configs --email your.email@avantifellows.org
+mix run priv/repo/load_lms_chapter_exam_configs.exs -- --email your.email@avantifellows.org
 ```
 
 Staging:
 
 ```bash
 MIX_ENV=prod mix ecto.migrate
-MIX_ENV=prod mix lms.load_chapter_exam_configs --email your.email@avantifellows.org
+MIX_ENV=prod mix run priv/repo/load_lms_chapter_exam_configs.exs -- --email your.email@avantifellows.org
 ```
 
 Production:
 
 ```bash
 MIX_ENV=prod mix ecto.migrate
-MIX_ENV=prod mix lms.load_chapter_exam_configs --email your.email@avantifellows.org
+MIX_ENV=prod mix run priv/repo/load_lms_chapter_exam_configs.exs -- --email your.email@avantifellows.org
 ```
 
 Only run staging or production commands from the normal db-service deployment/runbook environment with the intended database credentials. Do not run them from a local shell unless that is the approved deploy process.
