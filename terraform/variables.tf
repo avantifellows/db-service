@@ -184,10 +184,21 @@ variable "alb_https_listener_arn" {
   default     = "arn:aws:elasticloadbalancing:ap-south-1:111766607077:listener/app/af-load-balancer/8c412f577b269ab0/5b6cfc3f4677e5c4"
 }
 
-variable "route53_zone_id" {
-  description = "Hosted zone ID for avantifellows.org."
+variable "cloudflare_zone_id" {
+  description = "Cloudflare zone ID for avantifellows.org (zone overview in the Cloudflare dashboard)."
   type        = string
-  default     = "Z07416201O7H3W00UKZYD"
+}
+
+variable "cloudflare_api_token" {
+  description = "Cloudflare API token with DNS:Edit on the avantifellows.org zone. Set via TF_VAR_cloudflare_api_token at apply time; not needed by the deploy workflow."
+  type        = string
+  sensitive   = true
+}
+
+variable "dns_proxied" {
+  description = "Cloudflare proxy (orange cloud). true requires SSL/TLS mode Full (strict); false (DNS-only/grey) connects clients straight to the ALB. Set per env in envs/*.tfvars."
+  type        = bool
+  default     = false
 }
 
 ################################################################################
