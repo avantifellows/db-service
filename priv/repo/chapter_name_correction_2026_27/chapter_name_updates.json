@@ -1,0 +1,276 @@
+{
+  "version": "2026-27-v1",
+  "source": "af_lms issue #73; product confirmed Google Sheet chapter names are final truth",
+  "corrections": [
+    {
+      "subject": "Chemistry",
+      "chapter_code": "11C9",
+      "expected_current_name": "Redox Reaction",
+      "new_chapter_name": "Redox Reactions"
+    },
+    {
+      "subject": "Chemistry",
+      "chapter_code": "11C10",
+      "expected_current_name": "Basic Inorganic Nomenclature",
+      "new_chapter_name": "Hydrogen"
+    },
+    {
+      "subject": "Chemistry",
+      "chapter_code": "11C11",
+      "expected_current_name": "Hydrogen",
+      "new_chapter_name": "The s-Block Elements"
+    },
+    {
+      "subject": "Chemistry",
+      "chapter_code": "11C12",
+      "expected_current_name": "The s-Block Elements",
+      "new_chapter_name": "IUPAC Nomenclature and Isomerism"
+    },
+    {
+      "subject": "Chemistry",
+      "chapter_code": "11C14",
+      "expected_current_name": "IUPAC Nomenclature and Isomerism",
+      "new_chapter_name": "Hydrocarbons"
+    },
+    {
+      "subject": "Chemistry",
+      "chapter_code": "11C15",
+      "expected_current_name": "General Organic Chemistry",
+      "new_chapter_name": "Environmental Chemistry"
+    },
+    {
+      "subject": "Chemistry",
+      "chapter_code": "12C20",
+      "expected_current_name": "Electrochemistry",
+      "new_chapter_name": "Surface Chemistry"
+    },
+    {
+      "subject": "Chemistry",
+      "chapter_code": "12C21",
+      "expected_current_name": "Chemical Kinetics",
+      "new_chapter_name": "Metallurgy"
+    },
+    {
+      "subject": "Mathematics",
+      "chapter_code": "11M6",
+      "expected_current_name": "Permutation and Combination",
+      "new_chapter_name": "Sequence and Series"
+    },
+    {
+      "subject": "Mathematics",
+      "chapter_code": "11M7",
+      "expected_current_name": "Binomial Theorem",
+      "new_chapter_name": "Permutation and Combination"
+    },
+    {
+      "subject": "Mathematics",
+      "chapter_code": "11M8",
+      "expected_current_name": "Sequence and Series",
+      "new_chapter_name": "Binomial Theorem"
+    },
+    {
+      "subject": "Mathematics",
+      "chapter_code": "11M9",
+      "expected_current_name": "Straight Line",
+      "new_chapter_name": "Straight Lines"
+    },
+    {
+      "subject": "Mathematics",
+      "chapter_code": "12M15",
+      "expected_current_name": "Function and Inverse Trigonometric Functions",
+      "new_chapter_name": "Matrices and Determinant"
+    },
+    {
+      "subject": "Mathematics",
+      "chapter_code": "12M16",
+      "expected_current_name": "Matrices and Determinant",
+      "new_chapter_name": "Limits"
+    },
+    {
+      "subject": "Mathematics",
+      "chapter_code": "12M17",
+      "expected_current_name": "Limits, Continuity and Derivability",
+      "new_chapter_name": "Continuity and Differentiability"
+    },
+    {
+      "subject": "Mathematics",
+      "chapter_code": "12M20",
+      "expected_current_name": "Definite Integration and Its Application",
+      "new_chapter_name": "Definite Integration and AUC"
+    },
+    {
+      "subject": "Mathematics",
+      "chapter_code": "12M21",
+      "expected_current_name": "Differential Equation",
+      "new_chapter_name": "Differential Equations"
+    },
+    {
+      "subject": "Mathematics",
+      "chapter_code": "12M22",
+      "expected_current_name": "Vector and 3D",
+      "new_chapter_name": "Vector Algebra"
+    },
+    {
+      "subject": "Mathematics",
+      "chapter_code": "12M23",
+      "expected_current_name": "Probability",
+      "new_chapter_name": "Three Dimensional Geometry"
+    },
+    {
+      "subject": "Physics",
+      "chapter_code": "11P1",
+      "expected_current_name": "Units and Dimensions",
+      "new_chapter_name": "Mathematical Tools"
+    },
+    {
+      "subject": "Physics",
+      "chapter_code": "11P2",
+      "expected_current_name": "Mathematical Tools",
+      "new_chapter_name": "Units, Dimensions and Errors"
+    },
+    {
+      "subject": "Physics",
+      "chapter_code": "11P3",
+      "expected_current_name": "Rectilinear Motion",
+      "new_chapter_name": "Motion in One Dimension"
+    },
+    {
+      "subject": "Physics",
+      "chapter_code": "11P4",
+      "expected_current_name": "Projectile Motion",
+      "new_chapter_name": "Motion in Two Dimension"
+    },
+    {
+      "subject": "Physics",
+      "chapter_code": "11P5",
+      "expected_current_name": "Relative Motion",
+      "new_chapter_name": "Newton's Laws of Motion and Friction"
+    },
+    {
+      "subject": "Physics",
+      "chapter_code": "11P6",
+      "expected_current_name": "Newtons Laws of Motion",
+      "new_chapter_name": "Work, Power and Energy"
+    },
+    {
+      "subject": "Physics",
+      "chapter_code": "11P7",
+      "expected_current_name": "Friction",
+      "new_chapter_name": "Circular Motion"
+    },
+    {
+      "subject": "Physics",
+      "chapter_code": "11P8",
+      "expected_current_name": "Work, Power and Energy",
+      "new_chapter_name": "Centre of Mass"
+    },
+    {
+      "subject": "Physics",
+      "chapter_code": "11P9",
+      "expected_current_name": "Circular Motion",
+      "new_chapter_name": "Rigid Body Dynamics"
+    },
+    {
+      "subject": "Physics",
+      "chapter_code": "11P10",
+      "expected_current_name": "Centre of Mass",
+      "new_chapter_name": "Gravitation"
+    },
+    {
+      "subject": "Physics",
+      "chapter_code": "11P11",
+      "expected_current_name": "Rigid Body Dynamics",
+      "new_chapter_name": "Mechanical Properties of Solids"
+    },
+    {
+      "subject": "Physics",
+      "chapter_code": "11P12",
+      "expected_current_name": "Gravitation",
+      "new_chapter_name": "Mechanical Properties of Fluids"
+    },
+    {
+      "subject": "Physics",
+      "chapter_code": "11P13",
+      "expected_current_name": "Elasticity and Viscosity",
+      "new_chapter_name": "Thermal Properties of Matter"
+    },
+    {
+      "subject": "Physics",
+      "chapter_code": "11P14",
+      "expected_current_name": "Fluid Mechanics",
+      "new_chapter_name": "Kinetic Theory of Gases and Thermodynamics"
+    },
+    {
+      "subject": "Physics",
+      "chapter_code": "11P15",
+      "expected_current_name": "Surface Tension",
+      "new_chapter_name": "Simple Harmonic Motion"
+    },
+    {
+      "subject": "Physics",
+      "chapter_code": "11P16",
+      "expected_current_name": "Kinetic Theory of Gases and Thermodynamics",
+      "new_chapter_name": "Waves"
+    },
+    {
+      "subject": "Physics",
+      "chapter_code": "12P18",
+      "expected_current_name": "Current Electricity",
+      "new_chapter_name": "Electric Potential and Capacitance"
+    },
+    {
+      "subject": "Physics",
+      "chapter_code": "12P19",
+      "expected_current_name": "Capacitance",
+      "new_chapter_name": "Current Electricity"
+    },
+    {
+      "subject": "Physics",
+      "chapter_code": "12P22",
+      "expected_current_name": "Electrostatics",
+      "new_chapter_name": "Alternating Current"
+    },
+    {
+      "subject": "Physics",
+      "chapter_code": "12P23",
+      "expected_current_name": "Current Electricity",
+      "new_chapter_name": "Ray Optics"
+    },
+    {
+      "subject": "Physics",
+      "chapter_code": "12P24",
+      "expected_current_name": "Capacitance",
+      "new_chapter_name": "Wave Optics"
+    },
+    {
+      "subject": "Physics",
+      "chapter_code": "12P25",
+      "expected_current_name": "Magnetic Effects of Electric Current and Magnetism",
+      "new_chapter_name": "Modern Physics"
+    },
+    {
+      "subject": "Physics",
+      "chapter_code": "12P26",
+      "expected_current_name": "Electromagnetic Induction",
+      "new_chapter_name": "Nuclear Physics"
+    },
+    {
+      "subject": "Physics",
+      "chapter_code": "12P27",
+      "expected_current_name": "Alternating Current",
+      "new_chapter_name": "Semiconductor"
+    },
+    {
+      "subject": "Physics",
+      "chapter_code": "12P28",
+      "expected_current_name": "Geometrical Optics",
+      "new_chapter_name": "Electromagnetic Waves"
+    },
+    {
+      "subject": "Physics",
+      "chapter_code": "12P29",
+      "expected_current_name": "Wave Optics",
+      "new_chapter_name": "Experimental Skills"
+    }
+  ]
+}
