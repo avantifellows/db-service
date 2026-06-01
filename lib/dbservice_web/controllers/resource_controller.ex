@@ -1072,6 +1072,7 @@ defmodule DbserviceWeb.ResourceController do
       where: rc.curriculum_id == ^curriculum_id,
       where: l.code == ^lang_code,
       where: r.type == "problem",
+      order_by: [asc: r.code],
       select: %{
         resource: r,
         resource_topic: rt,
