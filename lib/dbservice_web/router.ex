@@ -151,6 +151,19 @@ defmodule DbserviceWeb.Router do
 
     resources("/cms-status", CmsStatusController, except: [:new, :edit])
 
+    get("/academic-mentorship-mapping", AcademicMentorshipMappingController, :index)
+    get("/academic-mentorship-mapping/:id", AcademicMentorshipMappingController, :show)
+    post("/academic-mentorship-mapping", AcademicMentorshipMappingController, :create)
+    post("/academic-mentorship-mapping/batch", AcademicMentorshipMappingController, :batch_create)
+
+    post(
+      "/academic-mentorship-mapping/reassign",
+      AcademicMentorshipMappingController,
+      :reassign
+    )
+
+    delete("/academic-mentorship-mapping/:id", AcademicMentorshipMappingController, :soft_delete)
+
     def swagger_info do
       source(["config/.env"])
 
