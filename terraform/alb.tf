@@ -1,5 +1,9 @@
 resource "aws_lb_target_group" "this" {
-  name        = "db-service-${var.environment}-tg"
+  # name_prefix (not name) so create_before_destroy below actually works — a
+  # fixed name collides with the still-existing old TG when a change forces
+  # replacement (e.g. a port change). AWS caps target-group name_prefix at 6
+  # chars; the Environment tag distinguishes staging/prod.
+  name_prefix = "dbsvc-"
   port        = var.app_port
   protocol    = "HTTP"
   target_type = "ip"

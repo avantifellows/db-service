@@ -7,6 +7,12 @@ if config_env() == :prod do
   config :dbservice, Dbservice.Repo,
     url: env!("DATABASE_URL", :string!),
     ssl: true,
+    # Postgrex 0.18+ made `ssl: true` verify the server cert against the OS CA
+    # store by default. The RDS cert chains to the Amazon RDS root CA, which
+    # isn't in the default bundle, so verification fails with "Unknown CA" and
+    # migrations/connections can't be established. We keep the connection
+    # encrypted but skip CA verification to restore the pre-0.18 behaviour.
+    ssl_opts: [verify: :verify_none],
     pool_size: env!("POOL_SIZE", :integer, 10)
 
   secret_key_base = env!("SECRET_KEY_BASE", :string!)
