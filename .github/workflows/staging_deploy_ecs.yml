@@ -1,0 +1,181 @@
+name: Deploy to ECS (Staging)
+
+# Manual trigger only for now. The auto trigger (on PR-to-main) and the
+# rename of the old SSH-based staging_deploy.yml happen in the cutover PR
+# once Fargate is validated. Until then, the legacy workflow keeps deploying
+# to EC2 and this workflow is hand-fired for validation.
+on:
+  workflow_dispatch:
+    inputs:
+      ref:
+        description: "Branch or SHA to deploy. Defaults to the branch the workflow is invoked from."
+        required: false
+        type: string
+
+env:
+  AWS_REGION: ap-south-1
+  ECR_REPOSITORY: db-service-staging
+  ECS_CLUSTER: db-service-staging
+  ECS_SERVICE: db-service-staging
+  TASK_DEFINITION: db-service-staging
+  CONTAINER_NAME: db-service
+  SUBNETS: subnet-84ffe8ec,subnet-434c080f,subnet-5cd65827
+  SECURITY_GROUP_NAME: db-service-staging-sg
+  # Smoke check hits the shared ALB directly (Host header) so it doesn't depend
+  # on public DNS (which lives in Cloudflare, not Route53).
+  SERVICE_HOST: staging-database.avantifellows.org
+  ALB_NAME: af-load-balancer
+
+concurrency:
+  group: deploy-staging-ecs
+  cancel-in-progress: false
+
+jobs:
+  deploy:
+    name: Build, migrate, deploy
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    permissions:
+      contents: read
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ inputs.ref || github.ref }}
+
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          aws-access-key-id: ${{ secrets.DB_SERVICE_AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.DB_SERVICE_AWS_SECRET_ACCESS_KEY }}
+          aws-region: ${{ env.AWS_REGION }}
+
+      - name: Login to Amazon ECR
+        id: ecr
+        uses: aws-actions/amazon-ecr-login@v2
+
+      - name: Build and push image
+        id: build
+        env:
+          ECR_REGISTRY: ${{ steps.ecr.outputs.registry }}
+          IMAGE_TAG: staging-${{ github.sha }}
+        run: |
+          set -euo pipefail
+          IMAGE="${ECR_REGISTRY}/${ECR_REPOSITORY}:${IMAGE_TAG}"
+          docker build -t "$IMAGE" .
+          docker push "$IMAGE"
+          echo "image=$IMAGE" >> "$GITHUB_OUTPUT"
+
+      - name: Download current task definition
+        run: |
+          set -euo pipefail
+          aws ecs describe-task-definition \
+            --task-definition "$TASK_DEFINITION" \
+            --query 'taskDefinition' \
+            > task-definition.json
+
+      - name: Render new task definition
+        id: render
+        uses: aws-actions/amazon-ecs-render-task-definition@v1
+        with:
+          task-definition: task-definition.json
+          container-name: ${{ env.CONTAINER_NAME }}
+          image: ${{ steps.build.outputs.image }}
+
+      - name: Register new task definition
+        id: register
+        run: |
+          set -euo pipefail
+          ARN=$(aws ecs register-task-definition \
+            --cli-input-json "file://${{ steps.render.outputs.task-definition }}" \
+            --query 'taskDefinition.taskDefinitionArn' \
+            --output text)
+          echo "arn=$ARN" >> "$GITHUB_OUTPUT"
+
+      - name: Resolve task security group
+        id: sg
+        run: |
+          set -euo pipefail
+          SG_ID=$(aws ec2 describe-security-groups \
+            --filters "Name=group-name,Values=${SECURITY_GROUP_NAME}" \
+            --query 'SecurityGroups[0].GroupId' --output text)
+          if [ -z "$SG_ID" ] || [ "$SG_ID" = "None" ]; then
+            echo "::error::Security group ${SECURITY_GROUP_NAME} not found. Has terraform apply run for this environment?"
+            exit 1
+          fi
+          echo "id=$SG_ID" >> "$GITHUB_OUTPUT"
+
+      - name: Run migrations as one-off Fargate task
+        run: |
+          set -euo pipefail
+
+          NETWORK_CFG=$(jq -nc \
+            --arg sg "${{ steps.sg.outputs.id }}" \
+            --arg subnets "${SUBNETS}" \
+            '{awsvpcConfiguration: {subnets: ($subnets | split(",")), securityGroups: [$sg], assignPublicIp: "ENABLED"}}')
+
+          OVERRIDES=$(jq -nc \
+            --arg name "${CONTAINER_NAME}" \
+            '{containerOverrides: [{name: $name, command: ["bin/dbservice", "eval", "Dbservice.Release.migrate()"]}]}')
+
+          RUN=$(aws ecs run-task \
+            --cluster "$ECS_CLUSTER" \
+            --task-definition "${{ steps.register.outputs.arn }}" \
+            --launch-type FARGATE \
+            --network-configuration "$NETWORK_CFG" \
+            --overrides "$OVERRIDES")
+
+          FAILURES=$(echo "$RUN" | jq -r '.failures | length')
+          if [ "$FAILURES" != "0" ]; then
+            echo "::error::ecs run-task returned failures:"
+            echo "$RUN" | jq '.failures'
+            exit 1
+          fi
+
+          TASK_ARN=$(echo "$RUN" | jq -r '.tasks[0].taskArn')
+          echo "Migration task: $TASK_ARN"
+
+          aws ecs wait tasks-stopped --cluster "$ECS_CLUSTER" --tasks "$TASK_ARN"
+
+          DESC=$(aws ecs describe-tasks --cluster "$ECS_CLUSTER" --tasks "$TASK_ARN")
+          EXIT_CODE=$(echo "$DESC" | jq -r '.tasks[0].containers[0].exitCode // empty')
+          STOPPED_REASON=$(echo "$DESC" | jq -r '.tasks[0].stoppedReason // empty')
+
+          if [ "$EXIT_CODE" != "0" ]; then
+            echo "::error::Migration task exited with code ${EXIT_CODE:-unknown}. Reason: ${STOPPED_REASON:-unknown}"
+            echo "$DESC" | jq '.tasks[0]'
+            exit 1
+          fi
+
+      - name: Deploy service
+        run: |
+          set -euo pipefail
+          aws ecs update-service \
+            --cluster "$ECS_CLUSTER" \
+            --service "$ECS_SERVICE" \
+            --task-definition "${{ steps.register.outputs.arn }}" \
+            --force-new-deployment > /dev/null
+
+          aws ecs wait services-stable \
+            --cluster "$ECS_CLUSTER" \
+            --services "$ECS_SERVICE"
+
+      - name: Smoke check
+        run: |
+          set -euo pipefail
+          ALB_DNS=$(aws elbv2 describe-load-balancers \
+            --names "$ALB_NAME" \
+            --query 'LoadBalancers[0].DNSName' --output text)
+          ALB_IP=$(getent hosts "$ALB_DNS" | awk '{print $1; exit}')
+          echo "Resolving ${SERVICE_HOST} -> ${ALB_DNS} (${ALB_IP})"
+          for i in 1 2 3 4 5 6; do
+            CODE=$(curl -sk -o /dev/null -w "%{http_code}" \
+              --resolve "${SERVICE_HOST}:443:${ALB_IP}" \
+              "https://${SERVICE_HOST}/api/health" || echo "000")
+            echo "attempt $i: HTTP $CODE"
+            if [ "$CODE" = "200" ]; then exit 0; fi
+            sleep 10
+          done
+          echo "::error::Smoke check failed after 6 attempts"
+          exit 1

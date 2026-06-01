@@ -50,6 +50,8 @@ defmodule DbserviceWeb.Router do
   scope "/api", DbserviceWeb do
     pipe_through(:api)
 
+    get("/health", HealthController, :index)
+
     resources("/auth-group", AuthGroupController, except: [:new, :edit])
     post("/group/:id/update-users", GroupController, :update_users)
     post("/group/:id/update-sessions", GroupController, :update_sessions)
@@ -141,6 +143,11 @@ defmodule DbserviceWeb.Router do
     get("/problems", ResourceController, :fetch_problems)
     resources("/test-rule", TestRuleController, except: [:new, :edit])
     resources("/alumni", AlumniController, except: [:new, :edit])
+
+    resources("/lms-student-document", LmsStudentDocumentController,
+      only: [:index, :create, :show, :delete]
+    )
+
     post("/student/create-with-enrollments", StudentController, :create_with_enrollments)
 
     get(
@@ -152,7 +159,7 @@ defmodule DbserviceWeb.Router do
     resources("/cms-status", CmsStatusController, except: [:new, :edit])
 
     def swagger_info do
-      source(["config/.env"])
+      source(["config/.env", System.get_env()])
 
       host =
         if Application.get_env(:dbservice, :environment) == :dev do
@@ -207,7 +214,7 @@ defmodule DbserviceWeb.Router do
   end
 
   defp admin_basic_auth(conn, _opts) do
-    source(["config/.env"])
+    source(["config/.env", System.get_env()])
 
     username = env!("DASHBOARD_USER", :string!)
     password = env!("DASHBOARD_PASS", :string!)
