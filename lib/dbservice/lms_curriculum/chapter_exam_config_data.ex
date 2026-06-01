@@ -1125,7 +1125,7 @@ defmodule Dbservice.LmsCurriculum.ChapterExamConfigData do
     },
     %{
       chapter_code: "11C9",
-      chapter_name: "Redox Reaction",
+      chapter_name: "Redox Reactions",
       grade: 11,
       subject: "Chemistry",
       exam_track: "jee_main",
@@ -1135,7 +1135,7 @@ defmodule Dbservice.LmsCurriculum.ChapterExamConfigData do
     },
     %{
       chapter_code: "11C9",
-      chapter_name: "Redox Reaction",
+      chapter_name: "Redox Reactions",
       grade: 11,
       subject: "Chemistry",
       exam_track: "jee_advanced",
@@ -1145,7 +1145,7 @@ defmodule Dbservice.LmsCurriculum.ChapterExamConfigData do
     },
     %{
       chapter_code: "11C9",
-      chapter_name: "Redox Reaction",
+      chapter_name: "Redox Reactions",
       grade: 11,
       subject: "Chemistry",
       exam_track: "neet",
@@ -1336,7 +1336,7 @@ defmodule Dbservice.LmsCurriculum.ChapterExamConfigData do
     %{
       chapter_code: "12C16",
       chapter_name: "The Solid State",
-      grade: 11,
+      grade: 12,
       subject: "Chemistry",
       exam_track: "jee_main",
       is_in_syllabus: false,
@@ -1346,7 +1346,7 @@ defmodule Dbservice.LmsCurriculum.ChapterExamConfigData do
     %{
       chapter_code: "12C16",
       chapter_name: "The Solid State",
-      grade: 11,
+      grade: 12,
       subject: "Chemistry",
       exam_track: "jee_advanced",
       is_in_syllabus: true,
@@ -1356,7 +1356,7 @@ defmodule Dbservice.LmsCurriculum.ChapterExamConfigData do
     %{
       chapter_code: "12C16",
       chapter_name: "The Solid State",
-      grade: 11,
+      grade: 12,
       subject: "Chemistry",
       exam_track: "neet",
       is_in_syllabus: false,
@@ -1865,7 +1865,7 @@ defmodule Dbservice.LmsCurriculum.ChapterExamConfigData do
     },
     %{
       chapter_code: "11M2",
-      chapter_name: "Sets, Relations and Functions",
+      chapter_name: "Sets,Relations and Functions",
       grade: 11,
       subject: "Maths",
       exam_track: "jee_main",
@@ -1875,7 +1875,7 @@ defmodule Dbservice.LmsCurriculum.ChapterExamConfigData do
     },
     %{
       chapter_code: "11M2",
-      chapter_name: "Sets, Relations and Functions",
+      chapter_name: "Sets,Relations and Functions",
       grade: 11,
       subject: "Maths",
       exam_track: "jee_advanced",
@@ -2379,13 +2379,13 @@ defmodule Dbservice.LmsCurriculum.ChapterExamConfigData do
       grade: 12,
       subject: "Maths",
       exam_track: "jee_advanced",
-      is_in_syllabus: false,
-      prescribed_minutes: 0,
+      is_in_syllabus: true,
+      prescribed_minutes: 360,
       coverage_sequence: 27
     },
     %{
       chapter_code: "12M28",
-      chapter_name: "Hight and Distance",
+      chapter_name: "Height and Distance",
       grade: 12,
       subject: "Maths",
       exam_track: "jee_main",
@@ -2395,7 +2395,7 @@ defmodule Dbservice.LmsCurriculum.ChapterExamConfigData do
     },
     %{
       chapter_code: "12M28",
-      chapter_name: "Hight and Distance",
+      chapter_name: "Height and Distance",
       grade: 12,
       subject: "Maths",
       exam_track: "jee_advanced",
@@ -2585,7 +2585,7 @@ defmodule Dbservice.LmsCurriculum.ChapterExamConfigData do
     },
     %{
       chapter_code: "11B19",
-      chapter_name: "Excretory Products and their Elimination",
+      chapter_name: "Excretory Products and Their Elimination",
       grade: 11,
       subject: "Biology",
       exam_track: "neet",
