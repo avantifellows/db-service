@@ -26,5 +26,9 @@ provider "aws" {
 }
 
 provider "cloudflare" {
-  api_token = var.cloudflare_api_token
+  # Authenticates with a legacy Global API Key (account-wide) rather than a
+  # scoped API token. email is the key owner; api_key is the sensitive value,
+  # supplied via TF_VAR_cloudflare_api_key at apply time.
+  email   = var.cloudflare_email
+  api_key = var.cloudflare_api_key
 }

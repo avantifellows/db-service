@@ -14,7 +14,7 @@ terraform/
 ├── ecr.tf             # Container registry
 ├── ecs.tf             # Cluster, task definition, service, auto-scaling
 ├── alb.tf             # Target group + listener rule on existing ALB
-├── dns.tf             # Route53 A-alias to the ALB
+├── dns.tf             # Cloudflare CNAME to the ALB
 ├── security.tf        # Security group for tasks
 ├── iam.tf             # Execution role, task role, optional CI user
 ├── logs.tf            # CloudWatch Logs group
@@ -30,7 +30,7 @@ Every resource is created with an `{environment}` suffix (e.g. `db-service-stagi
 `db-service-prod`). The two environments share **nothing** at the AWS level except:
 
 - The existing shared ALB (`af-load-balancer`) — we add a listener rule, not a new ALB.
-- The Route53 zone (`avantifellows.org`) — we add a record, not a new zone.
+- The Cloudflare zone (`avantifellows.org`) — we add a record, not a new zone.
 - The wildcard ACM cert — already attached to the ALB.
 - The Terraform state bucket (`111766607077-dbservice-test-terraform-state`) — separate
   state files keyed by `dbservice/{env}/terraform.tfstate`.
@@ -78,7 +78,7 @@ Order doesn't matter between environments — no shared TF resources to gate on.
 The first apply in each environment creates an ECR repo and an ECS service that
 references `image_tag = "latest"`. Until the Phase 4 CI pipeline pushes the first
 image, ECS will retry pulls and the target group will report unhealthy. The ALB
-listener rule + Route53 record will exist and resolve, but `db.avantifellows.org`
+listener rule + Cloudflare record will exist and resolve, but `db.avantifellows.org`
 will return 503 until a real image lands. This is expected.
 
 Subsequent deploys are driven by the GitHub Actions workflow registering a new task
