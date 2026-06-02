@@ -185,12 +185,19 @@ variable "alb_https_listener_arn" {
 }
 
 variable "cloudflare_zone_id" {
-  description = "Cloudflare zone ID for avantifellows.org (zone overview in the Cloudflare dashboard)."
+  description = "Cloudflare zone ID for avantifellows.org. Same zone for staging and prod, so it's defaulted here rather than set per-env."
   type        = string
+  default     = "7f1dbe8fd33ebb03cbde59464bbcc042"
 }
 
-variable "cloudflare_api_token" {
-  description = "Cloudflare API token with DNS:Edit on the avantifellows.org zone. Set via TF_VAR_cloudflare_api_token at apply time; not needed by the deploy workflow."
+variable "cloudflare_email" {
+  description = "Cloudflare account email that owns the Global API Key. Same for all envs, so defaulted here."
+  type        = string
+  default     = "deepansh.mathur@avantifellows.org"
+}
+
+variable "cloudflare_api_key" {
+  description = "Cloudflare Global API Key (legacy, account-wide) paired with cloudflare_email. Sensitive — supply via TF_VAR_cloudflare_api_key at apply time; not needed by the deploy workflow."
   type        = string
   sensitive   = true
 }
