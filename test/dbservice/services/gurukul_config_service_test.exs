@@ -21,7 +21,7 @@ defmodule Dbservice.Services.GurukulConfigServiceTest do
     Repo.insert!(%Program{
       name: "Program #{System.unique_integer([:positive])}",
       product_id: product.id,
-      config: config
+      config: %{"gurukul_config" => config}
     })
   end
 
@@ -99,6 +99,42 @@ defmodule Dbservice.Services.GurukulConfigServiceTest do
       {config, _resolved_from} = GurukulConfigService.resolve_for_batch(batch.id)
 
       assert config == %{"showTests" => true, "testsSectionTitle" => "NVS Live Test"}
+    end
+
+    test "ignores other modules' keys stored alongside gurukul_config" do
+      default_group_fixture(%{"showTests" => true})
+      product = product_fixture()
+
+      program =
+        Repo.insert!(%Program{
+          name: "Program #{System.unique_integer([:positive])}",
+          product_id: product.id,
+          config: %{
+            "gurukul_config" => %{"testsSectionTitle" => "NVS Live Test"},
+            "cms_config" => %{"someCmsKey" => true}
+          }
+        })
+
+      batch =
+        Repo.insert!(%Batch{
+          name: "Batch #{System.unique_integer([:positive])}",
+          program_id: program.id,
+          metadata: %{
+            "is_parent_batch" => false,
+            "gurukul_config" => %{"homeTabLabel" => "CoE Home"}
+          }
+        })
+
+      {config, _resolved_from} = GurukulConfigService.resolve_for_batch(batch.id)
+
+      assert config == %{
+               "showTests" => true,
+               "testsSectionTitle" => "NVS Live Test",
+               "homeTabLabel" => "CoE Home"
+             }
+
+      refute Map.has_key?(config, "cms_config")
+      refute Map.has_key?(config, "is_parent_batch")
     end
   end
 

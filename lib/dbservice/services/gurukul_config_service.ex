@@ -4,10 +4,11 @@ defmodule Dbservice.Services.GurukulConfigService do
 
       defaultgroup  <-  program  <-  batch       (later layers win)
 
-  Storage locations for each layer:
-    * defaultgroup: the `auth_group` named "defaultgroup", under
-      `input_schema["gurukul_config"]`
-    * program:      `program.config`
+  Each layer namespaces its Gurukul config under the `"gurukul_config"` key so
+  the same column can hold config for other modules (CMS, LMS, etc.) without
+  collision:
+    * defaultgroup: `auth_group.input_schema["gurukul_config"]`
+    * program:      `program.config["gurukul_config"]`
     * batch:        `batch.metadata["gurukul_config"]`
 
   When a user belongs to multiple current batches (or programs), the oldest
@@ -66,11 +67,11 @@ defmodule Dbservice.Services.GurukulConfigService do
       %Batch{} = batch ->
         program_config =
           case batch.program_id && Repo.get(Program, batch.program_id) do
-            %Program{config: config} -> config || %{}
+            %Program{config: config} -> gurukul_section(config)
             _ -> %{}
           end
 
-        batch_config = Map.get(batch.metadata || %{}, @config_key, %{})
+        batch_config = gurukul_section(batch.metadata)
 
         merged = base |> Map.merge(program_config) |> Map.merge(batch_config)
         {merged, %{source: "batch", batch_id: batch.id, program_id: batch.program_id}}
@@ -83,7 +84,7 @@ defmodule Dbservice.Services.GurukulConfigService do
         {base, %{source: "defaultgroup", batch_id: nil, program_id: nil}}
 
       %Program{} = program ->
-        {Map.merge(base, program.config || %{}),
+        {Map.merge(base, gurukul_section(program.config)),
          %{source: "program", batch_id: nil, program_id: program.id}}
     end
   end
@@ -99,11 +100,13 @@ defmodule Dbservice.Services.GurukulConfigService do
 
   defp default_config do
     case Repo.get_by(AuthGroup, name: @default_group_name) do
-      %AuthGroup{input_schema: input_schema} when is_map(input_schema) ->
-        Map.get(input_schema, @config_key, %{})
-
-      _ ->
-        %{}
+      %AuthGroup{input_schema: input_schema} -> gurukul_section(input_schema)
+      _ -> %{}
     end
   end
+
+  # Reads the namespaced Gurukul config out of a column map (program.config,
+  # batch.metadata, auth_group.input_schema), leaving other modules' keys alone.
+  defp gurukul_section(map) when is_map(map), do: Map.get(map, @config_key, %{})
+  defp gurukul_section(_), do: %{}
 end
