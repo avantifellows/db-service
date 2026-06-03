@@ -22,6 +22,7 @@ defmodule DbserviceWeb.SwaggerSchema.Program do
             model(:string, "Program Model")
             group_id(:integer, "ID of the group")
             is_current(:boolean, "Program is currently active/inactive")
+            config(:map, "Gurukul UI configuration for the program")
           end
 
           example(%{
@@ -36,7 +37,8 @@ defmodule DbserviceWeb.SwaggerSchema.Program do
             state: "Delhi",
             model: "Live Classes",
             group_id: 1,
-            is_current: true
+            is_current: true,
+            config: %{"showTests" => true, "testsSectionTitle" => "Live Test"}
           })
         end
     }
