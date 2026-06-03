@@ -68,7 +68,12 @@ defmodule Dbservice.Services.GurukulConfigServiceTest do
 
   describe "resolve_for_batch/1" do
     test "merges batch over program over defaultgroup (batch wins)" do
-      default_group_fixture(%{"showTests" => true, "homeTabLabel" => "Home", "showHomeTab" => true})
+      default_group_fixture(%{
+        "showTests" => true,
+        "homeTabLabel" => "Home",
+        "showHomeTab" => true
+      })
+
       program = program_fixture(%{"testsSectionTitle" => "NVS Live Test", "showHomeTab" => false})
       batch = batch_fixture(program, %{"gurukul_config" => %{"testsSectionTitle" => "CA Test"}})
 
