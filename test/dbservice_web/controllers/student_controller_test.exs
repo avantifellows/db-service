@@ -12,7 +12,6 @@ defmodule DbserviceWeb.StudentControllerTest do
     stream: "medical",
     student_id: "some student id",
     physically_handicapped: false,
-    family_income: "some family income",
     annual_family_income: "some annual family income",
     father_profession: "some father profession",
     father_education_level: "some father education level",
@@ -31,7 +30,6 @@ defmodule DbserviceWeb.StudentControllerTest do
     stream: "pcm",
     student_id: "some updated student id",
     physically_handicapped: false,
-    family_income: "some updated family income",
     annual_family_income: "some updated annual family income",
     father_profession: "some updated father profession",
     father_education_level: "some updated father education level",
@@ -118,7 +116,6 @@ defmodule DbserviceWeb.StudentControllerTest do
       assert resp["category"] == "OBC"
       assert resp["father_name"] == "some updated father name"
       assert resp["stream"] == "pcm"
-      assert resp["family_income"] == "some updated family income"
       assert resp["annual_family_income"] == "some updated annual family income"
       assert is_integer(resp["user"]["id"])
     end
