@@ -39,6 +39,12 @@ defmodule Dbservice.DataImport.ImportWorker do
   alias Dbservice.Batches
   alias Dbservice.Schools
 
+  @halt_check_interval 50
+
+  def halt_check_due?(index) when is_integer(index) and index > 0 do
+    index == 1 or rem(index, @halt_check_interval) == 0
+  end
+
   @impl Oban.Worker
   def perform(%Oban.Job{args: %{"id" => import_id}}) do
     import_record = DataImport.get_import!(import_id)
@@ -631,10 +637,7 @@ defmodule Dbservice.DataImport.ImportWorker do
 
     result =
       Enum.reduce_while(records, initial_acc, fn {record, index}, {:ok, processed_records} ->
-        # Check if import has been halted before processing each record
-        current_import = DataImport.get_import!(import_record.id)
-
-        if current_import.status == "stopped" do
+        if halt_check_due?(index) and import_stopped?(import_record.id) do
           {:halt, {:ok, Enum.reverse(processed_records)}}
         else
           handle_record_processing(
@@ -651,6 +654,10 @@ defmodule Dbservice.DataImport.ImportWorker do
       {:ok, processed_records} -> {:ok, Enum.reverse(processed_records)}
       error -> error
     end
+  end
+
+  defp import_stopped?(import_id) do
+    DataImport.get_import!(import_id).status == "stopped"
   end
 
   # Helper function to handle individual record processing within the reduce_while loop

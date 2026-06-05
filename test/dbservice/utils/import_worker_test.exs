@@ -29,6 +29,17 @@ defmodule Dbservice.DataImport.ImportWorkerTest do
     }
   end
 
+  describe "halt polling cadence" do
+    test "checks the halt flag on the first row and every 50 rows" do
+      assert ImportWorker.halt_check_due?(1)
+      refute ImportWorker.halt_check_due?(2)
+      refute ImportWorker.halt_check_due?(49)
+      assert ImportWorker.halt_check_due?(50)
+      refute ImportWorker.halt_check_due?(51)
+      assert ImportWorker.halt_check_due?(100)
+    end
+  end
+
   describe "perform/1" do
     test "processes a successful student import", %{
       auth_group_id: auth_group_id,
