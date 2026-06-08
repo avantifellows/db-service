@@ -23,26 +23,31 @@ defmodule DbserviceWeb.TopicJSON do
     }
 
     # Add topic_curriculum fields if they exist
-    case get_topic_curriculum(topic) do
-      nil ->
+    case topic_curriculums(topic) do
+      [] ->
         topic_json
 
-      topic_curriculum ->
+      topic_curriculums ->
         Map.merge(topic_json, %{
-          priority: topic_curriculum.priority,
-          priority_text: topic_curriculum.priority_text,
-          curriculum_id: topic_curriculum.curriculum_id
+          curriculum_ids: Enum.map(topic_curriculums, & &1.curriculum_id),
+          curriculums:
+            Enum.map(topic_curriculums, fn tc ->
+              %{
+                curriculum_id: tc.curriculum_id,
+                priority: tc.priority,
+                priority_text: tc.priority_text
+              }
+            end)
         })
     end
   end
 
-  # Helper function to get the topic_curriculum
-  defp get_topic_curriculum(topic) do
-    # If topic_curriculum is preloaded and contains records
-    if Ecto.assoc_loaded?(topic.topic_curriculum) && not Enum.empty?(topic.topic_curriculum) do
-      List.first(topic.topic_curriculum)
+  # Helper function to get the list of topic_curriculum records
+  defp topic_curriculums(topic) do
+    if Ecto.assoc_loaded?(topic.topic_curriculum) do
+      topic.topic_curriculum
     else
-      nil
+      []
     end
   end
 end

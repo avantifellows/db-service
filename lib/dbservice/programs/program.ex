@@ -15,6 +15,7 @@ defmodule Dbservice.Programs.Program do
     field :state, :string
     field :model, :string
     field :is_current, :boolean, default: true
+    field :config, :map, default: %{}
 
     belongs_to :product, Product
     has_many :group, Group, foreign_key: :child_id, where: [type: "program"]
@@ -36,7 +37,8 @@ defmodule Dbservice.Programs.Program do
       :state,
       :product_id,
       :model,
-      :is_current
+      :is_current,
+      :config
     ])
     |> validate_required([:name])
   end
