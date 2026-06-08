@@ -46,12 +46,16 @@ defmodule DbserviceWeb.GurukulConfigController do
   defp resolve(:batch, id), do: GurukulConfigService.resolve_for_batch(id)
   defp resolve(:program, id), do: GurukulConfigService.resolve_for_program(id)
 
+  @scope_params [{"user_id", :user}, {"batch_id", :batch}, {"program_id", :program}]
+
   defp pick_scope(params) do
-    cond do
-      present?(params["user_id"]) -> {:ok, :user, params["user_id"]}
-      present?(params["batch_id"]) -> {:ok, :batch, params["batch_id"]}
-      present?(params["program_id"]) -> {:ok, :program, params["program_id"]}
-      true -> {:error, "One of user_id, batch_id or program_id is required"}
+    # The three params are mutually-exclusive ways to resolve config for a
+    # single entity, not filters to combine. Reject ambiguous requests rather
+    # than silently honouring one and ignoring the rest.
+    case Enum.filter(@scope_params, fn {key, _scope} -> present?(params[key]) end) do
+      [{key, scope}] -> {:ok, scope, params[key]}
+      [] -> {:error, "One of user_id, batch_id or program_id is required"}
+      _ -> {:error, "Provide only one of user_id, batch_id or program_id"}
     end
   end
 
