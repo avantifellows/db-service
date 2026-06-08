@@ -83,6 +83,7 @@ defmodule DbserviceWeb.Router do
     resources("/product", ProductController)
     resources("/program", ProgramController, except: [:new, :edit])
     resources("/batch", BatchController, except: [:new, :edit])
+    get("/gurukul-config", GurukulConfigController, :show)
     resources("/group", GroupController, except: [:new, :edit])
     resources("/form-schema", FormSchemaController)
     resources("/group-user", GroupUserController)

@@ -16,7 +16,8 @@ defmodule DbserviceWeb.ProgramJSON do
       state: program.state,
       product_id: program.product_id,
       model: program.model,
-      is_current: program.is_current
+      is_current: program.is_current,
+      config: program.config
     }
   end
 end
