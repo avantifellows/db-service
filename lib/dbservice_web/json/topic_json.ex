@@ -28,14 +28,16 @@ defmodule DbserviceWeb.TopicJSON do
         topic_json
 
       topic_curriculums ->
-        # priority/priority_text are per-curriculum; keep the first for
-        # backward compatibility while exposing all curriculum ids as an array
-        first = List.first(topic_curriculums)
-
         Map.merge(topic_json, %{
-          priority: first.priority,
-          priority_text: first.priority_text,
-          curriculum_ids: Enum.map(topic_curriculums, & &1.curriculum_id)
+          curriculum_ids: Enum.map(topic_curriculums, & &1.curriculum_id),
+          curriculums:
+            Enum.map(topic_curriculums, fn tc ->
+              %{
+                curriculum_id: tc.curriculum_id,
+                priority: tc.priority,
+                priority_text: tc.priority_text
+              }
+            end)
         })
     end
   end
