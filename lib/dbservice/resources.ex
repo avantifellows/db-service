@@ -94,15 +94,31 @@ defmodule Dbservice.Resources do
       )
       |> Repo.all()
 
+    # topic_id lives on the resource_topic join table, not on the resource
+    # itself, so fetch the mapping separately and attach it per problem.
+    resource_topic_by_resource_id = resource_topics_by_resource_id(problem_ids)
+
     Enum.map(problems, fn resource ->
       problem_lang = Enum.find(resource.problem_language, &(&1.lang_id == lang_id))
 
       %{
         resource: resource,
+        resource_topic: Map.get(resource_topic_by_resource_id, resource.id, %{}),
         resource_curriculums: resource.resource_curriculum,
         problem_lang: problem_lang || %{},
         requested_curriculum_id: curriculum_id
       }
+    end)
+  end
+
+  # Returns a map of resource_id => resource_topic record for the given
+  # resources. A problem maps to a single topic in the response, so the first
+  # resource_topic per resource is kept.
+  defp resource_topics_by_resource_id(resource_ids) do
+    from(rt in ResourceTopic, where: rt.resource_id in ^resource_ids)
+    |> Repo.all()
+    |> Enum.reduce(%{}, fn rt, acc ->
+      Map.put_new(acc, rt.resource_id, rt)
     end)
   end
 
