@@ -1232,6 +1232,7 @@ defmodule Dbservice.DataImport.ImportWorker do
         |> maybe_put_program("product_id", record["product_id"])
         |> maybe_put_program("model", record["model"] |> trim_str())
         |> maybe_put_program("is_current", record["is_current"])
+        |> maybe_put_program("config", parse_program_config(record["config"]))
 
       case Programs.get_program_by_name(name) do
         nil ->
@@ -1251,6 +1252,24 @@ defmodule Dbservice.DataImport.ImportWorker do
   defp maybe_put_program(attrs, _key, nil), do: attrs
   defp maybe_put_program(attrs, _key, ""), do: attrs
   defp maybe_put_program(attrs, key, value), do: Map.put(attrs, key, value)
+
+  # Parses the optional `config` column (JSON object) into a map for the program's config field.
+  defp parse_program_config(nil), do: nil
+
+  defp parse_program_config(raw) when is_binary(raw) do
+    case String.trim(raw) do
+      "" ->
+        nil
+
+      trimmed ->
+        case Jason.decode(trimmed) do
+          {:ok, %{} = m} -> m
+          _ -> nil
+        end
+    end
+  end
+
+  defp parse_program_config(_), do: nil
 
   defp process_batch_addition_record(record) do
     with {:ok, name} <- validate_batch_name(record["name"]),

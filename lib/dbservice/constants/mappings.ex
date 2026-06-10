@@ -703,47 +703,11 @@ defmodule Dbservice.Constants.Mappings do
       optional: ["program_addition"],
       type: :boolean
     },
-    "TPM" => %{
-      db_field: "program_tpm",
+    "config" => %{
+      db_field: "config",
       required: [],
       optional: ["program_addition"],
-      type: :string
-    },
-    "Existing in DB" => %{
-      db_field: "program_existing_in_db",
-      required: [],
-      optional: ["program_addition"],
-      type: :string
-    },
-    "Program in DB?" => %{
-      db_field: "program_in_db",
-      required: [],
-      optional: ["program_addition"],
-      type: :string
-    },
-    "If yes product in DB" => %{
-      db_field: "program_product_in_db",
-      required: [],
-      optional: ["program_addition"],
-      type: :string
-    },
-    "Is product in sheet and DB matching?" => %{
-      db_field: "program_product_matching",
-      required: [],
-      optional: ["program_addition"],
-      type: :string
-    },
-    "Remark" => %{
-      db_field: "program_remark",
-      required: [],
-      optional: ["program_addition"],
-      type: :string
-    },
-    "Previous Name" => %{
-      db_field: "program_previous_name",
-      required: [],
-      optional: ["program_addition"],
-      type: :string
+      type: :map
     },
     # Batch addition (sheet: Batch ID, Name, Contact hours per week, Parent Batch ID, Start Date, End Date, Is Parent Batch, Program Name, Auth Group)
     "Batch ID" => %{
