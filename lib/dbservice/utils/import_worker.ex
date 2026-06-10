@@ -11,6 +11,11 @@ defmodule Dbservice.DataImport.ImportWorker do
   """
   use Oban.Worker, queue: :imports, max_attempts: 3
 
+  # Max lines a single quoted CSV cell may span. Pretty-printed multi-line JSON
+  # (e.g. the program `config` column exported from Google Sheets) can span many
+  # lines; bounded to avoid buffering a whole file on a malformed/unterminated quote.
+  @csv_escape_max_lines 50
+
   alias Dbservice.DataImport
   alias Dbservice.Constants.Mappings
   alias Dbservice.Users
@@ -583,7 +588,7 @@ defmodule Dbservice.DataImport.ImportWorker do
           escape_character: ?",
           headers: true,
           validate_row_length: false,
-          escape_max_lines: 2
+          escape_max_lines: @csv_escape_max_lines
         )
         # First index: tracks position in decoded CSV (1 = first data row after header)
         |> Stream.with_index(1)
@@ -1667,7 +1672,7 @@ defmodule Dbservice.DataImport.ImportWorker do
           # This consumes row 1 as headers
           headers: true,
           validate_row_length: false,
-          escape_max_lines: 2
+          escape_max_lines: @csv_escape_max_lines
         )
         # At this point, index 1 = row 2, index 2 = row 3, etc.
         |> Stream.with_index(1)
