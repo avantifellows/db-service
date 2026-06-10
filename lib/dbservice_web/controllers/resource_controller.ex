@@ -82,13 +82,8 @@ defmodule DbserviceWeb.ResourceController do
     code = params["code"]
 
     case Resources.get_resource_by_code(code) do
-      nil ->
-        create_new_resource(conn, params)
-
-      _existing_resource ->
-        conn
-        |> put_status(:unprocessable_entity)
-        |> json(%{error: "This test code has already been used."})
+      nil -> create_new_resource(conn, params)
+      _existing_resource -> {:error, "This test code has already been used."}
     end
   end
 
