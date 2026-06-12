@@ -457,6 +457,13 @@ defmodule Dbservice.UsersTest do
       assert Users.get_teacher_by_teacher_id(teacher.teacher_id) == teacher
     end
 
+    test "get_teacher_by_teacher_id/1 returns nil for nil or blank teacher_id" do
+      {_user, _teacher} = teacher_fixture()
+
+      assert Users.get_teacher_by_teacher_id(nil) == nil
+      assert Users.get_teacher_by_teacher_id("") == nil
+    end
+
     test "create_teacher_with_user/1 creates a user and then a teacher" do
       valid_attrs = %{
         designation: "some designation",

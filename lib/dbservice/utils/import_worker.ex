@@ -899,6 +899,18 @@ defmodule Dbservice.DataImport.ImportWorker do
   end
 
   defp process_teacher_record(record) do
+    teacher_id = record["teacher_id"]
+
+    if is_nil(teacher_id) or teacher_id == "" do
+      # Bulk import stays strict: code-less teachers are created deliberately
+      # (LMS backfill / admin UI), never as an import side effect.
+      {:error, "teacher_id is required for teacher import rows"}
+    else
+      do_process_teacher_record(record)
+    end
+  end
+
+  defp do_process_teacher_record(record) do
     case Users.get_teacher_by_teacher_id(record["teacher_id"]) do
       nil ->
         with {:ok, teacher} <- Users.create_teacher_with_user(record),
