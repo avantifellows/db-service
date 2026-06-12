@@ -6,7 +6,8 @@ defmodule DbserviceWeb.TeacherControllerTest do
   @create_attrs %{
     designation: "some designation",
     teacher_id: "some teacher id",
-    is_af_teacher: false
+    is_af_teacher: false,
+    exit_date: "2026-05-31"
   }
   @update_attrs %{
     designation: "some updated designation",
@@ -52,6 +53,7 @@ defmodule DbserviceWeb.TeacherControllerTest do
       assert %{
                "id" => ^id,
                "designation" => "some designation",
+               "exit_date" => "2026-05-31",
                "teacher_id" => "some teacher id"
              } = json_response(conn, 200)
     end

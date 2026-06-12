@@ -16,6 +16,7 @@ defmodule DbserviceWeb.SwaggerSchema.Teacher do
             teacher_id(:string, "Unique teacher ID")
             subject_id(:integer, "Subject ID associated with the teacher")
             is_af_teacher(:boolean, "Indicates whether the teacher is an AF teacher or not")
+            exit_date(:string, "Date the teacher exited; null while active", format: "date")
             user_id(:integer, "User ID for the teacher")
             user(:object, "User details associated with the teacher")
           end
