@@ -59,6 +59,13 @@ defmodule DbserviceWeb.ResourceJSON do
         }
       end)
 
+    # difficulty_level is global across a resource's curriculum rows, so take it from the first.
+    difficulty_level =
+      case resource_curriculums do
+        [rc | _] -> rc.difficulty_level
+        [] -> nil
+      end
+
     base_map = %{
       id: resource.id,
       name: resource.name,
@@ -77,7 +84,8 @@ defmodule DbserviceWeb.ResourceJSON do
       cms_status_id: resource.cms_status_id,
       exam_ids: resource.exam_ids,
       exam_details: exam_details,
-      curriculum_grades: curriculum_grades
+      curriculum_grades: curriculum_grades,
+      difficulty_level: difficulty_level
     }
 
     # Add curriculum data if it exists

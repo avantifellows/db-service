@@ -731,10 +731,13 @@ defmodule Dbservice.Resources do
     end
   end
 
-  # When only `difficulty_level` is sent (no `curriculum_grades`), `update_resource_curriculums`
-  # is skipped — but difficulty_level lives on resource_curriculum, so we update existing rows here.
+  # difficulty_level lives on resource_curriculum, so update existing rows whenever it is sent.
+  # This also covers the case where `curriculum_grades` is present but unchanged (so
+  # `update_resource_curriculums` skips the replace): only the difficulty changed and must
+  # still be applied. When rows were replaced above, they already carry the new difficulty,
+  # so the `!=` guard below makes this a no-op.
   defp update_resource_curriculum_difficulty_level(resource, params) do
-    if Map.has_key?(params, "difficulty_level") and not Map.has_key?(params, "curriculum_grades") do
+    if Map.has_key?(params, "difficulty_level") do
       difficulty_level = Map.get(params, "difficulty_level")
 
       resource.id
