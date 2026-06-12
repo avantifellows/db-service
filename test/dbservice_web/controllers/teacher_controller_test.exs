@@ -17,7 +17,10 @@ defmodule DbserviceWeb.TeacherControllerTest do
     designation: nil,
     teacher_id: nil,
     is_af_teacher: nil,
-    user_id: nil
+    user_id: nil,
+    # teacher_id is optional since 20260612110000, so an invalid payload
+    # must fail elsewhere: the user changeset rejects non-numeric phones.
+    phone: "not-a-phone"
   }
 
   setup %{conn: conn} do
