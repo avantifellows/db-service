@@ -576,13 +576,20 @@ defmodule Dbservice.Users do
 
   @doc """
   Gets a Teacher by teacher ID.
-  Raises `Ecto.NoResultsError` if the Batch does not exist.
+  Returns nil when no teacher matches, or when the given teacher ID is
+  nil/blank (teacher_id is optional, so code-less teachers exist and
+  callers may pass through missing request/import values).
   ## Examples
-      iex> get_teacher_by_teacher_id(1234)
+      iex> get_teacher_by_teacher_id("AF123")
       %Teacher{}
-      iex> get_teacher_by_teacher_id(abc)
-      ** (Ecto.NoResultsError)
+      iex> get_teacher_by_teacher_id("no-such-code")
+      nil
+      iex> get_teacher_by_teacher_id(nil)
+      nil
   """
+  def get_teacher_by_teacher_id(teacher_id) when is_nil(teacher_id) or teacher_id == "",
+    do: nil
+
   def get_teacher_by_teacher_id(teacher_id) do
     Repo.get_by(Teacher, teacher_id: teacher_id)
   end

@@ -31,6 +31,7 @@ defmodule Dbservice.CentreSchemaTest do
                "is_active",
                "is_physical",
                "name",
+               "program_id",
                "school_id",
                "stream_codes",
                "sub_category_code",
@@ -70,6 +71,7 @@ defmodule Dbservice.CentreSchemaTest do
       ])
 
       assert columns("centres")["school_id"].nullable?
+      assert columns("centres")["program_id"].nullable?
       assert columns("centres")["type_code"].nullable?
       assert columns("centres")["category_code"].nullable?
       assert columns("centres")["sub_category_code"].nullable?
@@ -90,6 +92,7 @@ defmodule Dbservice.CentreSchemaTest do
 
       assert indexes("centre_options") |> Enum.any?(&(&1 == ["option_set_id"]))
       assert indexes("centres") |> Enum.any?(&(&1 == ["school_id"]))
+      assert indexes("centres") |> Enum.any?(&(&1 == ["program_id"]))
       assert indexes("centres") |> Enum.any?(&(&1 == ["type_code"]))
       assert indexes("centres") |> Enum.any?(&(&1 == ["category_code"]))
       assert indexes("centres") |> Enum.any?(&(&1 == ["sub_category_code"]))
@@ -100,6 +103,7 @@ defmodule Dbservice.CentreSchemaTest do
              ]
 
       assert foreign_keys("centres") == [
+               {"program_id", "program", "id"},
                {"school_id", "school", "id"}
              ]
     end

@@ -19,6 +19,7 @@ defmodule DbserviceWeb.TeacherJSON do
       teacher_id: teacher.teacher_id,
       subject_id: teacher.subject_id,
       is_af_teacher: teacher.is_af_teacher,
+      exit_date: teacher.exit_date,
       user_id: teacher.user_id,
       user: if(teacher.user, do: UserJSON.render(teacher.user), else: nil)
     }
