@@ -4,9 +4,12 @@ defmodule DbserviceWeb.ResourceController do
   import Ecto.Query
 
   alias Dbservice.Chapters.Chapter
+  alias Dbservice.Languages
   alias Dbservice.Languages.Language
   alias Dbservice.Paragraphs
+  alias Dbservice.ProblemLanguages
   alias Dbservice.Repo
+  alias Dbservice.ResourceCurriculums
   alias Dbservice.Resources
   alias Dbservice.Resources.ProblemLanguage
   alias Dbservice.Resources.Resource
@@ -134,8 +137,61 @@ defmodule DbserviceWeb.ResourceController do
 
     with {:ok, %Resource{} = resource} <-
            Resources.update_resource_and_associations(resource, params) do
-      render(conn, :show, resource: resource)
+      render_updated_resource(conn, resource, params)
     end
+  end
+
+  # For problems, the response must also include the problem_lang data (meta_data)
+  # and, for comprehension subtypes, the associated paragraph. Reuse the same
+  # representation as GET /api/resource/problem/.../... . Fall back to the base
+  # resource representation when the language data cannot be resolved.
+  defp render_updated_resource(conn, %Resource{type: "problem"} = resource, params) do
+    case fetch_problem_lang_for_render(resource, params["lang_code"]) do
+      {%ProblemLanguage{} = problem_lang, resource_curriculum} ->
+        render(conn, :problem_lang,
+          resource: resource,
+          meta_data: problem_lang.meta_data,
+          lang_code: problem_lang.language.code,
+          resource_curriculum: resource_curriculum,
+          paragraph: problem_lang.paragraph
+        )
+
+      nil ->
+        render(conn, :show, resource: resource)
+    end
+  end
+
+  defp render_updated_resource(conn, resource, _params) do
+    render(conn, :show, resource: resource)
+  end
+
+  defp fetch_problem_lang_for_render(resource, lang_code) do
+    with %ProblemLanguage{} = problem_lang <- get_problem_language(resource, lang_code),
+         %_{} = resource_curriculum <- first_resource_curriculum(resource) do
+      {Repo.preload(problem_lang, [:paragraph, :language]), resource_curriculum}
+    else
+      _ -> nil
+    end
+  end
+
+  defp get_problem_language(resource, lang_code) when is_binary(lang_code) and lang_code != "" do
+    case Languages.get_language_by_code(lang_code) do
+      %Language{id: lang_id} ->
+        ProblemLanguages.get_problem_language_by_problem_id_and_language_id(resource.id, lang_id)
+
+      _ ->
+        nil
+    end
+  end
+
+  defp get_problem_language(resource, _lang_code) do
+    Repo.one(from(pl in ProblemLanguage, where: pl.res_id == ^resource.id, limit: 1))
+  end
+
+  defp first_resource_curriculum(resource) do
+    resource.id
+    |> ResourceCurriculums.list_resource_curriculums_by_resource_id()
+    |> List.first()
   end
 
   swagger_path :move_resources do
