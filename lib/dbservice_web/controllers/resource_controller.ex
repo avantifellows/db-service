@@ -83,7 +83,7 @@ defmodule DbserviceWeb.ResourceController do
 
     case Resources.get_resource_by_code(code) do
       nil -> create_new_resource(conn, params)
-      existing_resource -> update_existing_resource(conn, existing_resource, params)
+      _existing_resource -> {:error, "This test code has already been used."}
     end
   end
 
