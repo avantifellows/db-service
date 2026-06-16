@@ -47,6 +47,20 @@ defmodule Dbservice.AcademicMentorshipSchemaTest do
              |> Enum.member?("am_runtime_settings_singleton_check")
     end
 
+    test "seeds the singleton runtime settings row" do
+      result =
+        Repo.query!(
+          """
+          SELECT id
+          FROM acad_mentorship_runtime_settings
+          WHERE id = 'global'
+          """,
+          []
+        )
+
+      assert result.rows == [["global"]]
+    end
+
     test "exposes core workflow columns expected by AI Mentorship Guide" do
       assert_required_columns("acad_mentorship_inference_sessions", [
         "id",

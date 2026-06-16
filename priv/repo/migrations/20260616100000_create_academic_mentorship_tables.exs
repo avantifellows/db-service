@@ -27,6 +27,15 @@ defmodule Dbservice.Repo.Migrations.CreateAcademicMentorshipTables do
                "(concurrency IS NULL OR concurrency >= 1) AND (timeout_seconds IS NULL OR timeout_seconds >= 0) AND (validation_timeout_seconds IS NULL OR validation_timeout_seconds >= 0)"
            )
 
+    execute(
+      """
+      INSERT INTO acad_mentorship_runtime_settings (id, created_at, updated_at)
+      VALUES ('global', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)
+      ON CONFLICT (id) DO NOTHING
+      """,
+      "DELETE FROM acad_mentorship_runtime_settings WHERE id = 'global'"
+    )
+
     create table(:acad_mentorship_prompt_versions, primary_key: false) do
       identity_primary_key()
 
