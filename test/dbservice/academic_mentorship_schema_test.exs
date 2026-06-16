@@ -160,6 +160,9 @@ defmodule Dbservice.AcademicMentorshipSchemaTest do
                "acad_mentorship_eval_run_benchmarks"
              )
 
+      assert check_def("acad_mentorship_eval_run_benchmarks", "am_eval_benchmarks_status_check") =~
+               "'scoring'::character varying"
+
       assert "am_eval_scores_score_check" in check_names("acad_mentorship_eval_scores")
     end
 
@@ -271,6 +274,23 @@ defmodule Dbservice.AcademicMentorshipSchemaTest do
       [table]
     ).rows
     |> Enum.map(fn [name] -> name end)
+  end
+
+  defp check_def(table, constraint_name) do
+    Repo.query!(
+      """
+      SELECT pg_get_constraintdef(c.oid)
+      FROM pg_constraint c
+      JOIN pg_class t ON t.oid = c.conrelid
+      JOIN pg_namespace n ON n.oid = t.relnamespace
+      WHERE n.nspname = 'public'
+        AND t.relname = $1
+        AND c.conname = $2
+      """,
+      [table, constraint_name]
+    ).rows
+    |> List.first()
+    |> then(fn [definition] -> definition end)
   end
 
   defp foreign_keys(table) do
