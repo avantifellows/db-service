@@ -12,7 +12,7 @@ defmodule Dbservice.Services.GurukulConfigServiceTest do
   import Dbservice.ProductsFixtures
 
   defp default_group_fixture(config) do
-    Repo.insert!(%AuthGroup{name: "DefaultGroup", input_schema: %{"gurukul_config" => config}})
+    Repo.insert!(%AuthGroup{name: "DefaultGroup", locale_data: %{"gurukul_config" => config}})
   end
 
   defp program_fixture(config) do

@@ -7,7 +7,7 @@ defmodule Dbservice.Services.GurukulConfigService do
   Each layer namespaces its Gurukul config under the `"gurukul_config"` key so
   the same column can hold config for other modules (CMS, LMS, etc.) without
   collision:
-    * defaultgroup: the `DefaultGroup` auth_group's `input_schema["gurukul_config"]`
+    * defaultgroup: the `DefaultGroup` auth_group's `locale_data["gurukul_config"]`
     * program:      `program.config["gurukul_config"]`
     * batch:        `batch.metadata["gurukul_config"]`
 
@@ -100,7 +100,7 @@ defmodule Dbservice.Services.GurukulConfigService do
 
   defp default_config do
     case Repo.get_by(AuthGroup, name: @default_group_name) do
-      %AuthGroup{input_schema: input_schema} -> gurukul_section(input_schema)
+      %AuthGroup{locale_data: locale_data} -> gurukul_section(locale_data)
       _ -> %{}
     end
   end
