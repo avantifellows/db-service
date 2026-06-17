@@ -235,6 +235,10 @@ defmodule DbserviceWeb.ResourceJSON do
       end)
 
     base
+    # Drop curriculum_grades: this response exposes curriculum_id/grade_id as
+    # top-level fields (merged below from the resolved resource_curriculum), so
+    # the curriculum_grades list is redundant here.
+    |> Map.delete(:curriculum_grades)
     |> Map.put(:meta_data, meta_data)
     |> Map.put(:lang_code, lang_code)
     |> Map.merge(%{
