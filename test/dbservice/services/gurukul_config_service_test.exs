@@ -15,6 +15,10 @@ defmodule Dbservice.Services.GurukulConfigServiceTest do
     Repo.insert!(%AuthGroup{name: "DefaultGroup", locale_data: %{"gurukul_config" => config}})
   end
 
+  defp auth_group_fixture(name, config) do
+    Repo.insert!(%AuthGroup{name: name, locale_data: %{"gurukul_config" => config}})
+  end
+
   defp program_fixture(config) do
     product = product_fixture()
 
@@ -186,6 +190,87 @@ defmodule Dbservice.Services.GurukulConfigServiceTest do
       user = user_fixture()
 
       assert {%{}, %{source: "defaultgroup"}} = GurukulConfigService.resolve_for_user(user.id)
+    end
+
+    test "merges the user's auth_group config over defaultgroup when there is no batch/program" do
+      default_group_fixture(%{
+        "showTests" => true,
+        "showClassLibrary" => true,
+        "homeTabLabel" => "Home"
+      })
+
+      auth_group =
+        auth_group_fixture("EnableSchools", %{
+          "showClassLibrary" => false,
+          "testsSectionTitle" => "School Test"
+        })
+
+      user = user_fixture()
+      enroll(user, "auth_group", auth_group.id, ~D[2024-07-27])
+
+      {config, resolved_from} = GurukulConfigService.resolve_for_user(user.id)
+
+      assert config == %{
+               "showTests" => true,
+               "showClassLibrary" => false,
+               "homeTabLabel" => "Home",
+               "testsSectionTitle" => "School Test"
+             }
+
+      assert resolved_from.source == "auth_group"
+      assert resolved_from.auth_group_id == auth_group.id
+      assert resolved_from.batch_id == nil
+      assert resolved_from.program_id == nil
+    end
+
+    test "reports auth_group source even when the auth_group has no gurukul_config" do
+      default_group_fixture(%{"showTests" => true})
+      auth_group = Repo.insert!(%AuthGroup{name: "EnableSchools", locale_data: %{}})
+
+      user = user_fixture()
+      enroll(user, "auth_group", auth_group.id, ~D[2024-07-27])
+
+      {config, resolved_from} = GurukulConfigService.resolve_for_user(user.id)
+
+      assert config == %{"showTests" => true}
+      assert resolved_from.source == "auth_group"
+      assert resolved_from.auth_group_id == auth_group.id
+    end
+
+    test "batch wins over auth_group over defaultgroup" do
+      default_group_fixture(%{
+        "showTests" => true,
+        "showClassLibrary" => true,
+        "homeTabLabel" => "Home"
+      })
+
+      auth_group =
+        auth_group_fixture("EnableSchools", %{
+          "showClassLibrary" => false,
+          "homeTabLabel" => "School Home"
+        })
+
+      program = program_fixture(%{"testsSectionTitle" => "Program Test"})
+      batch = batch_fixture(program, %{"gurukul_config" => %{"homeTabLabel" => "Batch Home"}})
+
+      user = user_fixture()
+      enroll(user, "auth_group", auth_group.id, ~D[2024-07-27])
+      enroll(user, "batch", batch.id, ~D[2025-06-01])
+
+      {config, resolved_from} = GurukulConfigService.resolve_for_user(user.id)
+
+      assert config == %{
+               "showTests" => true,
+               # auth_group overrides defaultgroup
+               "showClassLibrary" => false,
+               # batch overrides auth_group
+               "homeTabLabel" => "Batch Home",
+               "testsSectionTitle" => "Program Test"
+             }
+
+      assert resolved_from.source == "batch"
+      assert resolved_from.batch_id == batch.id
+      assert resolved_from.auth_group_id == auth_group.id
     end
   end
 end
