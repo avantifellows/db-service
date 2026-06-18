@@ -12,8 +12,10 @@ defmodule DbserviceWeb.GurukulConfigController do
 
     description(
       "Resolves the merged Gurukul UI configuration using the fallback chain " <>
-        "batch -> program -> defaultgroup. Provide exactly one of user_id, batch_id " <>
-        "or program_id. For user_id the oldest current batch/program is used."
+        "batch -> program -> auth_group -> defaultgroup. Provide exactly one of " <>
+        "user_id, batch_id or program_id. For user_id the oldest current " <>
+        "batch/program is used, and the user's current auth_group config is " <>
+        "applied as a base layer (batch_id/program_id skip the auth_group layer)."
     )
 
     parameters do
