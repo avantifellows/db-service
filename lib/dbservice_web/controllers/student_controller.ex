@@ -73,15 +73,23 @@ defmodule DbserviceWeb.StudentController do
   end
 
   def index(conn, params) do
-    query =
+    # `student_id` is only unique within an auth group. When an `auth_group` (name) or
+    # `auth_group_id` filter is supplied, scope the result to students that currently
+    # belong to that auth group (via their auth_group enrollment record). Remaining params
+    # are treated as direct Student column filters.
+    {auth_group_id, params} = pop_auth_group_filter(params)
+
+    base =
       from(m in Student,
         order_by: [asc: m.id],
         offset: ^params["offset"],
         limit: ^params["limit"]
       )
 
+    base = maybe_scope_to_auth_group(base, auth_group_id)
+
     query =
-      Enum.reduce(params, query, fn {key, value}, acc ->
+      Enum.reduce(params, base, fn {key, value}, acc ->
         case String.to_existing_atom(key) do
           :offset -> acc
           :limit -> acc
@@ -91,6 +99,33 @@ defmodule DbserviceWeb.StudentController do
 
     student = Repo.all(query)
     render(conn, :index, student: student)
+  end
+
+  # Removes the auth-group filter keys from params and resolves them to an auth_group id.
+  defp pop_auth_group_filter(params) do
+    {auth_group_id, params} = Map.pop(params, "auth_group_id")
+    {auth_group_name, params} = Map.pop(params, "auth_group")
+
+    resolved =
+      Users.resolve_auth_group_id(%{
+        "auth_group_id" => auth_group_id,
+        "auth_group" => auth_group_name
+      })
+
+    {resolved, params}
+  end
+
+  defp maybe_scope_to_auth_group(query, nil), do: query
+
+  defp maybe_scope_to_auth_group(query, auth_group_id) do
+    from(s in query,
+      join: er in EnrollmentRecord,
+      on: er.user_id == s.user_id,
+      where:
+        er.group_type == "auth_group" and
+          er.group_id == ^auth_group_id and
+          er.is_current == true
+    )
   end
 
   swagger_path :create do

@@ -382,6 +382,96 @@ defmodule Dbservice.UsersTest do
     end
   end
 
+  describe "create_or_update_student/1 auth-group scoping" do
+    alias Dbservice.AuthGroups
+    alias Dbservice.Users.Student
+    alias Dbservice.EnrollmentRecords.EnrollmentRecord
+    alias Dbservice.Repo
+
+    import Ecto.Query
+
+    # Creates an auth group together with its "auth_group" group wrapper
+    # (child_id = auth_group.id), which is the data model EnrollmentService relies on to
+    # resolve ownership.
+    defp setup_auth_group(name) do
+      {:ok, auth_group} = AuthGroups.create_auth_group_from_import(%{"name" => name})
+      auth_group
+    end
+
+    defp student_params(student_id, auth_group_name, extra \\ %{}) do
+      Map.merge(
+        %{
+          "student_id" => student_id,
+          "auth_group" => auth_group_name,
+          "first_name" => "Test",
+          "last_name" => "Student",
+          "role" => "student",
+          "start_date" => "2025-01-01"
+        },
+        extra
+      )
+    end
+
+    defp current_auth_group_enrollment(user_id) do
+      Repo.one(
+        from er in EnrollmentRecord,
+          where:
+            er.user_id == ^user_id and er.group_type == "auth_group" and er.is_current == true
+      )
+    end
+
+    test "same student_id in different auth groups creates two distinct students" do
+      auth_a = setup_auth_group("AuthA")
+      auth_b = setup_auth_group("AuthB")
+
+      assert {:ok, %Student{} = s1} =
+               Users.create_or_update_student(student_params("S1", "AuthA"))
+
+      assert {:ok, %Student{} = s2} =
+               Users.create_or_update_student(student_params("S1", "AuthB"))
+
+      assert s1.id != s2.id
+      assert s1.student_id == "S1"
+      assert s2.student_id == "S1"
+
+      # Each student owns a current auth-group enrollment record for its own auth group.
+      assert current_auth_group_enrollment(s1.user_id).group_id == auth_a.id
+      assert current_auth_group_enrollment(s2.user_id).group_id == auth_b.id
+    end
+
+    test "same student_id within the same auth group updates the existing student" do
+      setup_auth_group("AuthA")
+
+      assert {:ok, %Student{} = s1} =
+               Users.create_or_update_student(student_params("S1", "AuthA"))
+
+      assert {:ok, %Student{} = s2} =
+               Users.create_or_update_student(
+                 student_params("S1", "AuthA", %{"first_name" => "Updated"})
+               )
+
+      assert s1.id == s2.id
+      assert Users.get_user!(s2.user_id).first_name == "Updated"
+    end
+
+    test "duplicate apaar_id across auth groups is still rejected" do
+      setup_auth_group("AuthA")
+      setup_auth_group("AuthB")
+
+      assert {:ok, %Student{}} =
+               Users.create_or_update_student(
+                 student_params("S1", "AuthA", %{"apaar_id" => "123456789012"})
+               )
+
+      assert {:error, message} =
+               Users.create_or_update_student(
+                 student_params("S2", "AuthB", %{"apaar_id" => "123456789012"})
+               )
+
+      assert message =~ "APAAR ID"
+    end
+  end
+
   describe "teacher" do
     alias Dbservice.Users.Teacher
 
