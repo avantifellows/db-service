@@ -1,6 +1,8 @@
 defmodule DbserviceWeb.HealthController do
   use DbserviceWeb, :controller
 
+  require Logger
+
   alias Dbservice.Repo
 
   # Liveness probe used by the ALB target group. Intentionally does NOT touch
@@ -25,9 +27,13 @@ defmodule DbserviceWeb.HealthController do
         |> json(%{status: "ok"})
 
       {:error, reason} ->
+        # This endpoint is public (see AuthenticationMiddlewarePlug @public_paths),
+        # so don't leak DB internals to the caller — log them server-side instead.
+        Logger.error("Readiness check failed: #{inspect(reason)}")
+
         conn
         |> put_status(:service_unavailable)
-        |> json(%{status: "error", reason: inspect(reason)})
+        |> json(%{status: "error"})
     end
   end
 end
