@@ -3,6 +3,7 @@ defmodule Dbservice.Topics.Topic do
 
   use Ecto.Schema
   import Ecto.Changeset
+  import Dbservice.Utils.Util, only: [validate_unique_field: 2]
 
   alias Dbservice.Chapters.Chapter
   alias Dbservice.Concepts.Concept
@@ -32,19 +33,6 @@ defmodule Dbservice.Topics.Topic do
       :chapter_id,
       :cms_status_id
     ])
-    |> validate_code_uniqueness()
-  end
-
-  # Application-level guard against duplicate `code` values. A DB-level unique index is the
-  # eventual guarantee, but it can't be added while existing duplicates remain in the
-  # database; until those are cleaned up, this rejects new collisions coming through the API
-  # and CSV import. Only enforced when a code is actually supplied (the column is still
-  # nullable for now). Not race-safe on its own - that comes with the future unique index.
-  defp validate_code_uniqueness(changeset) do
-    case get_change(changeset, :code) do
-      nil -> changeset
-      "" -> changeset
-      _code -> unsafe_validate_unique(changeset, :code, Dbservice.Repo)
-    end
+    |> validate_unique_field(:code)
   end
 end
