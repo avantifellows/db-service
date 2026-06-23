@@ -20,7 +20,6 @@ defmodule DbserviceWeb.SwaggerSchema.Student do
             stream(:string, "Stream")
             user_id(:integer, "User ID for the student")
             physically_handicapped(:boolean, "Physically hadicapped")
-            family_income(:string, "Annual income of family")
             father_profession(:string, "Father's profession")
             mother_profession(:String, "Mother's profession")
             mother_education_level(:string, "Mother's education level")
@@ -49,7 +48,6 @@ defmodule DbserviceWeb.SwaggerSchema.Student do
             stream: "PCB",
             user_id: 1,
             physically_handicapped: false,
-            family_income: "3LPA-6LPA",
             father_profession: "Unemployed",
             father_education_level: "UG",
             mother_profession: "Housewife",
