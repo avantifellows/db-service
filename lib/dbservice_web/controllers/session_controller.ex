@@ -39,39 +39,65 @@ defmodule DbserviceWeb.SessionController do
       params(:query, :string, "The name the session", required: false, name: "name")
 
       params(:query, :string, "The platform id the session", required: false, name: "platform_id")
+
+      params(:query, :string, "Inclusive lower bound for session end time",
+        required: false,
+        name: "end_time_gte"
+      )
+
+      params(:query, :string, "Exclusive upper bound for session end time",
+        required: false,
+        name: "end_time_lt"
+      )
     end
 
     response(200, "OK", Schema.ref(:Sessions))
   end
 
   def index(conn, params) do
+    case build_session_index_query(params) do
+      {:ok, query} ->
+        session = Repo.all(query)
+        render(conn, :index, session: session)
+
+      {:error, message} ->
+        conn
+        |> put_status(:bad_request)
+        |> json(%{error: message})
+    end
+  end
+
+  defp build_session_index_query(params) do
     query = base_session_query(params)
 
-    query =
-      Enum.reduce(params, query, fn {key, value}, acc ->
+    Enum.reduce_while(params, {:ok, query}, fn
+      {"end_time_gte", value}, {:ok, acc} ->
+        apply_end_time_filter(:gte, value, acc)
+
+      {"end_time_lt", value}, {:ok, acc} ->
+        apply_end_time_filter(:lt, value, acc)
+
+      {key, value}, {:ok, acc} ->
         case String.to_existing_atom(key) do
           :offset ->
-            acc
+            {:cont, {:ok, acc}}
 
           :limit ->
-            acc
+            {:cont, {:ok, acc}}
 
           :sort_order ->
-            acc
+            {:cont, {:ok, acc}}
 
           :session_id_is_null ->
-            apply_session_id_null_filter(value, acc)
+            {:cont, {:ok, apply_session_id_null_filter(value, acc)}}
 
           :is_quiz ->
-            apply_is_quiz_filter(value, acc)
+            {:cont, {:ok, apply_is_quiz_filter(value, acc)}}
 
           atom ->
-            apply_filter_based_on_schema(atom, key, value, acc)
+            {:cont, {:ok, apply_filter_based_on_schema(atom, key, value, acc)}}
         end
-      end)
-
-    session = Repo.all(query)
-    render(conn, :index, session: session)
+    end)
   end
 
   defp apply_filter_based_on_schema(atom, key, value, acc) do
@@ -82,6 +108,31 @@ defmodule DbserviceWeb.SessionController do
         where: fragment("?->>? = ?", u.meta_data, ^key, ^value)
     end
   end
+
+  defp apply_end_time_filter(operator, value, acc) do
+    case parse_datetime(value) do
+      {:ok, datetime} ->
+        query =
+          case operator do
+            :gte -> from(u in acc, where: u.end_time >= ^datetime)
+            :lt -> from(u in acc, where: u.end_time < ^datetime)
+          end
+
+        {:cont, {:ok, query}}
+
+      :error ->
+        {:halt, {:error, "Invalid end_time range timestamp"}}
+    end
+  end
+
+  defp parse_datetime(value) when is_binary(value) do
+    case DateTime.from_iso8601(value) do
+      {:ok, datetime, _offset} -> {:ok, DateTime.truncate(datetime, :second)}
+      _ -> :error
+    end
+  end
+
+  defp parse_datetime(_value), do: :error
 
   defp extract_sort_order(params) do
     case params["sort_order"] do
