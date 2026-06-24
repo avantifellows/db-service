@@ -2,16 +2,18 @@ defmodule Dbservice.Repo.Migrations.CreateLmsTeacherFeedbackTable do
   use Ecto.Migration
 
   # Teacher Feedback: one row per teacher per setup. A Program Manager sets up a
-  # student-feedback round for a school+batch and a set of teachers; the LMS app
-  # creates one quiz + one session per teacher and records the mapping here.
+  # student-feedback round for a centre + batch and a set of teachers; the LMS app
+  # records the mapping here and creates one db-service session per teacher. The
+  # sessionCreator Lambda then builds the quiz and fills the session's links.
   #
   # Operational LMS-owned data (like lms_pm_school_visits): the LMS app reads and
   # writes these rows directly via the pg pool. db-service owns the canonical
   # schema only; there is no schema/context/controller here.
   #
   # A "cycle" = rows sharing setup_run_id (all of one setup); they also share
-  # (school_code, cycle_label). Feedback responses live in BigQuery and are joined
-  # by quiz_id (= BigQuery test_id) / source_id (= BigQuery cms_test_id).
+  # (school_code, cycle_label). The quiz id and portal/admin links are resolved by
+  # joining session_pk to the session table, not stored here. Feedback responses
+  # land in BigQuery, keyed by source_id (= the session's cms_test_id).
   def change do
     create table(:lms_teacher_feedback) do
       # Grouping / identity
