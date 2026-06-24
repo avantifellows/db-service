@@ -169,16 +169,26 @@ defmodule Dbservice.Users do
   def get_student!(id), do: Repo.get!(Student, id)
 
   @doc """
-  Gets a student by student ID.
-  Raises `Ecto.NoResultsError` if the Student does not exist.
+  Gets a student by `student_id`, or `nil` if none exists.
+
+  `student_id` is not globally unique - the same id can exist across auth groups - so this
+  returns the earliest-created matching student rather than raising `Ecto.MultipleResultsError`
+  (which `Repo.get_by/2` would). When an auth group is in context, prefer
+  `get_student_by_student_id_and_auth_group/2` for an unambiguous match.
+
   ## Examples
-      iex> get_student_by_student_id(1234)
+      iex> get_student_by_student_id("1234")
       %Student{}
-      iex> get_student_by_student_id(abc)
-      ** (Ecto.NoResultsError)
+      iex> get_student_by_student_id("does-not-exist")
+      nil
   """
   def get_student_by_student_id(student_id) do
-    Repo.get_by(Student, student_id: student_id)
+    from(s in Student,
+      where: s.student_id == ^student_id,
+      order_by: [asc: s.id],
+      limit: 1
+    )
+    |> Repo.one()
   end
 
   @doc """

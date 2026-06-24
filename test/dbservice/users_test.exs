@@ -470,6 +470,23 @@ defmodule Dbservice.UsersTest do
 
       assert message =~ "APAAR ID"
     end
+
+    test "get_student_by_student_id returns earliest match without raising on duplicates" do
+      setup_auth_group("AuthA")
+      setup_auth_group("AuthB")
+
+      assert {:ok, %Student{} = first} =
+               Users.create_or_update_student(student_params("S1", "AuthA"))
+
+      assert {:ok, %Student{} = second} =
+               Users.create_or_update_student(student_params("S1", "AuthB"))
+
+      # Two rows now share student_id "S1"; the legacy single-id lookup must not raise
+      # Ecto.MultipleResultsError and should return the earliest-created row deterministically.
+      assert first.id < second.id
+      assert %Student{id: id} = Users.get_student_by_student_id("S1")
+      assert id == first.id
+    end
   end
 
   describe "teacher" do
