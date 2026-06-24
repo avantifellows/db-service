@@ -19,11 +19,16 @@ defmodule Dbservice.Repo.Migrations.CreateLmsTeacherFeedbackTable do
       add :cycle_label, :string, size: 50, null: false
       add :source_id, :string, size: 255, null: false
 
-      # Scope
+      # Scope. Teachers map to a CENTRE (not a school): a school can have both a
+      # CoE and a Nodal centre, so the PM picks a centre and we record it here.
+      # No FK — this stays operational/decoupled like the rest of the table.
       add :school_code, :string, size: 20, null: false
-      add :batch_parent_id, :string, size: 255, null: false
+      add :centre_id, :integer
+      add :centre_name, :string, size: 255
+      add :batch_parent_id, :string, size: 255
       add :batch_class_ids, {:array, :string}, default: [], null: false
-      add :grade, :integer, null: false
+      # grade is informational only; a feedback round can span grades.
+      add :grade, :integer
 
       # Teacher (id nullable: free-text fallback when no roster id is available)
       add :teacher_id, :string, size: 50
@@ -55,6 +60,7 @@ defmodule Dbservice.Repo.Migrations.CreateLmsTeacherFeedbackTable do
            )
 
     create index(:lms_teacher_feedback, [:school_code])
+    create index(:lms_teacher_feedback, [:centre_id])
     create index(:lms_teacher_feedback, [:setup_run_id])
     create index(:lms_teacher_feedback, [:quiz_id])
     create index(:lms_teacher_feedback, [:school_code, :cycle_label])
