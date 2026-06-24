@@ -46,7 +46,11 @@ defmodule Dbservice.Repo.Migrations.CreateLmsTeacherFeedbackTable do
       # Lifecycle: each teacher's setup can succeed or fail independently
       add :status, :string, size: 20, default: "pending", null: false
 
-      # Response window (stored UTC)
+      # Response window, stored in UTC (this table's convention, like the
+      # timestamps below). NOTE: the db-service `session` table stores the same
+      # window in IST (its legacy convention), so these will read ~5.5h earlier
+      # than session.start_time/end_time for the same round — do NOT compare them
+      # raw. The LMS UI tags these as UTC and renders in the viewer's timezone.
       add :start_time, :naive_datetime
       add :end_time, :naive_datetime
 
