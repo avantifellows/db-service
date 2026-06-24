@@ -171,18 +171,30 @@ defmodule Dbservice.Users do
   @doc """
   Gets a student by `student_id`, or `nil` if none exists.
 
-  `student_id` is not globally unique - the same id can exist across auth groups - so this
-  returns the earliest-created matching student rather than raising `Ecto.MultipleResultsError`
-  (which `Repo.get_by/2` would). When an auth group is in context, prefer
-  `get_student_by_student_id_and_auth_group/2` for an unambiguous match.
+  `student_id` is not globally unique - the same id can exist across auth groups. Pass a
+  params map carrying `auth_group` (name) or `auth_group_id` to get an unambiguous,
+  auth-group-scoped match (the student in *that* group, or `nil`). This is what identity-
+  sensitive callers should do so they never act on another auth group's student.
+
+  Without a resolvable auth group it falls back to the earliest-created matching student,
+  rather than raising `Ecto.MultipleResultsError` (which `Repo.get_by/2` would on duplicates).
 
   ## Examples
       iex> get_student_by_student_id("1234")
       %Student{}
+      iex> get_student_by_student_id("1234", %{"auth_group" => "DelhiStudents"})
+      %Student{}
       iex> get_student_by_student_id("does-not-exist")
       nil
   """
-  def get_student_by_student_id(student_id) do
+  def get_student_by_student_id(student_id, auth_group_params \\ %{}) do
+    case resolve_auth_group_id(auth_group_params) do
+      nil -> get_student_by_student_id_unscoped(student_id)
+      auth_group_id -> get_student_by_student_id_and_auth_group(student_id, auth_group_id)
+    end
+  end
+
+  defp get_student_by_student_id_unscoped(student_id) do
     from(s in Student,
       where: s.student_id == ^student_id,
       order_by: [asc: s.id],

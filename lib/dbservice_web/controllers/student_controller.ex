@@ -271,8 +271,9 @@ defmodule DbserviceWeb.StudentController do
   end
 
   def enrolled(conn, params) do
-    # Retrieve the student information based on the provided student ID
-    student = Users.get_student_by_student_id(params["student_id"])
+    # Retrieve the student information based on the provided student ID, scoped to the auth
+    # group when one is supplied (student_id is unique only within an auth group).
+    student = Users.get_student_by_student_id(params["student_id"], params)
     user_id = student.user_id
 
     # Retrieve the group user information based on the user ID
@@ -520,11 +521,14 @@ defmodule DbserviceWeb.StudentController do
     response(200, "OK", Schema.ref(:VerificationResult))
   end
 
-  def verify_student(conn, %{
-        "student_id" => student_id,
-        "verification_params" => verification_params
-      }) do
-    case get_student_and_user(student_id) do
+  def verify_student(
+        conn,
+        %{
+          "student_id" => student_id,
+          "verification_params" => verification_params
+        } = params
+      ) do
+    case get_student_and_user(student_id, params) do
       {:ok, student, user} ->
         student_exists = verify_student_and_user_data(student, user, verification_params)
 
@@ -539,8 +543,8 @@ defmodule DbserviceWeb.StudentController do
     end
   end
 
-  defp get_student_and_user(student_id) do
-    case Users.get_student_by_student_id(student_id) do
+  defp get_student_and_user(student_id, auth_group_params) do
+    case Users.get_student_by_student_id(student_id, auth_group_params) do
       nil ->
         {:error, :not_found}
 
@@ -822,7 +826,7 @@ defmodule DbserviceWeb.StudentController do
   def update_student_status(conn, params) do
     with {:ok, status} <- get_status_by_title(params["status"]),
          student when not is_nil(student) <-
-           Users.get_student_by_student_id(params["student_id"]),
+           Users.get_student_by_student_id(params["student_id"], params),
          :ok <- check_existing_status(student, status.title),
          {:ok, %Student{} = updated_student} <- update_student_status_field(student, status),
          {:ok, _enrollment_record} <- create_status_enrollment_record(student, status, params) do

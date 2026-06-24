@@ -487,6 +487,22 @@ defmodule Dbservice.UsersTest do
       assert %Student{id: id} = Users.get_student_by_student_id("S1")
       assert id == first.id
     end
+
+    test "get_student_by_student_id scopes to the auth group when one is supplied" do
+      setup_auth_group("AuthA")
+      setup_auth_group("AuthB")
+      setup_auth_group("AuthC")
+
+      assert {:ok, %Student{} = a} = Users.create_or_update_student(student_params("S1", "AuthA"))
+      assert {:ok, %Student{} = b} = Users.create_or_update_student(student_params("S1", "AuthB"))
+
+      # Same student_id, but each lookup resolves to the student owned by that auth group.
+      assert Users.get_student_by_student_id("S1", %{"auth_group" => "AuthA"}).id == a.id
+      assert Users.get_student_by_student_id("S1", %{"auth_group" => "AuthB"}).id == b.id
+
+      # An auth group that has no such student returns nil (no fallback to another group's row).
+      assert is_nil(Users.get_student_by_student_id("S1", %{"auth_group" => "AuthC"}))
+    end
   end
 
   describe "teacher" do
