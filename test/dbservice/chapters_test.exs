@@ -3,6 +3,7 @@ defmodule Dbservice.ChaptersTest do
 
   alias Dbservice.Chapters
   alias Dbservice.Chapters.Chapter
+  alias Dbservice.Repo
 
   describe "chapter code uniqueness" do
     test "rejects creating a chapter with a code that already exists" do
@@ -12,9 +13,17 @@ defmodule Dbservice.ChaptersTest do
       assert "has already been taken" in errors_on(changeset).code
     end
 
-    test "allows multiple chapters without a code" do
-      assert {:ok, %Chapter{}} = Chapters.create_chapter(%{"name" => [%{"chapter" => "A"}]})
-      assert {:ok, %Chapter{}} = Chapters.create_chapter(%{"name" => [%{"chapter" => "B"}]})
+    test "rejects creating a chapter without a code" do
+      assert {:error, changeset} = Chapters.create_chapter(%{"name" => [%{"chapter" => "A"}]})
+      assert "can't be blank" in errors_on(changeset).code
+    end
+
+    test "allows updating an existing chapter that has no code (legacy row)" do
+      # Simulate a pre-existing row that was created before code was required.
+      legacy = Repo.insert!(%Chapter{name: [%{"chapter" => "Legacy"}]})
+
+      assert {:ok, %Chapter{}} =
+               Chapters.update_chapter(legacy, %{"name" => [%{"chapter" => "Renamed"}]})
     end
 
     test "allows updating a chapter without changing its code" do

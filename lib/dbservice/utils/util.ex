@@ -14,6 +14,21 @@ defmodule Dbservice.Utils.Util do
   @valid_streams ~w(engineering medical pcmb pcm pcb foundation ca clat)
 
   @doc """
+  Requires `field` to be present, but only when inserting a new record.
+
+  Existing rows that predate the requirement (e.g. legacy null `code` values) can still be
+  updated without supplying the field; only newly created rows must have it. Pair with a
+  NOT NULL column migration once existing rows are backfilled.
+  """
+  def validate_required_on_insert(changeset, field) do
+    if is_nil(changeset.data.id) do
+      validate_required(changeset, field)
+    else
+      changeset
+    end
+  end
+
+  @doc """
   Rejects a changeset whose `field` value duplicates an existing row's value.
 
   Application-level guard for cases where a DB-level unique index can't be added yet (e.g.
