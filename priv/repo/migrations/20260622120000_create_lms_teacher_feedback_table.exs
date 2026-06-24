@@ -35,10 +35,11 @@ defmodule Dbservice.Repo.Migrations.CreateLmsTeacherFeedbackTable do
       add :teacher_name, :string, size: 255, null: false
       add :teacher_order, :integer, null: false
 
-      # Created artifacts (quiz-backend quiz + db-service session)
-      add :quiz_id, :string, size: 255
+      # The db-service session this teacher's feedback round created. The
+      # sessionCreator Lambda fills the quiz_id (session.platform_id) + portal /
+      # admin links onto the SESSION row asynchronously; we resolve them by
+      # joining on session_pk at read time, so they are not duplicated here.
       add :session_pk, :integer
-      add :session_id, :string, size: 255
 
       # Lifecycle: each teacher's setup can succeed or fail independently
       add :status, :string, size: 20, default: "pending", null: false
@@ -62,7 +63,7 @@ defmodule Dbservice.Repo.Migrations.CreateLmsTeacherFeedbackTable do
     create index(:lms_teacher_feedback, [:school_code])
     create index(:lms_teacher_feedback, [:centre_id])
     create index(:lms_teacher_feedback, [:setup_run_id])
-    create index(:lms_teacher_feedback, [:quiz_id])
+    create index(:lms_teacher_feedback, [:session_pk])
     create index(:lms_teacher_feedback, [:school_code, :cycle_label])
 
     # Active rows for a school's cycles list
