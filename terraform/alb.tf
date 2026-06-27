@@ -10,12 +10,18 @@ resource "aws_lb_target_group" "this" {
   vpc_id      = var.vpc_id
 
   health_check {
-    path                = "/api/health"
-    matcher             = "200"
+    path    = "/api/health"
+    matcher = "200"
+    # /api/health is a cheap liveness probe (no DB) — see HealthController. A
+    # task that's merely busy under load must not be deregistered: that pulls
+    # capacity exactly when it's needed and, with a small task count, can drop
+    # the service to zero healthy targets. Generous timeout/threshold keeps a
+    # slow-but-alive task in rotation; a genuinely dead task still fails out
+    # after 5 × 30s.
     interval            = 30
-    timeout             = 5
+    timeout             = 10
     healthy_threshold   = 2
-    unhealthy_threshold = 3
+    unhealthy_threshold = 5
   }
 
   # Pin LiveView clients to the same task for the WebSocket upgrade. Without

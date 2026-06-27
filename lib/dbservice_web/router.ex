@@ -51,6 +51,7 @@ defmodule DbserviceWeb.Router do
     pipe_through(:api)
 
     get("/health", HealthController, :index)
+    get("/health/ready", HealthController, :ready)
 
     resources("/auth-group", AuthGroupController, except: [:new, :edit])
     post("/group/:id/update-users", GroupController, :update_users)
