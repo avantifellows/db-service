@@ -93,6 +93,7 @@ defmodule Dbservice.Resources do
         ]
       )
       |> Repo.all()
+      |> order_resources_by_ids(problem_ids)
 
     # topic_id lives on the resource_topic join table, not on the resource
     # itself, so fetch the mapping separately and attach it per problem.
@@ -108,6 +109,17 @@ defmodule Dbservice.Resources do
         problem_lang: problem_lang || %{},
         requested_curriculum_id: curriculum_id
       }
+    end)
+  end
+
+  defp order_resources_by_ids(resources, resource_ids) do
+    resources_by_id = Map.new(resources, &{&1.id, &1})
+
+    Enum.flat_map(resource_ids, fn resource_id ->
+      case Map.fetch(resources_by_id, resource_id) do
+        {:ok, resource} -> [resource]
+        :error -> []
+      end
     end)
   end
 
