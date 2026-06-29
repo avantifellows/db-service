@@ -27,10 +27,7 @@ defmodule Dbservice.Repo.Migrations.CreateLmsTeacherFeedbackTable do
       add :school_code, :string, size: 20, null: false
       add :centre_id, :integer
       add :centre_name, :string, size: 255
-      add :batch_parent_id, :string, size: 255
       add :batch_class_ids, {:array, :string}, default: [], null: false
-      # grade is informational only; a feedback round can span grades.
-      add :grade, :integer
 
       # Teacher (id nullable: free-text fallback when no roster id is available)
       add :teacher_id, :string, size: 50
