@@ -92,4 +92,44 @@ defmodule Dbservice.ResourcesTest do
       assert rc.grade_id == grade.id
     end
   end
+
+  describe "get_problems_by_test_and_language/3 ordering" do
+    test "returns problems in the order defined in the test's type_params, not by id" do
+      # Unique code to avoid colliding with any pre-existing language in the test DB.
+      {:ok, _language} =
+        Dbservice.Languages.create_language(%{"name" => "Ordering Test", "code" => "zzt"})
+
+      # Created in ascending-id order; the test will define a different order.
+      p1 = resource_fixture("problem")
+      p2 = resource_fixture("problem")
+      p3 = resource_fixture("problem")
+      p4 = resource_fixture("problem")
+
+      # Deliberately scrambled relative to id order (mirrors issue #565).
+      ordered_ids = [p3.id, p1.id, p4.id, p2.id]
+
+      type_params = %{
+        "subjects" => [
+          %{
+            "subject_id" => 2,
+            "sections" => [
+              %{
+                "type" => "mcq_single_answer",
+                "compulsory" => %{
+                  "problems" => Enum.map(ordered_ids, fn id -> %{"id" => id} end)
+                }
+              }
+            ]
+          }
+        ]
+      }
+
+      {:ok, test_resource} =
+        Resources.create_resource(%{"type" => "test", "type_params" => type_params})
+
+      result = Resources.get_problems_by_test_and_language(test_resource.id, "zzt", 1)
+
+      assert Enum.map(result, & &1.resource.id) == ordered_ids
+    end
+  end
 end
