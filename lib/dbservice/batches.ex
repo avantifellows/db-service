@@ -101,6 +101,59 @@ defmodule Dbservice.Batches do
   end
 
   @doc """
+  Corrects a batch's `batch_id` in place (e.g. fixing a typo), looking the batch up by its
+  current `old_batch_id` and renaming it to `new_batch_id`.
+
+  Enrollment records and group_user mappings reference a batch by its primary key, not by the
+  `batch_id` string, so the rename is self-contained - every enrollment stays with the batch.
+
+  Returns:
+  - `{:ok, %Batch{}}` on success
+  - `{:error, reason}` when an id is blank, no batch has `old_batch_id`, more than one batch
+    shares it, or `new_batch_id` is already used by a different batch
+  """
+  def correct_batch_id(old_batch_id, new_batch_id) do
+    with {:ok, old_id} <- require_batch_id(old_batch_id, "old_batch_id"),
+         {:ok, new_id} <- require_batch_id(new_batch_id, "new_batch_id"),
+         {:ok, batch} <- fetch_batch_for_correction(old_id),
+         :ok <- ensure_batch_id_available(new_id, batch) do
+      update_batch(batch, %{"batch_id" => new_id})
+    end
+  end
+
+  defp require_batch_id(value, field) when is_binary(value) do
+    case String.trim(value) do
+      "" -> {:error, "#{field} is required"}
+      trimmed -> {:ok, trimmed}
+    end
+  end
+
+  defp require_batch_id(_value, field), do: {:error, "#{field} is required"}
+
+  # `batch_id` has no unique constraint, so tolerate (and reject) duplicates rather than
+  # letting `Repo.get_by` raise.
+  defp fetch_batch_for_correction(batch_id) do
+    case Repo.all(from(b in Batch, where: b.batch_id == ^batch_id)) do
+      [] ->
+        {:error, "No batch found with batch_id '#{batch_id}'"}
+
+      [batch] ->
+        {:ok, batch}
+
+      _multiple ->
+        {:error, "Multiple batches share batch_id '#{batch_id}'; correct them manually"}
+    end
+  end
+
+  defp ensure_batch_id_available(new_batch_id, %Batch{} = batch) do
+    if Repo.exists?(from(b in Batch, where: b.batch_id == ^new_batch_id and b.id != ^batch.id)) do
+      {:error, "batch_id '#{new_batch_id}' already exists for another batch"}
+    else
+      :ok
+    end
+  end
+
+  @doc """
   Deletes a batch.
   ## Examples
       iex> delete_batch(batch)
