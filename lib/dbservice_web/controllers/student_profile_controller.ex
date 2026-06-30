@@ -142,7 +142,9 @@ defmodule DbserviceWeb.StudentProfileController do
   end
 
   def create(conn, params) do
-    student = Users.get_student_by_student_id(params["student_id"])
+    # Scope to the auth group when params carry it (student_id is unique only within an auth
+    # group); falls back to unscoped lookup when no auth group is present.
+    student = Users.get_student_by_student_id(params["student_id"], params)
     student_fk = student.id
     user_id = student.user_id
 

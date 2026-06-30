@@ -271,9 +271,20 @@ defmodule DbserviceWeb.StudentController do
   end
 
   def enrolled(conn, params) do
-    # Retrieve the student information based on the provided student ID, scoped to the auth
-    # group when one is supplied (student_id is unique only within an auth group).
-    student = Users.get_student_by_student_id(params["student_id"], params)
+    # student_id is unique only within an auth group; scope to it when supplied. A nil match
+    # (e.g. no current ownership record) returns 404 rather than crashing on student.user_id.
+    case Users.get_student_by_student_id(params["student_id"], params) do
+      nil ->
+        conn
+        |> put_status(:not_found)
+        |> json(%{errors: "Student not found with the provided identifier"})
+
+      student ->
+        do_enrolled(conn, student, params)
+    end
+  end
+
+  defp do_enrolled(conn, student, params) do
     user_id = student.user_id
 
     # Retrieve the group user information based on the user ID

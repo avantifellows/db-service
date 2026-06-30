@@ -503,6 +503,49 @@ defmodule Dbservice.UsersTest do
       # An auth group that has no such student returns nil (no fallback to another group's row).
       assert is_nil(Users.get_student_by_student_id("S1", %{"auth_group" => "AuthC"}))
     end
+
+    test "re-POSTing a dropped student revives the same row instead of duplicating it" do
+      auth_a = setup_auth_group("AuthA")
+
+      assert {:ok, %Student{} = s1} =
+               Users.create_or_update_student(student_params("S1", "AuthA"))
+
+      # Simulate dropout: deactivate all current enrollments, including the auth_group ER.
+      Dbservice.Services.DropoutService.update_current_enrollments(s1.user_id, ~D[2025-06-01])
+      assert is_nil(current_auth_group_enrollment(s1.user_id))
+
+      # Re-POST under the same auth group must reuse the existing row, not create a duplicate.
+      assert {:ok, %Student{} = s2} =
+               Users.create_or_update_student(
+                 student_params("S1", "AuthA", %{"first_name" => "Back"})
+               )
+
+      assert s2.id == s1.id
+      assert Repo.aggregate(from(s in Student, where: s.student_id == "S1"), :count) == 1
+
+      # Ownership is revived (current again) for this auth group.
+      assert current_auth_group_enrollment(s2.user_id).group_id == auth_a.id
+    end
+
+    test "scoped update does not silently overwrite a differing apaar_id" do
+      auth_a = setup_auth_group("AuthA")
+
+      assert {:ok, %Student{}} =
+               Users.create_or_update_student(
+                 student_params("S1", "AuthA", %{"apaar_id" => "111111111111"})
+               )
+
+      # A different apaar_id (used by nobody else) must be rejected, not silently written.
+      assert {:error, message} =
+               Users.create_or_update_student(
+                 student_params("S1", "AuthA", %{"apaar_id" => "222222222222"})
+               )
+
+      assert message =~ "doesn't match existing"
+
+      assert Users.get_student_by_student_id_and_auth_group("S1", auth_a.id).apaar_id ==
+               "111111111111"
+    end
   end
 
   describe "teacher" do
