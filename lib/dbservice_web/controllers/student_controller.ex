@@ -73,15 +73,23 @@ defmodule DbserviceWeb.StudentController do
   end
 
   def index(conn, params) do
-    query =
+    # `student_id` is only unique within an auth group. When an `auth_group` (name) or
+    # `auth_group_id` filter is supplied, scope the result to students that currently
+    # belong to that auth group (via their auth_group enrollment record). Remaining params
+    # are treated as direct Student column filters.
+    {auth_group_id, params} = pop_auth_group_filter(params)
+
+    base =
       from(m in Student,
         order_by: [asc: m.id],
         offset: ^params["offset"],
         limit: ^params["limit"]
       )
 
+    base = maybe_scope_to_auth_group(base, auth_group_id)
+
     query =
-      Enum.reduce(params, query, fn {key, value}, acc ->
+      Enum.reduce(params, base, fn {key, value}, acc ->
         case String.to_existing_atom(key) do
           :offset -> acc
           :limit -> acc
@@ -91,6 +99,33 @@ defmodule DbserviceWeb.StudentController do
 
     student = Repo.all(query)
     render(conn, :index, student: student)
+  end
+
+  # Removes the auth-group filter keys from params and resolves them to an auth_group id.
+  defp pop_auth_group_filter(params) do
+    {auth_group_id, params} = Map.pop(params, "auth_group_id")
+    {auth_group_name, params} = Map.pop(params, "auth_group")
+
+    resolved =
+      Users.resolve_auth_group_id(%{
+        "auth_group_id" => auth_group_id,
+        "auth_group" => auth_group_name
+      })
+
+    {resolved, params}
+  end
+
+  defp maybe_scope_to_auth_group(query, nil), do: query
+
+  defp maybe_scope_to_auth_group(query, auth_group_id) do
+    from(s in query,
+      join: er in EnrollmentRecord,
+      on: er.user_id == s.user_id,
+      where:
+        er.group_type == "auth_group" and
+          er.group_id == ^auth_group_id and
+          er.is_current == true
+    )
   end
 
   swagger_path :create do
@@ -236,8 +271,20 @@ defmodule DbserviceWeb.StudentController do
   end
 
   def enrolled(conn, params) do
-    # Retrieve the student information based on the provided student ID
-    student = Users.get_student_by_student_id(params["student_id"])
+    # student_id is unique only within an auth group; scope to it when supplied. A nil match
+    # (e.g. no current ownership record) returns 404 rather than crashing on student.user_id.
+    case Users.get_student_by_student_id(params["student_id"], params) do
+      nil ->
+        conn
+        |> put_status(:not_found)
+        |> json(%{errors: "Student not found with the provided identifier"})
+
+      student ->
+        do_enrolled(conn, student, params)
+    end
+  end
+
+  defp do_enrolled(conn, student, params) do
     user_id = student.user_id
 
     # Retrieve the group user information based on the user ID
@@ -485,11 +532,14 @@ defmodule DbserviceWeb.StudentController do
     response(200, "OK", Schema.ref(:VerificationResult))
   end
 
-  def verify_student(conn, %{
-        "student_id" => student_id,
-        "verification_params" => verification_params
-      }) do
-    case get_student_and_user(student_id) do
+  def verify_student(
+        conn,
+        %{
+          "student_id" => student_id,
+          "verification_params" => verification_params
+        } = params
+      ) do
+    case get_student_and_user(student_id, params) do
       {:ok, student, user} ->
         student_exists = verify_student_and_user_data(student, user, verification_params)
 
@@ -504,8 +554,8 @@ defmodule DbserviceWeb.StudentController do
     end
   end
 
-  defp get_student_and_user(student_id) do
-    case Users.get_student_by_student_id(student_id) do
+  defp get_student_and_user(student_id, auth_group_params) do
+    case Users.get_student_by_student_id(student_id, auth_group_params) do
       nil ->
         {:error, :not_found}
 
@@ -787,7 +837,7 @@ defmodule DbserviceWeb.StudentController do
   def update_student_status(conn, params) do
     with {:ok, status} <- get_status_by_title(params["status"]),
          student when not is_nil(student) <-
-           Users.get_student_by_student_id(params["student_id"]),
+           Users.get_student_by_student_id(params["student_id"], params),
          :ok <- check_existing_status(student, status.title),
          {:ok, %Student{} = updated_student} <- update_student_status_field(student, status),
          {:ok, _enrollment_record} <- create_status_enrollment_record(student, status, params) do
