@@ -22,6 +22,75 @@ defmodule Dbservice.AcademicMentorshipSchemaTest do
   @identity_tables @tables -- ["acad_mentorship_runtime_settings"]
 
   describe "Academic Mentorship schema" do
+    test "creates the LMS Academic Mentor-Mentee Mapping table" do
+      table = "academic_mentorship_mentor_mentee_mappings"
+
+      assert table in table_names()
+
+      assert Map.keys(columns(table)) |> Enum.sort() == [
+               "academic_year",
+               "assigned_at",
+               "assigned_by_user_id",
+               "end_reason",
+               "ended_at",
+               "ended_by_user_id",
+               "id",
+               "inserted_at",
+               "mentor_user_id",
+               "program_id",
+               "school_id",
+               "student_id",
+               "updated_at"
+             ]
+
+      assert_required_columns(table, [
+        "id",
+        "school_id",
+        "academic_year",
+        "mentor_user_id",
+        "student_id",
+        "assigned_at",
+        "assigned_by_user_id",
+        "inserted_at",
+        "updated_at"
+      ])
+
+      assert columns(table)["id"].type == "bigint"
+      assert columns(table)["program_id"].nullable?
+      assert columns(table)["ended_at"].nullable?
+      assert columns(table)["ended_by_user_id"].nullable?
+      assert columns(table)["end_reason"].nullable?
+
+      assert foreign_keys(table) == [
+               {"assigned_by_user_id", "user", "id"},
+               {"ended_by_user_id", "user", "id"},
+               {"mentor_user_id", "user", "id"},
+               {"program_id", "program", "id"},
+               {"school_id", "school", "id"},
+               {"student_id", "student", "id"}
+             ]
+
+      assert index_def("am_mentor_mentee_active_mentee_unique") =~ "UNIQUE INDEX"
+
+      assert index_def("am_mentor_mentee_active_mentee_unique") =~
+               "(school_id, academic_year, student_id)"
+
+      assert index_def("am_mentor_mentee_active_mentee_unique") =~ "WHERE (ended_at IS NULL)"
+
+      assert index_def("am_mentor_mentee_school_year_active_idx") =~
+               "(school_id, academic_year)"
+
+      assert index_def("am_mentor_mentee_school_year_active_idx") =~ "WHERE (ended_at IS NULL)"
+
+      assert index_def("am_mentor_mentee_mentor_year_active_idx") =~
+               "(mentor_user_id, academic_year)"
+
+      assert index_def("am_mentor_mentee_mentor_year_active_idx") =~
+               "WHERE (ended_at IS NULL)"
+
+      assert ["mentor_user_id"] in indexes(table)
+    end
+
     test "creates the full phase-1 table set" do
       existing_tables = table_names()
 
