@@ -149,6 +149,12 @@ defmodule DbserviceWeb.Router do
       only: [:index, :create, :show, :delete]
     )
 
+    post(
+      "/lms/students/bulk-create-with-enrollments",
+      StudentController,
+      :lms_bulk_create_with_enrollments
+    )
+
     post("/student/create-with-enrollments", StudentController, :create_with_enrollments)
 
     get(

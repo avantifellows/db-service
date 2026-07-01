@@ -56,6 +56,8 @@ defmodule Dbservice.Users.Student do
     field(:g12_graduating_year, :integer)
     field(:school_medium, :string)
     field(:apaar_id, :string)
+    field(:g10_board, :string)
+    field(:g10_roll_no, :string)
 
     belongs_to(:user, User)
     has_one(:student_profile, StudentProfile)
@@ -113,8 +115,12 @@ defmodule Dbservice.Users.Student do
       :board_stream,
       :g12_graduating_year,
       :school_medium,
-      :apaar_id
+      :apaar_id,
+      :g10_board,
+      :g10_roll_no
     ])
+    |> unique_constraint(:student_id, name: :student_student_id_unique_not_null)
+    |> unique_constraint(:apaar_id, name: :student_apaar_id_unique_not_null)
     |> validate_required([:user_id])
     |> validate_category(:category)
     |> validate_stream(:stream)

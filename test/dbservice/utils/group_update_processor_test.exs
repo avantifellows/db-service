@@ -57,7 +57,8 @@ defmodule Dbservice.DataImport.GroupUpdateProcessorTest do
 
       result = GroupUpdateProcessor.process_batch_id_update(record)
 
-      assert {:error, "Student not found with ID: NONEXISTENT_STUDENT"} = result
+      assert {:error, "Student not found. student_id: \"NONEXISTENT_STUDENT\", apaar_id: nil"} =
+               result
     end
 
     test "returns error when old batch is not found" do
@@ -151,7 +152,8 @@ defmodule Dbservice.DataImport.GroupUpdateProcessorTest do
 
       result = GroupUpdateProcessor.process_school_update(record)
 
-      assert {:error, "Student not found with ID: NONEXISTENT_STUDENT"} = result
+      assert {:error, "Student not found. student_id: \"NONEXISTENT_STUDENT\", apaar_id: nil"} =
+               result
     end
 
     test "returns error when school is not found" do
@@ -227,7 +229,8 @@ defmodule Dbservice.DataImport.GroupUpdateProcessorTest do
 
       result = GroupUpdateProcessor.process_grade_update(record)
 
-      assert {:error, "Student not found with ID: NONEXISTENT_STUDENT"} = result
+      assert {:error, "Student not found. student_id: \"NONEXISTENT_STUDENT\", apaar_id: nil"} =
+               result
     end
 
     test "returns error when grade is not found" do
@@ -304,7 +307,8 @@ defmodule Dbservice.DataImport.GroupUpdateProcessorTest do
 
       result = GroupUpdateProcessor.process_auth_group_update(record)
 
-      assert {:error, "Student not found with ID: NONEXISTENT_STUDENT"} = result
+      assert {:error, "Student not found. student_id: \"NONEXISTENT_STUDENT\", apaar_id: nil"} =
+               result
     end
 
     test "returns error when auth group is not found" do

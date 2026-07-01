@@ -19,6 +19,7 @@ defmodule DbserviceWeb.StudentController do
   alias Dbservice.Services.DropoutService
   alias Dbservice.Services.ReEnrollmentService
   alias Dbservice.Utils.ChangesetFormatter
+  alias Dbservice.LmsStudentIngestion
 
   action_fallback(DbserviceWeb.FallbackController)
 
@@ -942,6 +943,18 @@ defmodule DbserviceWeb.StudentController do
         conn
         |> put_status(:bad_request)
         |> json(%{error: inspect(reason)})
+    end
+  end
+
+  def lms_bulk_create_with_enrollments(conn, params) do
+    case LmsStudentIngestion.bulk_create(params) do
+      {:ok, response} ->
+        json(conn, response)
+
+      {:error, :bad_request, response} ->
+        conn
+        |> put_status(:bad_request)
+        |> json(response)
     end
   end
 
