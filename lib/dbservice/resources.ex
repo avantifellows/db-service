@@ -93,6 +93,9 @@ defmodule Dbservice.Resources do
         ]
       )
       |> Repo.all()
+      # SQL `IN` does not preserve list order, so re-sort the fetched problems to match the
+      # order the ids appear in the test's type_params (the order the test defines).
+      |> order_problems_by_ids(problem_ids)
 
     # topic_id lives on the resource_topic join table, not on the resource
     # itself, so fetch the mapping separately and attach it per problem.
@@ -109,6 +112,18 @@ defmodule Dbservice.Resources do
         requested_curriculum_id: curriculum_id
       }
     end)
+  end
+
+  # Re-sorts fetched problem resources to match the order the ids appear in the test's
+  # type_params. Ids that don't resolve to a problem resource are dropped; duplicate ids
+  # collapse to a single (first) occurrence.
+  defp order_problems_by_ids(problems, problem_ids) do
+    problems_by_id = Map.new(problems, &{&1.id, &1})
+
+    problem_ids
+    |> Enum.uniq()
+    |> Enum.map(&Map.get(problems_by_id, &1))
+    |> Enum.reject(&is_nil/1)
   end
 
   # Returns a map of resource_id => resource_topic record for the given
