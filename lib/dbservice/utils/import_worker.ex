@@ -1390,11 +1390,10 @@ defmodule Dbservice.DataImport.ImportWorker do
     |> maybe_put_school("board", record["school_board"] |> trim_str())
   end
 
-  defp create_or_update_school(code, attrs) do
-    case Schools.get_school_by_code(code) do
-      nil -> Schools.create_school(attrs)
-      existing -> Schools.update_school(existing, attrs)
-    end
+  # School imports create the school *as a user* too (School.user_id), matching the
+  # /school-with-user endpoint. `code` is already carried in attrs.
+  defp create_or_update_school(_code, attrs) do
+    Schools.create_or_update_school_with_user(attrs)
   end
 
   defp format_school_result({:ok, school}), do: {:ok, school}

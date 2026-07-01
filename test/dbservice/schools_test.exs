@@ -342,4 +342,54 @@ defmodule Dbservice.SchoolsTest do
     #     assert %Ecto.Changeset{} = Schools.change_enrollment_record(enrollment_record)
     #   end
   end
+
+  describe "create_or_update_school_with_user/1" do
+    alias Dbservice.Schools.School
+    alias Dbservice.Users
+    alias Dbservice.Users.User
+
+    @with_user_attrs %{
+      "code" => "SCH_WU_001",
+      "name" => "WU School",
+      "af_school_category" => "Cat",
+      "district_code" => "DC1",
+      "district" => "District 1",
+      "state_code" => "SC1",
+      "state" => "State 1"
+    }
+
+    test "creates a new school together with a user" do
+      assert {:ok, %School{} = school} =
+               Schools.create_or_update_school_with_user(@with_user_attrs)
+
+      assert school.code == "SCH_WU_001"
+      assert is_integer(school.user_id)
+      assert %User{} = Users.get_user!(school.user_id)
+    end
+
+    test "updates an existing school and backfills a user when none is linked" do
+      {:ok, legacy} = Schools.create_school(@with_user_attrs)
+      assert is_nil(legacy.user_id)
+
+      assert {:ok, %School{} = updated} =
+               Schools.create_or_update_school_with_user(
+                 Map.put(@with_user_attrs, "name", "Renamed")
+               )
+
+      assert updated.id == legacy.id
+      assert updated.name == "Renamed"
+      assert is_integer(updated.user_id)
+    end
+
+    test "reuses the linked user when updating a school that already has one" do
+      {:ok, created} = Schools.create_school_with_user(@with_user_attrs)
+
+      assert {:ok, %School{} = updated} =
+               Schools.create_or_update_school_with_user(
+                 Map.put(@with_user_attrs, "name", "Again")
+               )
+
+      assert updated.user_id == created.user_id
+    end
+  end
 end
