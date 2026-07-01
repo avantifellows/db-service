@@ -22,7 +22,7 @@ defmodule Dbservice.LmsStudentUpdate do
 
   @action "student_update"
   @cbse_board "CENTRAL BOARD OF SECONDARY EDUCATION"
-  @user_fields ["first_name", "gender", "date_of_birth", "phone"]
+  @user_fields ["first_name", "last_name", "gender", "date_of_birth", "phone"]
   @student_fields [
     "category",
     "physically_handicapped",

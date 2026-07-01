@@ -75,6 +75,7 @@ defmodule DbserviceWeb.LmsStudentUpdateControllerTest do
           "academic_year" => "2026-2027",
           "start_date" => "2026-07-01",
           "first_name" => "Updated Name",
+          "last_name" => "",
           "gender" => "Others",
           "category" => "OBC"
         })
@@ -82,11 +83,12 @@ defmodule DbserviceWeb.LmsStudentUpdateControllerTest do
       response = json_response(conn, 200)
       assert response["status"] == "updated"
       assert response["student_pk_id"] == student.id
-      assert response["changed_fields"] == ["category", "first_name", "gender"]
+      assert response["changed_fields"] == ["category", "first_name", "gender", "last_name"]
 
       updated_user = Users.get_user!(user.id)
       updated_student = Repo.get!(Student, student.id)
       assert updated_user.first_name == "Updated Name"
+      assert updated_user.last_name == nil
       assert updated_user.gender == "Others"
       assert updated_student.category == "OBC"
       assert updated_student.student_id == "202812345678"
@@ -109,6 +111,7 @@ defmodule DbserviceWeb.LmsStudentUpdateControllerTest do
       assert school_code == school.code
       assert affected_identifiers["student_pk_id"] == student.id
       assert changed_values["first_name"] == %{"old" => user.first_name, "new" => "Updated Name"}
+      assert changed_values["last_name"] == %{"old" => user.last_name, "new" => ""}
       assert changed_values["category"] == %{"old" => "Gen", "new" => "OBC"}
     end
 
