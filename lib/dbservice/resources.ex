@@ -93,6 +93,9 @@ defmodule Dbservice.Resources do
         ]
       )
       |> Repo.all()
+      # SQL `IN` does not preserve list order, so re-sort the fetched problems to match the
+      # order the ids appear in the test's type_params (the order the test defines).
+      |> order_problems_by_ids(problem_ids)
 
     # topic_id lives on the resource_topic join table, not on the resource
     # itself, so fetch the mapping separately and attach it per problem.
@@ -109,6 +112,18 @@ defmodule Dbservice.Resources do
         requested_curriculum_id: curriculum_id
       }
     end)
+  end
+
+  # Re-sorts fetched problem resources to match the order the ids appear in the test's
+  # type_params. Ids that don't resolve to a problem resource are dropped; duplicate ids
+  # collapse to a single (first) occurrence.
+  defp order_problems_by_ids(problems, problem_ids) do
+    problems_by_id = Map.new(problems, &{&1.id, &1})
+
+    problem_ids
+    |> Enum.uniq()
+    |> Enum.map(&Map.get(problems_by_id, &1))
+    |> Enum.reject(&is_nil/1)
   end
 
   # Returns a map of resource_id => resource_topic record for the given
@@ -487,33 +502,55 @@ defmodule Dbservice.Resources do
       - "difficulty_level": The difficulty_level to use for all entries (global for this resource).
 
   Each ResourceCurriculum will be created with the same subject_id and difficulty_level.
+
+  `grade_id` is optional for most resource types: resources under grade-less curricula
+  (e.g. CA, CLAT) are created without a grade. It stays mandatory only for `problem` and
+  `test` resources (see `@grade_required_resource_types`).
   """
   def create_resource_curriculums_for_resource(resource, params) when is_map(params) do
     curriculum_grades = Map.get(params, "curriculum_grades", [])
     subject_id = Map.get(params, "subject_id")
     difficulty_level = Map.get(params, "difficulty_level")
 
-    Enum.reduce_while(curriculum_grades, :ok, fn %{
-                                                   "curriculum_id" => curriculum_id,
-                                                   "grade_id" => grade_id
-                                                 },
-                                                 _acc ->
-      attrs = %{
-        resource_id: resource.id,
-        curriculum_id: curriculum_id,
-        grade_id: grade_id,
-        subject_id: subject_id,
-        difficulty_level: difficulty_level
-      }
+    with :ok <- validate_grade_required_for_type(resource, curriculum_grades) do
+      Enum.reduce_while(curriculum_grades, :ok, fn cg, _acc ->
+        attrs = %{
+          resource_id: resource.id,
+          curriculum_id: cg["curriculum_id"] || cg[:curriculum_id],
+          grade_id: cg["grade_id"] || cg[:grade_id],
+          subject_id: subject_id,
+          difficulty_level: difficulty_level
+        }
 
-      case Dbservice.ResourceCurriculums.create_resource_curriculum(attrs) do
-        {:ok, _} -> {:cont, :ok}
-        {:error, reason} -> {:halt, {:error, reason}}
-      end
-    end)
+        case Dbservice.ResourceCurriculums.create_resource_curriculum(attrs) do
+          {:ok, _} -> {:cont, :ok}
+          {:error, reason} -> {:halt, {:error, reason}}
+        end
+      end)
+    end
   end
 
   def create_resource_curriculums_for_resource(_resource, _params), do: :ok
+
+  # Resource types that must always carry a grade. Every other type may be created or
+  # updated without a `grade_id` (resources under grade-less curricula like CA / CLAT).
+  @grade_required_resource_types ["problem", "test"]
+
+  defp validate_grade_required_for_type(%{type: type}, curriculum_grades)
+       when type in @grade_required_resource_types do
+    if Enum.all?(curriculum_grades, &grade_present?/1) do
+      :ok
+    else
+      {:error, "grade_id is required for #{type} resources"}
+    end
+  end
+
+  defp validate_grade_required_for_type(_resource, _curriculum_grades), do: :ok
+
+  defp grade_present?(cg) do
+    grade_id = cg["grade_id"] || cg[:grade_id]
+    not is_nil(grade_id) and grade_id != ""
+  end
 
   @doc """
   Generates a resource code in the format P{7digitcode} (e.g., P0000024) using the resource's ID.

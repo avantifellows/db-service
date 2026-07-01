@@ -3,6 +3,7 @@ defmodule Dbservice.Chapters.Chapter do
 
   use Ecto.Schema
   import Ecto.Changeset
+  import Dbservice.Utils.Util, only: [validate_unique_field: 2, validate_required_on_insert: 2]
 
   alias Dbservice.Grades.Grade
   alias Dbservice.Subjects.Subject
@@ -35,5 +36,7 @@ defmodule Dbservice.Chapters.Chapter do
       :subject_id,
       :cms_status_id
     ])
+    |> validate_required_on_insert(:code)
+    |> validate_unique_field(:code)
   end
 end
