@@ -69,7 +69,8 @@ defmodule DbserviceWeb.ImportLive.New do
       "product_addition" => "submit_product_import",
       "program_addition" => "submit_program_import",
       "batch_addition" => "submit_batch_import",
-      "school_addition" => "submit_school_import"
+      "school_addition" => "submit_school_import",
+      "batch_id_correction" => "submit_batch_id_correction_import"
     }
 
     if Map.has_key?(protected_import_config, import_type) do
@@ -130,6 +131,7 @@ defmodule DbserviceWeb.ImportLive.New do
   defp get_protected_import_url("program_addition"), do: ~p"/imports/program"
   defp get_protected_import_url("batch_addition"), do: ~p"/imports/batch"
   defp get_protected_import_url("school_addition"), do: ~p"/imports/school"
+  defp get_protected_import_url("batch_id_correction"), do: ~p"/imports/batch_id_correction"
   defp get_protected_import_url(_), do: ~p"/imports"
 
   def render(assigns) do
@@ -192,6 +194,7 @@ defmodule DbserviceWeb.ImportLive.New do
                     <option value="dropout" selected={@form[:type].value == "dropout"}>Student Dropout</option>
                     <option value="re_enrollment" selected={@form[:type].value == "re_enrollment"}>Student Re-Enrollment After Dropout</option>
                     <option value="teacher_batch_assignment" selected={@form[:type].value == "teacher_batch_assignment"}>Teacher Batch Assignment</option>
+                    <option value="batch_id_correction" selected={@form[:type].value == "batch_id_correction"}>Batch ID Correction</option>
                     <option value="update_incorrect_batch_id_to_correct_batch_id" selected={@form[:type].value == "update_incorrect_batch_id_to_correct_batch_id"}>Update Incorrect Batch ID to Correct Batch ID</option>
                     <option value="update_incorrect_school_to_correct_school" selected={@form[:type].value == "update_incorrect_school_to_correct_school"}>Update Incorrect School to Correct School</option>
                     <option value="update_incorrect_grade_to_correct_grade" selected={@form[:type].value == "update_incorrect_grade_to_correct_grade"}>Update Incorrect Grade to Correct Grade</option>

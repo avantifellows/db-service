@@ -984,7 +984,13 @@ defmodule Dbservice.Constants.Mappings do
     # Update fields for correction import types
     "old_batch_id" => %{
       db_field: "old_batch_id",
-      required: ["update_incorrect_batch_id_to_correct_batch_id"],
+      required: ["update_incorrect_batch_id_to_correct_batch_id", "batch_id_correction"],
+      optional: [],
+      type: :string
+    },
+    "new_batch_id" => %{
+      db_field: "new_batch_id",
+      required: ["batch_id_correction"],
       optional: [],
       type: :string
     },
