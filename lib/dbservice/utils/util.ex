@@ -198,6 +198,20 @@ defmodule Dbservice.Utils.Util do
 
   def naive_to_datetime(%DateTime{} = datetime), do: datetime
 
+  @doc """
+  Parses an ISO-8601 datetime string into a second-precision `DateTime`.
+  Returns `{:ok, datetime}` on success and `:error` for non-binary or
+  unparseable values.
+  """
+  def parse_datetime(value) when is_binary(value) do
+    case DateTime.from_iso8601(value) do
+      {:ok, datetime, _offset} -> {:ok, DateTime.truncate(datetime, :second)}
+      _ -> :error
+    end
+  end
+
+  def parse_datetime(_value), do: :error
+
   def process_credentials(credentials) do
     private_key = credentials["private_key"]
 

@@ -5,6 +5,7 @@ defmodule DbserviceWeb.SessionController do
   alias Dbservice.Repo
   alias Dbservice.Sessions
   alias Dbservice.Sessions.Session
+  alias Dbservice.Utils.Util
 
   action_fallback DbserviceWeb.FallbackController
 
@@ -110,7 +111,7 @@ defmodule DbserviceWeb.SessionController do
   end
 
   defp apply_end_time_filter(operator, value, acc) do
-    case parse_datetime(value) do
+    case Util.parse_datetime(value) do
       {:ok, datetime} ->
         query =
           case operator do
@@ -124,15 +125,6 @@ defmodule DbserviceWeb.SessionController do
         {:halt, {:error, "Invalid end_time range timestamp"}}
     end
   end
-
-  defp parse_datetime(value) when is_binary(value) do
-    case DateTime.from_iso8601(value) do
-      {:ok, datetime, _offset} -> {:ok, DateTime.truncate(datetime, :second)}
-      _ -> :error
-    end
-  end
-
-  defp parse_datetime(_value), do: :error
 
   defp extract_sort_order(params) do
     case params["sort_order"] do
