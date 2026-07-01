@@ -11,7 +11,10 @@ defmodule Dbservice.Services.DropoutService do
   alias Dbservice.EnrollmentRecords.EnrollmentRecord
   alias Dbservice.Statuses.Status
   alias Dbservice.Groups.Group
+  alias Dbservice.LmsStudentWriteAudit
   alias Dbservice.Users
+
+  @audit_action "student_dropout"
 
   @doc """
   Fetches dropout status information.
@@ -31,12 +34,31 @@ defmodule Dbservice.Services.DropoutService do
   Processes student dropout by updating enrollments and student status.
   Returns {:ok, student} on success or {:error, reason} on failure.
   """
-  def process_dropout(student, start_date, academic_year) do
+  def process_dropout(student, start_date, academic_year, audit_params \\ %{}) do
     # Check if the student's status is already 'dropout'
     if student.status == "dropout" do
       {:error, "Student is already marked as dropout"}
     else
-      create_dropout_enrollment(student, start_date, academic_year)
+      Repo.transaction(fn ->
+        with {:ok, updated_student} <-
+               create_dropout_enrollment(student, start_date, academic_year),
+             {:ok, _audit} <-
+               maybe_insert_lms_audit(
+                 student,
+                 updated_student,
+                 start_date,
+                 academic_year,
+                 audit_params
+               ) do
+          updated_student
+        else
+          {:error, reason} -> Repo.rollback(reason)
+        end
+      end)
+      |> case do
+        {:ok, updated_student} -> {:ok, updated_student}
+        {:error, reason} -> {:error, reason}
+      end
     end
   end
 
@@ -74,6 +96,41 @@ defmodule Dbservice.Services.DropoutService do
       academic_year: academic_year,
       grade_id: student.grade_id
     }
+  end
+
+  defp maybe_insert_lms_audit(_student, _updated_student, _start_date, _academic_year, params)
+       when params == %{},
+       do: {:ok, nil}
+
+  defp maybe_insert_lms_audit(_student, _updated_student, _start_date, _academic_year, params)
+       when not is_map_key(params, "actor") or not is_map_key(params, "school"),
+       do: {:ok, nil}
+
+  defp maybe_insert_lms_audit(student, updated_student, start_date, academic_year, params) do
+    %LmsStudentWriteAudit{}
+    |> LmsStudentWriteAudit.changeset(%{
+      action: @audit_action,
+      actor_user_id: get_in(params, ["actor", "user_id"]),
+      actor_email: get_in(params, ["actor", "email"]),
+      actor_login_type: get_in(params, ["actor", "login_type"]),
+      actor_role: get_in(params, ["actor", "role"]),
+      school_code: get_in(params, ["school", "code"]),
+      school_udise_code: get_in(params, ["school", "udise_code"]),
+      program_id: params["program_id"],
+      row_counts: %{},
+      affected_identifiers: %{
+        "student_pk_id" => student.id,
+        "user_id" => student.user_id,
+        "student_id" => student.student_id,
+        "apaar_id" => student.apaar_id
+      },
+      changed_values: %{
+        "status" => %{"old" => student.status, "new" => updated_student.status},
+        "dropout_date" => %{"old" => nil, "new" => start_date},
+        "academic_year" => %{"old" => nil, "new" => academic_year}
+      }
+    })
+    |> Repo.insert()
   end
 
   defp format_dropout_error(changeset) do
