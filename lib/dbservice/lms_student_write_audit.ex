@@ -19,6 +19,7 @@ defmodule Dbservice.LmsStudentWriteAudit do
     field :row_counts, :map, default: %{}
     field :affected_identifiers, :map, default: %{}
     field :created_values, :map, default: %{}
+    field :changed_values, :map, default: %{}
 
     timestamps()
   end
@@ -39,8 +40,15 @@ defmodule Dbservice.LmsStudentWriteAudit do
       :row_number,
       :row_counts,
       :affected_identifiers,
-      :created_values
+      :created_values,
+      :changed_values
     ])
-    |> validate_required([:action, :row_counts, :affected_identifiers, :created_values])
+    |> validate_required([
+      :action,
+      :row_counts,
+      :affected_identifiers,
+      :created_values,
+      :changed_values
+    ])
   end
 end
