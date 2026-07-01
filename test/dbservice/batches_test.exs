@@ -55,4 +55,31 @@ defmodule Dbservice.BatchesTest do
       assert {:error, "new_batch_id is required"} = Batches.correct_batch_id("SOME_BATCH", "  ")
     end
   end
+
+  describe "correct_batch_id/2 session metadata" do
+    import Dbservice.SessionsFixtures
+
+    alias Dbservice.Repo
+    alias Dbservice.Sessions.Session
+
+    defp session_batch_id(session_id) do
+      Repo.get!(Session, session_id).meta_data["batch_id"]
+    end
+
+    test "rewrites the renamed batch_id inside session meta_data batch_id lists" do
+      batch_fixture(%{batch_id: "WRONG_A"})
+
+      single = session_fixture(%{meta_data: %{"batch_id" => "WRONG_A"}})
+      multi = session_fixture(%{meta_data: %{"batch_id" => "OTHER,WRONG_A,MORE"}})
+      untouched = session_fixture(%{meta_data: %{"batch_id" => "SOMETHING_ELSE"}})
+
+      assert {:ok, _batch} = Batches.correct_batch_id("WRONG_A", "RIGHT_A")
+
+      # Standalone and mid-list occurrences are replaced; order and siblings preserved.
+      assert session_batch_id(single.id) == "RIGHT_A"
+      assert session_batch_id(multi.id) == "OTHER,RIGHT_A,MORE"
+      # A substring-only match (SOMETHING_ELSE contains no exact WRONG_A token) is left alone.
+      assert session_batch_id(untouched.id) == "SOMETHING_ELSE"
+    end
+  end
 end

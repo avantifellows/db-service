@@ -69,7 +69,8 @@ defmodule DbserviceWeb.ImportLive.New do
       "product_addition" => "submit_product_import",
       "program_addition" => "submit_program_import",
       "batch_addition" => "submit_batch_import",
-      "school_addition" => "submit_school_import"
+      "school_addition" => "submit_school_import",
+      "batch_id_correction" => "submit_batch_id_correction_import"
     }
 
     if Map.has_key?(protected_import_config, import_type) do
@@ -130,6 +131,7 @@ defmodule DbserviceWeb.ImportLive.New do
   defp get_protected_import_url("program_addition"), do: ~p"/imports/program"
   defp get_protected_import_url("batch_addition"), do: ~p"/imports/batch"
   defp get_protected_import_url("school_addition"), do: ~p"/imports/school"
+  defp get_protected_import_url("batch_id_correction"), do: ~p"/imports/batch_id_correction"
   defp get_protected_import_url(_), do: ~p"/imports"
 
   def render(assigns) do

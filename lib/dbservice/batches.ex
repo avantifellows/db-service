@@ -117,8 +117,48 @@ defmodule Dbservice.Batches do
          {:ok, new_id} <- require_batch_id(new_batch_id, "new_batch_id"),
          {:ok, batch} <- fetch_batch_for_correction(old_id),
          :ok <- ensure_batch_id_available(new_id, batch) do
-      update_batch(batch, %{"batch_id" => new_id})
+      # Rename the batch and fix up session filters in one transaction: quiz sessions are
+      # scoped by the batch_id *string* stored in session.meta_data["batch_id"], so renaming
+      # only the batch row would silently drop those sessions for the corrected batch.
+      Repo.transaction(fn ->
+        case update_batch(batch, %{"batch_id" => new_id}) do
+          {:ok, updated_batch} ->
+            rewrite_session_batch_id_metadata(old_id, new_id)
+            updated_batch
+
+          {:error, changeset} ->
+            Repo.rollback(changeset)
+        end
+      end)
     end
+  end
+
+  # session.meta_data["batch_id"] holds a comma-separated list of batch_ids (see
+  # Dbservice.GroupSessions.add_batch_filter/2). Replace the renamed id wherever it appears
+  # in that list, preserving the order and the other entries.
+  defp rewrite_session_batch_id_metadata(old_batch_id, new_batch_id) do
+    Repo.query!(
+      """
+      UPDATE session
+      SET meta_data = jsonb_set(
+            meta_data,
+            '{batch_id}',
+            to_jsonb((
+              SELECT string_agg(
+                       CASE WHEN token = $1 THEN $2 ELSE token END,
+                       ',' ORDER BY ord
+                     )
+              FROM unnest(string_to_array(trim(meta_data->>'batch_id'), ','))
+                   WITH ORDINALITY AS t(token, ord)
+            ))
+          )
+      WHERE meta_data->>'batch_id' IS NOT NULL
+        AND $1 = ANY(string_to_array(trim(meta_data->>'batch_id'), ','))
+      """,
+      [old_batch_id, new_batch_id]
+    )
+
+    :ok
   end
 
   defp require_batch_id(value, field) when is_binary(value) do

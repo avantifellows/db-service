@@ -1660,7 +1660,7 @@ defmodule Dbservice.DataImport.ImportWorker do
         {:ok, "Batch ID corrected successfully"}
 
       {:error, %Ecto.Changeset{} = changeset} ->
-        {:error, ChangesetFormatter.map_errors(changeset)}
+        {:error, ChangesetFormatter.format_errors(changeset)}
 
       {:error, reason} ->
         {:error, reason}
