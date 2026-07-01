@@ -68,7 +68,9 @@ defmodule DbserviceWeb.StudentJSON do
       g12_graduating_year: student.g12_graduating_year,
       planned_competitive_exams: student.planned_competitive_exams,
       school_medium: student.school_medium,
-      apaar_id: student.apaar_id
+      apaar_id: student.apaar_id,
+      g10_board: student.g10_board,
+      g10_roll_no: student.g10_roll_no
     }
   end
 
@@ -79,7 +81,9 @@ defmodule DbserviceWeb.StudentJSON do
       category: student.category,
       stream: student.stream,
       user: if(student.user, do: UserJSON.user_with_compact_fields(student.user), else: nil),
-      apaar_id: student.apaar_id
+      apaar_id: student.apaar_id,
+      g10_board: student.g10_board,
+      g10_roll_no: student.g10_roll_no
     }
   end
 

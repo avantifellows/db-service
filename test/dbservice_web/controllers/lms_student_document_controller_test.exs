@@ -87,7 +87,7 @@ defmodule DbserviceWeb.LmsStudentDocumentControllerTest do
       create_attrs: attrs
     } do
       {:ok, _doc} = LmsStudentDocuments.create_lms_student_document(attrs)
-      {_user, other_student} = student_fixture()
+      {_user, other_student} = student_fixture(%{student_id: "other student id"})
 
       {:ok, _other} =
         LmsStudentDocuments.create_lms_student_document(%{attrs | student_id: other_student.id})
