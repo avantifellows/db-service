@@ -214,7 +214,7 @@ defmodule DbserviceWeb.StudentController do
         |> json(%{errors: "Student not found with the provided identifier"})
 
       student ->
-        case DropoutService.process_dropout(student, dropout_start_date, academic_year) do
+        case DropoutService.process_dropout(student, dropout_start_date, academic_year, params) do
           {:ok, updated_student} ->
             render(conn, :show, student: updated_student)
 

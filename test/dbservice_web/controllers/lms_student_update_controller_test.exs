@@ -8,8 +8,57 @@ defmodule DbserviceWeb.LmsStudentUpdateControllerTest do
   alias Dbservice.Groups.Group
   alias Dbservice.Repo
   alias Dbservice.Schools.School
+  alias Dbservice.Statuses.Status
   alias Dbservice.Users
   alias Dbservice.Users.Student
+
+  describe "PATCH /api/dropout" do
+    test "marks the student dropout and writes LMS audit metadata", %{conn: conn} do
+      school = insert_school!()
+      grade = insert_grade!(11)
+      batch = insert_nvs_batch!(11, "engineering")
+      {_user, student} = insert_enrolled_student!(school, grade, batch)
+      dropout_status = ensure_dropout_status!()
+
+      conn =
+        patch(conn, "/api/dropout", %{
+          "student_id" => student.student_id,
+          "start_date" => "2026-07-01",
+          "academic_year" => "2026-2027",
+          "actor" => actor(),
+          "school" => %{"code" => school.code, "udise_code" => school.udise_code},
+          "program_id" => 64
+        })
+
+      response = json_response(conn, 200)
+      assert response["status"] == "dropout"
+      assert Repo.get!(Student, student.id).status == "dropout"
+      assert current_enrollment(student.user_id, "status").group_id == dropout_status.id
+
+      assert [
+               [
+                 "student_dropout",
+                 "pm@example.org",
+                 school_code,
+                 64,
+                 affected_identifiers,
+                 changed_values
+               ]
+             ] =
+               Ecto.Adapters.SQL.query!(
+                 Repo,
+                 "SELECT action, actor_email, school_code, program_id, affected_identifiers, changed_values FROM lms_student_write_audits"
+               ).rows
+
+      assert school_code == school.code
+      assert affected_identifiers["student_pk_id"] == student.id
+      assert affected_identifiers["student_id"] == student.student_id
+      assert affected_identifiers["apaar_id"] == student.apaar_id
+      assert changed_values["status"] == %{"old" => student.status, "new" => "dropout"}
+      assert changed_values["dropout_date"] == %{"old" => nil, "new" => "2026-07-01"}
+      assert changed_values["academic_year"] == %{"old" => nil, "new" => "2026-2027"}
+    end
+  end
 
   describe "PATCH /api/lms/students/:student_id/update-with-enrollments" do
     test "updates safe profile fields and audits old and new values", %{conn: conn} do
@@ -400,6 +449,15 @@ defmodule DbserviceWeb.LmsStudentUpdateControllerTest do
   defp ensure_group!(type, child_id) do
     Repo.get_by(Group, type: type, child_id: child_id) ||
       Repo.insert!(%Group{type: type, child_id: child_id})
+  end
+
+  defp ensure_dropout_status! do
+    status =
+      Repo.get_by(Status, title: :dropout) ||
+        Repo.insert!(%Status{title: :dropout})
+
+    ensure_group!("status", status.id)
+    status
   end
 
   defp current_enrollment(user_id, group_type) do
