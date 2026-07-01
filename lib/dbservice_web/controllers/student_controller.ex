@@ -20,6 +20,7 @@ defmodule DbserviceWeb.StudentController do
   alias Dbservice.Services.ReEnrollmentService
   alias Dbservice.Utils.ChangesetFormatter
   alias Dbservice.LmsStudentIngestion
+  alias Dbservice.LmsStudentUpdate
 
   action_fallback(DbserviceWeb.FallbackController)
 
@@ -117,6 +118,18 @@ defmodule DbserviceWeb.StudentController do
         conn
         |> put_status(:bad_request)
         |> json(%{error: reason})
+    end
+  end
+
+  def lms_update_with_enrollments(conn, %{"student_id" => student_id} = params) do
+    case LmsStudentUpdate.update(student_id, conn.body_params || params) do
+      {:ok, result} ->
+        json(conn, result)
+
+      {:error, %{"status" => status} = error} ->
+        conn
+        |> put_status(status)
+        |> json(%{"error" => Map.delete(error, "status")})
     end
   end
 

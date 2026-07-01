@@ -157,6 +157,12 @@ defmodule DbserviceWeb.Router do
 
     post("/student/create-with-enrollments", StudentController, :create_with_enrollments)
 
+    patch(
+      "/lms/students/:student_id/update-with-enrollments",
+      StudentController,
+      :lms_update_with_enrollments
+    )
+
     get(
       "/resource/problem/:problem_id/:lang_code/:curriculum_id",
       ResourceController,
