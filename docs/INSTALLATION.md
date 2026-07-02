@@ -157,10 +157,11 @@ This configuration allows the application to authenticate with Google Cloud Plat
 For **internal developers (employees)**, you can sync your local database with the production or staging database by running:
 
 ```bash
-sh ./fetch-data.sh
+./utils/fetch-data.sh
 ```
 
 This script pulls data from the production/staging environment into your local setup.
+It can also sync production into staging when `TARGET_ENVIRONMENT=staging`.
 
 **Note:** Access to staging/production credentials is restricted to authorized personnel within the organization. Please contact the repository maintainers if you're an employee and require access.
 
@@ -195,5 +196,4 @@ For enhanced development experience with Elixir, consider installing [`ElixirLS:
 |      any        |     1.15.5      |        Yes        |  Broken formatter [#975](https://github.com/elixir-lsp/elixir-ls/issues/975) |
 |      27         |    1.17 - 1.18  |        Yes        |                            None                            |
 |      28         |      1.18.4     |        Yes        |                            None                            |
-
 
