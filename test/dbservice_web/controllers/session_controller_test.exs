@@ -118,6 +118,74 @@ defmodule DbserviceWeb.SessionControllerTest do
       assert Map.has_key?(head, "inserted_at")
       assert Map.has_key?(head, "updated_at")
     end
+
+    test "filters sessions by platform equality", %{conn: conn} do
+      quiz_session = session_fixture(%{platform: "quiz", platform_id: "quiz-index-filter"})
+      _meet_session = session_fixture(%{platform: "meet", platform_id: "meet-index-filter"})
+
+      conn = get(conn, ~p"/api/session", %{platform: "quiz"})
+
+      response = json_response(conn, 200)
+      returned_ids = Enum.map(response, & &1["id"])
+
+      assert quiz_session.id in returned_ids
+      assert Enum.all?(response, fn session -> session["platform"] == "quiz" end)
+    end
+
+    test "filters quiz sessions by end_time range", %{conn: conn} do
+      before_window =
+        session_fixture(%{
+          platform: "quiz",
+          platform_id: "quiz-before-window",
+          end_time: ~U[2026-06-17 14:29:59Z]
+        })
+
+      in_window =
+        session_fixture(%{
+          platform: "quiz",
+          platform_id: "quiz-in-window",
+          end_time: ~U[2026-06-17 14:30:00Z]
+        })
+
+      upper_bound =
+        session_fixture(%{
+          platform: "quiz",
+          platform_id: "quiz-upper-bound",
+          end_time: ~U[2026-06-17 15:30:00Z]
+        })
+
+      _non_quiz_in_window =
+        session_fixture(%{
+          platform: "meet",
+          platform_id: "meet-in-window",
+          end_time: ~U[2026-06-17 15:00:00Z]
+        })
+
+      conn =
+        get(conn, ~p"/api/session", %{
+          platform: "quiz",
+          end_time_gte: "2026-06-17T14:30:00Z",
+          end_time_lt: "2026-06-17T15:30:00Z"
+        })
+
+      response = json_response(conn, 200)
+      returned_ids = Enum.map(response, & &1["id"])
+
+      assert in_window.id in returned_ids
+      refute before_window.id in returned_ids
+      refute upper_bound.id in returned_ids
+      assert Enum.all?(response, fn session -> session["platform"] == "quiz" end)
+    end
+
+    test "returns bad request for invalid end_time range timestamp", %{conn: conn} do
+      conn =
+        get(conn, ~p"/api/session", %{
+          platform: "quiz",
+          end_time_gte: "not-a-timestamp"
+        })
+
+      assert json_response(conn, 400)["error"] == "Invalid end_time range timestamp"
+    end
   end
 
   describe "create session" do
