@@ -47,7 +47,7 @@ defmodule DbserviceWeb.LmsStudentIngestionControllerTest do
               "g10_board" => "CENTRAL BOARD OF SECONDARY EDUCATION",
               "g10_roll_no" => "1234 5678",
               "board_stream" => "PCM",
-              "stream" => "engineering",
+              "stream" => "Engineering",
               "father_name" => "Ravi Kumar",
               "phone" => "9876543210",
               "annual_family_income" => "Less than Rs. 1,00,000"
@@ -250,6 +250,71 @@ defmodule DbserviceWeb.LmsStudentIngestionControllerTest do
       assert Repo.aggregate(Student, :count, :id) == before_students
     end
 
+    test "rejects invalid category rows and audits final upload totals", %{conn: conn} do
+      school = insert_school!()
+      insert_auth_group!("EnableStudents")
+      insert_grade!(11)
+      insert_nvs_batch!(11, "engineering")
+
+      conn =
+        post(
+          conn,
+          "/api/lms/students/bulk-create-with-enrollments",
+          payload(school, [
+            valid_row(%{"row_number" => 2, "student_name" => "Valid Student"}),
+            valid_row(%{
+              "row_number" => 3,
+              "student_name" => "Invalid Student",
+              "apaar_id" => "222222222222",
+              "g10_roll_no" => "87654321",
+              "category" => "General"
+            })
+          ])
+        )
+
+      response = json_response(conn, 200)
+
+      assert response["totals"]["created"] == 1
+      assert response["totals"]["rejected"] == 1
+      assert Enum.map(response["results"], & &1["status"]) == ["created", "rejected"]
+
+      [[row_counts]] =
+        Ecto.Adapters.SQL.query!(
+          Repo,
+          "SELECT row_counts FROM lms_student_write_audits WHERE action = 'student_bulk_create'"
+        ).rows
+
+      assert row_counts["created"] == 1
+      assert row_counts["rejected"] == 1
+      assert row_counts["total"] == 2
+    end
+
+    test "rejects whitespace-only APAAR when no Grade 10 roll is present", %{conn: conn} do
+      school = insert_school!()
+      insert_auth_group!("EnableStudents")
+      insert_grade!(11)
+      insert_nvs_batch!(11, "engineering")
+
+      conn =
+        post(
+          conn,
+          "/api/lms/students/bulk-create-with-enrollments",
+          payload(school, [
+            valid_row(%{
+              "apaar_id" => "   ",
+              "g10_roll_no" => ""
+            })
+          ])
+        )
+
+      response = json_response(conn, 200)
+
+      assert response["totals"]["rejected"] == 1
+
+      assert [%{"row_errors" => ["APAAR ID or Grade 10 Roll no is required"]}] =
+               response["results"]
+    end
+
     test "rejects rows when multiple batches match grade and stream", %{conn: conn} do
       school = insert_school!()
       insert_auth_group!("EnableStudents")
@@ -288,6 +353,8 @@ defmodule DbserviceWeb.LmsStudentIngestionControllerTest do
     test "enforces uniqueness only when Student ID or APAAR ID is present" do
       assert {:ok, _student} = create_student(%{"student_id" => nil, "apaar_id" => nil})
       assert {:ok, _student} = create_student(%{"student_id" => nil, "apaar_id" => nil})
+      assert {:ok, _student} = create_student(%{"student_id" => " ", "apaar_id" => " "})
+      assert {:ok, _student} = create_student(%{"student_id" => " ", "apaar_id" => " "})
 
       assert {:ok, _student} =
                create_student(%{"student_id" => "SID-1", "apaar_id" => "111111111111"})

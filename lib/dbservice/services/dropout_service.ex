@@ -9,6 +9,7 @@ defmodule Dbservice.Services.DropoutService do
   alias Dbservice.Repo
   alias Dbservice.EnrollmentRecords
   alias Dbservice.EnrollmentRecords.EnrollmentRecord
+  alias Dbservice.Schools.School
   alias Dbservice.Statuses.Status
   alias Dbservice.Groups.Group
   alias Dbservice.LmsStudentWriteAudit
@@ -34,31 +35,37 @@ defmodule Dbservice.Services.DropoutService do
   Processes student dropout by updating enrollments and student status.
   Returns {:ok, student} on success or {:error, reason} on failure.
   """
-  def process_dropout(student, start_date, academic_year, audit_params \\ %{}) do
-    # Check if the student's status is already 'dropout'
-    if student.status == "dropout" do
-      {:error, "Student is already marked as dropout"}
-    else
-      Repo.transaction(fn ->
-        with {:ok, updated_student} <-
-               create_dropout_enrollment(student, start_date, academic_year),
-             {:ok, _audit} <-
-               maybe_insert_lms_audit(
-                 student,
-                 updated_student,
-                 start_date,
-                 academic_year,
-                 audit_params
-               ) do
-          updated_student
-        else
-          {:error, reason} -> Repo.rollback(reason)
-        end
-      end)
-      |> case do
-        {:ok, updated_student} -> {:ok, updated_student}
-        {:error, reason} -> {:error, reason}
+  def process_dropout(student, start_date, academic_year, audit_params \\ %{})
+
+  def process_dropout(%{status: "dropout"}, _start_date, _academic_year, _audit_params),
+    do: {:error, "Student is already marked as dropout"}
+
+  def process_dropout(student, start_date, academic_year, audit_params) do
+    with :ok <- validate_lms_audit_params(student, audit_params) do
+      dropout_transaction(student, start_date, academic_year, audit_params)
+    end
+  end
+
+  defp dropout_transaction(student, start_date, academic_year, audit_params) do
+    Repo.transaction(fn ->
+      case create_dropout_with_audit(student, start_date, academic_year, audit_params) do
+        {:ok, updated_student} -> updated_student
+        {:error, reason} -> Repo.rollback(reason)
       end
+    end)
+  end
+
+  defp create_dropout_with_audit(student, start_date, academic_year, audit_params) do
+    with {:ok, updated_student} <- create_dropout_enrollment(student, start_date, academic_year),
+         {:ok, _audit} <-
+           maybe_insert_lms_audit(
+             student,
+             updated_student,
+             start_date,
+             academic_year,
+             audit_params
+           ) do
+      {:ok, updated_student}
     end
   end
 
@@ -131,6 +138,40 @@ defmodule Dbservice.Services.DropoutService do
       }
     })
     |> Repo.insert()
+  end
+
+  defp validate_lms_audit_params(_student, params) when params == %{}, do: :ok
+
+  defp validate_lms_audit_params(_student, params)
+       when not is_map_key(params, "actor") or not is_map_key(params, "school"),
+       do: :ok
+
+  defp validate_lms_audit_params(student, %{"actor" => actor, "school" => school})
+       when is_map(actor) and is_map(school) do
+    case current_school(student.user_id) do
+      %{code: code, udise_code: udise_code} ->
+        if school["code"] == code and school["udise_code"] == udise_code do
+          :ok
+        else
+          {:error, "Student is not enrolled in this school"}
+        end
+
+      _school ->
+        {:error, "Student is not enrolled in this school"}
+    end
+  end
+
+  defp validate_lms_audit_params(_student, _params), do: {:error, "Invalid LMS audit metadata"}
+
+  defp current_school(user_id) do
+    from(e in EnrollmentRecord,
+      join: s in School,
+      on: s.id == e.group_id,
+      where: e.user_id == ^user_id and e.group_type == "school" and e.is_current == true,
+      select: s,
+      limit: 1
+    )
+    |> Repo.one()
   end
 
   defp format_dropout_error(changeset) do

@@ -32,18 +32,21 @@ defmodule Dbservice.LmsStudentIngestion do
       |> Enum.map(&normalize_row/1)
       |> classify_rows(school, program_id)
 
-    planned_totals = planned_totals(classified)
-
-    results =
+    results_with_audits =
       Enum.map(classified, fn
-        {:create, row} -> create_row(params, school, row, planned_totals)
-        {:skip, result} -> result
+        {:create, row} -> create_row(params, school, row)
+        {:skip, result} -> {result, nil}
       end)
+
+    results = Enum.map(results_with_audits, &elem(&1, 0))
+    final_totals = totals(results)
+    audit_ids = results_with_audits |> Enum.map(&elem(&1, 1)) |> Enum.reject(&is_nil/1)
+    update_audit_counts(audit_ids, final_totals)
 
     {:ok,
      %{
        "upload_id" => get_in(params, ["upload", "id"]),
-       "totals" => totals(results),
+       "totals" => final_totals,
        "results" => results
      }}
   end
@@ -84,7 +87,7 @@ defmodule Dbservice.LmsStudentIngestion do
     end
   end
 
-  defp create_row(params, school, row, row_counts) do
+  defp create_row(params, school, row) do
     with {:ok, grade} <- fetch_grade(row),
          {:ok, batch} <- fetch_batch(row, params["program_id"]) do
       enrollment_params = %{
@@ -121,7 +124,7 @@ defmodule Dbservice.LmsStudentIngestion do
           upload_id: get_in(params, ["upload", "id"]),
           upload_filename: get_in(params, ["upload", "filename"]),
           row_number: row["row_number"],
-          row_counts: row_counts,
+          row_counts: @empty_totals,
           affected_identifiers: identifiers(row),
           created_values:
             identifiers(row)
@@ -132,22 +135,28 @@ defmodule Dbservice.LmsStudentIngestion do
       end)
       |> Repo.transaction()
       |> case do
-        {:ok, %{student: student}} ->
-          row
-          |> result("created")
-          |> Map.put("student_pk_id", student.id)
+        {:ok, %{student: student, audit: audit}} ->
+          result =
+            row
+            |> result("created")
+            |> Map.put("student_pk_id", student.id)
+
+          {result, audit.id}
 
         {:error, :student, _changeset, _changes} ->
-          case existing_student(row) do
-            nil -> rejected(row, ["Student could not be created"])
-            existing -> already_exists(row, existing)
-          end
+          result =
+            case existing_student(row) do
+              nil -> rejected(row, ["Student could not be created"])
+              existing -> already_exists(row, existing)
+            end
+
+          {result, nil}
 
         {:error, _step, reason, _changes} ->
-          rejected(row, [format_error(reason)])
+          {rejected(row, [format_error(reason)]), nil}
       end
     else
-      {:error, message} -> rejected(row, [message])
+      {:error, message} -> {rejected(row, [message]), nil}
     end
   end
 
@@ -174,13 +183,13 @@ defmodule Dbservice.LmsStudentIngestion do
     })
     |> Map.put("student", %{
       "student_id" => student_id,
-      "apaar_id" => blank_to_nil(row["apaar_id"]),
+      "apaar_id" => trim_blank_to_nil(row["apaar_id"]),
       "category" => row["category"],
       "physically_handicapped" => row["physically_handicapped"],
       "g10_board" => row["g10_board"],
       "g10_roll_no" => blank_to_nil(g10_roll_no),
       "board_stream" => row["board_stream"],
-      "stream" => row["stream"],
+      "stream" => normalize_stream(row["stream"]),
       "father_name" => normalize_name(row["father_name"]),
       "annual_family_income" => row["annual_family_income"],
       "g12_graduating_year" => g12_graduating_year(grade),
@@ -264,7 +273,7 @@ defmodule Dbservice.LmsStudentIngestion do
 
   defp fetch_batch(row, program_id) do
     grade = to_int(row["grade"])
-    stream = row["stream"]
+    stream = get_in(row, ["student", "stream"]) || normalize_stream(row["stream"])
 
     batches =
       from(b in Batch,
@@ -347,15 +356,6 @@ defmodule Dbservice.LmsStudentIngestion do
     }
   end
 
-  defp planned_totals(classified) do
-    classified
-    |> Enum.map(fn
-      {:create, _row} -> %{"status" => "created"}
-      {:skip, result} -> result
-    end)
-    |> totals()
-  end
-
   defp totals(results) do
     status_counts =
       Enum.reduce(results, @empty_totals, fn result, acc ->
@@ -378,6 +378,34 @@ defmodule Dbservice.LmsStudentIngestion do
 
   defp blank_to_nil(value) when value in [nil, ""], do: nil
   defp blank_to_nil(value), do: value
+
+  defp trim_blank_to_nil(value) when is_binary(value) do
+    case String.trim(value) do
+      "" -> nil
+      trimmed -> trimmed
+    end
+  end
+
+  defp trim_blank_to_nil(_value), do: nil
+
+  defp normalize_stream(value) when is_binary(value) do
+    trimmed = String.trim(value)
+
+    Enum.find(Dbservice.Utils.Util.valid_streams(), trimmed, fn valid ->
+      String.downcase(valid) == String.downcase(trimmed)
+    end)
+  end
+
+  defp normalize_stream(value), do: value
+
+  defp update_audit_counts([], _row_counts), do: :ok
+
+  defp update_audit_counts(audit_ids, row_counts) do
+    from(a in LmsStudentWriteAudit, where: a.id in ^audit_ids)
+    |> Repo.update_all(set: [row_counts: row_counts])
+
+    :ok
+  end
 
   defp format_error(%Ecto.Changeset{}), do: "Validation failed"
   defp format_error(reason) when is_binary(reason), do: reason

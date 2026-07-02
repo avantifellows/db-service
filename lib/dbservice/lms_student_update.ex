@@ -173,23 +173,25 @@ defmodule Dbservice.LmsStudentUpdate do
   end
 
   defp enrollment_plan(student, params) do
-    needs_enrollment_change? = Map.has_key?(params, "grade") or Map.has_key?(params, "stream")
+    grade_changed? = Map.has_key?(params, "grade")
+    needs_enrollment_change? = grade_changed? or Map.has_key?(params, "stream")
 
     if needs_enrollment_change? do
       with {:ok, grade} <- fetch_grade(params["grade"] || current_grade_number(student)),
            {:ok, batch} <-
-             fetch_batch(grade.number, params["stream"] || student.stream, params["program_id"]),
-           {:ok, student_id} <- generated_student_id(student, grade.number) do
+             fetch_batch(
+               grade.number,
+               normalize_stream(params["stream"] || student.stream),
+               params["program_id"]
+             ),
+           {:ok, student_id} <- maybe_generated_student_id(student, grade.number, grade_changed?) do
         {:ok,
          %{
            grade: grade,
            batch: batch,
-           student_attrs: %{
-             "grade_id" => grade.id,
-             "g12_graduating_year" => g12_graduating_year(grade.number),
-             "student_id" => student_id
-           },
-           changed_values: derived_changed_values(student, grade, batch, student_id)
+           student_attrs: student_attrs_for_plan(grade, student_id, grade_changed?),
+           changed_values:
+             derived_changed_values(student, grade, batch, student_id, grade_changed?)
          }}
       end
     else
@@ -264,17 +266,37 @@ defmodule Dbservice.LmsStudentUpdate do
   defp g12_graduating_year(11), do: 2028
   defp g12_graduating_year(12), do: 2027
 
-  defp derived_changed_values(student, grade, batch, student_id) do
+  defp maybe_generated_student_id(student, grade, true), do: generated_student_id(student, grade)
+  defp maybe_generated_student_id(student, _grade, false), do: {:ok, student.student_id}
+
+  defp student_attrs_for_plan(grade, student_id, true) do
+    %{
+      "grade_id" => grade.id,
+      "g12_graduating_year" => g12_graduating_year(grade.number),
+      "student_id" => student_id
+    }
+  end
+
+  defp student_attrs_for_plan(_grade, _student_id, false), do: %{}
+
+  defp derived_changed_values(student, grade, batch, student_id, include_grade_values?) do
     current_grade = current_grade_number(student)
     current_batch = current_enrollment(student.user_id, "batch")
 
-    %{
-      "grade" => old_new(current_grade, grade.number),
-      "g12_graduating_year" =>
-        old_new(student.g12_graduating_year, g12_graduating_year(grade.number)),
-      "student_id" => old_new(student.student_id, student_id),
-      "batch_id" => old_new(current_batch && current_batch.group_id, batch.id)
-    }
+    grade_values =
+      if include_grade_values? do
+        %{
+          "grade" => old_new(current_grade, grade.number),
+          "g12_graduating_year" =>
+            old_new(student.g12_graduating_year, g12_graduating_year(grade.number)),
+          "student_id" => old_new(student.student_id, student_id)
+        }
+      else
+        %{}
+      end
+
+    grade_values
+    |> Map.put("batch_id", old_new(current_batch && current_batch.group_id, batch.id))
     |> Enum.reject(fn {_field, %{"old" => old, "new" => new}} -> old == new end)
     |> Map.new()
   end
@@ -292,13 +314,15 @@ defmodule Dbservice.LmsStudentUpdate do
       params
       |> Map.take(@user_fields)
       |> Enum.map(fn {field, new} ->
-        {field, old_new(Map.get(user, String.to_existing_atom(field)), new)}
+        old = Map.get(user, String.to_existing_atom(field))
+        {field, old_new(audit_value(field, old), audit_value(field, new))}
       end)
       |> Kernel.++(
         params
         |> Map.take(@student_fields)
         |> Enum.map(fn {field, new} ->
-          {field, old_new(Map.get(student, String.to_existing_atom(field)), new)}
+          old = Map.get(student, String.to_existing_atom(field))
+          {field, old_new(audit_value(field, old), audit_value(field, new))}
         end)
       )
       |> Enum.reject(fn {_field, %{"old" => old, "new" => new}} -> old == new end)
@@ -339,7 +363,7 @@ defmodule Dbservice.LmsStudentUpdate do
     if attrs == %{}, do: {:ok, schema}, else: update.(schema, attrs)
   end
 
-  defp replace_enrollments(_user_id, %{student_attrs: attrs}, _params) when attrs == %{},
+  defp replace_enrollments(_user_id, plan, _params) when not is_map_key(plan, :batch),
     do: {:ok, :unchanged}
 
   defp replace_enrollments(user_id, %{grade: grade, batch: batch}, params) do
@@ -444,4 +468,18 @@ defmodule Dbservice.LmsStudentUpdate do
   end
 
   defp to_int(_value), do: nil
+
+  defp audit_value("last_name", ""), do: nil
+  defp audit_value("stream", value), do: normalize_stream(value)
+  defp audit_value(_field, value), do: value
+
+  defp normalize_stream(value) when is_binary(value) do
+    trimmed = String.trim(value)
+
+    Enum.find(Dbservice.Utils.Util.valid_streams(), trimmed, fn valid ->
+      String.downcase(valid) == String.downcase(trimmed)
+    end)
+  end
+
+  defp normalize_stream(value), do: value
 end

@@ -13,7 +13,7 @@ defmodule Dbservice.Repo.Migrations.AddLmsStudentIngestion do
       IF EXISTS (
         SELECT student_id
         FROM student
-        WHERE student_id IS NOT NULL
+        WHERE student_id IS NOT NULL AND BTRIM(student_id) <> ''
         GROUP BY student_id
         HAVING COUNT(*) > 1
       ) THEN
@@ -23,7 +23,7 @@ defmodule Dbservice.Repo.Migrations.AddLmsStudentIngestion do
       IF EXISTS (
         SELECT apaar_id
         FROM student
-        WHERE apaar_id IS NOT NULL
+        WHERE apaar_id IS NOT NULL AND BTRIM(apaar_id) <> ''
         GROUP BY apaar_id
         HAVING COUNT(*) > 1
       ) THEN
@@ -33,12 +33,12 @@ defmodule Dbservice.Repo.Migrations.AddLmsStudentIngestion do
     """)
 
     create unique_index(:student, [:student_id],
-             where: "student_id IS NOT NULL",
+             where: "student_id IS NOT NULL AND BTRIM(student_id) <> ''",
              name: :student_student_id_unique_not_null
            )
 
     create unique_index(:student, [:apaar_id],
-             where: "apaar_id IS NOT NULL",
+             where: "apaar_id IS NOT NULL AND BTRIM(apaar_id) <> ''",
              name: :student_apaar_id_unique_not_null
            )
 

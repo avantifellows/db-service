@@ -188,7 +188,7 @@ defmodule Dbservice.Utils.Util do
             put_change(changeset, field, normalized)
 
           {:error, message} ->
-            raise ArgumentError, message
+            add_error(changeset, field, message)
         end
     end
   end
