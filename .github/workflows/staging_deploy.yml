@@ -52,8 +52,7 @@ jobs:
               sudo rm /var/www/html/db-service/priv/static/swagger.json
             fi
             sudo git fetch origin &&
-            sudo git checkout $DEPLOY_BRANCH &&
-            sudo git pull origin $DEPLOY_BRANCH &&
+            sudo git checkout -B $DEPLOY_BRANCH origin/$DEPLOY_BRANCH &&
             # Uncomment the line below if you encounter compilation errors or corrupted .beam files
             # sudo rm -rf _build deps &&
             sudo env MIX_ENV=prod mix deps.get &&
