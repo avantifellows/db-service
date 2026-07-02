@@ -63,7 +63,7 @@ defmodule Dbservice.Services.EnrollmentService do
     group = Groups.get_group!(params["group_id"])
 
     # If this is an exclusive group type, validate no existing active enrollments
-    with :ok <- validate_exclusive_enrollment(params["user_id"], group.type, params["group_id"]) do
+    with :ok <- validate_exclusive_enrollment(params["user_id"], group.type, group.child_id) do
       case GroupUsers.get_group_user_by_user_id_and_group_id(
              params["user_id"],
              params["group_id"]

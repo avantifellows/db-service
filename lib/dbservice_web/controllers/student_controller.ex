@@ -19,6 +19,8 @@ defmodule DbserviceWeb.StudentController do
   alias Dbservice.Services.DropoutService
   alias Dbservice.Services.ReEnrollmentService
   alias Dbservice.Utils.ChangesetFormatter
+  alias Dbservice.LmsStudentIngestion
+  alias Dbservice.LmsStudentUpdate
 
   action_fallback(DbserviceWeb.FallbackController)
 
@@ -119,6 +121,18 @@ defmodule DbserviceWeb.StudentController do
     end
   end
 
+  def lms_update_with_enrollments(conn, %{"student_id" => student_id} = params) do
+    case LmsStudentUpdate.update(student_id, conn.body_params || params) do
+      {:ok, result} ->
+        json(conn, result)
+
+      {:error, %{"status" => status} = error} ->
+        conn
+        |> put_status(status)
+        |> json(%{"error" => Map.delete(error, "status")})
+    end
+  end
+
   swagger_path :show do
     get("/api/student/{id}")
 
@@ -200,7 +214,7 @@ defmodule DbserviceWeb.StudentController do
         |> json(%{errors: "Student not found with the provided identifier"})
 
       student ->
-        case DropoutService.process_dropout(student, dropout_start_date, academic_year) do
+        case DropoutService.process_dropout(student, dropout_start_date, academic_year, params) do
           {:ok, updated_student} ->
             render(conn, :show, student: updated_student)
 
@@ -942,6 +956,18 @@ defmodule DbserviceWeb.StudentController do
         conn
         |> put_status(:bad_request)
         |> json(%{error: inspect(reason)})
+    end
+  end
+
+  def lms_bulk_create_with_enrollments(conn, params) do
+    case LmsStudentIngestion.bulk_create(params) do
+      {:ok, response} ->
+        json(conn, response)
+
+      {:error, :bad_request, response} ->
+        conn
+        |> put_status(:bad_request)
+        |> json(response)
     end
   end
 
