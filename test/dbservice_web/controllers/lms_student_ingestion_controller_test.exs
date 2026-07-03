@@ -289,6 +289,32 @@ defmodule DbserviceWeb.LmsStudentIngestionControllerTest do
       assert row_counts["total"] == 2
     end
 
+    test "rejects non-CBSE Grade 10 rolls that are not 4 to 10 characters", %{conn: conn} do
+      school = insert_school!()
+      insert_auth_group!("EnableStudents")
+      insert_grade!(11)
+      insert_nvs_batch!(11, "engineering")
+
+      conn =
+        post(
+          conn,
+          "/api/lms/students/bulk-create-with-enrollments",
+          payload(school, [
+            valid_row(%{
+              "g10_board" => "RAJASTHAN BOARD OF SECONDARY EDUCATION",
+              "g10_roll_no" => "ABC"
+            })
+          ])
+        )
+
+      response = json_response(conn, 200)
+
+      assert response["totals"]["rejected"] == 1
+
+      assert [%{"row_errors" => ["Grade 10 Roll no must be 4 to 10 characters"]}] =
+               response["results"]
+    end
+
     test "rejects whitespace-only APAAR when no Grade 10 roll is present", %{conn: conn} do
       school = insert_school!()
       insert_auth_group!("EnableStudents")

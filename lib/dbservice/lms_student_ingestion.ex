@@ -16,6 +16,7 @@ defmodule Dbservice.LmsStudentIngestion do
 
   @action "student_bulk_create"
   @auth_group "EnableStudents"
+  @cbse_board "CENTRAL BOARD OF SECONDARY EDUCATION"
   @empty_totals %{
     "created" => 0,
     "duplicate_in_file" => 0,
@@ -79,6 +80,7 @@ defmodule Dbservice.LmsStudentIngestion do
     with :ok <- validate_school(row, school, program_id),
          :ok <- validate_grade(row),
          :ok <- validate_batch(row, program_id),
+         :ok <- validate_g10_roll(row),
          :ok <- validate_identifier_match(row) do
       {:create, row}
     else
@@ -242,6 +244,28 @@ defmodule Dbservice.LmsStudentIngestion do
     case fetch_batch(row, program_id) do
       {:ok, _batch} -> :ok
       error -> error
+    end
+  end
+
+  defp validate_g10_roll(row) do
+    g10_roll_no = get_in(row, ["student", "g10_roll_no"])
+    g10_board = row["g10_board"]
+
+    cond do
+      g10_roll_no in [nil, ""] ->
+        :ok
+
+      g10_board == @cbse_board and Regex.match?(~r/^\d{8}$/, g10_roll_no) ->
+        :ok
+
+      g10_board == @cbse_board ->
+        {:error, "CBSE Grade 10 Roll no must be exactly 8 digits"}
+
+      Regex.match?(~r/^[A-Z0-9]{4,10}$/, g10_roll_no) ->
+        :ok
+
+      true ->
+        {:error, "Grade 10 Roll no must be 4 to 10 characters"}
     end
   end
 

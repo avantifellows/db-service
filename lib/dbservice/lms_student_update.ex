@@ -159,13 +159,13 @@ defmodule Dbservice.LmsStudentUpdate do
   end
 
   defp validate_g10_board(student, _params) do
-    if student.g10_roll_no in [nil, ""] or Regex.match?(~r/^[A-Z0-9]+$/, student.g10_roll_no) do
+    if student.g10_roll_no in [nil, ""] or Regex.match?(~r/^[A-Z0-9]{4,10}$/, student.g10_roll_no) do
       :ok
     else
       {:error,
        error(
          "invalid_g10_roll_for_board",
-         "Grade 10 Roll no must contain only letters and digits",
+         "Grade 10 Roll no must be 4 to 10 characters",
          422,
          ["g10_board"]
        )}
