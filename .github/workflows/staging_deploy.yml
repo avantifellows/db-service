@@ -27,24 +27,6 @@ jobs:
             echo "name=${{ github.event.inputs.branch || 'main' }}" >> $GITHUB_OUTPUT
           fi
 
-      # TEMP (remove before merge): confirm the Staging-environment secrets point at
-      # staging (not prod) before we let `sudo sed` actually overwrite the server .env.
-      # Credential-safe: prints only the DB host+name, PHX_HOST and domains (spaced out
-      # to get past GitHub secret masking), and the bearer token *length*. It never
-      # prints DATABASE_URL credentials, SECRET_KEY_BASE, or the bearer token value.
-      - name: TEMP verify staging secret targets
-        env:
-          DB_URL: ${{ secrets.STAGING_DATABASE_URL }}
-          PHX_HOST: ${{ secrets.STAGING_PHX_HOST }}
-          DOMAINS: ${{ secrets.STAGING_WHITELISTED_DOMAINS }}
-          BEARER: ${{ secrets.STAGING_BEARER_TOKEN }}
-        run: |
-          echo "== staging secret sanity check (credential-safe) =="
-          echo "DB host+name : $(printf '%s' "$DB_URL" | sed -E 's#^[^@]*@##; s#\?.*$##')"
-          echo "PHX_HOST     : $(printf '%s' "$PHX_HOST" | sed 's/./& /g')"
-          echo "DOMAINS      : $(printf '%s' "$DOMAINS" | sed 's/./& /g')"
-          echo "BEARER length: ${#BEARER}"
-
       - name: Deploy to EC2
         env:
           PRIVATE_KEY: ${{ secrets.STAGING_SSH_PRIVATE_KEY }}
@@ -57,13 +39,13 @@ jobs:
           echo "$PRIVATE_KEY" > private_key && chmod 600 private_key
           ssh -o StrictHostKeyChecking=no -i private_key "${USER_NAME}@${HOSTNAME}" "DEPLOY_BRANCH=$(printf '%q' "$DEPLOY_BRANCH") bash -se" <<'EOF'
             cd /var/www/html/db-service/config
-            sed -i 's|DATABASE_URL=.*|DATABASE_URL=${{ secrets.STAGING_DATABASE_URL }}|' .env
-            sed -i 's|SECRET_KEY_BASE=.*|SECRET_KEY_BASE=${{ secrets.STAGING_SECRET_KEY_BASE }}|' .env
-            sed -i 's|PHX_HOST=.*|PHX_HOST=${{ secrets.STAGING_PHX_HOST }}|' .env
-            sed -i 's|WHITELISTED_DOMAINS=.*|WHITELISTED_DOMAINS=${{ secrets.STAGING_WHITELISTED_DOMAINS }}|' .env
-            sed -i 's|POOL_SIZE=.*|POOL_SIZE=${{ secrets.STAGING_POOL_SIZE }}|' .env
-            sed -i 's|PORT=.*|PORT=${{ secrets.STAGING_PORT }}|' .env
-            sed -i 's|BEARER_TOKEN=.*|BEARER_TOKEN=${{ secrets.STAGING_BEARER_TOKEN }}|' .env
+            sudo sed -i 's|DATABASE_URL=.*|DATABASE_URL=${{ secrets.STAGING_DATABASE_URL }}|' .env
+            sudo sed -i 's|SECRET_KEY_BASE=.*|SECRET_KEY_BASE=${{ secrets.STAGING_SECRET_KEY_BASE }}|' .env
+            sudo sed -i 's|PHX_HOST=.*|PHX_HOST=${{ secrets.STAGING_PHX_HOST }}|' .env
+            sudo sed -i 's|WHITELISTED_DOMAINS=.*|WHITELISTED_DOMAINS=${{ secrets.STAGING_WHITELISTED_DOMAINS }}|' .env
+            sudo sed -i 's|POOL_SIZE=.*|POOL_SIZE=${{ secrets.STAGING_POOL_SIZE }}|' .env
+            sudo sed -i 's|PORT=.*|PORT=${{ secrets.STAGING_PORT }}|' .env
+            sudo sed -i 's|BEARER_TOKEN=.*|BEARER_TOKEN=${{ secrets.STAGING_BEARER_TOKEN }}|' .env
             cd /var/www/html/db-service
             sudo git checkout .
             if [ -f /var/www/html/db-service/priv/static/swagger.json ]; then
