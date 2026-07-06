@@ -91,6 +91,7 @@ defmodule Dbservice.CentreSchemaTest do
       # PK plus the active-centre guard: at most one ACTIVE centre per
       # (school, program), the pair centre_students attributes students by.
       assert ["school_id", "program_id"] in unique_indexes("centres")
+
       refute Enum.any?(
                unique_indexes("centres"),
                &(&1 not in [["id"], ["school_id", "program_id"]])
