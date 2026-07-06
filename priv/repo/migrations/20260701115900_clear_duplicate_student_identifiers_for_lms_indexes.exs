@@ -15,7 +15,9 @@ defmodule Dbservice.Repo.Migrations.ClearDuplicateStudentIdentifiersForLmsIndexe
     UPDATE student
     SET student_id = NULL
     WHERE id IN (SELECT id FROM duplicate_student_ids);
+    """)
 
+    execute("""
     WITH duplicate_apaar_ids AS (
       SELECT id
       FROM (
@@ -28,7 +30,9 @@ defmodule Dbservice.Repo.Migrations.ClearDuplicateStudentIdentifiersForLmsIndexe
     UPDATE student
     SET apaar_id = NULL
     WHERE id IN (SELECT id FROM duplicate_apaar_ids);
+    """)
 
+    execute("""
     DO $$
     BEGIN
       IF EXISTS (
