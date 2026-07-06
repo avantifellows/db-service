@@ -88,7 +88,14 @@ defmodule Dbservice.CentreSchemaTest do
 
       assert ["code"] in unique_indexes("centre_option_sets")
       assert ["option_set_id", "code"] in unique_indexes("centre_options")
-      refute Enum.any?(unique_indexes("centres"), &(&1 != ["id"]))
+      # PK plus the active-centre guard: at most one ACTIVE centre per
+      # (school, program), the pair centre_students attributes students by.
+      assert ["school_id", "program_id"] in unique_indexes("centres")
+
+      refute Enum.any?(
+               unique_indexes("centres"),
+               &(&1 not in [["id"], ["school_id", "program_id"]])
+             )
 
       assert indexes("centre_options") |> Enum.any?(&(&1 == ["option_set_id"]))
       assert indexes("centres") |> Enum.any?(&(&1 == ["school_id"]))
@@ -105,6 +112,18 @@ defmodule Dbservice.CentreSchemaTest do
       assert foreign_keys("centres") == [
                {"program_id", "program", "id"},
                {"school_id", "school", "id"}
+             ]
+    end
+
+    test "exposes the centre_students view with lean membership keys" do
+      # The canonical "students in a centre" derivation. Lean keys only —
+      # consumers join user/student/program for display columns.
+      assert Map.keys(columns("centre_students")) |> Enum.sort() == [
+               "academic_year",
+               "centre_id",
+               "grade",
+               "program_id",
+               "user_id"
              ]
     end
   end
