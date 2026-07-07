@@ -21,6 +21,9 @@ env:
   CONTAINER_NAME: db-service
   SUBNETS: subnet-84ffe8ec,subnet-434c080f,subnet-5cd65827
   SECURITY_GROUP_NAME: db-service-staging-sg
+  # SG names are only unique within a VPC — scope the lookup so a same-named SG
+  # in another VPC can't be selected.
+  VPC_ID: vpc-0a48a661
   # Smoke check hits the shared ALB directly (Host header) so it doesn't depend
   # on public DNS (which lives in Cloudflare, not Route53).
   SERVICE_HOST: staging-database.avantifellows.org
@@ -59,9 +62,12 @@ jobs:
         id: build
         env:
           ECR_REGISTRY: ${{ steps.ecr.outputs.registry }}
-          IMAGE_TAG: staging-${{ github.sha }}
         run: |
           set -euo pipefail
+          # Tag from the commit actually checked out (not github.sha) so the image
+          # tag, source commit, and ECS task definition stay aligned even when a
+          # specific ref is dispatched.
+          IMAGE_TAG="staging-$(git rev-parse HEAD)"
           IMAGE="${ECR_REGISTRY}/${ECR_REPOSITORY}:${IMAGE_TAG}"
           docker build -t "$IMAGE" .
           docker push "$IMAGE"
@@ -98,7 +104,7 @@ jobs:
         run: |
           set -euo pipefail
           SG_ID=$(aws ec2 describe-security-groups \
-            --filters "Name=group-name,Values=${SECURITY_GROUP_NAME}" \
+            --filters "Name=group-name,Values=${SECURITY_GROUP_NAME}" "Name=vpc-id,Values=${VPC_ID}" \
             --query 'SecurityGroups[0].GroupId' --output text)
           if [ -z "$SG_ID" ] || [ "$SG_ID" = "None" ]; then
             echo "::error::Security group ${SECURITY_GROUP_NAME} not found. Has terraform apply run for this environment?"

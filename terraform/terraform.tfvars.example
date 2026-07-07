@@ -1,0 +1,58 @@
+# Example Terraform variables for db-service.
+#
+# This file documents the FULL set of inputs. Copy the relevant bits into an
+# env-specific file (envs/staging.tfvars, envs/prod.tfvars) — do NOT put real
+# secrets here or in any committed tfvars. Placeholder values only.
+#
+# Sensitive values are supplied via TF_VAR_* environment variables at apply
+# time, never in a tfvars file (see ../README.md). They are listed below as
+# commented reminders, not as tfvars keys.
+
+########################################
+# Required, per-environment (no defaults)
+########################################
+environment            = "staging"                 # "staging" | "prod"
+domain_prefix          = "staging-database"         # <prefix>.avantifellows.org
+whitelisted_domains    = "staging-database.avantifellows.org,localhost"
+listener_rule_priority = 200                        # unique per env on the shared ALB (prod uses 100)
+
+########################################
+# Capacity / autoscaling (have defaults; override per env as needed)
+########################################
+# cpu                    = 1024   # Fargate CPU units (512 = 0.5 vCPU, 1024 = 1 vCPU)
+# memory                 = 2048   # MiB
+# desired_count          = 2
+# min_capacity           = 2
+# max_capacity           = 4
+# target_cpu_utilization = 60
+# pool_size              = 10     # DB pool size PER task
+# image_tag              = "latest"
+
+########################################
+# Shared infra (defaulted in variables.tf; same for staging/prod)
+########################################
+# aws_region             = "ap-south-1"
+# vpc_id                 = "vpc-xxxxxxxx"
+# subnet_ids             = ["subnet-aaaa", "subnet-bbbb", "subnet-cccc"]
+# alb_name               = "af-load-balancer"
+# alb_https_listener_arn = "arn:aws:elasticloadbalancing:...:listener/app/..."
+# cloudflare_zone_id     = "your_zone_id"
+# cloudflare_email       = "owner@example.com"
+# dns_proxied            = false
+
+########################################
+# CI deploy user — set true on exactly ONE env's apply (staging), then leave
+# false. The user is shared across envs and has prevent_destroy.
+########################################
+# create_ci_user = false
+
+########################################
+# Sensitive — supply via TF_VAR_* env vars ONLY (never in tfvars):
+#   TF_VAR_database_url
+#   TF_VAR_secret_key_base
+#   TF_VAR_bearer_token
+#   TF_VAR_google_credentials_json
+#   TF_VAR_dashboard_user
+#   TF_VAR_dashboard_pass
+#   TF_VAR_cloudflare_api_key
+########################################
