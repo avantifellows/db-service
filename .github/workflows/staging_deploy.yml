@@ -73,15 +73,22 @@ jobs:
             sudo fuser -k 4000/tcp 2>/dev/null || true
             sleep 2
             nohup sudo env MIX_ENV=prod elixir --erl \"-detached\" -S mix phx.server > /tmp/phx_server.log 2>&1 &
-            sleep 5
             # Hit /api/health (public, no bearer token, and it verifies the DB) —
-            # /api/session requires auth and would 401. Fail the job on non-200 so a
-            # broken boot doesn't show green.
-            CODE=$(curl -s -o /dev/null -w '%{http_code}' http://localhost:4000/api/health || echo 000)
+            # /api/session requires auth and would 401. Poll for up to ~2 min: a
+            # cold prod boot (release load + DB pool) can take well over 5s. Fail
+            # the job on a persistent non-200 so a broken boot doesn't show green.
+            # NOTE: this checks port 4000 (matches the fuser/kill above); keep the
+            # STAGING_PORT secret at 4000 or this will never see the server.
+            CODE=000
+            for _ in $(seq 1 24); do
+              CODE=$(curl -s -o /dev/null -w '%{http_code}' http://localhost:4000/api/health || true)
+              [ "$CODE" = "200" ] && break
+              sleep 5
+            done
             if [ "$CODE" = "200" ]; then
               echo 'Server started successfully'
             else
-              echo "Server health check failed (HTTP $CODE); see /tmp/phx_server.log on the host"
+              echo "Server health check failed (last HTTP ${CODE:-000}); see /tmp/phx_server.log on the host"
               exit 1
             fi
           } </dev/null
