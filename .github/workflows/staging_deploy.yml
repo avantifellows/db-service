@@ -56,6 +56,13 @@ jobs:
             sudo sed -i 's|POOL_SIZE=.*|POOL_SIZE=${{ secrets.STAGING_POOL_SIZE }}|' .env
             sudo sed -i 's|PORT=.*|PORT=${{ secrets.STAGING_PORT }}|' .env
             sudo sed -i 's|BEARER_TOKEN=.*|BEARER_TOKEN=${{ secrets.STAGING_BEARER_TOKEN }}|' .env
+            # Read the port the app actually binds (PORT in .env) so the kill and
+            # health check target the right port rather than a hardcoded 4000. The
+            # app serves fine via nginx on the domain; only this local check was
+            # looking at the wrong port.
+            APP_PORT=$(sed -n 's/^PORT=//p' .env | head -1 | tr -dc '0-9')
+            APP_PORT=${APP_PORT:-4000}
+            echo "App port (from .env): ${APP_PORT}"
             cd /var/www/html/db-service
             sudo git checkout .
             if [ -f /var/www/html/db-service/priv/static/swagger.json ]; then
@@ -70,18 +77,16 @@ jobs:
             sudo env MIX_ENV=prod mix ecto.migrate
             sudo env MIX_ENV=prod mix phx.swagger.generate
             sudo env MIX_ENV=prod mix assets.deploy
-            sudo fuser -k 4000/tcp 2>/dev/null || true
+            sudo fuser -k "${APP_PORT}/tcp" 2>/dev/null || true
             sleep 2
             nohup sudo env MIX_ENV=prod elixir --erl \"-detached\" -S mix phx.server > /tmp/phx_server.log 2>&1 &
             # Hit /api/health (public, no bearer token, and it verifies the DB) —
             # /api/session requires auth and would 401. Poll for up to ~2 min: a
             # cold prod boot (release load + DB pool) can take well over 5s. Fail
             # the job on a persistent non-200 so a broken boot doesn't show green.
-            # NOTE: this checks port 4000 (matches the fuser/kill above); keep the
-            # STAGING_PORT secret at 4000 or this will never see the server.
             CODE=000
             for _ in $(seq 1 24); do
-              CODE=$(curl -s -o /dev/null -w '%{http_code}' http://localhost:4000/api/health || true)
+              CODE=$(curl -s -o /dev/null -w "%{http_code}" "http://localhost:${APP_PORT}/api/health" || true)
               [ "$CODE" = "200" ] && break
               sleep 5
             done
