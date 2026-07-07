@@ -10,6 +10,7 @@ defmodule DbserviceWeb.LmsStudentIngestionControllerTest do
   alias Dbservice.Groups.GroupUser
   alias Dbservice.Groups.AuthGroup
   alias Dbservice.EnrollmentRecords.EnrollmentRecord
+  alias Dbservice.Products.Product
   alias Dbservice.Repo
   alias Dbservice.Schools.School
   alias Dbservice.Users
@@ -18,7 +19,7 @@ defmodule DbserviceWeb.LmsStudentIngestionControllerTest do
 
   describe "POST /api/lms/students/bulk-create-with-enrollments" do
     test "creates one NVS student with derived identity, enrollments, and audit", %{conn: conn} do
-      school = insert_school!()
+      school = insert_eligible_school!()
       insert_auth_group!("EnableStudents")
       grade = insert_grade!(11)
       batch = insert_nvs_batch!(11, "engineering")
@@ -154,7 +155,8 @@ defmodule DbserviceWeb.LmsStudentIngestionControllerTest do
       assert json_response(conn, 200)["totals"]["created"] == 1
     end
 
-    test "allows school program access from current student batch history", %{conn: conn} do
+    test "rejects school program access from current student batch history without centre link",
+         %{conn: conn} do
       school = insert_school!(%{program_ids: []})
       insert_auth_group!("EnableStudents")
       insert_grade!(11)
@@ -168,11 +170,14 @@ defmodule DbserviceWeb.LmsStudentIngestionControllerTest do
           payload(school, [valid_row()])
         )
 
-      assert json_response(conn, 200)["totals"]["created"] == 1
+      assert [%{"row_errors" => ["School is not eligible for this program"]}] =
+               json_response(conn, 200)["results"]
     end
 
-    test "rejects school without any matching program source", %{conn: conn} do
-      school = insert_school!(%{program_ids: []})
+    test "rejects school without an active centre link even when program_ids contains program", %{
+      conn: conn
+    } do
+      school = insert_school!()
       insert_auth_group!("EnableStudents")
       insert_grade!(11)
       insert_nvs_batch!(11, "engineering")
@@ -189,7 +194,7 @@ defmodule DbserviceWeb.LmsStudentIngestionControllerTest do
     end
 
     test "marks repeated identifiers in the same upload as duplicate_in_file", %{conn: conn} do
-      school = insert_school!()
+      school = insert_eligible_school!()
       insert_auth_group!("EnableStudents")
       insert_grade!(11)
       insert_nvs_batch!(11, "engineering")
@@ -214,7 +219,7 @@ defmodule DbserviceWeb.LmsStudentIngestionControllerTest do
     end
 
     test "returns already_exists for existing identifiers without updating records", %{conn: conn} do
-      school = insert_school!()
+      school = insert_eligible_school!()
       insert_auth_group!("EnableStudents")
       insert_grade!(11)
       insert_nvs_batch!(11, "engineering")
@@ -251,7 +256,7 @@ defmodule DbserviceWeb.LmsStudentIngestionControllerTest do
     test "rejects APAAR and generated Student ID matches that point to different students", %{
       conn: conn
     } do
-      school = insert_school!()
+      school = insert_eligible_school!()
       insert_auth_group!("EnableStudents")
       insert_grade!(11)
       insert_nvs_batch!(11, "engineering")
@@ -281,7 +286,7 @@ defmodule DbserviceWeb.LmsStudentIngestionControllerTest do
     end
 
     test "rejects rows when batch lookup is not exactly one match", %{conn: conn} do
-      school = insert_school!()
+      school = insert_eligible_school!()
       insert_auth_group!("EnableStudents")
       insert_grade!(11)
       before_students = Repo.aggregate(Student, :count, :id)
@@ -304,7 +309,7 @@ defmodule DbserviceWeb.LmsStudentIngestionControllerTest do
     end
 
     test "rejects invalid category rows and audits final upload totals", %{conn: conn} do
-      school = insert_school!()
+      school = insert_eligible_school!()
       insert_auth_group!("EnableStudents")
       insert_grade!(11)
       insert_nvs_batch!(11, "engineering")
@@ -343,7 +348,7 @@ defmodule DbserviceWeb.LmsStudentIngestionControllerTest do
     end
 
     test "rejects non-CBSE Grade 10 rolls that are not 4 to 10 characters", %{conn: conn} do
-      school = insert_school!()
+      school = insert_eligible_school!()
       insert_auth_group!("EnableStudents")
       insert_grade!(11)
       insert_nvs_batch!(11, "engineering")
@@ -369,7 +374,7 @@ defmodule DbserviceWeb.LmsStudentIngestionControllerTest do
     end
 
     test "rejects whitespace-only APAAR when no Grade 10 roll is present", %{conn: conn} do
-      school = insert_school!()
+      school = insert_eligible_school!()
       insert_auth_group!("EnableStudents")
       insert_grade!(11)
       insert_nvs_batch!(11, "engineering")
@@ -395,7 +400,7 @@ defmodule DbserviceWeb.LmsStudentIngestionControllerTest do
     end
 
     test "rejects rows when multiple batches match grade and stream", %{conn: conn} do
-      school = insert_school!()
+      school = insert_eligible_school!()
       insert_auth_group!("EnableStudents")
       insert_grade!(11)
       insert_nvs_batch!(11, "engineering")
@@ -511,6 +516,13 @@ defmodule DbserviceWeb.LmsStudentIngestionControllerTest do
     school
   end
 
+  defp insert_eligible_school!(attrs \\ %{}) do
+    school = insert_school!(attrs)
+    ensure_nvs_program!()
+    insert_active_centre!(school, 64)
+    school
+  end
+
   defp insert_active_centre!(school, program_id) do
     Ecto.Adapters.SQL.query!(
       Repo,
@@ -555,19 +567,7 @@ defmodule DbserviceWeb.LmsStudentIngestionControllerTest do
   end
 
   defp insert_nvs_batch!(grade, stream) do
-    product = Dbservice.ProductsFixtures.product_fixture(%{code: "NVS"})
-
-    Repo.get(Dbservice.Programs.Program, 64) ||
-      Repo.insert!(%Dbservice.Programs.Program{
-        id: 64,
-        name: "JNV NVS",
-        product_id: product.id,
-        target_outreach: 100,
-        donor: "NVS",
-        state: "India",
-        model: "Lakshya",
-        is_current: true
-      })
+    ensure_nvs_program!()
 
     case existing_nvs_batches(grade, stream) do
       [batch] ->
@@ -585,6 +585,25 @@ defmodule DbserviceWeb.LmsStudentIngestionControllerTest do
 
         batch
     end
+  end
+
+  defp ensure_nvs_program! do
+    Repo.get(Dbservice.Programs.Program, 64) ||
+      Repo.insert!(%Dbservice.Programs.Program{
+        id: 64,
+        name: "JNV NVS",
+        product_id: ensure_nvs_product!().id,
+        target_outreach: 100,
+        donor: "NVS",
+        state: "India",
+        model: "Lakshya",
+        is_current: true
+      })
+  end
+
+  defp ensure_nvs_product! do
+    Repo.get_by(Product, code: "NVS") ||
+      Dbservice.ProductsFixtures.product_fixture(%{code: "NVS"})
   end
 
   defp existing_nvs_batches(grade, stream) do

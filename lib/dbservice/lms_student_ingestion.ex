@@ -8,14 +8,11 @@ defmodule Dbservice.LmsStudentIngestion do
   alias Dbservice.DataImport.StudentEnrollment
   alias Dbservice.Grades
   alias Dbservice.Groups
-  alias Dbservice.Groups.Group
-  alias Dbservice.Groups.GroupUser
   alias Dbservice.LmsStudentWriteAudit
   alias Dbservice.Repo
   alias Dbservice.Schools
   alias Dbservice.Users.Student
   alias Dbservice.Users.User
-  alias Dbservice.EnrollmentRecords.EnrollmentRecord
 
   @action "student_bulk_create"
   @auth_group "EnableStudents"
@@ -241,9 +238,7 @@ defmodule Dbservice.LmsStudentIngestion do
   defp school_program_allowed?(_school, nil), do: false
 
   defp school_program_allowed?(school, program_id) do
-    program_id in (school.program_ids || []) ||
-      school_has_active_centre_program?(school.id, program_id) ||
-      school_has_current_student_program?(school.id, program_id)
+    school_has_active_centre_program?(school.id, program_id)
   end
 
   defp school_has_active_centre_program?(school_id, program_id) do
@@ -252,19 +247,6 @@ defmodule Dbservice.LmsStudentIngestion do
         field(c, :school_id) == ^school_id and
           field(c, :program_id) == ^program_id and
           field(c, :is_active) == true
-    )
-    |> Repo.exists?()
-  end
-
-  defp school_has_current_student_program?(school_id, program_id) do
-    from(gu in GroupUser,
-      join: g in Group,
-      on: g.id == gu.group_id and g.type == "school" and g.child_id == ^school_id,
-      join: er in EnrollmentRecord,
-      on: er.user_id == gu.user_id and er.group_type == "batch" and er.is_current == true,
-      join: b in Batch,
-      on: b.id == er.group_id,
-      where: b.program_id == ^program_id
     )
     |> Repo.exists?()
   end
