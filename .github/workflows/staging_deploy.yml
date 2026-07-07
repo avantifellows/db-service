@@ -79,7 +79,7 @@ jobs:
             sudo env MIX_ENV=prod mix assets.deploy
             sudo fuser -k "${APP_PORT}/tcp" 2>/dev/null || true
             sleep 2
-            nohup sudo env MIX_ENV=prod elixir --erl \"-detached\" -S mix phx.server > /tmp/phx_server.log 2>&1 &
+            nohup sudo env MIX_ENV=prod mix phx.server > /tmp/phx_server.log 2>&1 &
             # Hit /api/health (public, no bearer token, and it verifies the DB) —
             # /api/session requires auth and would 401. Poll for up to ~2 min: a
             # cold prod boot (release load + DB pool) can take well over 5s. Fail
@@ -94,6 +94,7 @@ jobs:
               echo 'Server started successfully'
             else
               echo "Server health check failed (last HTTP ${CODE:-000}); see /tmp/phx_server.log on the host"
+              sudo tail -200 /tmp/phx_server.log || true
               exit 1
             fi
           } </dev/null
