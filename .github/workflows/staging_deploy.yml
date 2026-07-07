@@ -37,33 +37,36 @@ jobs:
           DEPLOY_BRANCH="${{ steps.branch.outputs.name }}"
           echo "Deploying branch: $DEPLOY_BRANCH"
           echo "$PRIVATE_KEY" > private_key && chmod 600 private_key
-          ssh -o StrictHostKeyChecking=no -i private_key ${USER_NAME}@${HOSTNAME} "
+          ssh -o StrictHostKeyChecking=no -i private_key "${USER_NAME}@${HOSTNAME}" "DEPLOY_BRANCH=$(printf '%q' "$DEPLOY_BRANCH") bash -se" <<'EOF'
             cd /var/www/html/db-service/config
-            sed -i 's|DATABASE_URL=.*|DATABASE_URL=${{ secrets.STAGING_DATABASE_URL }}|' .env
-            sed -i 's|SECRET_KEY_BASE=.*|SECRET_KEY_BASE=${{ secrets.STAGING_SECRET_KEY_BASE }}|' .env
-            sed -i 's|PHX_HOST=.*|PHX_HOST=${{ secrets.STAGING_PHX_HOST }}|' .env
-            sed -i 's|WHITELISTED_DOMAINS=.*|WHITELISTED_DOMAINS=${{ secrets.STAGING_WHITELISTED_DOMAINS }}|' .env
-            sed -i 's|POOL_SIZE=.*|POOL_SIZE=${{ secrets.STAGING_POOL_SIZE }}|' .env
-            sed -i 's|PORT=.*|PORT=${{ secrets.STAGING_PORT }}|' .env
-            sed -i 's|BEARER_TOKEN=.*|BEARER_TOKEN=${{ secrets.STAGING_BEARER_TOKEN }}|' .env
-            cd /var/www/html/db-service &&
-            sudo git checkout . &&
+            sudo sed -i 's|DATABASE_URL=.*|DATABASE_URL=${{ secrets.STAGING_DATABASE_URL }}|' .env
+            sudo sed -i 's|SECRET_KEY_BASE=.*|SECRET_KEY_BASE=${{ secrets.STAGING_SECRET_KEY_BASE }}|' .env
+            sudo sed -i 's|PHX_HOST=.*|PHX_HOST=${{ secrets.STAGING_PHX_HOST }}|' .env
+            sudo sed -i 's|WHITELISTED_DOMAINS=.*|WHITELISTED_DOMAINS=${{ secrets.STAGING_WHITELISTED_DOMAINS }}|' .env
+            sudo sed -i 's|POOL_SIZE=.*|POOL_SIZE=${{ secrets.STAGING_POOL_SIZE }}|' .env
+            sudo sed -i 's|PORT=.*|PORT=${{ secrets.STAGING_PORT }}|' .env
+            sudo sed -i 's|BEARER_TOKEN=.*|BEARER_TOKEN=${{ secrets.STAGING_BEARER_TOKEN }}|' .env
+            cd /var/www/html/db-service
+            sudo git checkout .
             if [ -f /var/www/html/db-service/priv/static/swagger.json ]; then
               sudo rm /var/www/html/db-service/priv/static/swagger.json
             fi
-            sudo git fetch origin &&
-            sudo git checkout $DEPLOY_BRANCH &&
-            sudo git pull origin $DEPLOY_BRANCH &&
+            sudo git fetch origin
+            sudo git checkout -B "$DEPLOY_BRANCH" "origin/$DEPLOY_BRANCH"
             # Uncomment the line below if you encounter compilation errors or corrupted .beam files
-            # sudo rm -rf _build deps &&
-            sudo env MIX_ENV=prod mix deps.get &&
-            sudo env MIX_ENV=prod mix deps.compile &&
-            sudo env MIX_ENV=prod mix ecto.migrate &&
-            sudo env MIX_ENV=prod mix phx.swagger.generate &&
-            sudo env MIX_ENV=prod mix assets.deploy &&
-            sudo fuser -k 4000/tcp 2>/dev/null || true &&
-            sleep 2 &&
+            # sudo rm -rf _build deps
+            sudo env MIX_ENV=prod mix deps.get
+            sudo env MIX_ENV=prod mix deps.compile
+            sudo env MIX_ENV=prod mix ecto.migrate
+            sudo env MIX_ENV=prod mix phx.swagger.generate
+            sudo env MIX_ENV=prod mix assets.deploy
+            sudo fuser -k 4000/tcp 2>/dev/null || true
+            sleep 2
             nohup sudo env MIX_ENV=prod elixir --erl \"-detached\" -S mix phx.server > /tmp/phx_server.log 2>&1 &
-            sleep 5 &&
-            curl -s -o /dev/null -w '%{http_code}' http://localhost:4000/api/session?limit=1 | grep -q '200' && echo 'Server started successfully' || echo 'Warning: Server may not have started'
-          "
+            sleep 5
+            if curl -s -o /dev/null -w '%{http_code}' http://localhost:4000/api/session?limit=1 | grep -q '200'; then
+              echo 'Server started successfully'
+            else
+              echo 'Warning: Server may not have started'
+            fi
+          EOF
