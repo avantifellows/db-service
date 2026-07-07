@@ -7,7 +7,9 @@ defmodule DbserviceWeb.LmsStudentIngestionControllerTest do
   alias Dbservice.Batches.Batch
   alias Dbservice.Grades.Grade
   alias Dbservice.Groups.Group
+  alias Dbservice.Groups.GroupUser
   alias Dbservice.Groups.AuthGroup
+  alias Dbservice.EnrollmentRecords.EnrollmentRecord
   alias Dbservice.Repo
   alias Dbservice.Schools.School
   alias Dbservice.Users
@@ -133,6 +135,57 @@ defmodule DbserviceWeb.LmsStudentIngestionControllerTest do
       assert row_counts["created"] == 1
       assert affected_identifiers["apaar_id"] == "123456789012"
       assert created_values["student_id"] == "202812345678"
+    end
+
+    test "allows school program access through an active centre link", %{conn: conn} do
+      school = insert_school!(%{program_ids: []})
+      insert_auth_group!("EnableStudents")
+      insert_grade!(11)
+      insert_nvs_batch!(11, "engineering")
+      insert_active_centre!(school, 64)
+
+      conn =
+        post(
+          conn,
+          "/api/lms/students/bulk-create-with-enrollments",
+          payload(school, [valid_row()])
+        )
+
+      assert json_response(conn, 200)["totals"]["created"] == 1
+    end
+
+    test "allows school program access from current student batch history", %{conn: conn} do
+      school = insert_school!(%{program_ids: []})
+      insert_auth_group!("EnableStudents")
+      insert_grade!(11)
+      batch = insert_nvs_batch!(11, "engineering")
+      insert_current_student_for_program!(school, batch)
+
+      conn =
+        post(
+          conn,
+          "/api/lms/students/bulk-create-with-enrollments",
+          payload(school, [valid_row()])
+        )
+
+      assert json_response(conn, 200)["totals"]["created"] == 1
+    end
+
+    test "rejects school without any matching program source", %{conn: conn} do
+      school = insert_school!(%{program_ids: []})
+      insert_auth_group!("EnableStudents")
+      insert_grade!(11)
+      insert_nvs_batch!(11, "engineering")
+
+      conn =
+        post(
+          conn,
+          "/api/lms/students/bulk-create-with-enrollments",
+          payload(school, [valid_row()])
+        )
+
+      assert [%{"row_errors" => ["School is not eligible for this program"]}] =
+               json_response(conn, 200)["results"]
     end
 
     test "marks repeated identifiers in the same upload as duplicate_in_file", %{conn: conn} do
@@ -437,9 +490,9 @@ defmodule DbserviceWeb.LmsStudentIngestionControllerTest do
     )
   end
 
-  defp insert_school! do
+  defp insert_school!(attrs \\ %{}) do
     school =
-      Repo.insert!(%School{
+      %{
         code: "JNV001",
         name: "JNV Test",
         udise_code: "12345678901",
@@ -449,10 +502,41 @@ defmodule DbserviceWeb.LmsStudentIngestionControllerTest do
         state_code: "TS",
         state: "Telangana",
         program_ids: [64]
-      })
+      }
+      |> Map.merge(attrs)
+      |> then(&struct!(School, &1))
+      |> Repo.insert!()
 
     Repo.insert!(%Group{type: "school", child_id: school.id})
     school
+  end
+
+  defp insert_active_centre!(school, program_id) do
+    Ecto.Adapters.SQL.query!(
+      Repo,
+      "INSERT INTO centres (name, school_id, program_id, is_active) VALUES ($1, $2, $3, true)",
+      ["#{school.name} Centre", school.id, program_id]
+    )
+  end
+
+  defp insert_current_student_for_program!(school, batch) do
+    {user, _student} =
+      Dbservice.UsersFixtures.student_fixture(%{
+        student_id: "EXISTING-NVS-STUDENT",
+        apaar_id: "999999999999"
+      })
+
+    school_group = ensure_group!("school", school.id)
+    Repo.insert!(%GroupUser{group_id: school_group.id, user_id: user.id})
+
+    Repo.insert!(%EnrollmentRecord{
+      user_id: user.id,
+      group_type: "batch",
+      group_id: batch.id,
+      start_date: ~D[2026-04-01],
+      academic_year: "2026-2027",
+      is_current: true
+    })
   end
 
   defp insert_auth_group!(name) do
