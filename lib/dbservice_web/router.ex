@@ -45,6 +45,12 @@ defmodule DbserviceWeb.Router do
     post("/imports/program", ImportController, :create_program_import)
     post("/imports/batch", ImportController, :create_batch_import)
     post("/imports/school", ImportController, :create_school_import)
+
+    post(
+      "/imports/batch_id_correction",
+      ImportController,
+      :create_batch_id_correction_import
+    )
   end
 
   scope "/api", DbserviceWeb do
