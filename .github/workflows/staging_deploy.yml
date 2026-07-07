@@ -38,7 +38,17 @@ jobs:
           echo "Deploying branch: $DEPLOY_BRANCH"
           echo "$PRIVATE_KEY" > private_key && chmod 600 private_key
           ssh -o StrictHostKeyChecking=no -i private_key "${USER_NAME}@${HOSTNAME}" "DEPLOY_BRANCH=$(printf '%q' "$DEPLOY_BRANCH") bash -se" <<'EOF'
+          # bash -se reads this whole script from its stdin. Wrapping the body in a
+          # brace group whose stdin is /dev/null makes bash parse the entire group
+          # up front and detaches inner commands from this stdin, so a command that
+          # reads stdin (a mix/hex/rebar prompt or a sudo password prompt) can't
+          # silently swallow the rest of the script. Previously the deploy stopped
+          # right after `mix deps.get` — migrate, asset build, and the server
+          # restart never ran, yet the job still exited 0.
+          {
+            set -o pipefail
             cd /var/www/html/db-service/config
+            [ -f .env ] || { echo "config/.env not found on host — cannot inject secrets"; exit 1; }
             sudo sed -i 's|DATABASE_URL=.*|DATABASE_URL=${{ secrets.STAGING_DATABASE_URL }}|' .env
             sudo sed -i 's|SECRET_KEY_BASE=.*|SECRET_KEY_BASE=${{ secrets.STAGING_SECRET_KEY_BASE }}|' .env
             sudo sed -i 's|PHX_HOST=.*|PHX_HOST=${{ secrets.STAGING_PHX_HOST }}|' .env
@@ -64,9 +74,15 @@ jobs:
             sleep 2
             nohup sudo env MIX_ENV=prod elixir --erl \"-detached\" -S mix phx.server > /tmp/phx_server.log 2>&1 &
             sleep 5
-            if curl -s -o /dev/null -w '%{http_code}' http://localhost:4000/api/session?limit=1 | grep -q '200'; then
+            # Hit /api/health (public, no bearer token, and it verifies the DB) —
+            # /api/session requires auth and would 401. Fail the job on non-200 so a
+            # broken boot doesn't show green.
+            CODE=$(curl -s -o /dev/null -w '%{http_code}' http://localhost:4000/api/health || echo 000)
+            if [ "$CODE" = "200" ]; then
               echo 'Server started successfully'
             else
-              echo 'Warning: Server may not have started'
+              echo "Server health check failed (HTTP $CODE); see /tmp/phx_server.log on the host"
+              exit 1
             fi
+          } </dev/null
           EOF
