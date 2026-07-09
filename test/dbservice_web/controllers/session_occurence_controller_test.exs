@@ -35,6 +35,25 @@ defmodule DbserviceWeb.SessionOccurrenceControllerTest do
       assert found_record["start_time"] == DateTime.to_iso8601(session_occurrence.start_time)
       assert found_record["end_time"] == DateTime.to_iso8601(session_occurrence.end_time)
     end
+
+    test "is_start_time=active returns active occurrences ordered by end_time ascending", %{
+      conn: conn
+    } do
+      past = ~U[2020-01-01 00:00:00Z]
+
+      # All currently active (started in the past, end in the future), inserted in an order
+      # that differs from their end_time order.
+      mid = session_occurrence_fixture(%{start_time: past, end_time: ~U[2030-06-01 00:00:00Z]})
+      late = session_occurrence_fixture(%{start_time: past, end_time: ~U[2031-06-01 00:00:00Z]})
+      soon = session_occurrence_fixture(%{start_time: past, end_time: ~U[2029-06-01 00:00:00Z]})
+
+      # No limit/offset so all active rows come back; assert our three are end_time-ordered.
+      conn = get(conn, ~p"/api/session-occurrence?is_start_time=active")
+      ids = json_response(conn, 200) |> Enum.map(& &1["id"])
+
+      ours = Enum.filter(ids, &(&1 in [mid.id, late.id, soon.id]))
+      assert ours == [soon.id, mid.id, late.id]
+    end
   end
 
   describe "create session_occurrence" do
