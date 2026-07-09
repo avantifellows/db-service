@@ -93,6 +93,7 @@ defmodule Dbservice.DataImport.ImportWorker do
       "batch_movement" => &process_batch_movement_record/1,
       "alumni_addition" => &process_alumni_record/1,
       "teacher_batch_assignment" => &process_teacher_batch_assignment_record/1,
+      "batch_id_correction" => &process_batch_id_correction_record/1,
       "update_incorrect_batch_id_to_correct_batch_id" => &process_batch_id_update_record/1,
       "update_incorrect_school_to_correct_school" => &process_school_update_record/1,
       "update_incorrect_grade_to_correct_grade" => &process_grade_update_record/1,
@@ -1647,6 +1648,22 @@ defmodule Dbservice.DataImport.ImportWorker do
 
   defp process_teacher_batch_assignment_record(record) do
     DataImport.TeacherBatchAssignment.process_teacher_batch_assignment(record)
+  end
+
+  # Renames a batch's batch_id in place (typo fix); all enrollments stay with the batch since
+  # they reference its primary key, not the batch_id string. Distinct from the per-student
+  # batch migration handled by process_batch_id_update_record/1.
+  defp process_batch_id_correction_record(record) do
+    case Batches.correct_batch_id(record["old_batch_id"], record["new_batch_id"]) do
+      {:ok, _batch} ->
+        {:ok, "Batch ID corrected successfully"}
+
+      {:error, %Ecto.Changeset{} = changeset} ->
+        {:error, ChangesetFormatter.format_errors(changeset)}
+
+      {:error, reason} ->
+        {:error, reason}
+    end
   end
 
   defp process_batch_id_update_record(record) do
