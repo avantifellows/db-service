@@ -5,7 +5,7 @@ resource "cloudflare_record" "this" {
   zone_id = var.cloudflare_zone_id
   name    = var.domain_prefix
   type    = "CNAME"
-  value   = data.aws_lb.shared.dns_name
+  content = data.aws_lb.shared.dns_name
   proxied = var.dns_proxied
   ttl     = 1 # 1 = "auto"; required when proxied, harmless when not
 }
