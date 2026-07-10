@@ -167,6 +167,16 @@ jobs:
             --cluster "$ECS_CLUSTER" \
             --services "$ECS_SERVICE"
 
+          ACTIVE_TASK_DEF=$(aws ecs describe-services \
+            --cluster "$ECS_CLUSTER" \
+            --services "$ECS_SERVICE" \
+            --query "services[0].deployments[?status=='PRIMARY'].taskDefinition | [0]" \
+            --output text)
+          if [ "$ACTIVE_TASK_DEF" != "${{ steps.register.outputs.arn }}" ]; then
+            echo "::error::Deployment did not complete on the new task definition. ECS likely rolled it back."
+            exit 1
+          fi
+
       - name: Smoke check
         run: |
           set -euo pipefail
