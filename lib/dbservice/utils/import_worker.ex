@@ -1388,6 +1388,8 @@ defmodule Dbservice.DataImport.ImportWorker do
     |> maybe_put_school("state", record["school_state"] |> trim_str())
     |> maybe_put_school("district_code", record["district_code"] |> trim_str())
     |> maybe_put_school("district", record["school_district"] |> trim_str())
+    |> maybe_put_school("block_code", record["block_code"] |> trim_str())
+    |> maybe_put_school("block_name", record["block_name"] |> trim_str())
     |> maybe_put_school("board", record["school_board"] |> trim_str())
   end
 
