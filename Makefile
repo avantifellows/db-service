@@ -19,20 +19,20 @@ TF := terraform -chdir=terraform
 tf-init-staging:
 	$(TF) init -reconfigure -backend-config="key=dbservice/staging/terraform.tfstate"
 
-tf-plan-staging:
+tf-plan-staging: tf-init-staging
 	$(TF) plan -var-file=envs/staging.tfvars -var=create_ci_user=true
 
 # create_ci_user=true: the shared CI IAM user lives in STAGING state and has
 # prevent_destroy — applying without it would try to delete the user CI relies on.
-tf-apply-staging:
+tf-apply-staging: tf-init-staging
 	$(TF) apply -var-file=envs/staging.tfvars -var=create_ci_user=true
 
 # ---- Production -------------------------------------------------------------
 tf-init-prod:
 	$(TF) init -reconfigure -backend-config="key=dbservice/prod/terraform.tfstate"
 
-tf-plan-prod:
+tf-plan-prod: tf-init-prod
 	$(TF) plan -var-file=envs/prod.tfvars
 
-tf-apply-prod:
+tf-apply-prod: tf-init-prod
 	$(TF) apply -var-file=envs/prod.tfvars
