@@ -1,10 +1,11 @@
 name: Deploy to ECS (Staging)
 
-# Manual trigger only for now. The auto trigger (on PR-to-main) and the
-# rename of the old SSH-based staging_deploy.yml happen in the cutover PR
-# once Fargate is validated. Until then, the legacy workflow keeps deploying
-# to EC2 and this workflow is hand-fired for validation.
+# Staging runs on ECS Fargate (cut over from EC2 on 2026-07-12; the old
+# SSH-based staging_deploy.yml is disabled). Auto-deploys on PRs to main, and
+# can be hand-fired via workflow_dispatch for a specific ref.
 on:
+  pull_request:
+    branches: [main]
   workflow_dispatch:
     inputs:
       ref:
