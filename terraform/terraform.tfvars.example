@@ -37,7 +37,6 @@ listener_rule_priority = 200                        # unique per env on the shar
 # alb_name               = "af-load-balancer"
 # alb_https_listener_arn = "arn:aws:elasticloadbalancing:...:listener/app/..."
 # cloudflare_zone_id     = "your_zone_id"
-# cloudflare_email       = "owner@example.com"
 # dns_proxied            = false
 
 ########################################
@@ -54,5 +53,5 @@ listener_rule_priority = 200                        # unique per env on the shar
 #   TF_VAR_google_credentials_json
 #   TF_VAR_dashboard_user
 #   TF_VAR_dashboard_pass
-#   TF_VAR_cloudflare_api_key
+#   TF_VAR_cloudflare_api_token
 ########################################
