@@ -26,7 +26,7 @@ env:
   VPC_ID: vpc-0a48a661
   # Smoke check hits the shared ALB directly (Host header) so it doesn't depend
   # on public DNS (which lives in Cloudflare, not Route53).
-  SERVICE_HOST: staging-database.avantifellows.org
+  SERVICE_HOST: staging-db.avantifellows.org
   ALB_NAME: af-load-balancer
 
 concurrency:
