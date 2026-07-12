@@ -447,6 +447,18 @@ defmodule Dbservice.Constants.Mappings do
       optional: [],
       type: :string
     },
+    "block_code" => %{
+      db_field: "block_code",
+      required: [],
+      optional: ["school_addition"],
+      type: :string
+    },
+    "block_name" => %{
+      db_field: "block_name",
+      required: [],
+      optional: ["school_addition"],
+      type: :string
+    },
     "board" => %{
       db_field: "school_board",
       required: [],
@@ -984,7 +996,13 @@ defmodule Dbservice.Constants.Mappings do
     # Update fields for correction import types
     "old_batch_id" => %{
       db_field: "old_batch_id",
-      required: ["update_incorrect_batch_id_to_correct_batch_id"],
+      required: ["update_incorrect_batch_id_to_correct_batch_id", "batch_id_correction"],
+      optional: [],
+      type: :string
+    },
+    "new_batch_id" => %{
+      db_field: "new_batch_id",
+      required: ["batch_id_correction"],
       optional: [],
       type: :string
     },
