@@ -40,7 +40,8 @@ priv/static
 
 # Terraform
 **/.terraform/
-**/.terraform.lock.hcl
+# NOTE: .terraform.lock.hcl is intentionally committed so staging/prod applies
+# pin identical provider versions. Do not ignore it.
 *.tfstate
 *.tfstate.*
 crash.log

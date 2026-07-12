@@ -190,14 +190,8 @@ variable "cloudflare_zone_id" {
   default     = "7f1dbe8fd33ebb03cbde59464bbcc042"
 }
 
-variable "cloudflare_email" {
-  description = "Cloudflare account email that owns the Global API Key. Same for all envs, so defaulted here."
-  type        = string
-  default     = "deepansh.mathur@avantifellows.org"
-}
-
-variable "cloudflare_api_key" {
-  description = "Cloudflare Global API Key (legacy, account-wide) paired with cloudflare_email. Sensitive — supply via TF_VAR_cloudflare_api_key at apply time; not needed by the deploy workflow."
+variable "cloudflare_api_token" {
+  description = "Cloudflare scoped API token with Zone → DNS → Edit on avantifellows.org. Sensitive — supply via TF_VAR_cloudflare_api_token at apply time; not needed by the deploy workflow."
   type        = string
   sensitive   = true
 }
