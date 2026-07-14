@@ -7,7 +7,10 @@ defmodule Dbservice.Schools do
   alias Dbservice.Utils.Util
   alias Dbservice.Repo
 
+  alias Dbservice.EnrollmentRecords.EnrollmentRecord
   alias Dbservice.Groups.Group
+  alias Dbservice.Groups.GroupSession
+  alias Dbservice.Groups.GroupUser
   alias Dbservice.Schools.School
   alias Dbservice.Users
   alias Dbservice.Users.User
@@ -113,6 +116,113 @@ defmodule Dbservice.Schools do
   """
   def delete_school(%School{} = school) do
     Repo.delete(school)
+  end
+
+  @doc """
+  Deletes the school with the given code, refusing when anything still maps to it.
+
+  A school is considered in use when enrollment records (`group_type: "school"`) point at it,
+  users are members of its group (`group_user`), or sessions target its group (`group_session`).
+  When unused, the school and its group row are deleted together in one transaction. The
+  school's linked user account (if any) is left untouched.
+
+  ## Examples
+
+      iex> delete_school_by_code("EMRS123")
+      {:ok, %School{}}
+
+      iex> delete_school_by_code("EMRS999")
+      {:error, "School not found with code: EMRS999"}
+
+  """
+  def delete_school_by_code(code) when is_binary(code) do
+    with {:ok, school} <- fetch_school_for_deletion(String.trim(code)),
+         :ok <- ensure_school_unused(school) do
+      delete_school_and_group(school)
+    end
+  end
+
+  def delete_school_by_code(_code), do: {:error, "school_code is required"}
+
+  defp fetch_school_for_deletion(""), do: {:error, "school_code is required"}
+
+  defp fetch_school_for_deletion(code) do
+    case get_school_by_code(code) do
+      nil -> {:error, "School not found with code: #{code}"}
+      %School{} = school -> {:ok, school}
+    end
+  end
+
+  # Enrollment records store the school's own id in group_id (with group_type "school"),
+  # whereas group_user/group_session reference the school's group-table row — both paths
+  # must be empty before the school can go.
+  defp ensure_school_unused(school) do
+    enrollment_count =
+      Repo.aggregate(
+        from(er in EnrollmentRecord,
+          where: er.group_type == "school" and er.group_id == ^school.id
+        ),
+        :count
+      )
+
+    membership_count =
+      Repo.aggregate(school_group_join(GroupUser, school), :count)
+
+    session_count =
+      Repo.aggregate(school_group_join(GroupSession, school), :count)
+
+    cond do
+      enrollment_count > 0 or membership_count > 0 ->
+        {:error,
+         "Cannot delete school #{school.code}: #{enrollment_count} enrollment record(s) and " <>
+           "#{membership_count} group membership(s) still reference it"}
+
+      session_count > 0 ->
+        {:error,
+         "Cannot delete school #{school.code}: #{session_count} session(s) still target its group"}
+
+      true ->
+        :ok
+    end
+  end
+
+  defp school_group_join(schema, school) do
+    from r in schema,
+      join: g in Group,
+      on: r.group_id == g.id,
+      where: g.type == "school" and g.child_id == ^school.id
+  end
+
+  defp delete_school_and_group(school) do
+    group_query = from g in Group, where: g.type == "school" and g.child_id == ^school.id
+
+    Ecto.Multi.new()
+    |> Ecto.Multi.delete_all(:groups, group_query)
+    |> Ecto.Multi.delete(:school, school_deletion_changeset(school))
+    |> Repo.transaction()
+    |> case do
+      {:ok, %{school: deleted_school}} -> {:ok, deleted_school}
+      {:error, _step, reason, _changes} -> {:error, reason}
+    end
+  end
+
+  # Turns known DB-level foreign-key violations into changeset errors instead of raising,
+  # so callers (e.g. the data-import worker) can report them per row.
+  defp school_deletion_changeset(school) do
+    school
+    |> Ecto.Changeset.change()
+    |> Ecto.Changeset.foreign_key_constraint(:id,
+      name: :school_batch_school_id_fkey,
+      message: "school still has batches mapped to it (school_batch)"
+    )
+    |> Ecto.Changeset.foreign_key_constraint(:id,
+      name: :centres_school_id_fkey,
+      message: "school is still referenced by centres"
+    )
+    |> Ecto.Changeset.foreign_key_constraint(:id,
+      name: :academic_mentorship_mentor_mentee_mappings_school_id_fkey,
+      message: "school is still referenced by academic mentorship mappings"
+    )
   end
 
   @doc """

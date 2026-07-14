@@ -70,6 +70,7 @@ defmodule DbserviceWeb.ImportLive.New do
       "program_addition" => "submit_program_import",
       "batch_addition" => "submit_batch_import",
       "school_addition" => "submit_school_import",
+      "school_deletion" => "submit_school_deletion_import",
       "batch_id_correction" => "submit_batch_id_correction_import"
     }
 
@@ -131,6 +132,7 @@ defmodule DbserviceWeb.ImportLive.New do
   defp get_protected_import_url("program_addition"), do: ~p"/imports/program"
   defp get_protected_import_url("batch_addition"), do: ~p"/imports/batch"
   defp get_protected_import_url("school_addition"), do: ~p"/imports/school"
+  defp get_protected_import_url("school_deletion"), do: ~p"/imports/school_deletion"
   defp get_protected_import_url("batch_id_correction"), do: ~p"/imports/batch_id_correction"
   defp get_protected_import_url(_), do: ~p"/imports"
 
@@ -189,6 +191,7 @@ defmodule DbserviceWeb.ImportLive.New do
                     <option value="program_addition" selected={@form[:type].value == "program_addition"}>Program Addition</option>
                     <option value="batch_addition" selected={@form[:type].value == "batch_addition"}>Batch Addition</option>
                     <option value="school_addition" selected={@form[:type].value == "school_addition"}>School Addition</option>
+                    <option value="school_deletion" selected={@form[:type].value == "school_deletion"}>School Deletion</option>
                     <option value="alumni_addition" selected={@form[:type].value == "alumni_addition"}>Alumni Addition</option>
                     <option value="batch_movement" selected={@form[:type].value == "batch_movement"}>Student Batch Movement</option>
                     <option value="dropout" selected={@form[:type].value == "dropout"}>Student Dropout</option>
