@@ -394,7 +394,8 @@ defmodule Dbservice.Constants.Mappings do
         "student",
         "update_incorrect_school_to_correct_school",
         "re_enrollment",
-        "school_addition"
+        "school_addition",
+        "school_deletion"
       ],
       optional: [],
       type: :string
