@@ -6,16 +6,18 @@ defmodule Dbservice.Services.DropoutService do
   """
 
   import Ecto.Query
-  alias Dbservice.Repo
+  alias Dbservice.Batches.Batch
   alias Dbservice.EnrollmentRecords
   alias Dbservice.EnrollmentRecords.EnrollmentRecord
+  alias Dbservice.Groups.Group
+  alias Dbservice.Groups.GroupUser
+  alias Dbservice.LmsStudentWriteAudit
+  alias Dbservice.Repo
   alias Dbservice.Schools.School
   alias Dbservice.Statuses.Status
-  alias Dbservice.Groups.Group
-  alias Dbservice.LmsStudentWriteAudit
   alias Dbservice.Users
 
-  @audit_action "student_dropout"
+  @audit_action "student_program_dropout"
 
   @doc """
   Fetches dropout status information.
@@ -56,7 +58,14 @@ defmodule Dbservice.Services.DropoutService do
   end
 
   defp create_dropout_with_audit(student, start_date, academic_year, audit_params) do
-    with {:ok, updated_student} <- create_dropout_enrollment(student, start_date, academic_year),
+    dropout_result =
+      if lms_program_dropout?(audit_params) do
+        create_program_dropout(student, start_date, academic_year, audit_params["program_id"])
+      else
+        create_dropout_enrollment(student, start_date, academic_year)
+      end
+
+    with {:ok, updated_student} <- dropout_result,
          {:ok, _audit} <-
            maybe_insert_lms_audit(
              student,
@@ -67,6 +76,68 @@ defmodule Dbservice.Services.DropoutService do
            ) do
       {:ok, updated_student}
     end
+  end
+
+  defp lms_program_dropout?(params) do
+    is_map(params["actor"]) and is_map(params["school"])
+  end
+
+  defp create_program_dropout(student, start_date, academic_year, program_id) do
+    enrollments = current_program_enrollments(student.user_id, program_id)
+
+    case enrollments do
+      [] ->
+        {:error, "Student is not currently enrolled in this program"}
+
+      [enrollment] ->
+        end_program_enrollment(enrollment, start_date)
+        delete_program_group_user(student.user_id, enrollment.group_id)
+
+        if current_batch_count(student.user_id) > 0 do
+          {:ok, student}
+        else
+          create_dropout_enrollment(student, start_date, academic_year)
+        end
+
+      _multiple ->
+        {:error, "Student has multiple current batches in this program"}
+    end
+  end
+
+  defp current_program_enrollments(user_id, program_id) do
+    from(e in EnrollmentRecord,
+      join: b in Batch,
+      on: b.id == e.group_id,
+      where:
+        e.user_id == ^user_id and e.group_type == "batch" and e.is_current == true and
+          b.program_id == ^program_id
+    )
+    |> Repo.all()
+  end
+
+  defp end_program_enrollment(enrollment, end_date) do
+    from(e in EnrollmentRecord,
+      where: e.id == ^enrollment.id,
+      update: [set: [is_current: false, end_date: ^end_date]]
+    )
+    |> Repo.update_all([])
+  end
+
+  defp delete_program_group_user(user_id, batch_id) do
+    from(gu in GroupUser,
+      join: g in Group,
+      on: g.id == gu.group_id,
+      where: gu.user_id == ^user_id and g.type == "batch" and g.child_id == ^batch_id
+    )
+    |> Repo.delete_all()
+  end
+
+  defp current_batch_count(user_id) do
+    from(e in EnrollmentRecord,
+      where: e.user_id == ^user_id and e.group_type == "batch" and e.is_current == true,
+      select: count(e.id)
+    )
+    |> Repo.one()
   end
 
   defp create_dropout_enrollment(student, start_date, academic_year) do
@@ -143,25 +214,31 @@ defmodule Dbservice.Services.DropoutService do
   defp validate_lms_audit_params(_student, params) when params == %{}, do: :ok
 
   defp validate_lms_audit_params(_student, params)
-       when not is_map_key(params, "actor") or not is_map_key(params, "school"),
+       when not is_map_key(params, "actor") and not is_map_key(params, "school"),
        do: :ok
 
-  defp validate_lms_audit_params(student, %{"actor" => actor, "school" => school})
+  defp validate_lms_audit_params(student, %{"actor" => actor, "school" => school} = params)
        when is_map(actor) and is_map(school) do
+    if is_integer(params["program_id"]) do
+      validate_lms_school(student, school)
+    else
+      {:error, "Invalid program_id"}
+    end
+  end
+
+  defp validate_lms_audit_params(_student, _params), do: {:error, "Invalid LMS audit metadata"}
+
+  defp validate_lms_school(student, school) do
     case current_school(student.user_id) do
       %{code: code, udise_code: udise_code} ->
-        if school["code"] == code and school["udise_code"] == udise_code do
-          :ok
-        else
-          {:error, "Student is not enrolled in this school"}
-        end
+        if school["code"] == code and school["udise_code"] == udise_code,
+          do: :ok,
+          else: {:error, "Student is not enrolled in this school"}
 
       _school ->
         {:error, "Student is not enrolled in this school"}
     end
   end
-
-  defp validate_lms_audit_params(_student, _params), do: {:error, "Invalid LMS audit metadata"}
 
   defp current_school(user_id) do
     from(e in EnrollmentRecord,

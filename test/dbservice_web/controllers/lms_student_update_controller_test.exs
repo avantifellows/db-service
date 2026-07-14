@@ -37,7 +37,7 @@ defmodule DbserviceWeb.LmsStudentUpdateControllerTest do
 
       assert [
                [
-                 "student_dropout",
+                 "student_program_dropout",
                  "pm@example.org",
                  school_code,
                  64,
@@ -57,6 +57,45 @@ defmodule DbserviceWeb.LmsStudentUpdateControllerTest do
       assert changed_values["status"] == %{"old" => student.status, "new" => "dropout"}
       assert changed_values["dropout_date"] == %{"old" => nil, "new" => "2026-07-01"}
       assert changed_values["academic_year"] == %{"old" => nil, "new" => "2026-2027"}
+    end
+
+    test "drops only the selected program when another program remains active", %{conn: conn} do
+      school = insert_school!()
+      grade = insert_grade!(11)
+      nvs_batch = insert_nvs_batch!(11, "engineering")
+      coe_batch = insert_program_batch!(1, 11, "engineering")
+      {user, student} = insert_enrolled_student!(school, grade, nvs_batch)
+      insert_enrollment!(user.id, coe_batch.id, "batch")
+      ensure_group_user!(user.id, "batch", coe_batch.id)
+
+      conn =
+        patch(conn, "/api/dropout", %{
+          "student_id" => student.student_id,
+          "start_date" => "2026-07-01",
+          "academic_year" => "2026-2027",
+          "actor" => actor(),
+          "school" => %{"code" => school.code, "udise_code" => school.udise_code},
+          "program_id" => 1
+        })
+
+      assert json_response(conn, 200)["status"] == student.status
+      assert Repo.get!(Student, student.id).status == student.status
+      assert current_program_enrollment(user.id, 64).group_id == nvs_batch.id
+      assert current_enrollment(user.id, "grade").group_id == grade.id
+      assert current_enrollment(user.id, "school").group_id == school.id
+      refute current_program_enrollment_or_nil(user.id, 1)
+      refute has_group_user?(user.id, "batch", coe_batch.id)
+      assert has_group_user?(user.id, "batch", nvs_batch.id)
+
+      [[action, program_id, changed_values]] =
+        Ecto.Adapters.SQL.query!(
+          Repo,
+          "SELECT action, program_id, changed_values FROM lms_student_write_audits"
+        ).rows
+
+      assert action == "student_program_dropout"
+      assert program_id == 1
+      assert changed_values["status"] == %{"old" => student.status, "new" => student.status}
     end
 
     test "rejects audited dropout for the wrong school without changing status", %{conn: conn} do
@@ -103,6 +142,35 @@ defmodule DbserviceWeb.LmsStudentUpdateControllerTest do
       response = json_response(conn, 400)
       assert response["errors"] == "Invalid LMS audit metadata"
       assert Repo.get!(Student, student.id).status == student.status
+      assert Repo.aggregate(Dbservice.LmsStudentWriteAudit, :count, :id) == 0
+    end
+
+    test "rejects multiple current batches in the selected program without changing enrollments",
+         %{
+           conn: conn
+         } do
+      school = insert_school!()
+      grade = insert_grade!(11)
+      first_batch = insert_nvs_batch!(11, "engineering")
+      second_batch = insert_nvs_batch!(11, "medical")
+      {user, student} = insert_enrolled_student!(school, grade, first_batch)
+      insert_enrollment!(user.id, second_batch.id, "batch")
+
+      conn =
+        patch(conn, "/api/dropout", %{
+          "student_id" => student.student_id,
+          "start_date" => "2026-07-01",
+          "academic_year" => "2026-2027",
+          "actor" => actor(),
+          "school" => %{"code" => school.code, "udise_code" => school.udise_code},
+          "program_id" => 64
+        })
+
+      assert json_response(conn, 400)["errors"] ==
+               "Student has multiple current batches in this program"
+
+      assert Repo.get!(Student, student.id).status == student.status
+      assert current_program_enrollment_count(user.id, 64) == 2
       assert Repo.aggregate(Dbservice.LmsStudentWriteAudit, :count, :id) == 0
     end
   end
@@ -807,6 +875,42 @@ defmodule DbserviceWeb.LmsStudentUpdateControllerTest do
         where:
           e.user_id == ^user_id and e.group_type == "batch" and e.is_current == true and
             b.program_id == ^program_id
+      )
+    )
+  end
+
+  defp current_program_enrollment_or_nil(user_id, program_id) do
+    Repo.one(
+      from(e in EnrollmentRecord,
+        join: b in Dbservice.Batches.Batch,
+        on: b.id == e.group_id,
+        where:
+          e.user_id == ^user_id and e.group_type == "batch" and e.is_current == true and
+            b.program_id == ^program_id
+      )
+    )
+  end
+
+  defp current_program_enrollment_count(user_id, program_id) do
+    Repo.aggregate(
+      from(e in EnrollmentRecord,
+        join: b in Dbservice.Batches.Batch,
+        on: b.id == e.group_id,
+        where:
+          e.user_id == ^user_id and e.group_type == "batch" and e.is_current == true and
+            b.program_id == ^program_id
+      ),
+      :count,
+      :id
+    )
+  end
+
+  defp has_group_user?(user_id, type, child_id) do
+    Repo.exists?(
+      from(gu in Dbservice.Groups.GroupUser,
+        join: g in Group,
+        on: g.id == gu.group_id,
+        where: gu.user_id == ^user_id and g.type == ^type and g.child_id == ^child_id
       )
     )
   end
