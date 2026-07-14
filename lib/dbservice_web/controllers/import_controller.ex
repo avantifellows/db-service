@@ -167,6 +167,28 @@ defmodule DbserviceWeb.ImportController do
     end
   end
 
+  def create_school_deletion_import(conn, params) do
+    import_params =
+      params
+      |> Map.get("import", %{})
+      |> Map.put("type", "school_deletion")
+
+    case DataImport.start_import(import_params) do
+      {:ok, _import} ->
+        conn
+        |> put_flash(
+          :info,
+          "School deletion import queued successfully! Schools with mapped students will be skipped with an error. Check the imports page for progress updates."
+        )
+        |> redirect(to: ~p"/imports")
+
+      {:error, reason} ->
+        conn
+        |> put_flash(:error, "Import failed: #{reason}")
+        |> redirect(to: ~p"/imports/new")
+    end
+  end
+
   def create_school_import(conn, params) do
     import_params =
       params
