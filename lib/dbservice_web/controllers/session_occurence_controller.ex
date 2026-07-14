@@ -5,6 +5,7 @@ defmodule DbserviceWeb.SessionOccurrenceController do
   alias Dbservice.Repo
   alias Dbservice.Sessions
   alias Dbservice.Sessions.SessionOccurrence
+  alias Dbservice.Utils.Util
 
   action_fallback(DbserviceWeb.FallbackController)
 
@@ -37,6 +38,22 @@ defmodule DbserviceWeb.SessionOccurrenceController do
         name: "is_start_time",
         enum: ["today", "active"]
       )
+
+      params(
+        :query,
+        :string,
+        "Only occurrences starting at or before this ISO-8601 timestamp",
+        required: false,
+        name: "start_time_lte"
+      )
+
+      params(
+        :query,
+        :string,
+        "Only occurrences ending at or after this ISO-8601 timestamp",
+        required: false,
+        name: "end_time_gte"
+      )
     end
 
     response(200, "OK", Schema.ref(:SessionOccurrences))
@@ -45,15 +62,29 @@ defmodule DbserviceWeb.SessionOccurrenceController do
   def index(conn, params) do
     session_ids = Map.get(params, "session_ids", [])
 
-    session_occurrences = fetch_filtered_session_occurrences(session_ids, params)
-    render(conn, :index, session_occurrence: session_occurrences)
+    case fetch_filtered_session_occurrences(session_ids, params) do
+      {:ok, session_occurrences} ->
+        render(conn, :index, session_occurrence: session_occurrences)
+
+      {:error, message} ->
+        conn
+        |> put_status(:bad_request)
+        |> json(%{error: message})
+    end
   end
 
   def search(conn, params) do
     session_ids = Map.get(params, "session_ids", [])
 
-    session_occurrences = fetch_filtered_session_occurrences(session_ids, params)
-    render(conn, :index, session_occurrence: session_occurrences)
+    case fetch_filtered_session_occurrences(session_ids, params) do
+      {:ok, session_occurrences} ->
+        render(conn, :index, session_occurrence: session_occurrences)
+
+      {:error, message} ->
+        conn
+        |> put_status(:bad_request)
+        |> json(%{error: message})
+    end
   end
 
   defp fetch_filtered_session_occurrences(session_ids, params) do
@@ -73,27 +104,59 @@ defmodule DbserviceWeb.SessionOccurrenceController do
         limit: ^params["limit"]
       )
 
-    filtered_query =
-      Enum.reduce(params, base_query, fn {key, value}, acc ->
-        case String.to_existing_atom(key) do
-          :offset ->
-            acc
+    params
+    |> Enum.reduce_while({:ok, base_query}, fn
+      {"start_time_lte", value}, {:ok, acc} ->
+        apply_window_filter(:start_time_lte, value, acc)
 
-          :limit ->
-            acc
+      {"end_time_gte", value}, {:ok, acc} ->
+        apply_window_filter(:end_time_gte, value, acc)
 
-          :is_start_time ->
-            apply_time_filter(acc, value, today_start, today_end, current_time)
+      {key, value}, {:ok, acc} ->
+        query =
+          case String.to_existing_atom(key) do
+            :offset ->
+              acc
 
-          :session_ids ->
-            from(u in acc, where: u.session_id in ^session_ids)
+            :limit ->
+              acc
 
-          atom ->
-            from(u in acc, where: field(u, ^atom) == ^value)
-        end
-      end)
+            :is_start_time ->
+              apply_time_filter(acc, value, today_start, today_end, current_time)
 
-    Repo.all(filtered_query)
+            :session_ids ->
+              from(u in acc, where: u.session_id in ^session_ids)
+
+            atom ->
+              from(u in acc, where: field(u, ^atom) == ^value)
+          end
+
+        {:cont, {:ok, query}}
+    end)
+    |> case do
+      {:ok, query} -> {:ok, Repo.all(query)}
+      {:error, message} -> {:error, message}
+    end
+  end
+
+  # start_time_lte and end_time_gte together select occurrences overlapping a
+  # caller-supplied window [end_time_gte, start_time_lte]. The window semantics
+  # (e.g. "now until end of today" for a homepage) belong to the caller; this
+  # endpoint only compares timestamps.
+  defp apply_window_filter(operator, value, acc) do
+    case Util.parse_datetime(value) do
+      {:ok, datetime} ->
+        query =
+          case operator do
+            :start_time_lte -> from(so in acc, where: so.start_time <= ^datetime)
+            :end_time_gte -> from(so in acc, where: so.end_time >= ^datetime)
+          end
+
+        {:cont, {:ok, query}}
+
+      :error ->
+        {:halt, {:error, "Invalid #{operator} timestamp"}}
+    end
   end
 
   swagger_path :create do

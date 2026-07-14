@@ -1,11 +1,12 @@
 environment = "staging"
-# "staging-db" collides with the existing EC2 staging host; use a distinct name.
-domain_prefix          = "staging-database"
+# Cutover: ECS now serves the canonical staging-db host (the old EC2 box that
+# held this name is being retired). Previously "staging-database" to avoid the
+# collision with EC2.
+domain_prefix          = "staging-db"
 listener_rule_priority = 200
 
 # WHITELISTED_DOMAINS — comma-separated host list enforced by DomainWhitelistPlug.
-# Mirror what's currently set in the EC2 .env for staging; adjust as needed.
-whitelisted_domains = "staging-database.avantifellows.org,localhost"
+whitelisted_domains = "staging-db.avantifellows.org,localhost"
 
 # Capacity/scaling — tuned after the 2026-06-21 load test (1000 users / ~174 RPS)
 # saturated a single 0.5-vCPU task: CPU pinned ~100%, /api/health timed out, the
