@@ -56,6 +56,7 @@ defmodule Dbservice.LmsStudentUpdate do
            {:ok, school} <- fetch_school(params),
            :ok <- validate_school_scope(student, school, params["program_id"]),
            {:ok, user} <- fetch_user(student),
+           :ok <- validate_profile_fields(params),
            :ok <- validate_g10_board(student, params),
            {:ok, plan} <- enrollment_plan(student, params),
            {:ok, changed_values} <- changed_values(user, student, params, plan),
@@ -115,16 +116,51 @@ defmodule Dbservice.LmsStudentUpdate do
   defp fetch_school(_params), do: {:error, error("school_required", "School is required", 400)}
 
   defp validate_school_scope(student, school, program_id) do
+    program_id = to_int(program_id)
+    current_program_batches = current_program_batch_count(student.user_id, program_id)
+
     cond do
-      to_int(program_id) not in (school.program_ids || []) ->
+      not school_has_active_centre_program?(school.id, program_id) ->
         {:error, error("program_not_allowed", "School is not eligible for this program", 403)}
 
       not enrolled?(student.user_id, school.id, "school") ->
         {:error, error("school_mismatch", "Student is not enrolled in this school", 403)}
 
+      current_program_batches == 0 ->
+        {:error, error("program_mismatch", "Student is not enrolled in this program", 403)}
+
+      current_program_batches > 1 ->
+        {:error,
+         error("multiple_current_batches", "Multiple current NVS batches found", 409, ["stream"])}
+
       true ->
         :ok
     end
+  end
+
+  defp school_has_active_centre_program?(_school_id, nil), do: false
+
+  defp school_has_active_centre_program?(school_id, program_id) do
+    from(c in "centres",
+      where:
+        field(c, :school_id) == ^school_id and
+          field(c, :program_id) == ^program_id and
+          field(c, :is_active) == true
+    )
+    |> Repo.exists?()
+  end
+
+  defp current_program_batch_count(_user_id, nil), do: 0
+
+  defp current_program_batch_count(user_id, program_id) do
+    from(e in EnrollmentRecord,
+      join: b in Batch,
+      on: b.id == e.group_id,
+      where:
+        e.user_id == ^user_id and e.group_type == "batch" and e.is_current == true and
+          b.program_id == ^program_id
+    )
+    |> Repo.aggregate(:count)
   end
 
   defp enrolled?(user_id, group_id, group_type) do
@@ -141,6 +177,58 @@ defmodule Dbservice.LmsStudentUpdate do
   rescue
     Ecto.NoResultsError -> {:error, error("user_not_found", "Student user not found", 404)}
   end
+
+  defp validate_profile_fields(params) do
+    with :ok <- validate_phone(params), do: validate_date_of_birth(params)
+  end
+
+  defp validate_phone(params) when not is_map_key(params, "phone"), do: :ok
+
+  defp validate_phone(%{"phone" => phone}) when is_binary(phone) do
+    if Regex.match?(~r/^\d{10}$/, phone),
+      do: :ok,
+      else:
+        {:error,
+         error("invalid_phone", "Parents Phone Number must be exactly 10 digits", 422, ["phone"])}
+  end
+
+  defp validate_phone(_params),
+    do:
+      {:error,
+       error("invalid_phone", "Parents Phone Number must be exactly 10 digits", 422, ["phone"])}
+
+  defp validate_date_of_birth(params) when not is_map_key(params, "date_of_birth"), do: :ok
+
+  defp validate_date_of_birth(%{"date_of_birth" => value}) when is_binary(value) do
+    case Date.from_iso8601(value) do
+      {:ok, date} ->
+        if Date.compare(date, ~D[2000-01-01]) != :lt and
+             Date.compare(date, ~D[2015-12-31]) != :gt do
+          :ok
+        else
+          {:error,
+           error(
+             "invalid_date_of_birth",
+             "Date of Birth must be between 2000 and 2015",
+             422,
+             ["date_of_birth"]
+           )}
+        end
+
+      _ ->
+        {:error,
+         error("invalid_date_of_birth", "Date of Birth must be between 2000 and 2015", 422, [
+           "date_of_birth"
+         ])}
+    end
+  end
+
+  defp validate_date_of_birth(_params),
+    do:
+      {:error,
+       error("invalid_date_of_birth", "Date of Birth must be between 2000 and 2015", 422, [
+         "date_of_birth"
+       ])}
 
   defp validate_g10_board(_student, params) when not is_map_key(params, "g10_board"), do: :ok
 
@@ -173,25 +261,45 @@ defmodule Dbservice.LmsStudentUpdate do
   end
 
   defp enrollment_plan(student, params) do
-    grade_changed? = Map.has_key?(params, "grade")
-    needs_enrollment_change? = grade_changed? or Map.has_key?(params, "stream")
+    current_grade = current_grade_number(student)
+
+    submitted_grade =
+      if Map.has_key?(params, "grade"), do: to_int(params["grade"]), else: current_grade
+
+    submitted_stream = normalize_stream(params["stream"] || student.stream)
+    grade_changed? = Map.has_key?(params, "grade") and submitted_grade != current_grade
+
+    stream_changed? =
+      Map.has_key?(params, "stream") and submitted_stream != normalize_stream(student.stream)
+
+    needs_enrollment_change? = grade_changed? or stream_changed?
 
     if needs_enrollment_change? do
-      with {:ok, grade} <- fetch_grade(params["grade"] || current_grade_number(student)),
+      with {:ok, grade} <- fetch_grade(submitted_grade),
            {:ok, batch} <-
-             fetch_batch(
-               grade.number,
-               normalize_stream(params["stream"] || student.stream),
-               params["program_id"]
-             ),
-           {:ok, student_id} <- maybe_generated_student_id(student, grade.number, grade_changed?) do
+             fetch_batch(grade.number, submitted_stream, params["program_id"]),
+           {:ok, current_batch} <- current_program_batch(student.user_id, params["program_id"]),
+           {:ok, graduating_year} <- maybe_graduating_year(grade.number, params, grade_changed?),
+           {:ok, student_id} <-
+             maybe_generated_student_id(student, graduating_year, grade_changed?) do
         {:ok,
          %{
            grade: grade,
            batch: batch,
-           student_attrs: student_attrs_for_plan(grade, student_id, grade_changed?),
+           current_batch: current_batch,
+           grade_changed?: grade_changed?,
+           student_attrs:
+             student_attrs_for_plan(grade, graduating_year, student_id, grade_changed?),
            changed_values:
-             derived_changed_values(student, grade, batch, student_id, grade_changed?)
+             derived_changed_values(
+               student,
+               grade,
+               current_batch,
+               batch,
+               graduating_year,
+               student_id,
+               grade_changed?
+             )
          }}
       end
     else
@@ -245,10 +353,39 @@ defmodule Dbservice.LmsStudentUpdate do
     end
   end
 
-  defp generated_student_id(%{g10_roll_no: value}, _grade) when value in [nil, ""], do: {:ok, nil}
+  defp current_program_batch(user_id, program_id) do
+    program_id = to_int(program_id)
 
-  defp generated_student_id(student, grade) do
-    student_id = "#{g12_graduating_year(grade)}#{student.g10_roll_no}"
+    batches =
+      from(e in EnrollmentRecord,
+        join: b in Batch,
+        on: b.id == e.group_id,
+        where:
+          e.user_id == ^user_id and e.group_type == "batch" and e.is_current == true and
+            b.program_id == ^program_id,
+        select: %{enrollment: e, batch: b}
+      )
+      |> Repo.all()
+
+    case batches do
+      [current] ->
+        {:ok, current}
+
+      [] ->
+        {:error, error("current_batch_not_found", "Current NVS batch not found", 422, ["stream"])}
+
+      _ ->
+        {:error,
+         error("multiple_current_batches", "Multiple current NVS batches found", 409, ["stream"])}
+    end
+  end
+
+  defp generated_student_id(%{g10_roll_no: value}, _graduating_year)
+       when value in [nil, ""],
+       do: {:ok, nil}
+
+  defp generated_student_id(student, graduating_year) do
+    student_id = "#{graduating_year}#{student.g10_roll_no}"
 
     case Repo.get_by(Student, student_id: student_id) do
       nil ->
@@ -263,32 +400,67 @@ defmodule Dbservice.LmsStudentUpdate do
     end
   end
 
-  defp g12_graduating_year(11), do: 2028
-  defp g12_graduating_year(12), do: 2027
+  defp maybe_graduating_year(_grade, _params, false), do: {:ok, nil}
 
-  defp maybe_generated_student_id(student, grade, true), do: generated_student_id(student, grade)
-  defp maybe_generated_student_id(student, _grade, false), do: {:ok, student.student_id}
+  defp maybe_graduating_year(grade, %{"academic_year" => academic_year}, true)
+       when is_binary(academic_year) do
+    case Regex.run(~r/^(\d{4})-(\d{4})$/, academic_year) do
+      [_, start_year, end_year] ->
+        start_year = String.to_integer(start_year)
+        end_year = String.to_integer(end_year)
 
-  defp student_attrs_for_plan(grade, student_id, true) do
+        if end_year == start_year + 1 do
+          {:ok, if(grade == 11, do: start_year + 2, else: start_year + 1)}
+        else
+          {:error,
+           error("invalid_academic_year", "Academic year must be YYYY-YYYY", 422, [
+             "academic_year"
+           ])}
+        end
+
+      _ ->
+        {:error,
+         error("invalid_academic_year", "Academic year must be YYYY-YYYY", 422, ["academic_year"])}
+    end
+  end
+
+  defp maybe_graduating_year(_grade, _params, true),
+    do:
+      {:error,
+       error("invalid_academic_year", "Academic year must be YYYY-YYYY", 422, ["academic_year"])}
+
+  defp maybe_generated_student_id(student, graduating_year, true),
+    do: generated_student_id(student, graduating_year)
+
+  defp maybe_generated_student_id(student, _graduating_year, false),
+    do: {:ok, student.student_id}
+
+  defp student_attrs_for_plan(grade, graduating_year, student_id, true) do
     %{
       "grade_id" => grade.id,
-      "g12_graduating_year" => g12_graduating_year(grade.number),
+      "g12_graduating_year" => graduating_year,
       "student_id" => student_id
     }
   end
 
-  defp student_attrs_for_plan(_grade, _student_id, false), do: %{}
+  defp student_attrs_for_plan(_grade, _graduating_year, _student_id, false), do: %{}
 
-  defp derived_changed_values(student, grade, batch, student_id, include_grade_values?) do
+  defp derived_changed_values(
+         student,
+         grade,
+         current_batch,
+         batch,
+         graduating_year,
+         student_id,
+         include_grade_values?
+       ) do
     current_grade = current_grade_number(student)
-    current_batch = current_enrollment(student.user_id, "batch")
 
     grade_values =
       if include_grade_values? do
         %{
           "grade" => old_new(current_grade, grade.number),
-          "g12_graduating_year" =>
-            old_new(student.g12_graduating_year, g12_graduating_year(grade.number)),
+          "g12_graduating_year" => old_new(student.g12_graduating_year, graduating_year),
           "student_id" => old_new(student.student_id, student_id)
         }
       else
@@ -296,17 +468,9 @@ defmodule Dbservice.LmsStudentUpdate do
       end
 
     grade_values
-    |> Map.put("batch_id", old_new(current_batch && current_batch.group_id, batch.id))
+    |> Map.put("batch_id", old_new(current_batch.batch.id, batch.id))
     |> Enum.reject(fn {_field, %{"old" => old, "new" => new}} -> old == new end)
     |> Map.new()
-  end
-
-  defp current_enrollment(user_id, group_type) do
-    Repo.one(
-      from(e in EnrollmentRecord,
-        where: e.user_id == ^user_id and e.group_type == ^group_type and e.is_current == true
-      )
-    )
   end
 
   defp changed_values(user, student, params, plan) do
@@ -366,66 +530,111 @@ defmodule Dbservice.LmsStudentUpdate do
   defp replace_enrollments(_user_id, plan, _params) when not is_map_key(plan, :batch),
     do: {:ok, :unchanged}
 
-  defp replace_enrollments(user_id, %{grade: grade, batch: batch}, params) do
-    with {:ok, _grade} <- replace_enrollment(user_id, "grade", grade.id, params),
-         {:ok, _batch} <- replace_enrollment(user_id, "batch", batch.id, params) do
+  defp replace_enrollments(
+         user_id,
+         %{grade: grade, batch: batch, current_batch: current_batch} = plan,
+         params
+       ) do
+    with {:ok, _grade} <- maybe_replace_grade(user_id, grade, params, plan.grade_changed?),
+         {:ok, _batch} <- replace_batch_enrollment(user_id, current_batch, batch, params) do
       {:ok, :replaced}
     end
   end
 
-  defp replace_enrollment(user_id, group_type, group_id, params) do
-    case current_enrollment(user_id, group_type) do
-      %{group_id: ^group_id} ->
-        {:ok, :unchanged}
+  defp maybe_replace_grade(_user_id, _grade, _params, false), do: {:ok, :unchanged}
 
-      _old ->
-        from(e in EnrollmentRecord,
-          where: e.user_id == ^user_id and e.group_type == ^group_type and e.is_current == true,
-          update: [set: [is_current: false, end_date: ^params["start_date"]]]
+  defp maybe_replace_grade(user_id, grade, params, true) do
+    from(e in EnrollmentRecord,
+      where: e.user_id == ^user_id and e.group_type == "grade" and e.is_current == true,
+      update: [set: [is_current: false, end_date: ^params["start_date"]]]
+    )
+    |> Repo.update_all([])
+
+    insert_enrollment(user_id, "grade", grade.id, params)
+  end
+
+  defp replace_batch_enrollment(
+         _user_id,
+         %{batch: %{id: batch_id}},
+         %{id: batch_id},
+         _params
+       ),
+       do: {:ok, :unchanged}
+
+  defp replace_batch_enrollment(user_id, current, batch, params) do
+    from(e in EnrollmentRecord,
+      where: e.id == ^current.enrollment.id,
+      update: [set: [is_current: false, end_date: ^params["start_date"]]]
+    )
+    |> Repo.update_all([])
+
+    insert_enrollment(user_id, "batch", batch.id, params)
+  end
+
+  defp insert_enrollment(user_id, group_type, group_id, params) do
+    with {:ok, enrollment} <-
+           %EnrollmentRecord{}
+           |> EnrollmentRecord.changeset(%{
+             "user_id" => user_id,
+             "group_id" => group_id,
+             "group_type" => group_type,
+             "academic_year" => params["academic_year"],
+             "start_date" => params["start_date"],
+             "is_current" => true
+           })
+           |> Repo.insert(),
+         {:ok, _group_user} <- replace_group_user(user_id, group_type, group_id) do
+      {:ok, enrollment}
+    else
+      {:error, _reason} ->
+        {:error, error("enrollment_update_failed", "Enrollment update failed", 422, [group_type])}
+    end
+  end
+
+  defp replace_group_user(user_id, "batch", child_id) do
+    new_group = Groups.get_group_by_child_id_and_type(child_id, "batch")
+    new_batch = Repo.get(Batch, child_id)
+
+    if is_nil(new_group) or is_nil(new_batch) do
+      {:error, :missing_group}
+    else
+      old_group_users =
+        from(gu in GroupUser,
+          join: g in assoc(gu, :group),
+          join: b in Batch,
+          on: b.id == g.child_id,
+          where:
+            gu.user_id == ^user_id and g.type == "batch" and
+              b.program_id == ^new_batch.program_id
         )
-        |> Repo.update_all([])
+        |> Repo.all()
 
-        with {:ok, enrollment} <-
-               %EnrollmentRecord{}
-               |> EnrollmentRecord.changeset(%{
-                 "user_id" => user_id,
-                 "group_id" => group_id,
-                 "group_type" => group_type,
-                 "academic_year" => params["academic_year"],
-                 "start_date" => params["start_date"],
-                 "is_current" => true
-               })
-               |> Repo.insert(),
-             {:ok, _group_user} <- replace_group_user(user_id, group_type, group_id) do
-          {:ok, enrollment}
-        else
-          {:error, _reason} ->
-            {:error,
-             error("enrollment_update_failed", "Enrollment update failed", 422, [group_type])}
-        end
+      replace_existing_group_user(old_group_users, user_id, new_group.id)
     end
   end
 
   defp replace_group_user(user_id, group_type, child_id) do
     new_group = Groups.get_group_by_child_id_and_type(child_id, group_type)
 
-    old_group_user =
-      from(gu in GroupUser,
-        join: g in assoc(gu, :group),
-        where: gu.user_id == ^user_id and g.type == ^group_type,
-        limit: 1
-      )
-      |> Repo.one()
+    if is_nil(new_group) do
+      {:error, :missing_group}
+    else
+      old_group_users =
+        from(gu in GroupUser,
+          join: g in assoc(gu, :group),
+          where: gu.user_id == ^user_id and g.type == ^group_type
+        )
+        |> Repo.all()
 
-    cond do
-      is_nil(new_group) ->
-        {:error, :missing_group}
+      replace_existing_group_user(old_group_users, user_id, new_group.id)
+    end
+  end
 
-      old_group_user ->
-        GroupUsers.update_group_user(old_group_user, %{group_id: new_group.id})
-
-      true ->
-        GroupUsers.create_group_user(%{user_id: user_id, group_id: new_group.id})
+  defp replace_existing_group_user(old_group_users, user_id, new_group_id) do
+    case old_group_users do
+      [] -> GroupUsers.create_group_user(%{user_id: user_id, group_id: new_group_id})
+      [old_group_user] -> GroupUsers.update_group_user(old_group_user, %{group_id: new_group_id})
+      _ -> {:error, :multiple_group_users}
     end
   end
 
