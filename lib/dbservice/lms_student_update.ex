@@ -14,6 +14,7 @@ defmodule Dbservice.LmsStudentUpdate do
   alias Dbservice.GroupUsers
   alias Dbservice.Groups
   alias Dbservice.Groups.GroupUser
+  alias Dbservice.LmsStudentIngestion
   alias Dbservice.LmsStudentWriteAudit
   alias Dbservice.Products.Product
   alias Dbservice.Programs.Program
@@ -53,11 +54,11 @@ defmodule Dbservice.LmsStudentUpdate do
   @editable_fields @user_fields ++ @student_fields ++ ["grade"]
 
   def update(student_pk_id, params) do
-    params = normalize_params(params)
-
     Repo.transaction(fn ->
       with :ok <- reject_locked_fields(params),
            :ok <- reject_unsupported_fields(params),
+           :ok <- validate_canonical_inputs(params),
+           params = normalize_params(params),
            {:ok, student} <- fetch_student(student_pk_id),
            {:ok, school} <- fetch_school(params),
            :ok <- validate_school_scope(student, school, params["program_id"]),
@@ -103,6 +104,37 @@ defmodule Dbservice.LmsStudentUpdate do
       fields ->
         {:error, error("unsupported_fields", "Unsupported fields cannot be updated", 422, fields)}
     end
+  end
+
+  defp validate_canonical_inputs(params) do
+    with :ok <- validate_board_input(params),
+         :ok <- validate_gender_input(params),
+         do: validate_stream_input(params)
+  end
+
+  defp validate_board_input(params) when not is_map_key(params, "g10_board"), do: :ok
+
+  defp validate_board_input(%{"g10_board" => board}) when board in ~w(CBSE Others), do: :ok
+
+  defp validate_board_input(_params),
+    do:
+      {:error,
+       error("invalid_g10_board", "Grade 10 Board must be CBSE or Others", 422, ["g10_board"])}
+
+  defp validate_gender_input(params) when not is_map_key(params, "gender"), do: :ok
+
+  defp validate_gender_input(%{"gender" => nil}),
+    do:
+      {:error, error("invalid_gender", "Gender must be Male, Female, or Other", 422, ["gender"])}
+
+  defp validate_gender_input(_params), do: :ok
+
+  defp validate_stream_input(params) when not is_map_key(params, "stream"), do: :ok
+
+  defp validate_stream_input(%{"stream" => stream}) do
+    if LmsStudentIngestion.normalize_stream(stream) in Dbservice.Utils.Util.valid_streams(),
+      do: :ok,
+      else: {:error, error("invalid_stream", "Stream is invalid", 422, ["stream"])}
   end
 
   defp fetch_student(id) do
@@ -290,11 +322,12 @@ defmodule Dbservice.LmsStudentUpdate do
     submitted_grade =
       if Map.has_key?(params, "grade"), do: to_int(params["grade"]), else: current_grade
 
-    submitted_stream = normalize_stream(params["stream"] || student.stream)
+    submitted_stream = LmsStudentIngestion.normalize_stream(params["stream"] || student.stream)
     grade_changed? = Map.has_key?(params, "grade") and submitted_grade != current_grade
 
     stream_changed? =
-      Map.has_key?(params, "stream") and submitted_stream != normalize_stream(student.stream)
+      Map.has_key?(params, "stream") and
+        submitted_stream != LmsStudentIngestion.normalize_stream(student.stream)
 
     needs_enrollment_change? = grade_changed? or stream_changed?
 
@@ -705,6 +738,12 @@ defmodule Dbservice.LmsStudentUpdate do
         created_values: %{},
         changed_values: changed_values
       })
+      |> Ecto.Changeset.validate_required([
+        :actor_user_id,
+        :actor_email,
+        :actor_login_type,
+        :actor_role
+      ])
       |> Repo.insert()
 
     case result do
@@ -729,18 +768,8 @@ defmodule Dbservice.LmsStudentUpdate do
   defp to_int(_value), do: nil
 
   defp audit_value("last_name", ""), do: nil
-  defp audit_value("stream", value), do: normalize_stream(value)
+  defp audit_value("stream", value), do: LmsStudentIngestion.normalize_stream(value)
   defp audit_value(_field, value), do: value
-
-  defp normalize_stream(value) when is_binary(value) do
-    trimmed = String.trim(value)
-
-    Enum.find(Dbservice.Utils.Util.valid_streams(), trimmed, fn valid ->
-      String.downcase(valid) == String.downcase(trimmed)
-    end)
-  end
-
-  defp normalize_stream(value), do: value
 
   defp normalize_params(params) do
     params
@@ -757,7 +786,7 @@ defmodule Dbservice.LmsStudentUpdate do
         Map.put(
           params,
           "date_of_birth",
-          Dbservice.LmsStudentIngestion.normalize_date_of_birth(value)
+          LmsStudentIngestion.normalize_date_of_birth(value)
         )
 
       params ->
@@ -765,7 +794,7 @@ defmodule Dbservice.LmsStudentUpdate do
     end)
     |> then(fn
       %{"stream" => value} = params ->
-        Map.put(params, "stream", Dbservice.LmsStudentIngestion.normalize_stream(value))
+        Map.put(params, "stream", LmsStudentIngestion.normalize_stream(value))
 
       params ->
         params

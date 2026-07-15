@@ -414,6 +414,58 @@ defmodule DbserviceWeb.LmsStudentUpdateControllerTest do
       assert Repo.aggregate(Dbservice.LmsStudentWriteAudit, :count, :id) == 0
     end
 
+    test "rejects invalid stream values without clearing the stored stream", %{conn: conn} do
+      school = insert_school!()
+      grade = insert_grade!(11)
+      batch = insert_nvs_batch!(11, "engineering")
+      {_user, student} = insert_enrolled_student!(school, grade, batch)
+
+      conn =
+        patch(conn, "/api/lms/students/#{student.id}/update-with-enrollments", %{
+          "actor" => actor(),
+          "school" => %{"code" => school.code, "udise_code" => school.udise_code},
+          "program_id" => 64,
+          "academic_year" => "2026-2027",
+          "start_date" => "2026-07-01",
+          "stream" => "Unknown"
+        })
+
+      assert json_response(conn, 422)["error"]["code"] == "invalid_stream"
+      assert Repo.get!(Student, student.id).stream == "engineering"
+      assert current_program_enrollment(student.user_id, 64).group_id == batch.id
+      assert Repo.aggregate(Dbservice.LmsStudentWriteAudit, :count, :id) == 0
+    end
+
+    test "rejects null canonical enum inputs", %{conn: conn} do
+      school = insert_school!()
+      grade = insert_grade!(11)
+      batch = insert_nvs_batch!(11, "engineering")
+      {_user, student} = insert_enrolled_student!(school, grade, batch)
+
+      metadata = %{
+        "actor" => actor(),
+        "school" => %{"code" => school.code, "udise_code" => school.udise_code},
+        "program_id" => 64,
+        "academic_year" => "2026-2027",
+        "start_date" => "2026-07-01"
+      }
+
+      for field <- ~w(g10_board gender stream) do
+        conn =
+          patch(
+            recycle(conn),
+            "/api/lms/students/#{student.id}/update-with-enrollments",
+            Map.put(metadata, field, nil)
+          )
+
+        assert json_response(conn, 422)["error"]["code"] == "invalid_#{field}"
+      end
+
+      assert Repo.get!(Student, student.id).stream == "engineering"
+      assert Repo.get!(Student, student.id).g10_board == "CENTRAL BOARD OF SECONDARY EDUCATION"
+      assert Repo.aggregate(Dbservice.LmsStudentWriteAudit, :count, :id) == 0
+    end
+
     test "rejects a category that does not match the resulting CWSN status", %{conn: conn} do
       school = insert_school!()
       grade = insert_grade!(11)
@@ -900,6 +952,26 @@ defmodule DbserviceWeb.LmsStudentUpdateControllerTest do
       assert Repo.get!(Student, student.id).stream == "engineering"
       assert current_program_enrollment(user.id, 64).group_id == old_batch.id
       assert has_group_user?(user.id, "batch", old_batch.id)
+      assert Repo.aggregate(Dbservice.LmsStudentWriteAudit, :count, :id) == 0
+    end
+
+    test "missing actor metadata rolls back the update", %{conn: conn} do
+      school = insert_school!()
+      grade = insert_grade!(11)
+      batch = insert_nvs_batch!(11, "engineering")
+      {user, student} = insert_enrolled_student!(school, grade, batch)
+
+      conn =
+        patch(conn, "/api/lms/students/#{student.id}/update-with-enrollments", %{
+          "school" => %{"code" => school.code, "udise_code" => school.udise_code},
+          "program_id" => 64,
+          "academic_year" => "2026-2027",
+          "start_date" => "2026-07-01",
+          "first_name" => "Should Not Apply"
+        })
+
+      assert json_response(conn, 422)["error"]["code"] == "audit_update_failed"
+      assert Users.get_user!(user.id).first_name == user.first_name
       assert Repo.aggregate(Dbservice.LmsStudentWriteAudit, :count, :id) == 0
     end
 
