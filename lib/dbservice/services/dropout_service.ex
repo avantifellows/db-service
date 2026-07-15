@@ -97,7 +97,7 @@ defmodule Dbservice.Services.DropoutService do
 
       [enrollment] ->
         with {1, nil} <- end_program_enrollment(enrollment, start_date),
-             {_count, nil} <- delete_program_group_user(student.user_id, enrollment.group_id) do
+             {1, nil} <- delete_program_group_user(student.user_id, enrollment.group_id) do
           finish_program_dropout(student, enrollment, start_date, academic_year)
         else
           _ -> {:error, "Failed to end program enrollment"}

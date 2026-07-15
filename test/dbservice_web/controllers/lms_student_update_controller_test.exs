@@ -243,6 +243,35 @@ defmodule DbserviceWeb.LmsStudentUpdateControllerTest do
       assert Repo.aggregate(Dbservice.LmsStudentWriteAudit, :count, :id) == 0
     end
 
+    test "missing batch membership rolls back the NVS enrollment change", %{conn: conn} do
+      school = insert_school!()
+      grade = insert_grade!(11)
+      batch = insert_nvs_batch!(11, "engineering")
+      {user, student} = insert_enrolled_student!(school, grade, batch)
+      ensure_dropout_status!()
+
+      from(gu in Dbservice.Groups.GroupUser,
+        join: g in Group,
+        on: g.id == gu.group_id,
+        where: gu.user_id == ^user.id and g.type == "batch" and g.child_id == ^batch.id
+      )
+      |> Repo.delete_all()
+
+      conn =
+        patch(conn, "/api/dropout", %{
+          "student_id" => student.student_id,
+          "start_date" => "2026-07-01",
+          "academic_year" => "2026-2027",
+          "actor" => actor(),
+          "school" => %{"code" => school.code, "udise_code" => school.udise_code},
+          "program_id" => 64
+        })
+
+      assert json_response(conn, 400)["errors"] == "Failed to end program enrollment"
+      assert current_program_enrollment(user.id, 64).group_id == batch.id
+      assert Repo.aggregate(Dbservice.LmsStudentWriteAudit, :count, :id) == 0
+    end
+
     test "rejects a student without a current batch in the selected NVS program", %{conn: conn} do
       school = insert_school!()
       grade = insert_grade!(11)
