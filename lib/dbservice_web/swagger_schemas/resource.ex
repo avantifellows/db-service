@@ -40,6 +40,18 @@ defmodule DbserviceWeb.SwaggerSchema.Resource do
               :string,
               "Reading passage for comprehension problems (PATCH only). Upserts the shared paragraph linked to every `problem_lang` row of this resource via `paragraph_id`; ignored for non-comprehension subtypes."
             )
+
+            lang_versions(
+              Schema.array(:object),
+              "Problem content per language, each entry with a lang_code and meta_data — " <>
+                "inserts one problem_lang row per entry (problems only). Takes precedence over " <>
+                "the deprecated flat lang_code + meta_data pair, which is still accepted for " <>
+                "backward compatibility.",
+              example: [
+                %{lang_code: "en", meta_data: %{text: "What is 2+2?"}},
+                %{lang_code: "hi", meta_data: %{text: "2+2 क्या है?"}}
+              ]
+            )
           end
 
           example(%{
@@ -466,9 +478,13 @@ defmodule DbserviceWeb.SwaggerSchema.Resource do
             problems: [
               %{
                 subtype: "comprehension",
-                lang_code: "en",
                 name: [%{lang_code: "en", resource: "Q1"}],
-                meta_data: %{text: "q1", answer: ["2"], options: ["o1", "o2"]}
+                lang_versions: [
+                  %{
+                    lang_code: "en",
+                    meta_data: %{text: "q1", answer: ["2"], options: ["o1", "o2"]}
+                  }
+                ]
               },
               %{
                 subtype: "comprehension",
