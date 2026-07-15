@@ -836,6 +836,32 @@ defmodule DbserviceWeb.LmsStudentIngestionControllerTest do
                response["results"]
     end
 
+    test "trims accidental whitespace around CBSE and Others boards", %{conn: conn} do
+      school = insert_eligible_school!()
+      insert_auth_group!("EnableStudents")
+      insert_grade!(11)
+      insert_nvs_batch!(11, "engineering")
+
+      response =
+        conn
+        |> post(
+          "/api/lms/students/bulk-create-with-enrollments",
+          payload(school, [
+            valid_row(%{"g10_board" => " CBSE "}),
+            valid_row(%{
+              "pen_number" => "12345678902",
+              "g10_board" => " Others ",
+              "g10_roll_no" => "00-ab 12/34"
+            })
+          ])
+        )
+        |> json_response(200)
+
+      assert response["totals"]["created"] == 2
+      assert Repo.get_by!(Student, pen_number: "12345678901").g10_board == "CBSE"
+      assert Repo.get_by!(Student, pen_number: "12345678902").g10_board == nil
+    end
+
     test "normalizes a blank Grade 10 board to null in storage, response, and audit", %{
       conn: conn
     } do

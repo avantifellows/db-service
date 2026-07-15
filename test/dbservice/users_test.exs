@@ -279,10 +279,13 @@ defmodule Dbservice.UsersTest do
       assert {:ok, %Student{pen_number: nil}} = Users.update_student(student, %{pen_number: nil})
     end
 
-    test "get_student_by_id_or_apaar_id/1 finds a PEN-only student" do
+    test "PEN lookup is only enabled by get_student_by_id_pen_or_apaar_id/1" do
       {_user, student} = student_fixture(%{student_id: nil, pen_number: "12345678901"})
 
-      assert Users.get_student_by_id_or_apaar_id(%{"pen_number" => "12345678901"}) == student
+      assert Users.get_student_by_id_or_apaar_id(%{"pen_number" => "12345678901"}) == nil
+
+      assert Users.get_student_by_id_pen_or_apaar_id(%{"pen_number" => "12345678901"}) ==
+               student
     end
 
     test "create_student/1 with invalid data returns error changeset" do

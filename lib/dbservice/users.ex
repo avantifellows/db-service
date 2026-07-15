@@ -186,7 +186,7 @@ defmodule Dbservice.Users do
   end
 
   @doc """
-  Gets a student by student ID, PEN, or APAAR ID, in that order.
+  Gets a student by student ID or APAAR ID, in that order.
 
   ## Examples
 
@@ -198,6 +198,11 @@ defmodule Dbservice.Users do
       nil
   """
   def get_student_by_id_or_apaar_id(record) when is_map(record) do
+    find_student(:student_id, record["student_id"]) ||
+      find_student(:apaar_id, record["apaar_id"])
+  end
+
+  def get_student_by_id_pen_or_apaar_id(record) when is_map(record) do
     find_student(:student_id, record["student_id"]) ||
       find_student(:pen_number, record["pen_number"]) ||
       find_student(:apaar_id, record["apaar_id"])

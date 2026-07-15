@@ -249,9 +249,15 @@ defmodule Dbservice.LmsStudentIngestion do
 
   def normalize_g10_roll(_value, _board), do: nil
 
-  def normalize_g10_board("CBSE"), do: @cbse_board
-  def normalize_g10_board("Others"), do: nil
-  def normalize_g10_board(value) when is_binary(value), do: trim_blank_to_nil(value)
+  def normalize_g10_board(value) when is_binary(value) do
+    case String.trim(value) do
+      "CBSE" -> @cbse_board
+      "Others" -> nil
+      "" -> nil
+      board -> board
+    end
+  end
+
   def normalize_g10_board(value), do: value
 
   defp normalize_name(value) when is_binary(value) do
@@ -326,7 +332,7 @@ defmodule Dbservice.LmsStudentIngestion do
          (is_binary(supplied_roll) and String.trim(supplied_roll) == "") do
       :ok
     else
-      validate_nonblank_g10_roll(g10_roll_no, row["g10_board"])
+      validate_nonblank_g10_roll(g10_roll_no, get_in(row, ["student", "g10_board"]))
     end
   end
 
@@ -348,7 +354,9 @@ defmodule Dbservice.LmsStudentIngestion do
   end
 
   defp validate_g10_board(row) do
-    board = row["g10_board"]
+    board =
+      if is_binary(row["g10_board"]), do: String.trim(row["g10_board"]), else: row["g10_board"]
+
     roll = get_in(row, ["student", "g10_roll_no"])
 
     if board in ["CBSE", "Others"] or (roll in [nil, ""] and board in [nil, ""]),
