@@ -937,6 +937,10 @@ defmodule Dbservice.Resources do
 
   defp update_problem_language(resource, params) do
     cond do
+      has_lang_versions?(params) ->
+        params = pre_sync_shared_paragraph(resource, params)
+        sync_problem_lang_versions(resource, params)
+
       has_lang_code?(params) ->
         params = pre_sync_shared_paragraph(resource, params)
         update_problem_language_for_lang(resource, params)
@@ -949,6 +953,91 @@ defmodule Dbservice.Resources do
         :ok
     end
   end
+
+  # New multi-language path (issue #611): syncs problem_lang rows to exactly
+  # the languages present in lang_versions — upserts one row per entry and
+  # deletes rows whose language is absent from the request. Takes precedence
+  # over the flat lang_code/meta_data format, which remains as a backward
+  # compatibility fallback until the new frontend is deployed.
+  defp sync_problem_lang_versions(resource, %{"lang_versions" => versions} = params) do
+    existing = Repo.all(from(pl in ProblemLanguage, where: pl.res_id == ^resource.id))
+    existing_by_lang_id = Map.new(existing, &{&1.lang_id, &1})
+
+    # New rows of a comprehension problem must join the problem's shared paragraph.
+    shared_paragraph_id = params["paragraph_id"] || Enum.find_value(existing, & &1.paragraph_id)
+
+    base_params = Map.drop(params, ["lang_versions", "lang_code", "meta_data"])
+
+    kept_lang_ids =
+      versions
+      |> Enum.map(
+        &upsert_problem_lang_version(
+          resource,
+          base_params,
+          shared_paragraph_id,
+          existing_by_lang_id,
+          &1
+        )
+      )
+      |> Enum.reject(&is_nil/1)
+      |> MapSet.new()
+
+    existing
+    |> Enum.reject(&MapSet.member?(kept_lang_ids, &1.lang_id))
+    |> Enum.each(&Dbservice.ProblemLanguages.delete_problem_language/1)
+  end
+
+  # Upserts the problem_lang row for one lang_versions entry and returns its
+  # lang_id, or nil when the lang_code doesn't resolve to a language (skipped,
+  # matching the flat lang_code path which no-ops on unknown languages).
+  defp upsert_problem_lang_version(
+         resource,
+         base_params,
+         shared_paragraph_id,
+         existing_by_lang_id,
+         version
+       ) do
+    lang_code = version["lang_code"]
+    lang = is_binary(lang_code) && Dbservice.Languages.get_language_by_code(lang_code)
+
+    case lang do
+      %Language{id: lang_id} ->
+        version_params = Map.put(base_params, "meta_data", version["meta_data"])
+
+        case Map.get(existing_by_lang_id, lang_id) do
+          nil ->
+            insert_problem_lang_version(resource, version_params, shared_paragraph_id, lang_id)
+
+          pl ->
+            do_update_problem_language(resource, version_params, pl)
+        end
+
+        lang_id
+
+      _ ->
+        nil
+    end
+  end
+
+  defp insert_problem_lang_version(resource, version_params, shared_paragraph_id, lang_id) do
+    version_params =
+      if shared_paragraph_id,
+        do: Map.put_new(version_params, "paragraph_id", shared_paragraph_id),
+        else: version_params
+
+    case Paragraphs.problem_language_insert_attrs(resource, version_params, lang_id) do
+      {:ok, attrs} ->
+        Dbservice.ProblemLanguages.create_problem_language(attrs)
+
+      # Comprehension language with no resolvable paragraph: skip the insert,
+      # consistent with how the other association updates swallow errors.
+      {:error, _} ->
+        :ok
+    end
+  end
+
+  defp has_lang_versions?(%{"lang_versions" => [_ | _]}), do: true
+  defp has_lang_versions?(_), do: false
 
   # When `params["paragraph"]` carries a body for a comprehension problem, upsert the
   # shared paragraph once. Existing distinct paragraphs are updated via a single helper;
