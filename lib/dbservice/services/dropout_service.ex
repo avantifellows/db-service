@@ -19,6 +19,7 @@ defmodule Dbservice.Services.DropoutService do
   alias Dbservice.Users
 
   @audit_action "student_program_dropout"
+  @nvs_program_id 64
 
   @doc """
   Fetches dropout status information.
@@ -286,9 +287,12 @@ defmodule Dbservice.Services.DropoutService do
        when is_map(actor) and is_map(school) do
     case params["program_id"] do
       program_id when is_integer(program_id) ->
-        if LmsStudentIngestion.current_nvs_program?(program_id),
-          do: validate_lms_school(student, school),
-          else: {:error, "Program must be a current NVS program"}
+        if program_id == @nvs_program_id and
+             not LmsStudentIngestion.current_nvs_program?(program_id) do
+          {:error, "Program must be a current NVS program"}
+        else
+          validate_lms_school(student, school)
+        end
 
       _ ->
         {:error, "Invalid program_id"}

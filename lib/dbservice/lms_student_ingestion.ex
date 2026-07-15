@@ -357,11 +357,14 @@ defmodule Dbservice.LmsStudentIngestion do
   end
 
   defp validate_pen(row) do
-    case get_in(row, ["student", "pen_number"]) do
-      nil ->
+    case {row["pen_number"], get_in(row, ["student", "pen_number"])} do
+      {value, _normalized} when not is_nil(value) and not is_binary(value) ->
+        {:error, "PEN Number must be exactly 11 digits and cannot start with zero"}
+
+      {_input, nil} ->
         :ok
 
-      pen when is_binary(pen) ->
+      {_input, pen} when is_binary(pen) ->
         if Regex.match?(~r/^[1-9][0-9]{10}$/, pen),
           do: :ok,
           else: {:error, "PEN Number must be exactly 11 digits and cannot start with zero"}
@@ -589,11 +592,11 @@ defmodule Dbservice.LmsStudentIngestion do
       date
     else
       {:ok, date} -> date
-      _ -> :invalid
+      _ -> nil
     end
   end
 
-  def normalize_date_of_birth(_value), do: :invalid
+  def normalize_date_of_birth(_value), do: nil
 
   @doc false
   def normalize_stream(value) when is_binary(value) do

@@ -78,6 +78,32 @@ defmodule DbserviceWeb.LmsStudentUpdateControllerTest do
       assert changed_values["academic_year"] == %{"old" => nil, "new" => "2026-2027"}
     end
 
+    test "finds a PEN-only student for dropout", %{conn: conn} do
+      school = insert_school!()
+      grade = insert_grade!(11)
+      batch = insert_nvs_batch!(11, "engineering")
+
+      {_user, student} =
+        insert_enrolled_student!(school, grade, batch, %{
+          student_id: nil,
+          pen_number: "12345678901"
+        })
+
+      ensure_dropout_status!()
+
+      conn =
+        patch(conn, "/api/dropout", %{
+          "pen_number" => student.pen_number,
+          "start_date" => "2026-07-01",
+          "academic_year" => "2026-2027",
+          "actor" => actor(),
+          "school" => %{"code" => school.code, "udise_code" => school.udise_code},
+          "program_id" => 64
+        })
+
+      assert json_response(conn, 200)["status"] == "dropout"
+    end
+
     test "drops only the selected program when another program remains active", %{conn: conn} do
       school = insert_school!()
       grade = insert_grade!(11)
@@ -147,7 +173,7 @@ defmodule DbserviceWeb.LmsStudentUpdateControllerTest do
       assert Repo.aggregate(Dbservice.LmsStudentWriteAudit, :count, :id) == 0
     end
 
-    test "rejects dropout for a non-NVS program without changing enrollments", %{conn: conn} do
+    test "drops a selected non-NVS program without changing NVS enrollment", %{conn: conn} do
       school = insert_school!()
       grade = insert_grade!(11)
       nvs_batch = insert_nvs_batch!(11, "engineering")
@@ -166,10 +192,10 @@ defmodule DbserviceWeb.LmsStudentUpdateControllerTest do
           "program_id" => 1
         })
 
-      assert json_response(conn, 400)["errors"] == "Program must be a current NVS program"
-      assert current_program_enrollment(user.id, 1).group_id == other_batch.id
+      assert json_response(conn, 200)["status"] == student.status
+      refute current_program_enrollment_or_nil(user.id, 1)
       assert current_program_enrollment(user.id, 64).group_id == nvs_batch.id
-      assert Repo.aggregate(Dbservice.LmsStudentWriteAudit, :count, :id) == 0
+      assert Repo.aggregate(Dbservice.LmsStudentWriteAudit, :count, :id) == 1
     end
 
     test "rejects dropout for an inactive NVS program without changing enrollments", %{conn: conn} do

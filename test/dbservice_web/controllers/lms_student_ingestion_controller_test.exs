@@ -112,17 +112,24 @@ defmodule DbserviceWeb.LmsStudentIngestionControllerTest do
         }),
         valid_row(%{
           "row_number" => 4,
+          "pen_number" => 12_345_678_901,
+          "apaar_id" => nil,
+          "g10_roll_no" => "87654321",
+          "stream" => "nda"
+        }),
+        valid_row(%{
+          "row_number" => 5,
           "pen_number" => nil,
           "apaar_id" => "123456789012",
           "g10_roll_no" => nil,
           "stream" => "nda"
         }),
         valid_pen_row("12345678909", %{
-          "row_number" => 5,
+          "row_number" => 6,
           "g10_board" => "State Board"
         }),
         valid_row(%{
-          "row_number" => 6,
+          "row_number" => 7,
           "pen_number" => nil,
           "g10_board" => nil,
           "g10_roll_no" => "12345678",
@@ -135,9 +142,10 @@ defmodule DbserviceWeb.LmsStudentIngestionControllerTest do
         |> post("/api/lms/students/bulk-create-with-enrollments", payload(school, rows))
         |> json_response(200)
 
-      assert response["totals"]["rejected"] == 5
+      assert response["totals"]["rejected"] == 6
 
       assert Enum.map(response["results"], & &1["row_errors"]) == [
+               ["PEN Number must be exactly 11 digits and cannot start with zero"],
                ["PEN Number must be exactly 11 digits and cannot start with zero"],
                ["PEN Number must be exactly 11 digits and cannot start with zero"],
                ["PEN Number or Grade 10 Roll no is required"],

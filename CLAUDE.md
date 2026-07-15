@@ -72,7 +72,7 @@ Complex operations that span multiple domains:
 ### Revised NVS student writes
 
 - Reuse `Dbservice.LmsStudentIngestion` canonical normalization in the LMS create and update flows so identifiers, DOB, gender, board, and stream rules do not drift.
-- Resolve NVS scope through a current program whose product code is `NVS`, matching school code/UDISE, and exact program + grade + stream batch selection. Do not add Centre or `school.program_ids` checks to these flows.
+- Resolve NVS scope through current Program 64, matching school code/UDISE, and exact program + grade + stream batch selection. Do not infer NVS from its deployed `TP-Async` Product code, and do not add Centre or `school.program_ids` checks to these flows.
 - Keep each row create, NVS grade/stream replacement, and NVS program dropout atomic with its audit record. Other programs' current enrollments and batch memberships must remain unchanged.
 
 ### Web Layer (`lib/dbservice_web/`)
