@@ -155,7 +155,9 @@ defmodule Dbservice.UsersTest do
   end
 
   describe "student" do
+    alias Dbservice.Repo
     alias Dbservice.Users.Student
+    alias Dbservice.Users.User
 
     import Dbservice.UsersFixtures
 
@@ -255,6 +257,19 @@ defmodule Dbservice.UsersTest do
     test "create_student/1 trims a non-blank PEN" do
       assert {:ok, %Student{pen_number: "12345678901"}} =
                Users.create_student(%{user_id: user_fixture().id, pen_number: " 12345678901 "})
+    end
+
+    test "create_student/1 rejects invalid PEN formats" do
+      for pen_number <- ["abc", "01234567890", "1234567890", "123456789012"] do
+        assert {:error, changeset} =
+                 Users.create_student(%{
+                   user_id: user_fixture().id,
+                   pen_number: pen_number
+                 })
+
+        assert {"must be exactly 11 digits and cannot start with zero", _} =
+                 changeset.errors[:pen_number]
+      end
     end
 
     test "create_student/1 allows null PENs and rejects duplicate non-null PENs" do
@@ -399,6 +414,20 @@ defmodule Dbservice.UsersTest do
       assert student.category == "Gen"
       assert student.father_name == "some father_name"
       assert student.father_phone == "some father_phone"
+    end
+
+    test "create_student_with_user/1 rolls back the user when PEN is duplicated" do
+      {_user, _student} = student_fixture(%{pen_number: "12345678901"})
+      user_count = Repo.aggregate(User, :count)
+
+      assert {:error, changeset} =
+               Users.create_student_with_user(%{
+                 student_id: "different student id",
+                 pen_number: "12345678901"
+               })
+
+      assert {"has already been taken", _} = changeset.errors[:pen_number]
+      assert Repo.aggregate(User, :count) == user_count
     end
 
     test "update_student_with_user/3 updates a user and student" do
