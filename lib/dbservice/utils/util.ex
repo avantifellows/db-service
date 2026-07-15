@@ -11,7 +11,7 @@ defmodule Dbservice.Utils.Util do
 
   @valid_categories ~w(Gen OBC SC ST Gen-EWS PWD-SC PWD-Gen PWD-OBC PWD-EWS PWD-ST)
   @valid_genders ~w(Male Female Others)
-  @valid_streams ~w(engineering medical pcmb pcm pcb foundation ca clat)
+  @valid_streams ~w(engineering medical pcmb pcm pcb foundation ca clat nda)
 
   @doc """
   Requires `field` to be present, but only when inserting a new record.
