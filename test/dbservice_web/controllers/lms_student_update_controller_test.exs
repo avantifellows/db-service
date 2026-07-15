@@ -243,6 +243,30 @@ defmodule DbserviceWeb.LmsStudentUpdateControllerTest do
       assert Repo.aggregate(Dbservice.LmsStudentWriteAudit, :count, :id) == 0
     end
 
+    test "missing actor metadata rolls back the NVS dropout", %{conn: conn} do
+      school = insert_school!()
+      grade = insert_grade!(11)
+      batch = insert_nvs_batch!(11, "engineering")
+      {user, student} = insert_enrolled_student!(school, grade, batch)
+      ensure_dropout_status!()
+
+      conn =
+        patch(conn, "/api/dropout", %{
+          "student_id" => student.student_id,
+          "start_date" => "2026-07-01",
+          "academic_year" => "2026-2027",
+          "actor" => Map.put(actor(), "email", nil),
+          "school" => %{"code" => school.code, "udise_code" => school.udise_code},
+          "program_id" => 64
+        })
+
+      assert json_response(conn, 400)["errors"] == "Failed to write dropout audit"
+      assert Repo.get!(Student, student.id).status == student.status
+      assert current_program_enrollment(user.id, 64).group_id == batch.id
+      assert has_group_user?(user.id, "batch", batch.id)
+      assert Repo.aggregate(Dbservice.LmsStudentWriteAudit, :count, :id) == 0
+    end
+
     test "missing batch membership rolls back the NVS enrollment change", %{conn: conn} do
       school = insert_school!()
       grade = insert_grade!(11)

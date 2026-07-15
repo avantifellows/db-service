@@ -738,12 +738,6 @@ defmodule Dbservice.LmsStudentUpdate do
         created_values: %{},
         changed_values: changed_values
       })
-      |> Ecto.Changeset.validate_required([
-        :actor_user_id,
-        :actor_email,
-        :actor_login_type,
-        :actor_role
-      ])
       |> Repo.insert()
 
     case result do

@@ -57,6 +57,35 @@ defmodule DbserviceWeb.LmsStudentIngestionControllerTest do
       assert student.stream == "nda"
     end
 
+    test "missing actor metadata rolls back student creation", %{conn: conn} do
+      school = insert_school!(%{program_ids: []})
+      ensure_nvs_program!()
+      insert_auth_group!("EnableStudents")
+      insert_grade!(11)
+      insert_nvs_batch!(11, "nda")
+
+      request =
+        school
+        |> payload([valid_pen_row("12345678909", %{"stream" => "nda"})])
+        |> put_in(["actor", "email"], nil)
+
+      response =
+        conn
+        |> post("/api/lms/students/bulk-create-with-enrollments", request)
+        |> json_response(200)
+
+      assert response["totals"] == %{
+               "total" => 1,
+               "created" => 0,
+               "duplicate_in_file" => 0,
+               "already_exists" => 0,
+               "rejected" => 1
+             }
+
+      refute Repo.get_by(Student, pen_number: "12345678909")
+      assert Repo.aggregate(Dbservice.LmsStudentWriteAudit, :count, :id) == 0
+    end
+
     test "requires a valid PEN or Grade 10 Roll Number and does not use APAAR as identity", %{
       conn: conn
     } do
