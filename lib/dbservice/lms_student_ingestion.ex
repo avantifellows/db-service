@@ -428,22 +428,37 @@ defmodule Dbservice.LmsStudentIngestion do
   end
 
   defp validate_identifier_match(row) do
-    student_by_id = find_student("student_id", get_in(row, ["student", "student_id"]))
-    student_by_pen = find_student("pen_number", get_in(row, ["student", "pen_number"]))
+    student_id = get_in(row, ["student", "student_id"])
+    pen_number = get_in(row, ["student", "pen_number"])
+    student_by_id = find_student("student_id", student_id)
+    student_by_pen = find_student("pen_number", pen_number)
+    existing = student_by_id || student_by_pen
 
+    case {identifier_conflict(student_by_id, student_by_pen, student_id, pen_number), existing} do
+      {nil, nil} -> :ok
+      {nil, student} -> {:already_exists, student}
+      {error, _student} -> {:error, error}
+    end
+  end
+
+  defp identifier_conflict(student_by_id, student_by_pen, student_id, pen_number) do
     cond do
       student_by_id && student_by_pen && student_by_id.id != student_by_pen.id ->
-        {:error, "PEN Number and generated Student ID match different existing students"}
+        "PEN Number and generated Student ID match different existing students"
 
-      student_by_id ->
-        {:already_exists, student_by_id}
+      student_by_id && conflicting_identifier?(student_by_id.pen_number, pen_number) ->
+        "PEN Number conflicts with the existing generated Student ID"
 
-      student_by_pen ->
-        {:already_exists, student_by_pen}
+      student_by_pen && conflicting_identifier?(student_by_pen.student_id, student_id) ->
+        "Generated Student ID conflicts with the existing PEN Number"
 
       true ->
-        :ok
+        nil
     end
+  end
+
+  defp conflicting_identifier?(stored, supplied) do
+    stored not in [nil, ""] and supplied not in [nil, ""] and stored != supplied
   end
 
   defp fetch_grade(row) do

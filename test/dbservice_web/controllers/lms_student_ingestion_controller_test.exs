@@ -479,6 +479,41 @@ defmodule DbserviceWeb.LmsStudentIngestionControllerTest do
              ]
     end
 
+    test "rejects a new PEN when the generated Student ID belongs to another PEN", %{conn: conn} do
+      school = insert_school!(%{program_ids: []})
+      ensure_nvs_program!()
+      insert_auth_group!("EnableStudents")
+      insert_grade!(11)
+      insert_nvs_batch!(11, "nda")
+
+      Dbservice.UsersFixtures.student_fixture(%{
+        student_id: "202812345678",
+        pen_number: "12345678909"
+      })
+
+      response =
+        conn
+        |> post(
+          "/api/lms/students/bulk-create-with-enrollments",
+          payload(school, [
+            valid_pen_row("12345678908", %{
+              "g10_board" => "CBSE",
+              "g10_roll_no" => "12345678"
+            })
+          ])
+        )
+        |> json_response(200)
+
+      assert [
+               %{
+                 "status" => "rejected",
+                 "row_errors" => [
+                   "PEN Number conflicts with the existing generated Student ID"
+                 ]
+               }
+             ] = response["results"]
+    end
+
     test "concurrent retries create one complete row and return already_exists for the loser", %{
       conn: conn
     } do
