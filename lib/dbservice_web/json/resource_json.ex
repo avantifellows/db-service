@@ -4,6 +4,7 @@ defmodule DbserviceWeb.ResourceJSON do
   alias Dbservice.Resources.ResourceChapter
   alias Dbservice.Concepts
   alias Dbservice.Paragraphs
+  alias Dbservice.ProblemLanguages
   alias Dbservice.ResourceConcepts
   alias Dbservice.ResourceCurriculums
   alias Dbservice.Repo
@@ -193,12 +194,15 @@ defmodule DbserviceWeb.ResourceJSON do
         subject_id: Map.get(curriculum, :subject_id, nil)
       })
 
-    # Add problem language data
+    # Add problem language data. Top-level meta_data keeps the currently
+    # requested language for backward compatibility (see issue #610);
+    # lang_versions carries every available language for the new frontend.
     problem_map =
       Map.merge(resource_with_curriculum, %{
         meta_data: Map.get(problem_lang, :meta_data, nil),
         lang_id: Map.get(problem_lang, :lang_id, nil),
-        paragraph_id: Map.get(problem_lang, :paragraph_id, nil)
+        paragraph_id: Map.get(problem_lang, :paragraph_id, nil),
+        lang_versions: ProblemLanguages.list_lang_versions_by_resource_id(resource.id)
       })
 
     # Fetch concept information
@@ -239,8 +243,12 @@ defmodule DbserviceWeb.ResourceJSON do
     # top-level fields (merged below from the resolved resource_curriculum), so
     # the curriculum_grades list is redundant here.
     |> Map.delete(:curriculum_grades)
+    # Top-level meta_data/lang_code keep the requested language for backward
+    # compatibility (see issue #610); lang_versions carries every available
+    # language for the new frontend.
     |> Map.put(:meta_data, meta_data)
     |> Map.put(:lang_code, lang_code)
+    |> Map.put(:lang_versions, ProblemLanguages.list_lang_versions_by_resource_id(resource.id))
     |> Map.merge(%{
       curriculum_id: rc.curriculum_id,
       grade_id: rc.grade_id,

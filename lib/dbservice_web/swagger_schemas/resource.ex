@@ -273,6 +273,16 @@ defmodule DbserviceWeb.SwaggerSchema.Resource do
             teacher_id(:integer, "Teacher id associated with the resource")
             meta_data(:map, "Additional meta data for the session")
 
+            lang_versions(
+              Schema.array(:object),
+              "All language versions of the problem, each with a lang_code and meta_data. " <>
+                "Top-level meta_data is kept for backward compatibility and mirrors the requested language.",
+              example: [
+                %{lang_code: "en", meta_data: %{text: "What is 2+2?"}},
+                %{lang_code: "hi", meta_data: %{text: "2+2 क्या है?"}}
+              ]
+            )
+
             paragraph(
               :string,
               "Reading passage when `subtype` is `comprehension`; stored in `paragraph.body` and linked via `problem_lang.paragraph_id`."
@@ -326,6 +336,10 @@ defmodule DbserviceWeb.SwaggerSchema.Resource do
             skill_ids: [1, 3, 7],
             teacher_id: 1,
             meta_data: %{difficulty: "medium"},
+            lang_versions: [
+              %{lang_code: "en", meta_data: %{text: "What is 2+2?"}},
+              %{lang_code: "hi", meta_data: %{text: "2+2 क्या है?"}}
+            ],
             curriculum_id: 1,
             grade_id: 12,
             subject_id: 2,

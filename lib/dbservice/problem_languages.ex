@@ -6,6 +6,7 @@ defmodule Dbservice.ProblemLanguages do
   import Ecto.Query, warn: false
   alias Dbservice.Repo
 
+  alias Dbservice.Languages.Language
   alias Dbservice.Resources.ProblemLanguage
 
   @doc """
@@ -40,6 +41,24 @@ defmodule Dbservice.ProblemLanguages do
   """
   def get_problem_language_by_problem_id_and_language_id(problem_id, language_id) do
     Repo.get_by(ProblemLanguage, res_id: problem_id, lang_id: language_id)
+  end
+
+  @doc """
+  Returns all language versions of a problem as a list of maps with
+  `lang_code` and `meta_data`, one entry per `problem_lang` row.
+  ## Examples
+      iex> list_lang_versions_by_resource_id(1)
+      [%{lang_code: "en", meta_data: %{...}}, %{lang_code: "hi", meta_data: %{...}}]
+  """
+  def list_lang_versions_by_resource_id(resource_id) do
+    from(pl in ProblemLanguage,
+      join: l in Language,
+      on: l.id == pl.lang_id,
+      where: pl.res_id == ^resource_id,
+      order_by: [asc: pl.id],
+      select: %{lang_code: l.code, meta_data: pl.meta_data}
+    )
+    |> Repo.all()
   end
 
   @doc """
