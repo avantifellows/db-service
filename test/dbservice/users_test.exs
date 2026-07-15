@@ -245,6 +245,40 @@ defmodule Dbservice.UsersTest do
                "some primary smartphone owner profession"
     end
 
+    test "create_student/1 normalizes a blank PEN to nil" do
+      assert {:ok, %Student{} = student} =
+               Users.create_student(%{user_id: user_fixture().id, pen_number: "   "})
+
+      assert student.pen_number == nil
+    end
+
+    test "create_student/1 trims a non-blank PEN" do
+      assert {:ok, %Student{pen_number: "12345678901"}} =
+               Users.create_student(%{user_id: user_fixture().id, pen_number: " 12345678901 "})
+    end
+
+    test "create_student/1 allows null PENs and rejects duplicate non-null PENs" do
+      assert {:ok, %Student{pen_number: nil}} =
+               Users.create_student(%{user_id: user_fixture().id})
+
+      assert {:ok, %Student{pen_number: nil}} =
+               Users.create_student(%{user_id: user_fixture().id, pen_number: nil})
+
+      assert {:ok, %Student{}} =
+               Users.create_student(%{user_id: user_fixture().id, pen_number: "12345678901"})
+
+      assert {:error, changeset} =
+               Users.create_student(%{user_id: user_fixture().id, pen_number: "12345678901"})
+
+      assert {"has already been taken", _} = changeset.errors[:pen_number]
+    end
+
+    test "update_student/2 accepts an explicit null PEN" do
+      {_user, student} = student_fixture(%{pen_number: "12345678901"})
+
+      assert {:ok, %Student{pen_number: nil}} = Users.update_student(student, %{pen_number: nil})
+    end
+
     test "create_student/1 with invalid data returns error changeset" do
       assert {:error, %Ecto.Changeset{}} = Users.create_student(@invalid_attrs)
     end

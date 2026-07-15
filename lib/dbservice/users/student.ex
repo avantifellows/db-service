@@ -56,6 +56,7 @@ defmodule Dbservice.Users.Student do
     field(:g12_graduating_year, :integer)
     field(:school_medium, :string)
     field(:apaar_id, :string)
+    field(:pen_number, :string)
     field(:g10_board, :string)
     field(:g10_roll_no, :string)
 
@@ -116,11 +117,23 @@ defmodule Dbservice.Users.Student do
       :g12_graduating_year,
       :school_medium,
       :apaar_id,
+      :pen_number,
       :g10_board,
       :g10_roll_no
     ])
+    |> update_change(:pen_number, fn
+      nil ->
+        nil
+
+      value ->
+        case String.trim(value) do
+          "" -> nil
+          value -> value
+        end
+    end)
     |> unique_constraint(:student_id, name: :student_student_id_unique_not_null)
     |> unique_constraint(:apaar_id, name: :student_apaar_id_unique_not_null)
+    |> unique_constraint(:pen_number, name: :student_pen_number_unique_not_null)
     |> validate_required([:user_id])
     |> validate_category(:category)
     |> validate_stream(:stream)
