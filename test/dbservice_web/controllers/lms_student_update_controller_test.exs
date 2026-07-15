@@ -176,11 +176,83 @@ defmodule DbserviceWeb.LmsStudentUpdateControllerTest do
   end
 
   describe "PATCH /api/lms/students/:student_id/update-with-enrollments" do
-    test "updates safe profile fields and audits old and new values", %{conn: conn} do
+    test "updates an NVS student without a Centre or school program_ids", %{conn: conn} do
+      school = insert_school!()
+      grade = insert_grade!(11)
+      batch = insert_nvs_batch!(11, "engineering")
+
+      {user, student} =
+        insert_enrolled_student!(school, grade, batch, %{pen_number: "12345678901"})
+
+      Ecto.Adapters.SQL.query!(Repo, "DELETE FROM centres")
+
+      conn =
+        patch(conn, "/api/lms/students/#{student.id}/update-with-enrollments", %{
+          "actor" => actor(),
+          "school" => %{"code" => school.code, "udise_code" => school.udise_code},
+          "program_id" => 64,
+          "academic_year" => "2026-2027",
+          "start_date" => "2026-07-01",
+          "first_name" => "Updated Name"
+        })
+
+      assert json_response(conn, 200)["status"] == "updated"
+      assert Users.get_user!(user.id).first_name == "Updated Name"
+    end
+
+    test "rejects a program that is not current NVS", %{conn: conn} do
       school = insert_school!()
       grade = insert_grade!(11)
       batch = insert_nvs_batch!(11, "engineering")
       {user, student} = insert_enrolled_student!(school, grade, batch)
+      program = Repo.get!(Dbservice.Programs.Program, 64)
+      Repo.update!(Ecto.Changeset.change(program, is_current: false))
+
+      conn =
+        patch(conn, "/api/lms/students/#{student.id}/update-with-enrollments", %{
+          "actor" => actor(),
+          "school" => %{"code" => school.code, "udise_code" => school.udise_code},
+          "program_id" => 64,
+          "academic_year" => "2026-2027",
+          "start_date" => "2026-07-01",
+          "first_name" => "Should Not Apply"
+        })
+
+      assert json_response(conn, 403)["error"]["code"] == "program_not_allowed"
+      assert Users.get_user!(user.id).first_name == user.first_name
+    end
+
+    test "rejects a school outside the student's current enrollment", %{conn: conn} do
+      school = insert_school!()
+      other_school = insert_school!(%{code: "JNV002", udise_code: "22345678901"})
+      grade = insert_grade!(11)
+      batch = insert_nvs_batch!(11, "engineering")
+      {user, student} = insert_enrolled_student!(school, grade, batch)
+
+      conn =
+        patch(conn, "/api/lms/students/#{student.id}/update-with-enrollments", %{
+          "actor" => actor(),
+          "school" => %{
+            "code" => other_school.code,
+            "udise_code" => other_school.udise_code
+          },
+          "program_id" => 64,
+          "academic_year" => "2026-2027",
+          "start_date" => "2026-07-01",
+          "first_name" => "Should Not Apply"
+        })
+
+      assert json_response(conn, 403)["error"]["code"] == "school_mismatch"
+      assert Users.get_user!(user.id).first_name == user.first_name
+    end
+
+    test "updates safe profile fields and audits old and new values", %{conn: conn} do
+      school = insert_school!()
+      grade = insert_grade!(11)
+      batch = insert_nvs_batch!(11, "engineering")
+
+      {user, student} =
+        insert_enrolled_student!(school, grade, batch, %{pen_number: "12345678901"})
 
       conn =
         patch(conn, "/api/lms/students/#{student.id}/update-with-enrollments", %{
@@ -204,7 +276,7 @@ defmodule DbserviceWeb.LmsStudentUpdateControllerTest do
       updated_student = Repo.get!(Student, student.id)
       assert updated_user.first_name == "Updated Name"
       assert updated_user.last_name == nil
-      assert updated_user.gender == "Others"
+      assert updated_user.gender == "Other"
       assert updated_student.category == "OBC"
       assert updated_student.student_id == "202812345678"
 
@@ -225,8 +297,13 @@ defmodule DbserviceWeb.LmsStudentUpdateControllerTest do
 
       assert school_code == school.code
       assert affected_identifiers["student_pk_id"] == student.id
+      assert affected_identifiers["user_id"] == user.id
+      assert affected_identifiers["student_id"] == student.student_id
+      assert affected_identifiers["pen_number"] == "12345678901"
+      assert affected_identifiers["apaar_id"] == student.apaar_id
       assert changed_values["first_name"] == %{"old" => user.first_name, "new" => "Updated Name"}
       assert changed_values["last_name"] == %{"old" => user.last_name, "new" => nil}
+      assert changed_values["gender"] == %{"old" => user.gender, "new" => "Other"}
       assert changed_values["category"] == %{"old" => "Gen", "new" => "OBC"}
     end
 
@@ -316,7 +393,7 @@ defmodule DbserviceWeb.LmsStudentUpdateControllerTest do
           "program_id" => 64,
           "academic_year" => "2026-2027",
           "start_date" => "2026-07-01",
-          "gender" => "Other"
+          "gender" => "Unknown"
         })
 
       response = json_response(conn, 422)
@@ -333,7 +410,30 @@ defmodule DbserviceWeb.LmsStudentUpdateControllerTest do
         })
 
       response = json_response(conn, 422)
-      assert response["error"]["code"] == "invalid_student_fields"
+      assert response["error"]["code"] == "invalid_category_pair"
+      assert Repo.aggregate(Dbservice.LmsStudentWriteAudit, :count, :id) == 0
+    end
+
+    test "rejects a category that does not match the resulting CWSN status", %{conn: conn} do
+      school = insert_school!()
+      grade = insert_grade!(11)
+      batch = insert_nvs_batch!(11, "engineering")
+
+      {_user, student} =
+        insert_enrolled_student!(school, grade, batch, %{physically_handicapped: false})
+
+      conn =
+        patch(conn, "/api/lms/students/#{student.id}/update-with-enrollments", %{
+          "actor" => actor(),
+          "school" => %{"code" => school.code, "udise_code" => school.udise_code},
+          "program_id" => 64,
+          "academic_year" => "2026-2027",
+          "start_date" => "2026-07-01",
+          "category" => "PWD-OBC"
+        })
+
+      assert json_response(conn, 422)["error"]["code"] == "invalid_category_pair"
+      assert Repo.get!(Student, student.id).category == "Gen"
       assert Repo.aggregate(Dbservice.LmsStudentWriteAudit, :count, :id) == 0
     end
 
@@ -371,7 +471,27 @@ defmodule DbserviceWeb.LmsStudentUpdateControllerTest do
       assert Repo.aggregate(Dbservice.LmsStudentWriteAudit, :count, :id) == 0
     end
 
-    test "rejects locked identity fields without changing editable fields", %{conn: conn} do
+    test "normalizes day-first DOB edits", %{conn: conn} do
+      school = insert_school!()
+      grade = insert_grade!(11)
+      batch = insert_nvs_batch!(11, "engineering")
+      {user, student} = insert_enrolled_student!(school, grade, batch)
+
+      conn =
+        patch(conn, "/api/lms/students/#{student.id}/update-with-enrollments", %{
+          "actor" => actor(),
+          "school" => %{"code" => school.code, "udise_code" => school.udise_code},
+          "program_id" => 64,
+          "academic_year" => "2026-2027",
+          "start_date" => "2026-07-01",
+          "date_of_birth" => "31/12/2010"
+        })
+
+      assert json_response(conn, 200)["changed_fields"] == ["date_of_birth"]
+      assert Users.get_user!(user.id).date_of_birth == ~D[2010-12-31]
+    end
+
+    test "rejects every locked identity field even when PEN is currently null", %{conn: conn} do
       school = insert_school!()
       grade = insert_grade!(11)
       batch = insert_nvs_batch!(11, "engineering")
@@ -385,12 +505,22 @@ defmodule DbserviceWeb.LmsStudentUpdateControllerTest do
           "academic_year" => "2026-2027",
           "start_date" => "2026-07-01",
           "first_name" => "Should Not Apply",
-          "student_id" => "SHOULD-NOT-CHANGE"
+          "student_id" => "SHOULD-NOT-CHANGE",
+          "pen_number" => "12345678901",
+          "g10_roll_no" => "87654321",
+          "apaar_id" => "987654321098"
         })
 
       response = json_response(conn, 422)
       assert response["error"]["code"] == "locked_fields"
-      assert response["error"]["fields"] == ["student_id"]
+
+      assert response["error"]["fields"] == [
+               "apaar_id",
+               "g10_roll_no",
+               "pen_number",
+               "student_id"
+             ]
+
       assert Users.get_user!(user.id).first_name == user.first_name
       assert Repo.get!(Student, student.id).student_id == "202812345678"
       assert Repo.aggregate(Dbservice.LmsStudentWriteAudit, :count, :id) == 0
@@ -438,13 +568,93 @@ defmodule DbserviceWeb.LmsStudentUpdateControllerTest do
           "program_id" => 64,
           "academic_year" => "2026-2027",
           "start_date" => "2026-07-01",
-          "g10_board" => "CENTRAL BOARD OF SECONDARY EDUCATION"
+          "g10_board" => "CBSE"
         })
 
       response = json_response(conn, 422)
       assert response["error"]["code"] == "invalid_g10_roll_for_board"
       assert Repo.get!(Student, student.id).g10_board == "RAJASTHAN BOARD OF SECONDARY EDUCATION"
       assert Repo.aggregate(Dbservice.LmsStudentWriteAudit, :count, :id) == 0
+    end
+
+    test "stores canonical Others board as null", %{conn: conn} do
+      school = insert_school!()
+      grade = insert_grade!(11)
+      batch = insert_nvs_batch!(11, "engineering")
+      {_user, student} = insert_enrolled_student!(school, grade, batch)
+
+      conn =
+        patch(conn, "/api/lms/students/#{student.id}/update-with-enrollments", %{
+          "actor" => actor(),
+          "school" => %{"code" => school.code, "udise_code" => school.udise_code},
+          "program_id" => 64,
+          "academic_year" => "2026-2027",
+          "start_date" => "2026-07-01",
+          "g10_board" => "Others"
+        })
+
+      assert json_response(conn, 200)["changed_fields"] == ["g10_board"]
+      assert Repo.get!(Student, student.id).g10_board == nil
+
+      assert only_audit_changed_values()["g10_board"] == %{
+               "old" => "CENTRAL BOARD OF SECONDARY EDUCATION",
+               "new" => nil
+             }
+    end
+
+    test "stores canonical CBSE, CWSN category, and Other gender values", %{conn: conn} do
+      school = insert_school!()
+      grade = insert_grade!(11)
+      batch = insert_nvs_batch!(11, "engineering")
+
+      {user, student} =
+        insert_enrolled_student!(school, grade, batch, %{physically_handicapped: false})
+
+      conn =
+        patch(conn, "/api/lms/students/#{student.id}/update-with-enrollments", %{
+          "actor" => actor(),
+          "school" => %{"code" => school.code, "udise_code" => school.udise_code},
+          "program_id" => 64,
+          "academic_year" => "2026-2027",
+          "start_date" => "2026-07-01",
+          "g10_board" => "CBSE",
+          "physically_handicapped" => true,
+          "category" => "PWD-OBC",
+          "gender" => "Other"
+        })
+
+      assert json_response(conn, 200)["changed_fields"] == [
+               "category",
+               "g10_board",
+               "gender",
+               "physically_handicapped"
+             ]
+
+      updated_student = Repo.get!(Student, student.id)
+      assert updated_student.g10_board == "CBSE"
+      assert updated_student.physically_handicapped
+      assert updated_student.category == "PWD-OBC"
+      assert Users.get_user!(user.id).gender == "Other"
+    end
+
+    test "rejects a board outside the canonical edit values", %{conn: conn} do
+      school = insert_school!()
+      grade = insert_grade!(11)
+      batch = insert_nvs_batch!(11, "engineering")
+      {_user, student} = insert_enrolled_student!(school, grade, batch)
+
+      conn =
+        patch(conn, "/api/lms/students/#{student.id}/update-with-enrollments", %{
+          "actor" => actor(),
+          "school" => %{"code" => school.code, "udise_code" => school.udise_code},
+          "program_id" => 64,
+          "academic_year" => "2026-2027",
+          "start_date" => "2026-07-01",
+          "g10_board" => "ICSE"
+        })
+
+      assert json_response(conn, 422)["error"]["code"] == "invalid_g10_board"
+      assert Repo.get!(Student, student.id).g10_board == "CENTRAL BOARD OF SECONDARY EDUCATION"
     end
 
     test "grade edits atomically update derived identity, grade enrollment, and batch", %{
@@ -502,11 +712,11 @@ defmodule DbserviceWeb.LmsStudentUpdateControllerTest do
       assert changed_values["batch_id"] == %{"old" => old_batch.id, "new" => new_batch.id}
     end
 
-    test "stream edits atomically update stream and derived batch", %{conn: conn} do
+    test "NDA stream edits atomically update stream and derived batch", %{conn: conn} do
       school = insert_school!()
       grade = insert_grade!(11)
       old_batch = insert_nvs_batch!(11, "engineering")
-      new_batch = insert_nvs_batch!(11, "medical")
+      new_batch = insert_nvs_batch!(11, "nda")
       {_user, student} = insert_enrolled_student!(school, grade, old_batch)
 
       conn =
@@ -516,12 +726,12 @@ defmodule DbserviceWeb.LmsStudentUpdateControllerTest do
           "program_id" => 64,
           "academic_year" => "2026-2027",
           "start_date" => "2026-07-01",
-          "stream" => "Medical"
+          "stream" => " NDA "
         })
 
       response = json_response(conn, 200)
       assert response["changed_fields"] == ["batch_id", "stream"]
-      assert Repo.get!(Student, student.id).stream == "medical"
+      assert Repo.get!(Student, student.id).stream == "nda"
       assert Repo.get!(Student, student.id).student_id == student.student_id
       assert current_enrollment(student.user_id, "grade").group_id == grade.id
       assert current_enrollment(student.user_id, "batch").group_id == new_batch.id
@@ -556,6 +766,9 @@ defmodule DbserviceWeb.LmsStudentUpdateControllerTest do
       assert json_response(conn, 200)["changed_fields"] == ["batch_id", "stream"]
       assert current_program_enrollment(user.id, 64).group_id == new_batch.id
       assert current_program_enrollment(user.id, 1).group_id == coe_batch.id
+      refute has_group_user?(user.id, "batch", old_batch.id)
+      assert has_group_user?(user.id, "batch", new_batch.id)
+      assert has_group_user?(user.id, "batch", coe_batch.id)
     end
 
     test "grade edits derive graduating year from academic year", %{conn: conn} do
@@ -664,6 +877,32 @@ defmodule DbserviceWeb.LmsStudentUpdateControllerTest do
       assert Repo.aggregate(Dbservice.LmsStudentWriteAudit, :count, :id) == 0
     end
 
+    test "audit validation failure rolls back profile and NVS enrollment changes", %{conn: conn} do
+      school = insert_school!()
+      grade = insert_grade!(11)
+      old_batch = insert_nvs_batch!(11, "engineering")
+      insert_nvs_batch!(11, "medical")
+      {user, student} = insert_enrolled_student!(school, grade, old_batch)
+
+      conn =
+        patch(conn, "/api/lms/students/#{student.id}/update-with-enrollments", %{
+          "actor" => Map.put(actor(), "user_id", "invalid"),
+          "school" => %{"code" => school.code, "udise_code" => school.udise_code},
+          "program_id" => 64,
+          "academic_year" => "2026-2027",
+          "start_date" => "2026-07-01",
+          "first_name" => "Should Not Apply",
+          "stream" => "medical"
+        })
+
+      assert json_response(conn, 422)["error"]["code"] == "audit_update_failed"
+      assert Users.get_user!(user.id).first_name == user.first_name
+      assert Repo.get!(Student, student.id).stream == "engineering"
+      assert current_program_enrollment(user.id, 64).group_id == old_batch.id
+      assert has_group_user?(user.id, "batch", old_batch.id)
+      assert Repo.aggregate(Dbservice.LmsStudentWriteAudit, :count, :id) == 0
+    end
+
     test "rejects stream edits when batch lookup is not exactly one match", %{conn: conn} do
       school = insert_school!()
       grade = insert_grade!(11)
@@ -702,6 +941,34 @@ defmodule DbserviceWeb.LmsStudentUpdateControllerTest do
       assert response["error"]["code"] == "multiple_batches"
       assert Repo.get!(Student, student.id).stream == "engineering"
       assert current_enrollment(student.user_id, "batch").group_id == old_batch.id
+    end
+
+    test "rejects a target batch without a batch group and rolls back profile changes", %{
+      conn: conn
+    } do
+      school = insert_school!()
+      grade = insert_grade!(11)
+      old_batch = insert_nvs_batch!(11, "engineering")
+      target_batch = insert_nvs_batch!(11, "nda")
+      Repo.delete!(Repo.get_by!(Group, type: "batch", child_id: target_batch.id))
+      {user, student} = insert_enrolled_student!(school, grade, old_batch)
+
+      conn =
+        patch(conn, "/api/lms/students/#{student.id}/update-with-enrollments", %{
+          "actor" => actor(),
+          "school" => %{"code" => school.code, "udise_code" => school.udise_code},
+          "program_id" => 64,
+          "academic_year" => "2026-2027",
+          "start_date" => "2026-07-01",
+          "first_name" => "Should Not Apply",
+          "stream" => "nda"
+        })
+
+      assert json_response(conn, 422)["error"]["code"] == "batch_group_not_found"
+      assert Users.get_user!(user.id).first_name == user.first_name
+      assert Repo.get!(Student, student.id).stream == "engineering"
+      assert current_program_enrollment(user.id, 64).group_id == old_batch.id
+      assert Repo.aggregate(Dbservice.LmsStudentWriteAudit, :count, :id) == 0
     end
   end
 

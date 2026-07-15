@@ -15,13 +15,16 @@ defmodule Dbservice.LmsStudentUpdate do
   alias Dbservice.Groups
   alias Dbservice.Groups.GroupUser
   alias Dbservice.LmsStudentWriteAudit
+  alias Dbservice.Products.Product
+  alias Dbservice.Programs.Program
   alias Dbservice.Repo
   alias Dbservice.Schools
   alias Dbservice.Users
   alias Dbservice.Users.Student
+  alias Dbservice.Users.User
 
   @action "student_update"
-  @cbse_board "CENTRAL BOARD OF SECONDARY EDUCATION"
+  @cbse_board "CBSE"
   @user_fields ["first_name", "last_name", "gender", "date_of_birth", "phone"]
   @student_fields [
     "category",
@@ -40,6 +43,7 @@ defmodule Dbservice.LmsStudentUpdate do
     "g10_roll_no",
     "grade_id",
     "group_id",
+    "pen_number",
     "school_code",
     "student_id",
     "udise_code",
@@ -49,6 +53,8 @@ defmodule Dbservice.LmsStudentUpdate do
   @editable_fields @user_fields ++ @student_fields ++ ["grade"]
 
   def update(student_pk_id, params) do
+    params = normalize_params(params)
+
     Repo.transaction(fn ->
       with :ok <- reject_locked_fields(params),
            :ok <- reject_unsupported_fields(params),
@@ -56,7 +62,7 @@ defmodule Dbservice.LmsStudentUpdate do
            {:ok, school} <- fetch_school(params),
            :ok <- validate_school_scope(student, school, params["program_id"]),
            {:ok, user} <- fetch_user(student),
-           :ok <- validate_profile_fields(params),
+           :ok <- validate_profile_fields(student, params),
            :ok <- validate_g10_board(student, params),
            {:ok, plan} <- enrollment_plan(student, params),
            {:ok, changed_values} <- changed_values(user, student, params, plan),
@@ -120,8 +126,8 @@ defmodule Dbservice.LmsStudentUpdate do
     current_program_batches = current_program_batch_count(student.user_id, program_id)
 
     cond do
-      not school_has_active_centre_program?(school.id, program_id) ->
-        {:error, error("program_not_allowed", "School is not eligible for this program", 403)}
+      not current_nvs_program?(program_id) ->
+        {:error, error("program_not_allowed", "Program must be a current NVS program", 403)}
 
       not enrolled?(student.user_id, school.id, "school") ->
         {:error, error("school_mismatch", "Student is not enrolled in this school", 403)}
@@ -138,14 +144,13 @@ defmodule Dbservice.LmsStudentUpdate do
     end
   end
 
-  defp school_has_active_centre_program?(_school_id, nil), do: false
+  defp current_nvs_program?(nil), do: false
 
-  defp school_has_active_centre_program?(school_id, program_id) do
-    from(c in "centres",
-      where:
-        field(c, :school_id) == ^school_id and
-          field(c, :program_id) == ^program_id and
-          field(c, :is_active) == true
+  defp current_nvs_program?(program_id) do
+    from(p in Program,
+      join: product in Product,
+      on: product.id == p.product_id,
+      where: p.id == ^program_id and p.is_current == true and product.code == "NVS"
     )
     |> Repo.exists?()
   end
@@ -178,8 +183,33 @@ defmodule Dbservice.LmsStudentUpdate do
     Ecto.NoResultsError -> {:error, error("user_not_found", "Student user not found", 404)}
   end
 
-  defp validate_profile_fields(params) do
-    with :ok <- validate_phone(params), do: validate_date_of_birth(params)
+  defp validate_profile_fields(student, params) do
+    with :ok <- validate_category_pair(student, params),
+         :ok <- validate_phone(params),
+         do: validate_date_of_birth(params)
+  end
+
+  defp validate_category_pair(_student, params)
+       when not is_map_key(params, "category") and
+              not is_map_key(params, "physically_handicapped"),
+       do: :ok
+
+  defp validate_category_pair(student, params) do
+    category = Map.get(params, "category", student.category)
+    cwsn = Map.get(params, "physically_handicapped", student.physically_handicapped)
+
+    valid? =
+      (cwsn == false and category in ~w(Gen Gen-EWS OBC SC ST)) or
+        (cwsn == true and category in ~w(PWD-Gen PWD-EWS PWD-OBC PWD-SC PWD-ST))
+
+    if valid?,
+      do: :ok,
+      else:
+        {:error,
+         error("invalid_category_pair", "Category does not match CWSN status", 422, [
+           "category",
+           "physically_handicapped"
+         ])}
   end
 
   defp validate_phone(params) when not is_map_key(params, "phone"), do: :ok
@@ -199,31 +229,18 @@ defmodule Dbservice.LmsStudentUpdate do
 
   defp validate_date_of_birth(params) when not is_map_key(params, "date_of_birth"), do: :ok
 
-  defp validate_date_of_birth(%{"date_of_birth" => value}) when is_binary(value) do
-    case Date.from_iso8601(value) do
-      {:ok, date} ->
-        if Date.compare(date, ~D[2000-01-01]) != :lt and
-             Date.compare(date, ~D[2015-12-31]) != :gt do
-          :ok
-        else
-          {:error,
-           error(
-             "invalid_date_of_birth",
-             "Date of Birth must be between 2000 and 2015",
-             422,
-             ["date_of_birth"]
-           )}
-        end
-
-      _ ->
-        {:error,
-         error("invalid_date_of_birth", "Date of Birth must be between 2000 and 2015", 422, [
-           "date_of_birth"
-         ])}
+  defp validate_date_of_birth(%{"date_of_birth" => %Date{} = date}) do
+    if Date.compare(date, ~D[2000-01-01]) != :lt and
+         Date.compare(date, ~D[2015-12-31]) != :gt do
+      :ok
+    else
+      invalid_date_of_birth()
     end
   end
 
-  defp validate_date_of_birth(_params),
+  defp validate_date_of_birth(_params), do: invalid_date_of_birth()
+
+  defp invalid_date_of_birth,
     do:
       {:error,
        error("invalid_date_of_birth", "Date of Birth must be between 2000 and 2015", 422, [
@@ -246,7 +263,7 @@ defmodule Dbservice.LmsStudentUpdate do
     end
   end
 
-  defp validate_g10_board(student, _params) do
+  defp validate_g10_board(student, %{"g10_board" => nil}) do
     if student.g10_roll_no in [nil, ""] or Regex.match?(~r/^[A-Z0-9]{4,10}$/, student.g10_roll_no) do
       :ok
     else
@@ -259,6 +276,13 @@ defmodule Dbservice.LmsStudentUpdate do
        )}
     end
   end
+
+  defp validate_g10_board(_student, _params),
+    do:
+      {:error,
+       error("invalid_g10_board", "Grade 10 Board must be CBSE or Others", 422, [
+         "g10_board"
+       ])}
 
   defp enrollment_plan(student, params) do
     current_grade = current_grade_number(student)
@@ -499,7 +523,26 @@ defmodule Dbservice.LmsStudentUpdate do
   defp old_new(old, new), do: %{"old" => old, "new" => new}
 
   defp update_user(user, params) do
-    case params |> Map.take(@user_fields) |> empty_to_ok(user, &Users.update_user/2) do
+    attrs = Map.take(params, @user_fields)
+
+    result =
+      if attrs == %{} do
+        {:ok, user}
+      else
+        changeset_attrs =
+          if attrs["gender"] == "Other", do: Map.put(attrs, "gender", "Others"), else: attrs
+
+        changeset = User.changeset(user, changeset_attrs)
+
+        changeset =
+          if attrs["gender"] == "Other",
+            do: Ecto.Changeset.put_change(changeset, :gender, "Other"),
+            else: changeset
+
+        Repo.update(changeset)
+      end
+
+    case result do
       {:ok, user} ->
         {:ok, user}
 
@@ -639,28 +682,35 @@ defmodule Dbservice.LmsStudentUpdate do
   end
 
   defp insert_audit(user, student, school, params, changed_values) do
-    %LmsStudentWriteAudit{}
-    |> LmsStudentWriteAudit.changeset(%{
-      action: @action,
-      actor_user_id: get_in(params, ["actor", "user_id"]),
-      actor_email: get_in(params, ["actor", "email"]),
-      actor_login_type: get_in(params, ["actor", "login_type"]),
-      actor_role: get_in(params, ["actor", "role"]),
-      school_code: school.code,
-      school_udise_code: school.udise_code,
-      program_id: to_int(params["program_id"]),
-      row_counts: %{},
-      affected_identifiers: %{
-        "student_pk_id" => student.id,
-        "user_id" => user.id,
-        "student_id" => student.student_id,
-        "apaar_id" => student.apaar_id,
-        "g10_roll_no" => student.g10_roll_no
-      },
-      created_values: %{},
-      changed_values: changed_values
-    })
-    |> Repo.insert()
+    result =
+      %LmsStudentWriteAudit{}
+      |> LmsStudentWriteAudit.changeset(%{
+        action: @action,
+        actor_user_id: get_in(params, ["actor", "user_id"]),
+        actor_email: get_in(params, ["actor", "email"]),
+        actor_login_type: get_in(params, ["actor", "login_type"]),
+        actor_role: get_in(params, ["actor", "role"]),
+        school_code: school.code,
+        school_udise_code: school.udise_code,
+        program_id: to_int(params["program_id"]),
+        row_counts: %{},
+        affected_identifiers: %{
+          "student_pk_id" => student.id,
+          "user_id" => user.id,
+          "student_id" => student.student_id,
+          "pen_number" => student.pen_number,
+          "apaar_id" => student.apaar_id,
+          "g10_roll_no" => student.g10_roll_no
+        },
+        created_values: %{},
+        changed_values: changed_values
+      })
+      |> Repo.insert()
+
+    case result do
+      {:ok, audit} -> {:ok, audit}
+      {:error, _changeset} -> {:error, error("audit_update_failed", "Audit update failed", 422)}
+    end
   end
 
   defp error(code, message, status, fields \\ []) do
@@ -691,4 +741,34 @@ defmodule Dbservice.LmsStudentUpdate do
   end
 
   defp normalize_stream(value), do: value
+
+  defp normalize_params(params) do
+    params
+    |> then(fn
+      %{"gender" => "Others"} = params -> Map.put(params, "gender", "Other")
+      params -> params
+    end)
+    |> then(fn
+      %{"g10_board" => "Others"} = params -> Map.put(params, "g10_board", nil)
+      params -> params
+    end)
+    |> then(fn
+      %{"date_of_birth" => value} = params ->
+        Map.put(
+          params,
+          "date_of_birth",
+          Dbservice.LmsStudentIngestion.normalize_date_of_birth(value)
+        )
+
+      params ->
+        params
+    end)
+    |> then(fn
+      %{"stream" => value} = params ->
+        Map.put(params, "stream", Dbservice.LmsStudentIngestion.normalize_stream(value))
+
+      params ->
+        params
+    end)
+  end
 end

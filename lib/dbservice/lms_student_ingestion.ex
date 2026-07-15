@@ -583,7 +583,8 @@ defmodule Dbservice.LmsStudentIngestion do
   defp normalize_gender("Others"), do: "Other"
   defp normalize_gender(value), do: value
 
-  defp normalize_date_of_birth(value) when is_binary(value) do
+  @doc false
+  def normalize_date_of_birth(value) when is_binary(value) do
     with {:error, _} <- Date.from_iso8601(value),
          [day, month, year] <- String.split(value, ~r{[/-]}),
          {day, ""} <- Integer.parse(day),
@@ -597,9 +598,10 @@ defmodule Dbservice.LmsStudentIngestion do
     end
   end
 
-  defp normalize_date_of_birth(_value), do: :invalid
+  def normalize_date_of_birth(_value), do: :invalid
 
-  defp normalize_stream(value) when is_binary(value) do
+  @doc false
+  def normalize_stream(value) when is_binary(value) do
     trimmed = String.trim(value)
 
     Enum.find(Dbservice.Utils.Util.valid_streams(), trimmed, fn valid ->
@@ -607,7 +609,7 @@ defmodule Dbservice.LmsStudentIngestion do
     end)
   end
 
-  defp normalize_stream(value), do: value
+  def normalize_stream(value), do: value
 
   defp update_audit_counts([], _row_counts), do: :ok
 
