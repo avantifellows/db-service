@@ -327,19 +327,26 @@ defmodule Dbservice.LmsStudentIngestion do
 
   defp validate_g10_roll(row) do
     g10_roll_no = get_in(row, ["student", "g10_roll_no"])
-    g10_board = row["g10_board"]
+    supplied_roll = row["g10_roll_no"]
 
+    if supplied_roll in [nil, ""] or
+         (is_binary(supplied_roll) and String.trim(supplied_roll) == "") do
+      :ok
+    else
+      validate_nonblank_g10_roll(g10_roll_no, row["g10_board"])
+    end
+  end
+
+  defp validate_nonblank_g10_roll(g10_roll_no, g10_board) do
     cond do
-      g10_roll_no in [nil, ""] ->
-        :ok
-
-      g10_board == @cbse_board and Regex.match?(~r/^\d{8}$/, g10_roll_no) ->
+      g10_board == @cbse_board and is_binary(g10_roll_no) and
+          Regex.match?(~r/^\d{8}$/, g10_roll_no) ->
         :ok
 
       g10_board == @cbse_board ->
         {:error, "CBSE Grade 10 Roll no must be exactly 8 digits"}
 
-      Regex.match?(~r/^[A-Z0-9]{4,10}$/, g10_roll_no) ->
+      is_binary(g10_roll_no) and Regex.match?(~r/^[A-Z0-9]{4,10}$/, g10_roll_no) ->
         :ok
 
       true ->

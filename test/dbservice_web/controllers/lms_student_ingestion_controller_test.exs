@@ -778,6 +778,28 @@ defmodule DbserviceWeb.LmsStudentIngestionControllerTest do
                response["results"]
     end
 
+    test "rejects a supplied Others roll that normalizes to empty", %{conn: conn} do
+      school = insert_eligible_school!()
+      insert_auth_group!("EnableStudents")
+      insert_grade!(11)
+      insert_nvs_batch!(11, "engineering")
+
+      response =
+        conn
+        |> post(
+          "/api/lms/students/bulk-create-with-enrollments",
+          payload(school, [
+            valid_row(%{"g10_board" => "Others", "g10_roll_no" => "00-00"})
+          ])
+        )
+        |> json_response(200)
+
+      assert [%{"row_errors" => ["Grade 10 Roll no must be 4 to 10 characters"]}] =
+               response["results"]
+
+      refute Repo.get_by(Student, pen_number: "12345678901")
+    end
+
     test "rejects whitespace-only PEN when no Grade 10 roll is present", %{conn: conn} do
       school = insert_eligible_school!()
       insert_auth_group!("EnableStudents")
