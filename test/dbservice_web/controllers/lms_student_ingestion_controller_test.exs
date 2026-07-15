@@ -1075,8 +1075,8 @@ defmodule DbserviceWeb.LmsStudentIngestionControllerTest do
   end
 
   defp ensure_nvs_product! do
-    Repo.get_by(Product, code: "NVS") ||
-      Dbservice.ProductsFixtures.product_fixture(%{code: "NVS"})
+    Repo.get_by(Product, code: "TP-Async") ||
+      Dbservice.ProductsFixtures.product_fixture(%{code: "TP-Async"})
   end
 
   defp existing_nvs_batches(grade, stream) do

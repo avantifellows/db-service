@@ -10,7 +10,6 @@ defmodule Dbservice.LmsStudentIngestion do
   alias Dbservice.Groups
   alias Dbservice.LmsStudentWriteAudit
   alias Dbservice.Programs.Program
-  alias Dbservice.Products.Product
   alias Dbservice.Repo
   alias Dbservice.Schools
   alias Dbservice.Users.Student
@@ -19,6 +18,7 @@ defmodule Dbservice.LmsStudentIngestion do
   @action "student_bulk_create"
   @auth_group "EnableStudents"
   @cbse_board "CBSE"
+  @nvs_program_id 64
   @empty_totals %{
     "created" => 0,
     "duplicate_in_file" => 0,
@@ -293,9 +293,7 @@ defmodule Dbservice.LmsStudentIngestion do
 
   def current_nvs_program?(program_id) do
     from(p in Program,
-      join: product in Product,
-      on: product.id == p.product_id,
-      where: p.id == ^program_id and p.is_current == true and product.code == "NVS"
+      where: p.id == ^program_id and p.id == @nvs_program_id and p.is_current == true
     )
     |> Repo.exists?()
   end

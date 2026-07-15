@@ -1342,7 +1342,7 @@ defmodule DbserviceWeb.LmsStudentUpdateControllerTest do
   end
 
   defp insert_nvs_batch!(grade, stream) do
-    product = Dbservice.ProductsFixtures.product_fixture(%{code: "NVS"})
+    product = Dbservice.ProductsFixtures.product_fixture(%{code: "TP-Async"})
 
     Repo.get(Dbservice.Programs.Program, 64) ||
       Repo.insert!(%Dbservice.Programs.Program{
