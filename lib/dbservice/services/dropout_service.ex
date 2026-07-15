@@ -12,6 +12,8 @@ defmodule Dbservice.Services.DropoutService do
   alias Dbservice.Groups.Group
   alias Dbservice.Groups.GroupUser
   alias Dbservice.LmsStudentWriteAudit
+  alias Dbservice.Products.Product
+  alias Dbservice.Programs.Program
   alias Dbservice.Repo
   alias Dbservice.Schools.School
   alias Dbservice.Statuses.Status
@@ -62,14 +64,18 @@ defmodule Dbservice.Services.DropoutService do
       if lms_program_dropout?(audit_params) do
         create_program_dropout(student, start_date, academic_year, audit_params["program_id"])
       else
-        create_dropout_enrollment(student, start_date, academic_year)
+        case create_dropout_enrollment(student, start_date, academic_year) do
+          {:ok, updated_student} -> {:ok, updated_student, nil}
+          error -> error
+        end
       end
 
-    with {:ok, updated_student} <- dropout_result,
+    with {:ok, updated_student, program_enrollment} <- dropout_result,
          {:ok, _audit} <-
            maybe_insert_lms_audit(
              student,
              updated_student,
+             program_enrollment,
              start_date,
              academic_year,
              audit_params
@@ -90,17 +96,26 @@ defmodule Dbservice.Services.DropoutService do
         {:error, "Student is not currently enrolled in this program"}
 
       [enrollment] ->
-        end_program_enrollment(enrollment, start_date)
-        delete_program_group_user(student.user_id, enrollment.group_id)
-
-        if current_batch_count(student.user_id) > 0 do
-          {:ok, student}
+        with {1, nil} <- end_program_enrollment(enrollment, start_date),
+             {_count, nil} <- delete_program_group_user(student.user_id, enrollment.group_id) do
+          finish_program_dropout(student, enrollment, start_date, academic_year)
         else
-          create_dropout_enrollment(student, start_date, academic_year)
+          _ -> {:error, "Failed to end program enrollment"}
         end
 
       _multiple ->
         {:error, "Student has multiple current batches in this program"}
+    end
+  end
+
+  defp finish_program_dropout(student, enrollment, start_date, academic_year) do
+    if current_batch_count(student.user_id) > 0 do
+      {:ok, student, enrollment}
+    else
+      case create_dropout_enrollment(student, start_date, academic_year) do
+        {:ok, updated_student} -> {:ok, updated_student, enrollment}
+        {:error, _reason} -> {:error, "Failed to process dropout"}
+      end
     end
   end
 
@@ -112,6 +127,7 @@ defmodule Dbservice.Services.DropoutService do
         e.user_id == ^user_id and e.group_type == "batch" and e.is_current == true and
           b.program_id == ^program_id
     )
+    |> lock("FOR UPDATE")
     |> Repo.all()
   end
 
@@ -176,39 +192,77 @@ defmodule Dbservice.Services.DropoutService do
     }
   end
 
-  defp maybe_insert_lms_audit(_student, _updated_student, _start_date, _academic_year, params)
+  defp maybe_insert_lms_audit(
+         _student,
+         _updated_student,
+         _program_enrollment,
+         _start_date,
+         _academic_year,
+         params
+       )
        when params == %{},
        do: {:ok, nil}
 
-  defp maybe_insert_lms_audit(_student, _updated_student, _start_date, _academic_year, params)
+  defp maybe_insert_lms_audit(
+         _student,
+         _updated_student,
+         _program_enrollment,
+         _start_date,
+         _academic_year,
+         params
+       )
        when not is_map_key(params, "actor") or not is_map_key(params, "school"),
        do: {:ok, nil}
 
-  defp maybe_insert_lms_audit(student, updated_student, start_date, academic_year, params) do
-    %LmsStudentWriteAudit{}
-    |> LmsStudentWriteAudit.changeset(%{
-      action: @audit_action,
-      actor_user_id: get_in(params, ["actor", "user_id"]),
-      actor_email: get_in(params, ["actor", "email"]),
-      actor_login_type: get_in(params, ["actor", "login_type"]),
-      actor_role: get_in(params, ["actor", "role"]),
-      school_code: get_in(params, ["school", "code"]),
-      school_udise_code: get_in(params, ["school", "udise_code"]),
-      program_id: params["program_id"],
-      row_counts: %{},
-      affected_identifiers: %{
-        "student_pk_id" => student.id,
-        "user_id" => student.user_id,
-        "student_id" => student.student_id,
-        "apaar_id" => student.apaar_id
-      },
-      changed_values: %{
-        "status" => %{"old" => student.status, "new" => updated_student.status},
-        "dropout_date" => %{"old" => nil, "new" => start_date},
-        "academic_year" => %{"old" => nil, "new" => academic_year}
-      }
-    })
-    |> Repo.insert()
+  defp maybe_insert_lms_audit(
+         student,
+         updated_student,
+         program_enrollment,
+         start_date,
+         academic_year,
+         params
+       ) do
+    audit_changeset =
+      LmsStudentWriteAudit.changeset(%LmsStudentWriteAudit{}, %{
+        action: @audit_action,
+        actor_user_id: get_in(params, ["actor", "user_id"]),
+        actor_email: get_in(params, ["actor", "email"]),
+        actor_login_type: get_in(params, ["actor", "login_type"]),
+        actor_role: get_in(params, ["actor", "role"]),
+        school_code: get_in(params, ["school", "code"]),
+        school_udise_code: get_in(params, ["school", "udise_code"]),
+        program_id: params["program_id"],
+        row_counts: %{},
+        affected_identifiers: %{
+          "student_pk_id" => student.id,
+          "user_id" => student.user_id,
+          "student_id" => student.student_id,
+          "pen_number" => student.pen_number,
+          "apaar_id" => student.apaar_id
+        },
+        changed_values:
+          %{
+            "status" => %{"old" => student.status, "new" => updated_student.status},
+            "dropout_date" => %{"old" => nil, "new" => start_date},
+            "academic_year" => %{"old" => nil, "new" => academic_year}
+          }
+          |> Map.merge(program_enrollment_changes(program_enrollment, start_date))
+      })
+
+    case Repo.insert(audit_changeset) do
+      {:ok, audit} -> {:ok, audit}
+      {:error, _changeset} -> {:error, "Failed to write dropout audit"}
+    end
+  end
+
+  defp program_enrollment_changes(nil, _start_date), do: %{}
+
+  defp program_enrollment_changes(enrollment, start_date) do
+    %{
+      "batch_id" => %{"old" => enrollment.group_id, "new" => nil},
+      "batch_enrollment_is_current" => %{"old" => true, "new" => false},
+      "batch_enrollment_end_date" => %{"old" => enrollment.end_date, "new" => start_date}
+    }
   end
 
   defp validate_lms_audit_params(_student, params) when params == %{}, do: :ok
@@ -219,14 +273,27 @@ defmodule Dbservice.Services.DropoutService do
 
   defp validate_lms_audit_params(student, %{"actor" => actor, "school" => school} = params)
        when is_map(actor) and is_map(school) do
-    if is_integer(params["program_id"]) do
-      validate_lms_school(student, school)
-    else
-      {:error, "Invalid program_id"}
+    case params["program_id"] do
+      program_id when is_integer(program_id) ->
+        if current_nvs_program?(program_id),
+          do: validate_lms_school(student, school),
+          else: {:error, "Program must be a current NVS program"}
+
+      _ ->
+        {:error, "Invalid program_id"}
     end
   end
 
   defp validate_lms_audit_params(_student, _params), do: {:error, "Invalid LMS audit metadata"}
+
+  defp current_nvs_program?(program_id) do
+    from(p in Program,
+      join: product in Product,
+      on: product.id == p.product_id,
+      where: p.id == ^program_id and p.is_current == true and product.code == "NVS"
+    )
+    |> Repo.exists?()
+  end
 
   defp validate_lms_school(student, school) do
     case current_school(student.user_id) do

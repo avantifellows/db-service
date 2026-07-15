@@ -17,7 +17,11 @@ defmodule DbserviceWeb.LmsStudentUpdateControllerTest do
       school = insert_school!()
       grade = insert_grade!(11)
       batch = insert_nvs_batch!(11, "engineering")
-      {_user, student} = insert_enrolled_student!(school, grade, batch)
+
+      {user, student} =
+        insert_enrolled_student!(school, grade, batch, %{pen_number: "12345678901"})
+
+      Ecto.Adapters.SQL.query!(Repo, "DELETE FROM centres")
       dropout_status = ensure_dropout_status!()
 
       conn =
@@ -38,8 +42,12 @@ defmodule DbserviceWeb.LmsStudentUpdateControllerTest do
       assert [
                [
                  "student_program_dropout",
+                 501,
                  "pm@example.org",
+                 "google",
+                 "program_manager",
                  school_code,
+                 school_udise_code,
                  64,
                  affected_identifiers,
                  changed_values
@@ -47,14 +55,25 @@ defmodule DbserviceWeb.LmsStudentUpdateControllerTest do
              ] =
                Ecto.Adapters.SQL.query!(
                  Repo,
-                 "SELECT action, actor_email, school_code, program_id, affected_identifiers, changed_values FROM lms_student_write_audits"
+                 "SELECT action, actor_user_id, actor_email, actor_login_type, actor_role, school_code, school_udise_code, program_id, affected_identifiers, changed_values FROM lms_student_write_audits"
                ).rows
 
       assert school_code == school.code
+      assert school_udise_code == school.udise_code
       assert affected_identifiers["student_pk_id"] == student.id
+      assert affected_identifiers["user_id"] == user.id
       assert affected_identifiers["student_id"] == student.student_id
+      assert affected_identifiers["pen_number"] == "12345678901"
       assert affected_identifiers["apaar_id"] == student.apaar_id
       assert changed_values["status"] == %{"old" => student.status, "new" => "dropout"}
+      assert changed_values["batch_id"] == %{"old" => batch.id, "new" => nil}
+      assert changed_values["batch_enrollment_is_current"] == %{"old" => true, "new" => false}
+
+      assert changed_values["batch_enrollment_end_date"] == %{
+               "old" => nil,
+               "new" => "2026-07-01"
+             }
+
       assert changed_values["dropout_date"] == %{"old" => nil, "new" => "2026-07-01"}
       assert changed_values["academic_year"] == %{"old" => nil, "new" => "2026-2027"}
     end
@@ -75,17 +94,23 @@ defmodule DbserviceWeb.LmsStudentUpdateControllerTest do
           "academic_year" => "2026-2027",
           "actor" => actor(),
           "school" => %{"code" => school.code, "udise_code" => school.udise_code},
-          "program_id" => 1
+          "program_id" => 64
         })
 
       assert json_response(conn, 200)["status"] == student.status
       assert Repo.get!(Student, student.id).status == student.status
-      assert current_program_enrollment(user.id, 64).group_id == nvs_batch.id
+      assert current_program_enrollment(user.id, 1).group_id == coe_batch.id
       assert current_enrollment(user.id, "grade").group_id == grade.id
       assert current_enrollment(user.id, "school").group_id == school.id
-      refute current_program_enrollment_or_nil(user.id, 1)
-      refute has_group_user?(user.id, "batch", coe_batch.id)
-      assert has_group_user?(user.id, "batch", nvs_batch.id)
+      refute current_program_enrollment_or_nil(user.id, 64)
+      refute has_group_user?(user.id, "batch", nvs_batch.id)
+      assert has_group_user?(user.id, "batch", coe_batch.id)
+      assert has_group_user?(user.id, "grade", grade.id)
+      assert has_group_user?(user.id, "school", school.id)
+
+      ended_enrollment = Repo.get_by!(EnrollmentRecord, user_id: user.id, group_id: nvs_batch.id)
+      refute ended_enrollment.is_current
+      assert ended_enrollment.end_date == ~D[2026-07-01]
 
       [[action, program_id, changed_values]] =
         Ecto.Adapters.SQL.query!(
@@ -94,7 +119,7 @@ defmodule DbserviceWeb.LmsStudentUpdateControllerTest do
         ).rows
 
       assert action == "student_program_dropout"
-      assert program_id == 1
+      assert program_id == 64
       assert changed_values["status"] == %{"old" => student.status, "new" => student.status}
     end
 
@@ -122,6 +147,55 @@ defmodule DbserviceWeb.LmsStudentUpdateControllerTest do
       assert Repo.aggregate(Dbservice.LmsStudentWriteAudit, :count, :id) == 0
     end
 
+    test "rejects dropout for a non-NVS program without changing enrollments", %{conn: conn} do
+      school = insert_school!()
+      grade = insert_grade!(11)
+      nvs_batch = insert_nvs_batch!(11, "engineering")
+      other_batch = insert_program_batch!(1, 11, "engineering")
+      {user, student} = insert_enrolled_student!(school, grade, nvs_batch)
+      insert_enrollment!(user.id, other_batch.id, "batch")
+      ensure_group_user!(user.id, "batch", other_batch.id)
+
+      conn =
+        patch(conn, "/api/dropout", %{
+          "student_id" => student.student_id,
+          "start_date" => "2026-07-01",
+          "academic_year" => "2026-2027",
+          "actor" => actor(),
+          "school" => %{"code" => school.code, "udise_code" => school.udise_code},
+          "program_id" => 1
+        })
+
+      assert json_response(conn, 400)["errors"] == "Program must be a current NVS program"
+      assert current_program_enrollment(user.id, 1).group_id == other_batch.id
+      assert current_program_enrollment(user.id, 64).group_id == nvs_batch.id
+      assert Repo.aggregate(Dbservice.LmsStudentWriteAudit, :count, :id) == 0
+    end
+
+    test "rejects dropout for an inactive NVS program without changing enrollments", %{conn: conn} do
+      school = insert_school!()
+      grade = insert_grade!(11)
+      batch = insert_nvs_batch!(11, "engineering")
+      {user, student} = insert_enrolled_student!(school, grade, batch)
+      program = Repo.get!(Dbservice.Programs.Program, 64)
+      Repo.update!(Ecto.Changeset.change(program, is_current: false))
+
+      conn =
+        patch(conn, "/api/dropout", %{
+          "student_id" => student.student_id,
+          "start_date" => "2026-07-01",
+          "academic_year" => "2026-2027",
+          "actor" => actor(),
+          "school" => %{"code" => school.code, "udise_code" => school.udise_code},
+          "program_id" => 64
+        })
+
+      assert json_response(conn, 400)["errors"] == "Program must be a current NVS program"
+      assert current_program_enrollment(user.id, 64).group_id == batch.id
+      assert has_group_user?(user.id, "batch", batch.id)
+      assert Repo.aggregate(Dbservice.LmsStudentWriteAudit, :count, :id) == 0
+    end
+
     test "rejects malformed dropout audit metadata without changing status", %{conn: conn} do
       school = insert_school!()
       grade = insert_grade!(11)
@@ -142,6 +216,58 @@ defmodule DbserviceWeb.LmsStudentUpdateControllerTest do
       response = json_response(conn, 400)
       assert response["errors"] == "Invalid LMS audit metadata"
       assert Repo.get!(Student, student.id).status == student.status
+      assert Repo.aggregate(Dbservice.LmsStudentWriteAudit, :count, :id) == 0
+    end
+
+    test "audit persistence failure rolls back the NVS dropout with a safe error", %{conn: conn} do
+      school = insert_school!()
+      grade = insert_grade!(11)
+      batch = insert_nvs_batch!(11, "engineering")
+      {user, student} = insert_enrolled_student!(school, grade, batch)
+      ensure_dropout_status!()
+
+      conn =
+        patch(conn, "/api/dropout", %{
+          "student_id" => student.student_id,
+          "start_date" => "2026-07-01",
+          "academic_year" => "2026-2027",
+          "actor" => Map.put(actor(), "user_id", "invalid"),
+          "school" => %{"code" => school.code, "udise_code" => school.udise_code},
+          "program_id" => 64
+        })
+
+      assert json_response(conn, 400)["errors"] == "Failed to write dropout audit"
+      assert Repo.get!(Student, student.id).status == student.status
+      assert current_program_enrollment(user.id, 64).group_id == batch.id
+      assert has_group_user?(user.id, "batch", batch.id)
+      assert Repo.aggregate(Dbservice.LmsStudentWriteAudit, :count, :id) == 0
+    end
+
+    test "rejects a student without a current batch in the selected NVS program", %{conn: conn} do
+      school = insert_school!()
+      grade = insert_grade!(11)
+      nvs_batch = insert_nvs_batch!(11, "engineering")
+      other_batch = insert_program_batch!(1, 11, "engineering")
+      {user, student} = insert_enrolled_student!(school, grade, other_batch)
+
+      conn =
+        patch(conn, "/api/dropout", %{
+          "student_id" => student.student_id,
+          "start_date" => "2026-07-01",
+          "academic_year" => "2026-2027",
+          "actor" => actor(),
+          "school" => %{"code" => school.code, "udise_code" => school.udise_code},
+          "program_id" => 64
+        })
+
+      assert json_response(conn, 400)["errors"] ==
+               "Student is not currently enrolled in this program"
+
+      assert Repo.get!(Student, student.id).status == student.status
+      assert current_program_enrollment(user.id, 1).group_id == other_batch.id
+      assert has_group_user?(user.id, "batch", other_batch.id)
+      refute current_program_enrollment_or_nil(user.id, 64)
+      refute has_group_user?(user.id, "batch", nvs_batch.id)
       assert Repo.aggregate(Dbservice.LmsStudentWriteAudit, :count, :id) == 0
     end
 
