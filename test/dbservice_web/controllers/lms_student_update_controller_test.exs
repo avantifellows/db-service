@@ -219,6 +219,28 @@ defmodule DbserviceWeb.LmsStudentUpdateControllerTest do
       assert Repo.aggregate(Dbservice.LmsStudentWriteAudit, :count, :id) == 0
     end
 
+    test "does not allow a program-scoped dropout without actor and school metadata", %{
+      conn: conn
+    } do
+      school = insert_school!()
+      grade = insert_grade!(11)
+      batch = insert_nvs_batch!(11, "engineering")
+      {user, student} = insert_enrolled_student!(school, grade, batch)
+
+      conn =
+        patch(conn, "/api/dropout", %{
+          "student_id" => student.student_id,
+          "start_date" => "2026-07-01",
+          "academic_year" => "2026-2027",
+          "program_id" => 64
+        })
+
+      assert json_response(conn, 400)["errors"] == "Invalid LMS audit metadata"
+      assert current_program_enrollment(user.id, 64).group_id == batch.id
+      assert Repo.get!(Student, student.id).status == student.status
+      assert Repo.aggregate(Dbservice.LmsStudentWriteAudit, :count, :id) == 0
+    end
+
     test "audit persistence failure rolls back the NVS dropout with a safe error", %{conn: conn} do
       school = insert_school!()
       grade = insert_grade!(11)
@@ -831,6 +853,32 @@ defmodule DbserviceWeb.LmsStudentUpdateControllerTest do
                "old" => "CENTRAL BOARD OF SECONDARY EDUCATION",
                "new" => nil
              }
+    end
+
+    test "rejects Others board when the locked roll is not already canonical", %{conn: conn} do
+      school = insert_school!()
+      grade = insert_grade!(11)
+      batch = insert_nvs_batch!(11, "engineering")
+
+      {_user, student} =
+        insert_enrolled_student!(school, grade, batch, %{
+          g10_board: "CBSE",
+          g10_roll_no: "01234567"
+        })
+
+      conn =
+        patch(conn, "/api/lms/students/#{student.id}/update-with-enrollments", %{
+          "actor" => actor(),
+          "school" => %{"code" => school.code, "udise_code" => school.udise_code},
+          "program_id" => 64,
+          "academic_year" => "2026-2027",
+          "start_date" => "2026-07-01",
+          "g10_board" => "Others"
+        })
+
+      assert json_response(conn, 422)["error"]["code"] == "invalid_g10_roll_for_board"
+      assert Repo.get!(Student, student.id).g10_board == "CBSE"
+      assert Repo.aggregate(Dbservice.LmsStudentWriteAudit, :count, :id) == 0
     end
 
     test "stores canonical CBSE, CWSN category, and Other gender values", %{conn: conn} do

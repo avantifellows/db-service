@@ -807,6 +807,37 @@ defmodule DbserviceWeb.LmsStudentIngestionControllerTest do
                response["results"]
     end
 
+    test "normalizes a blank Grade 10 board to null in storage, response, and audit", %{
+      conn: conn
+    } do
+      school = insert_eligible_school!()
+      insert_auth_group!("EnableStudents")
+      insert_grade!(11)
+      insert_nvs_batch!(11, "engineering")
+
+      response =
+        conn
+        |> post(
+          "/api/lms/students/bulk-create-with-enrollments",
+          payload(school, [valid_row(%{"g10_board" => "", "g10_roll_no" => ""})])
+        )
+        |> json_response(200)
+
+      assert response["totals"]["created"] == 1
+      assert get_in(hd(response["results"]), ["normalized", "g10_board"]) == nil
+
+      student = Repo.get_by!(Student, pen_number: "12345678901")
+      assert student.g10_board == nil
+
+      [[created_values]] =
+        Ecto.Adapters.SQL.query!(
+          Repo,
+          "SELECT created_values FROM lms_student_write_audits WHERE action = 'student_bulk_create'"
+        ).rows
+
+      assert created_values["g10_board"] == nil
+    end
+
     test "rejects a supplied Others roll that normalizes to empty", %{conn: conn} do
       school = insert_eligible_school!()
       insert_auth_group!("EnableStudents")

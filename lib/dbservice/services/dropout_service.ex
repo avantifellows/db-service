@@ -11,9 +11,8 @@ defmodule Dbservice.Services.DropoutService do
   alias Dbservice.EnrollmentRecords.EnrollmentRecord
   alias Dbservice.Groups.Group
   alias Dbservice.Groups.GroupUser
+  alias Dbservice.LmsStudentIngestion
   alias Dbservice.LmsStudentWriteAudit
-  alias Dbservice.Products.Product
-  alias Dbservice.Programs.Program
   alias Dbservice.Repo
   alias Dbservice.Schools.School
   alias Dbservice.Statuses.Status
@@ -39,25 +38,36 @@ defmodule Dbservice.Services.DropoutService do
   Processes student dropout by updating enrollments and student status.
   Returns {:ok, student} on success or {:error, reason} on failure.
   """
-  def process_dropout(student, start_date, academic_year, audit_params \\ %{})
-
-  def process_dropout(%{status: "dropout"}, _start_date, _academic_year, _audit_params),
-    do: {:error, "Student is already marked as dropout"}
-
-  def process_dropout(student, start_date, academic_year, audit_params) do
-    with :ok <- validate_lms_audit_params(student, audit_params) do
-      dropout_transaction(student, start_date, academic_year, audit_params)
-    end
+  def process_dropout(student, start_date, academic_year, audit_params \\ %{}) do
+    dropout_transaction(student, start_date, academic_year, audit_params)
   end
 
   defp dropout_transaction(student, start_date, academic_year, audit_params) do
     Repo.transaction(fn ->
-      case create_dropout_with_audit(student, start_date, academic_year, audit_params) do
-        {:ok, updated_student} -> updated_student
+      with {:ok, student} <- lock_student(student.id),
+           :ok <- validate_dropout_status(student),
+           :ok <- validate_lms_audit_params(student, audit_params),
+           {:ok, updated_student} <-
+             create_dropout_with_audit(student, start_date, academic_year, audit_params) do
+        updated_student
+      else
         {:error, reason} -> Repo.rollback(reason)
       end
     end)
   end
+
+  defp lock_student(student_id) do
+    case from(s in Dbservice.Users.Student, where: s.id == ^student_id, lock: "FOR UPDATE")
+         |> Repo.one() do
+      nil -> {:error, "Student not found"}
+      student -> {:ok, student}
+    end
+  end
+
+  defp validate_dropout_status(%{status: "dropout"}),
+    do: {:error, "Student is already marked as dropout"}
+
+  defp validate_dropout_status(_student), do: :ok
 
   defp create_dropout_with_audit(student, start_date, academic_year, audit_params) do
     dropout_result =
@@ -268,14 +278,15 @@ defmodule Dbservice.Services.DropoutService do
   defp validate_lms_audit_params(_student, params) when params == %{}, do: :ok
 
   defp validate_lms_audit_params(_student, params)
-       when not is_map_key(params, "actor") and not is_map_key(params, "school"),
+       when not is_map_key(params, "actor") and not is_map_key(params, "school") and
+              not is_map_key(params, "program_id"),
        do: :ok
 
   defp validate_lms_audit_params(student, %{"actor" => actor, "school" => school} = params)
        when is_map(actor) and is_map(school) do
     case params["program_id"] do
       program_id when is_integer(program_id) ->
-        if current_nvs_program?(program_id),
+        if LmsStudentIngestion.current_nvs_program?(program_id),
           do: validate_lms_school(student, school),
           else: {:error, "Program must be a current NVS program"}
 
@@ -285,15 +296,6 @@ defmodule Dbservice.Services.DropoutService do
   end
 
   defp validate_lms_audit_params(_student, _params), do: {:error, "Invalid LMS audit metadata"}
-
-  defp current_nvs_program?(program_id) do
-    from(p in Program,
-      join: product in Product,
-      on: product.id == p.product_id,
-      where: p.id == ^program_id and p.is_current == true and product.code == "NVS"
-    )
-    |> Repo.exists?()
-  end
 
   defp validate_lms_school(student, school) do
     case current_school(student.user_id) do

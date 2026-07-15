@@ -185,8 +185,8 @@ defmodule Dbservice.LmsStudentIngestion do
   defp normalize_row(row, academic_year) do
     grade = to_int(row["grade"])
     pen_number = trim_blank_to_nil(row["pen_number"])
-    g10_board = normalize_board(row["g10_board"])
-    g10_roll_no = normalize_roll(row["g10_roll_no"], g10_board)
+    g10_board = normalize_g10_board(row["g10_board"])
+    g10_roll_no = normalize_g10_roll(row["g10_roll_no"], g10_board)
     graduating_year = g12_graduating_year(grade, academic_year)
     student_id = generated_student_id(graduating_year, g10_roll_no)
     student_name = normalize_name(row["student_name"])
@@ -232,32 +232,27 @@ defmodule Dbservice.LmsStudentIngestion do
     })
   end
 
-  defp user_changeset(%{"gender" => "Other"} = attrs) do
-    %User{}
-    |> User.changeset(Map.put(attrs, "gender", "Others"))
-    |> Ecto.Changeset.put_change(:gender, "Other")
-  end
-
   defp user_changeset(attrs), do: User.changeset(%User{}, attrs)
 
-  defp normalize_roll(value, @cbse_board) when is_binary(value), do: String.trim(value)
+  def normalize_g10_roll(value, @cbse_board) when is_binary(value), do: String.trim(value)
 
-  defp normalize_roll(value, nil) when is_binary(value) do
+  def normalize_g10_roll(value, nil) when is_binary(value) do
     value
     |> String.replace(~r/[^A-Za-z0-9]/, "")
     |> String.upcase()
     |> String.trim_leading("0")
   end
 
-  defp normalize_roll(value, _board) when is_binary(value) do
+  def normalize_g10_roll(value, _board) when is_binary(value) do
     value |> String.replace(~r/\s+/, "") |> String.upcase()
   end
 
-  defp normalize_roll(_value, _board), do: nil
+  def normalize_g10_roll(_value, _board), do: nil
 
-  defp normalize_board("CBSE"), do: @cbse_board
-  defp normalize_board("Others"), do: nil
-  defp normalize_board(value), do: value
+  def normalize_g10_board("CBSE"), do: @cbse_board
+  def normalize_g10_board("Others"), do: nil
+  def normalize_g10_board(value) when is_binary(value), do: trim_blank_to_nil(value)
+  def normalize_g10_board(value), do: value
 
   defp normalize_name(value) when is_binary(value) do
     value
@@ -294,9 +289,9 @@ defmodule Dbservice.LmsStudentIngestion do
     end
   end
 
-  defp current_nvs_program?(nil), do: false
+  def current_nvs_program?(nil), do: false
 
-  defp current_nvs_program?(program_id) do
+  def current_nvs_program?(program_id) do
     from(p in Program,
       join: product in Product,
       on: product.id == p.product_id,
@@ -452,15 +447,7 @@ defmodule Dbservice.LmsStudentIngestion do
   defp fetch_batch(row, program_id) do
     grade = to_int(row["grade"])
     stream = get_in(row, ["student", "stream"]) || normalize_stream(row["stream"])
-
-    batches =
-      from(b in Batch,
-        where:
-          b.program_id == ^program_id and
-            fragment("?->>'grade' = ?", b.metadata, ^to_string(grade)) and
-            fragment("?->>'stream' = ?", b.metadata, ^stream)
-      )
-      |> Repo.all()
+    batches = matching_batches(grade, stream, program_id)
 
     case batches do
       [batch] ->
@@ -475,6 +462,16 @@ defmodule Dbservice.LmsStudentIngestion do
       _ ->
         {:error, "Multiple matching batches found"}
     end
+  end
+
+  def matching_batches(grade, stream, program_id) do
+    from(b in Batch,
+      where:
+        b.program_id == ^program_id and
+          fragment("?->>'grade' = ?", b.metadata, ^to_string(grade)) and
+          fragment("?->>'stream' = ?", b.metadata, ^stream)
+    )
+    |> Repo.all()
   end
 
   defp get_school(%{"school" => %{"code" => code, "udise_code" => udise_code}}) do

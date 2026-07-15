@@ -16,8 +16,6 @@ defmodule Dbservice.LmsStudentUpdate do
   alias Dbservice.Groups.GroupUser
   alias Dbservice.LmsStudentIngestion
   alias Dbservice.LmsStudentWriteAudit
-  alias Dbservice.Products.Product
-  alias Dbservice.Programs.Program
   alias Dbservice.Repo
   alias Dbservice.Schools
   alias Dbservice.Users
@@ -138,7 +136,7 @@ defmodule Dbservice.LmsStudentUpdate do
   end
 
   defp fetch_student(id) do
-    case Repo.get(Student, id) do
+    case from(s in Student, where: s.id == ^id, lock: "FOR UPDATE") |> Repo.one() do
       nil -> {:error, error("not_found", "Student not found", 404)}
       student -> {:ok, student}
     end
@@ -158,7 +156,7 @@ defmodule Dbservice.LmsStudentUpdate do
     current_program_batches = current_program_batch_count(student.user_id, program_id)
 
     cond do
-      not current_nvs_program?(program_id) ->
+      not LmsStudentIngestion.current_nvs_program?(program_id) ->
         {:error, error("program_not_allowed", "Program must be a current NVS program", 403)}
 
       not enrolled?(student.user_id, school.id, "school") ->
@@ -174,17 +172,6 @@ defmodule Dbservice.LmsStudentUpdate do
       true ->
         :ok
     end
-  end
-
-  defp current_nvs_program?(nil), do: false
-
-  defp current_nvs_program?(program_id) do
-    from(p in Program,
-      join: product in Product,
-      on: product.id == p.product_id,
-      where: p.id == ^program_id and p.is_current == true and product.code == "NVS"
-    )
-    |> Repo.exists?()
   end
 
   defp current_program_batch_count(_user_id, nil), do: 0
@@ -296,7 +283,11 @@ defmodule Dbservice.LmsStudentUpdate do
   end
 
   defp validate_g10_board(student, %{"g10_board" => nil}) do
-    if student.g10_roll_no in [nil, ""] or Regex.match?(~r/^[A-Z0-9]{4,10}$/, student.g10_roll_no) do
+    canonical_roll = LmsStudentIngestion.normalize_g10_roll(student.g10_roll_no, nil)
+
+    if student.g10_roll_no in [nil, ""] or
+         (Regex.match?(~r/^[A-Z0-9]{4,10}$/, student.g10_roll_no) and
+            canonical_roll == student.g10_roll_no) do
       :ok
     else
       {:error,
@@ -382,14 +373,7 @@ defmodule Dbservice.LmsStudentUpdate do
   end
 
   defp fetch_batch(grade, stream, program_id) do
-    batches =
-      from(b in Batch,
-        where:
-          b.program_id == ^to_int(program_id) and
-            fragment("?->>'grade' = ?", b.metadata, ^to_string(grade)) and
-            fragment("?->>'stream' = ?", b.metadata, ^stream)
-      )
-      |> Repo.all()
+    batches = LmsStudentIngestion.matching_batches(grade, stream, to_int(program_id))
 
     case batches do
       [batch] ->
@@ -562,17 +546,7 @@ defmodule Dbservice.LmsStudentUpdate do
       if attrs == %{} do
         {:ok, user}
       else
-        changeset_attrs =
-          if attrs["gender"] == "Other", do: Map.put(attrs, "gender", "Others"), else: attrs
-
-        changeset = User.changeset(user, changeset_attrs)
-
-        changeset =
-          if attrs["gender"] == "Other",
-            do: Ecto.Changeset.put_change(changeset, :gender, "Other"),
-            else: changeset
-
-        Repo.update(changeset)
+        user |> User.changeset(attrs) |> Repo.update()
       end
 
     case result do
