@@ -16,6 +16,27 @@ defmodule DbserviceWeb.LmsStudentIngestionControllerTest do
   alias Dbservice.Users.Student
 
   describe "POST /api/lms/students/bulk-create-with-enrollments" do
+    test "accepts a legacy actor without a linked user id", %{conn: conn} do
+      school = insert_school!(%{program_ids: []})
+      ensure_nvs_program!()
+      insert_auth_group!("EnableStudents")
+      insert_grade!(11)
+      insert_nvs_batch!(11, "nda")
+
+      request =
+        school
+        |> payload([valid_pen_row("12345678901", %{})])
+        |> put_in(["actor", "user_id"], nil)
+
+      response =
+        conn
+        |> post("/api/lms/students/bulk-create-with-enrollments", request)
+        |> json_response(200)
+
+      assert response["totals"]["created"] == 1
+      assert Repo.one(from a in Dbservice.LmsStudentWriteAudit, select: a.actor_user_id) == nil
+    end
+
     test "creates a PEN-only student for a current NVS program without Centre eligibility", %{
       conn: conn
     } do
