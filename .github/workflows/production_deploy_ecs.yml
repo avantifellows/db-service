@@ -21,6 +21,9 @@ env:
   CONTAINER_NAME: db-service
   SUBNETS: subnet-84ffe8ec,subnet-434c080f,subnet-5cd65827
   SECURITY_GROUP_NAME: db-service-prod-sg
+  # SG names are only unique within a VPC — scope the lookup so a same-named SG
+  # in another VPC can't be selected.
+  VPC_ID: vpc-0a48a661
   # Smoke check hits the shared ALB directly (Host header) so it doesn't depend
   # on public DNS (which lives in Cloudflare, not Route53).
   SERVICE_HOST: db.avantifellows.org
@@ -44,6 +47,17 @@ jobs:
         with:
           ref: ${{ inputs.ref || github.ref }}
 
+      # Prod has a higher blast radius than staging: only allow deploys of the
+      # release branch. (Staging keeps the free-form ref for validation.)
+      - name: Enforce release-only deploys
+        run: |
+          set -euo pipefail
+          REF="${{ inputs.ref || github.ref_name }}"
+          if [ "$REF" != "release" ]; then
+            echo "::error::Production ECS deploys are only allowed from the 'release' branch (got '${REF}')."
+            exit 1
+          fi
+
       - name: Configure AWS credentials
         uses: aws-actions/configure-aws-credentials@v4
         with:
@@ -59,9 +73,11 @@ jobs:
         id: build
         env:
           ECR_REGISTRY: ${{ steps.ecr.outputs.registry }}
-          IMAGE_TAG: prod-${{ github.sha }}
         run: |
           set -euo pipefail
+          # Tag from the commit actually checked out (not github.sha) so the image
+          # tag, source commit, and ECS task definition stay aligned.
+          IMAGE_TAG="prod-$(git rev-parse HEAD)"
           IMAGE="${ECR_REGISTRY}/${ECR_REPOSITORY}:${IMAGE_TAG}"
           docker build -t "$IMAGE" .
           docker push "$IMAGE"
@@ -98,7 +114,7 @@ jobs:
         run: |
           set -euo pipefail
           SG_ID=$(aws ec2 describe-security-groups \
-            --filters "Name=group-name,Values=${SECURITY_GROUP_NAME}" \
+            --filters "Name=group-name,Values=${SECURITY_GROUP_NAME}" "Name=vpc-id,Values=${VPC_ID}" \
             --query 'SecurityGroups[0].GroupId' --output text)
           if [ -z "$SG_ID" ] || [ "$SG_ID" = "None" ]; then
             echo "::error::Security group ${SECURITY_GROUP_NAME} not found. Has terraform apply run for this environment?"
@@ -160,6 +176,16 @@ jobs:
           aws ecs wait services-stable \
             --cluster "$ECS_CLUSTER" \
             --services "$ECS_SERVICE"
+
+          ACTIVE_TASK_DEF=$(aws ecs describe-services \
+            --cluster "$ECS_CLUSTER" \
+            --services "$ECS_SERVICE" \
+            --query "services[0].deployments[?status=='PRIMARY'].taskDefinition | [0]" \
+            --output text)
+          if [ "$ACTIVE_TASK_DEF" != "${{ steps.register.outputs.arn }}" ]; then
+            echo "::error::Deployment did not complete on the new task definition. ECS likely rolled it back."
+            exit 1
+          fi
 
       - name: Smoke check
         run: |

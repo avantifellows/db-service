@@ -15,8 +15,9 @@ defmodule DbserviceWeb.AuthenticationMiddleware do
 
   # Public endpoints exempt from bearer-token auth. The ALB target group
   # health check has no way to inject an auth header, so /api/health must
-  # respond on plain GETs.
-  @public_paths ["/api/health"]
+  # respond on plain GETs; /api/health/ready is the DB-readiness probe used by
+  # external monitors, which likewise can't inject a token.
+  @public_paths ["/api/health", "/api/health/ready"]
 
   def call(conn, _opts) do
     source(["config/.env", System.get_env()])

@@ -27,16 +27,26 @@ This folder contains utilities for managing database operations.
 This script will:
 - ✅ Validate all required environment variables
 - ⚠️  Ask for confirmation before proceeding
-- 🧹 Clear your local database
+- 🧹 Clear your target database
 - 📥 Fetch data from the specified environment
-- 📤 Restore data to your local database
+- 📤 Restore data to your target database
 - 🧹 Clean up temporary files
+
+To sync production into staging:
+
+```bash
+FETCH_ENVIRONMENT=production
+TARGET_ENVIRONMENT=staging
+```
+
+Staging sync skips data for `session`, `session_occurrence`, `group_session`, and `user_session`.
 
 ### Configuration
 
 The script reads from `utils/.env` file. Key variables:
 
-- `FETCH_ENVIRONMENT`: Set to `production` or `staging`
+- `FETCH_ENVIRONMENT`: Source database, set to `production` or `staging`
+- `TARGET_ENVIRONMENT`: Target database, set to `local` or `staging`
 - `PROD_DB_*`: Production database credentials
 - `STAGING_DB_*`: Staging database credentials
 - `LOCAL_DB_*`: Local database settings

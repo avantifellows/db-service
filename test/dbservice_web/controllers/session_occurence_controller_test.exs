@@ -37,6 +37,85 @@ defmodule DbserviceWeb.SessionOccurrenceControllerTest do
     end
   end
 
+  describe "time window filters (start_time_lte / end_time_gte)" do
+    # Window under test: 2030-01-01 10:00 → 2030-01-01 23:59:59.
+    # An occurrence overlaps it when start_time <= window end AND end_time >= window start.
+    defp window_fixtures(_) do
+      %{
+        # starts later inside the window (the "test starts at 2pm" case)
+        upcoming:
+          session_occurrence_fixture(%{
+            start_time: ~U[2030-01-01 14:00:00Z],
+            end_time: ~U[2030-01-01 18:00:00Z]
+          }),
+        # already over before the window opens
+        ended:
+          session_occurrence_fixture(%{
+            start_time: ~U[2030-01-01 06:00:00Z],
+            end_time: ~U[2030-01-01 09:00:00Z]
+          }),
+        # starts after the window closes
+        tomorrow:
+          session_occurrence_fixture(%{
+            start_time: ~U[2030-01-02 10:00:00Z],
+            end_time: ~U[2030-01-02 18:00:00Z]
+          }),
+        # started before the window and still open (multi-day continuous)
+        multiday:
+          session_occurrence_fixture(%{
+            start_time: ~U[2029-12-30 10:00:00Z],
+            end_time: ~U[2030-01-02 18:00:00Z]
+          })
+      }
+    end
+
+    setup [:window_fixtures]
+
+    test "search returns occurrences overlapping the window", %{conn: conn} = ctx do
+      session_ids =
+        Enum.map([ctx.upcoming, ctx.ended, ctx.tomorrow, ctx.multiday], & &1.session_id)
+
+      conn =
+        post(conn, ~p"/api/session-occurrence/search", %{
+          session_ids: session_ids,
+          end_time_gte: "2030-01-01T10:00:00Z",
+          start_time_lte: "2030-01-01T23:59:59Z"
+        })
+
+      ids = json_response(conn, 200) |> Enum.map(& &1["id"]) |> MapSet.new()
+
+      assert MapSet.member?(ids, ctx.upcoming.id)
+      assert MapSet.member?(ids, ctx.multiday.id)
+      refute MapSet.member?(ids, ctx.ended.id)
+      refute MapSet.member?(ids, ctx.tomorrow.id)
+    end
+
+    test "end_time_gte alone excludes only already-ended occurrences", %{conn: conn} = ctx do
+      conn = get(conn, ~p"/api/session-occurrence?end_time_gte=2030-01-01T10:00:00Z")
+      ids = json_response(conn, 200) |> Enum.map(& &1["id"]) |> MapSet.new()
+
+      assert MapSet.member?(ids, ctx.upcoming.id)
+      assert MapSet.member?(ids, ctx.tomorrow.id)
+      assert MapSet.member?(ids, ctx.multiday.id)
+      refute MapSet.member?(ids, ctx.ended.id)
+    end
+
+    test "start_time_lte alone excludes only later-starting occurrences", %{conn: conn} = ctx do
+      conn = get(conn, ~p"/api/session-occurrence?start_time_lte=2030-01-01T23:59:59Z")
+      ids = json_response(conn, 200) |> Enum.map(& &1["id"]) |> MapSet.new()
+
+      assert MapSet.member?(ids, ctx.upcoming.id)
+      assert MapSet.member?(ids, ctx.ended.id)
+      assert MapSet.member?(ids, ctx.multiday.id)
+      refute MapSet.member?(ids, ctx.tomorrow.id)
+    end
+
+    test "invalid timestamp returns 400", %{conn: conn} do
+      conn = get(conn, ~p"/api/session-occurrence?end_time_gte=not-a-date")
+      assert %{"error" => _} = json_response(conn, 400)
+    end
+  end
+
   describe "create session_occurrence" do
     test "renders session_occurrence when data is valid", %{conn: conn} do
       session = session_fixture()

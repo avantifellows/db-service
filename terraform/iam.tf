@@ -61,6 +61,29 @@ resource "aws_iam_role_policy" "task_s3" {
   policy = data.aws_iam_policy_document.task_s3.json
 }
 
+# ECS Exec (enable_execute_command = true on the service) needs the task role to
+# hold these ssmmessages permissions; without them `aws ecs execute-command`
+# fails. These actions don't support resource-level scoping, so "*" is required.
+data "aws_iam_policy_document" "task_ecs_exec" {
+  statement {
+    sid    = "ECSExecSSMMessages"
+    effect = "Allow"
+    actions = [
+      "ssmmessages:CreateControlChannel",
+      "ssmmessages:CreateDataChannel",
+      "ssmmessages:OpenControlChannel",
+      "ssmmessages:OpenDataChannel",
+    ]
+    resources = ["*"]
+  }
+}
+
+resource "aws_iam_role_policy" "task_ecs_exec" {
+  name   = "ecs-exec-ssm"
+  role   = aws_iam_role.task.id
+  policy = data.aws_iam_policy_document.task_ecs_exec.json
+}
+
 ################################################################################
 # CI deploy user — shared across envs; create once, then set the flag back to false
 ################################################################################
@@ -79,6 +102,17 @@ resource "aws_iam_user" "ci" {
 resource "aws_iam_access_key" "ci" {
   count = var.create_ci_user ? 1 : 0
   user  = aws_iam_user.ci[0].name
+}
+
+data "aws_caller_identity" "current" {}
+
+locals {
+  # Wildcards cover both env-prefixed resources (db-service-staging / -prod).
+  _acct           = data.aws_caller_identity.current.account_id
+  ci_ecr_repos    = "arn:aws:ecr:${var.aws_region}:${local._acct}:repository/db-service-*"
+  ci_ecs_services = "arn:aws:ecs:${var.aws_region}:${local._acct}:service/db-service-*/db-service-*"
+  ci_ecs_taskdefs = "arn:aws:ecs:${var.aws_region}:${local._acct}:task-definition/db-service-*:*"
+  ci_ecs_tasks    = "arn:aws:ecs:${var.aws_region}:${local._acct}:task/db-service-*/*"
 }
 
 data "aws_iam_policy_document" "ci_policy" {
@@ -104,21 +138,45 @@ data "aws_iam_policy_document" "ci_policy" {
       "ecr:DescribeRepositories",
       "ecr:DescribeImages",
     ]
-    resources = ["*"] # both env-prefixed repos
+    resources = [local.ci_ecr_repos]
   }
 
   statement {
-    sid    = "ECSDeploy"
+    sid    = "ECSServiceDeploy"
+    effect = "Allow"
+    actions = [
+      "ecs:UpdateService",
+      "ecs:DescribeServices",
+    ]
+    resources = [local.ci_ecs_services]
+  }
+
+  statement {
+    sid       = "ECSRunTask"
+    effect    = "Allow"
+    actions   = ["ecs:RunTask"]
+    resources = [local.ci_ecs_taskdefs]
+  }
+
+  statement {
+    sid    = "ECSTaskControl"
+    effect = "Allow"
+    actions = [
+      "ecs:StopTask",
+      "ecs:DescribeTasks",
+    ]
+    resources = [local.ci_ecs_tasks]
+  }
+
+  # These ECS actions don't support resource-level permissions (AWS IAM
+  # limitation), so they must stay on "*", scoped only by action.
+  statement {
+    sid    = "ECSGlobalReadRegister"
     effect = "Allow"
     actions = [
       "ecs:DescribeTaskDefinition",
       "ecs:RegisterTaskDefinition",
-      "ecs:UpdateService",
-      "ecs:DescribeServices",
-      "ecs:RunTask",
-      "ecs:DescribeTasks",
       "ecs:ListTasks",
-      "ecs:StopTask",
     ]
     resources = ["*"]
   }

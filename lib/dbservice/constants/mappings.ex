@@ -394,7 +394,8 @@ defmodule Dbservice.Constants.Mappings do
         "student",
         "update_incorrect_school_to_correct_school",
         "re_enrollment",
-        "school_addition"
+        "school_addition",
+        "school_deletion"
       ],
       optional: [],
       type: :string
@@ -445,6 +446,18 @@ defmodule Dbservice.Constants.Mappings do
       db_field: "school_district",
       required: ["school_addition"],
       optional: [],
+      type: :string
+    },
+    "block_code" => %{
+      db_field: "block_code",
+      required: [],
+      optional: ["school_addition"],
+      type: :string
+    },
+    "block_name" => %{
+      db_field: "block_name",
+      required: [],
+      optional: ["school_addition"],
       type: :string
     },
     "board" => %{
@@ -984,7 +997,13 @@ defmodule Dbservice.Constants.Mappings do
     # Update fields for correction import types
     "old_batch_id" => %{
       db_field: "old_batch_id",
-      required: ["update_incorrect_batch_id_to_correct_batch_id"],
+      required: ["update_incorrect_batch_id_to_correct_batch_id", "batch_id_correction"],
+      optional: [],
+      type: :string
+    },
+    "new_batch_id" => %{
+      db_field: "new_batch_id",
+      required: ["batch_id_correction"],
       optional: [],
       type: :string
     },
