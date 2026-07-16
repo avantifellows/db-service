@@ -142,7 +142,7 @@ defmodule Dbservice.HolisticMentorship do
           false
       end
 
-    if present_string?(run_id) and valid_result,
+    if present_string?(run_id) and byte_size(run_id) <= 255 and valid_result,
       do: {:ok, {run_id, state, error_code, error_message}},
       else: {:error, :invalid_request}
   end

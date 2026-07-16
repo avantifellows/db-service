@@ -209,6 +209,7 @@ defmodule DbserviceWeb.HolisticMentorshipRegenerationRequestControllerTest do
 
     for params <- [
           %{"etl_run_id" => "etl-invalid", "state" => "queued"},
+          %{"etl_run_id" => String.duplicate("x", 256), "state" => "running"},
           %{
             "error_message" => String.duplicate("x", 501),
             "etl_run_id" => "etl-invalid",
