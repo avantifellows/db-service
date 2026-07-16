@@ -125,7 +125,8 @@ defmodule Dbservice.HolisticMentorship do
            ON CONFLICT (version) DO NOTHING
            RETURNING id
            """,
-           [version, template_text, template_hash]
+           [version, template_text, template_hash],
+           log: false
          ).rows do
       [[id]] -> id
       [] -> existing_prompt_version_id!(version, template_text, template_hash)

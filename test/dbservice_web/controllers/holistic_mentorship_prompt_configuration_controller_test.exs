@@ -42,7 +42,7 @@ defmodule DbserviceWeb.HolisticMentorshipPromptConfigurationControllerTest do
     template_text = "sensitive template text"
 
     {conn, log} =
-      with_log(fn ->
+      with_debug_log(fn ->
         post(conn, "/api/holistic-mentorship/prompt-configurations", %{
           "prompt_version" => "profile-v1",
           "template_text" => template_text,
@@ -69,7 +69,7 @@ defmodule DbserviceWeb.HolisticMentorshipPromptConfigurationControllerTest do
     conflicting_text = "abcd"
 
     {conn, log} =
-      with_log(fn ->
+      with_debug_log(fn ->
         post(conn, "/api/holistic-mentorship/prompt-configurations", %{
           "prompt_version" => "profile-v1",
           "template_text" => conflicting_text,
@@ -271,6 +271,17 @@ defmodule DbserviceWeb.HolisticMentorshipPromptConfigurationControllerTest do
 
   defp build_conn(authorization) do
     build_conn() |> put_req_header("authorization", authorization)
+  end
+
+  defp with_debug_log(operation) do
+    previous_level = Logger.level()
+    Logger.configure(level: :debug)
+
+    try do
+      with_log([level: :debug], operation)
+    after
+      Logger.configure(level: previous_level)
+    end
   end
 
   defp assert_check_violation(operation) do
