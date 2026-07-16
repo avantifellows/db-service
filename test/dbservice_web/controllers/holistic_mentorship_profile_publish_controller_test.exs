@@ -199,6 +199,64 @@ defmodule DbserviceWeb.HolisticMentorshipProfilePublishControllerTest do
            """).rows == [["rollback-child", "running"], ["rollback-stale", "running"]]
   end
 
+  test "concurrent workers allow one replacement and reject the stale writer", %{conn: conn} do
+    authorization = conn |> get_req_header("authorization") |> List.first()
+
+    {user, student} = eligible_student()
+    configuration_id = insert_prompt_configuration!()
+    insert_running_status!(student.id, configuration_id, "concurrent-base")
+
+    publish(
+      build_conn(authorization),
+      publish_params(user.id, student.id, configuration_id, "concurrent-base")
+    )
+
+    for run_id <- ["concurrent-a", "concurrent-b"] do
+      insert_running_status!(student.id, configuration_id, run_id)
+    end
+
+    parent = self()
+
+    tasks =
+      for {run_id, fingerprint} <- [
+            {"concurrent-a", "answers-a"},
+            {"concurrent-b", "answers-b"}
+          ] do
+        Task.async(fn ->
+          send(parent, {:ready, self()})
+
+          receive do
+            :go ->
+              response =
+                build_conn(authorization)
+                |> post(
+                  "/api/holistic-mentorship/profiles/publish",
+                  publish_params(user.id, student.id, configuration_id, run_id, %{
+                    "answer_fingerprint" => fingerprint,
+                    "expected_profile_revision" => 1
+                  })
+                )
+
+              {response.status, Jason.decode!(response.resp_body)}
+          end
+        end)
+      end
+
+    task_pids =
+      for _ <- tasks do
+        assert_receive {:ready, task_pid}
+        task_pid
+      end
+
+    Enum.each(task_pids, &send(&1, :go))
+    results = Enum.map(tasks, &Task.await/1)
+
+    assert Enum.sort(Enum.map(results, &elem(&1, 0))) == [200, 409]
+    assert Enum.any?(results, fn {_, body} -> body["result"] == "replaced" end)
+
+    assert Repo.query!("SELECT revision FROM holistic_mentorship_student_profiles").rows == [[2]]
+  end
+
   test "revalidates eligibility at publication time", %{conn: conn} do
     {user, student} = eligible_student()
     configuration_id = insert_prompt_configuration!()
@@ -378,6 +436,11 @@ defmodule DbserviceWeb.HolisticMentorshipProfilePublishControllerTest do
         "summary" => "#{prefix} #{position}"
       }
     end
+  end
+
+  defp build_conn(authorization) do
+    Phoenix.ConnTest.build_conn()
+    |> put_req_header("authorization", authorization)
   end
 
   defp with_debug_log(operation) do
