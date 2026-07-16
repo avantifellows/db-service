@@ -36,7 +36,9 @@ defmodule Dbservice.HolisticMentorship do
   def end_active_mappings(_student_id, _reason), do: {:error, :invalid_end_reason}
 
   def profile_preflight(records) do
-    Enum.map(records, &preflight_record/1)
+    if Enum.all?(records, &valid_preflight_record?/1),
+      do: {:ok, Enum.map(records, &preflight_record/1)},
+      else: {:error, :invalid_request}
   end
 
   def register_prompt_configuration(params) do
@@ -702,7 +704,7 @@ defmodule Dbservice.HolisticMentorship do
          state
        ) do
     Enum.all?([
-      present_string?(run_id),
+      bounded_string?(run_id, 255),
       positive_integer?(student_id),
       Map.has_key?(@approved_profile_sources, {form_id, session_id, grade}),
       positive_integer?(configuration_id),
@@ -847,9 +849,10 @@ defmodule Dbservice.HolisticMentorship do
        }) do
     fields = {version, template_text, template_hash, model_id}
 
-    if fields |> Tuple.to_list() |> Enum.all?(&(is_binary(&1) and &1 != "")),
-      do: {:ok, fields},
-      else: {:error, :invalid_request}
+    if bounded_string?(version, 255) and present_string?(template_text) and
+         bounded_string?(template_hash, 64) and bounded_string?(model_id, 255),
+       do: {:ok, fields},
+       else: {:error, :invalid_request}
   end
 
   defp prompt_fields(_params), do: {:error, :invalid_request}
@@ -942,6 +945,14 @@ defmodule Dbservice.HolisticMentorship do
   end
 
   defp sha256(value), do: :crypto.hash(:sha256, value) |> Base.encode16(case: :lower)
+
+  defp valid_preflight_record?(%{
+         "record_ref" => record_ref,
+         "answer_fingerprint" => answer_fingerprint
+       }),
+       do: bounded_string?(record_ref, 255) and bounded_string?(answer_fingerprint, 255)
+
+  defp valid_preflight_record?(_record), do: false
 
   defp preflight_record(record) do
     record_ref = record["record_ref"]

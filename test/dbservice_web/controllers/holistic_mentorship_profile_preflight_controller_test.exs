@@ -187,6 +187,39 @@ defmodule DbserviceWeb.HolisticMentorshipProfilePreflightControllerTest do
     end
   end
 
+  test "rejects missing or oversized record references and answer fingerprints wholly", %{
+    conn: conn
+  } do
+    prompt_configuration_id = prompt_configuration_id(conn)
+    {user, _student} = eligible_student(11, "INVALID-ENVELOPE")
+
+    baseline = record("valid-ref", user.id, prompt_configuration_id, @grade_11_source)
+
+    invalid_records = [
+      Map.delete(baseline, "record_ref"),
+      Map.put(baseline, "record_ref", ""),
+      Map.put(baseline, "record_ref", 123),
+      Map.put(baseline, "record_ref", String.duplicate("r", 256)),
+      Map.delete(baseline, "answer_fingerprint"),
+      Map.put(baseline, "answer_fingerprint", ""),
+      Map.put(baseline, "answer_fingerprint", 123),
+      Map.put(baseline, "answer_fingerprint", String.duplicate("f", 256))
+    ]
+
+    for invalid_record <- invalid_records do
+      assert conn
+             |> post("/api/holistic-mentorship/profile-preflight", %{
+               "records" => [baseline, invalid_record]
+             })
+             |> json_response(422) == %{
+               "error" => %{
+                 "code" => "invalid_request",
+                 "message" => "Profile Preflight requires 1 through 100 records"
+               }
+             }
+    end
+  end
+
   test "returns stable safe codes for source, identity, Form, and Prompt rejections", %{
     conn: conn
   } do

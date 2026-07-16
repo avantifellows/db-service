@@ -159,6 +159,7 @@ defmodule DbserviceWeb.HolisticMentorshipProfileGenerationStatusControllerTest d
       Map.merge(params, %{"state" => "completed"}),
       Map.merge(params, %{"completed_outcome" => "invented", "state" => "completed"}),
       Map.merge(params, %{"error_message" => String.duplicate("x", 501), "state" => "failed"}),
+      Map.put(params, "etl_run_id", String.duplicate("r", 256)),
       Map.put(params, "form_id", "unapproved-form")
     ]
 

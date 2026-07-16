@@ -150,6 +150,28 @@ defmodule DbserviceWeb.HolisticMentorshipPromptConfigurationControllerTest do
            }
   end
 
+  test "rejects oversized prompt configuration strings with a safe machine error", %{conn: conn} do
+    for overrides <- [
+          %{"prompt_version" => String.duplicate("v", 256)},
+          %{"template_hash" => String.duplicate("h", 256)},
+          %{"model_id" => String.duplicate("m", 256)}
+        ] do
+      assert conn
+             |> register(overrides)
+             |> json_response(422) == %{
+               "error" => %{
+                 "code" => "invalid_request",
+                 "message" => "Required prompt configuration fields are missing or invalid"
+               }
+             }
+    end
+
+    assert Repo.query!("SELECT count(*) FROM holistic_mentorship_prompt_versions").rows == [[0]]
+
+    assert Repo.query!("SELECT count(*) FROM holistic_mentorship_prompt_configurations").rows ==
+             [[0]]
+  end
+
   test "rejects unknown activation targets with a stable safe error", %{conn: conn} do
     conn = post(conn, "/api/holistic-mentorship/prompt-configurations/999999/activate", %{})
 

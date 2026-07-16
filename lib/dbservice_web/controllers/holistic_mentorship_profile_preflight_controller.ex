@@ -6,7 +6,10 @@ defmodule DbserviceWeb.HolisticMentorshipProfilePreflightController do
   def create(conn, %{"records" => records})
       when is_list(records) and records != [] and length(records) <= 100 do
     if Enum.all?(records, &is_map/1) do
-      json(conn, %{results: HolisticMentorship.profile_preflight(records)})
+      case HolisticMentorship.profile_preflight(records) do
+        {:ok, results} -> json(conn, %{results: results})
+        {:error, :invalid_request} -> invalid_request(conn)
+      end
     else
       invalid_request(conn)
     end
