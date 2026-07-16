@@ -86,6 +86,20 @@ defmodule DbserviceWeb.Router do
       log: false
     )
 
+    get(
+      "/holistic-mentorship/regeneration-requests/:request_key",
+      HolisticMentorshipRegenerationRequestController,
+      :show,
+      log: false
+    )
+
+    post(
+      "/holistic-mentorship/regeneration-requests/:request_key/status",
+      HolisticMentorshipRegenerationRequestController,
+      :update_status,
+      log: false
+    )
+
     resources("/auth-group", AuthGroupController, except: [:new, :edit])
     post("/group/:id/update-users", GroupController, :update_users)
     post("/group/:id/update-sessions", GroupController, :update_sessions)

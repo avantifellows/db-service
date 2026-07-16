@@ -137,7 +137,7 @@ defmodule DbserviceWeb.HolisticMentorshipProfileGenerationStatusControllerTest d
                ).rows == [[1]]
       after
         Repo.query!(
-          "TRUNCATE holistic_mentorship_profile_generation_statuses, holistic_mentorship_student_profile_summaries, holistic_mentorship_student_profiles, holistic_mentorship_prompt_configurations, holistic_mentorship_prompt_versions RESTART IDENTITY"
+          "TRUNCATE holistic_mentorship_regeneration_requests, holistic_mentorship_profile_generation_statuses, holistic_mentorship_student_profile_summaries, holistic_mentorship_student_profiles, holistic_mentorship_prompt_configurations, holistic_mentorship_prompt_versions RESTART IDENTITY"
         )
 
         Repo.query!(

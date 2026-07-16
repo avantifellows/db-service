@@ -86,6 +86,147 @@ defmodule Dbservice.HolisticMentorship do
     end
   end
 
+  def get_regeneration_request(request_key) when is_binary(request_key) do
+    case Repo.query!(
+           """
+           SELECT request.student_id, student.user_id, request.prompt_configuration_id,
+                  request.force, request.state, request.etl_run_id
+           FROM holistic_mentorship_regeneration_requests AS request
+           JOIN student ON student.id = request.student_id
+           WHERE request.request_key = $1
+           """,
+           [request_key],
+           log: false
+         ).rows do
+      [[student_id, user_id, configuration_id, force, state, etl_run_id]] ->
+        with :ok <- eligible_student(student_id, user_id) do
+          {:ok,
+           %{
+             student_id: student_id,
+             prompt_configuration_id: configuration_id,
+             force: force,
+             state: state,
+             etl_run_id: etl_run_id
+           }}
+        end
+
+      [] ->
+        {:error, :regeneration_request_not_found}
+    end
+  end
+
+  def get_regeneration_request(_request_key), do: {:error, :regeneration_request_not_found}
+
+  def update_regeneration_request_status(request_key, params) when is_binary(request_key) do
+    with {:ok, fields} <- regeneration_status_fields(params) do
+      Repo.transaction(fn -> transition_regeneration_request!(request_key, fields) end)
+    end
+  end
+
+  def update_regeneration_request_status(_request_key, _params), do: {:error, :invalid_request}
+
+  defp regeneration_status_fields(%{"etl_run_id" => run_id, "state" => state} = params) do
+    error_code = params["error_code"]
+    error_message = params["error_message"]
+
+    valid_result =
+      case state do
+        state when state in ["running", "completed"] ->
+          is_nil(error_code) and is_nil(error_message)
+
+        "failed" ->
+          bounded_optional_string?(error_code, 64) and
+            bounded_optional_string?(error_message, 500)
+
+        _ ->
+          false
+      end
+
+    if present_string?(run_id) and valid_result,
+      do: {:ok, {run_id, state, error_code, error_message}},
+      else: {:error, :invalid_request}
+  end
+
+  defp regeneration_status_fields(_params), do: {:error, :invalid_request}
+
+  defp transition_regeneration_request!(request_key, fields) when is_binary(request_key) do
+    case Repo.query!(
+           """
+           SELECT id, state, etl_run_id, error_code, error_message
+           FROM holistic_mentorship_regeneration_requests
+           WHERE request_key = $1
+           FOR UPDATE
+           """,
+           [request_key],
+           log: false
+         ).rows do
+      [[id, state, run_id, error_code, error_message]] ->
+        transition_regeneration_request!(
+          {id, state, run_id, error_code, error_message},
+          fields
+        )
+
+      [] ->
+        Repo.rollback(:regeneration_request_not_found)
+    end
+  end
+
+  defp transition_regeneration_request!(
+         {_id, state, run_id, error_code, error_message},
+         {run_id, state, error_code, error_message}
+       ),
+       do: regeneration_status_response(state, run_id, error_code, error_message)
+
+  defp transition_regeneration_request!({_id, _state, run_id, _, _}, {other_run_id, _, _, _})
+       when not is_nil(run_id) and run_id != other_run_id,
+       do: Repo.rollback(:etl_run_conflict)
+
+  defp transition_regeneration_request!(
+         {id, "queued", nil, nil, nil},
+         {run_id, "running", nil, nil}
+       ),
+       do: update_regeneration_request!(id, "running", run_id, nil, nil)
+
+  defp transition_regeneration_request!(
+         {id, "running", run_id, nil, nil},
+         {run_id, state, error_code, error_message}
+       )
+       when state in ["completed", "failed"],
+       do: update_regeneration_request!(id, state, run_id, error_code, error_message)
+
+  defp transition_regeneration_request!({_, state, _, _, _}, _fields)
+       when state in ["completed", "failed"],
+       do: Repo.rollback(:terminal_status_conflict)
+
+  defp transition_regeneration_request!(_request, _fields),
+    do: Repo.rollback(:invalid_transition)
+
+  defp update_regeneration_request!(id, state, run_id, error_code, error_message) do
+    [[state, run_id, error_code, error_message]] =
+      Repo.query!(
+        """
+        UPDATE holistic_mentorship_regeneration_requests
+        SET state = $2, etl_run_id = $3, error_code = $4, error_message = $5,
+            updated_at = now()
+        WHERE id = $1
+        RETURNING state, etl_run_id, error_code, error_message
+        """,
+        [id, state, run_id, error_code, error_message],
+        log: false
+      ).rows
+
+    regeneration_status_response(state, run_id, error_code, error_message)
+  end
+
+  defp regeneration_status_response(state, run_id, error_code, error_message) do
+    %{
+      state: state,
+      etl_run_id: run_id,
+      error_code: error_code,
+      error_message: error_message
+    }
+  end
+
   defp generation_status_references_exist({_, student_id, _, _, _, configuration_id, _, _, _, _}) do
     case Repo.query!(
            """
