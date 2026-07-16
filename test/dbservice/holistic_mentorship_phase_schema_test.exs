@@ -91,7 +91,8 @@ defmodule Dbservice.HolisticMentorshipPhaseSchemaTest do
              ]
 
       assert trigger_properties("holistic_mentorship_phase_questions") == [
-               {"hm_phase_questions_count", true, true}
+               {"hm_phase_questions_count", true, true},
+               {"hm_phase_questions_notes_answer_phase_check", false, false}
              ]
     end
 

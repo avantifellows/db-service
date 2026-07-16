@@ -86,6 +86,13 @@ defmodule Dbservice.HolisticMentorshipNotesSchemaTest do
     assert_constraint(:check_violation, fn ->
       insert_answer(notes_id, Enum.at(other_scope.question_ids, 0), "Wrong Phase")
     end)
+
+    assert_constraint(:check_violation, fn ->
+      Repo.query(
+        "UPDATE holistic_mentorship_phase_questions SET phase_id = $1, position = 3 WHERE id = $2",
+        [other_scope.phase_id, Enum.at(scope.question_ids, 0)]
+      )
+    end)
   end
 
   test "defines a content-free Post-Session Notes mutation audit" do

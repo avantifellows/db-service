@@ -119,6 +119,16 @@ defmodule Dbservice.Repo.Migrations.CreateHolisticMentorshipPostSessionNotes do
             RAISE EXCEPTION 'Post-Session Notes Phase conflicts with an Answer Question'
               USING ERRCODE = '23514';
           END IF;
+        ELSIF TG_TABLE_NAME = 'holistic_mentorship_phase_questions' THEN
+          IF EXISTS (
+            SELECT 1
+            FROM holistic_mentorship_post_session_answers AS answer
+            JOIN holistic_mentorship_post_session_notes AS notes ON notes.id = answer.notes_id
+            WHERE answer.question_id = NEW.id AND notes.phase_id <> NEW.phase_id
+          ) THEN
+            RAISE EXCEPTION 'Phase Question conflicts with existing Post-Session Notes Answers'
+              USING ERRCODE = '23514';
+          END IF;
         END IF;
 
         RETURN NEW;
@@ -144,6 +154,15 @@ defmodule Dbservice.Repo.Migrations.CreateHolisticMentorshipPostSessionNotes do
       FOR EACH ROW EXECUTE FUNCTION holistic_mentorship_validate_notes_answer_phase()
       """,
       "DROP TRIGGER hm_post_session_notes_answer_phase_check ON holistic_mentorship_post_session_notes"
+    )
+
+    execute(
+      """
+      CREATE TRIGGER hm_phase_questions_notes_answer_phase_check
+      BEFORE UPDATE OF phase_id ON holistic_mentorship_phase_questions
+      FOR EACH ROW EXECUTE FUNCTION holistic_mentorship_validate_notes_answer_phase()
+      """,
+      "DROP TRIGGER hm_phase_questions_notes_answer_phase_check ON holistic_mentorship_phase_questions"
     )
 
     execute(
