@@ -141,6 +141,21 @@ defmodule DbserviceWeb.EnrollmentRecordControllerTest do
         get(conn, ~p"/api/enrollment-record/#{enrollment_record}")
       end
     end
+
+    test "ending current Program membership through the API ends the active Holistic Mapping", %{
+      conn: conn
+    } do
+      %{enrollment_id: enrollment_id, mapping_id: mapping_id} = insert_program_mapping_scope()
+
+      conn = delete(conn, ~p"/api/enrollment-record/#{enrollment_id}")
+
+      assert response(conn, 204)
+
+      assert Dbservice.Repo.query!(
+               "SELECT end_source, end_reason FROM holistic_mentorship_mentor_mentee_mappings WHERE id = $1",
+               [mapping_id]
+             ).rows == [["db_service_student_eligibility", "student_program_changed"]]
+    end
   end
 
   defp create_enrollment_record(_) do
@@ -162,5 +177,59 @@ defmodule DbserviceWeb.EnrollmentRecordControllerTest do
     group_id = enrollment_record_fixture.group_id
     subject_id = enrollment_record_fixture.subject_id
     Map.merge(@update_attrs, %{user_id: user_id, group_id: group_id, subject_id: subject_id})
+  end
+
+  defp insert_program_mapping_scope do
+    [[student_user_id], [mentor_user_id]] =
+      Dbservice.Repo.query!(
+        "INSERT INTO \"user\" (inserted_at, updated_at) VALUES (now(), now()), (now(), now()) RETURNING id"
+      ).rows
+
+    [[student_id]] =
+      Dbservice.Repo.query!(
+        "INSERT INTO student (user_id, status, inserted_at, updated_at) VALUES ($1, 'enrolled', now(), now()) RETURNING id",
+        [student_user_id]
+      ).rows
+
+    [[school_id]] =
+      Dbservice.Repo.query!(
+        "INSERT INTO school (inserted_at, updated_at) VALUES (now(), now()) RETURNING id"
+      ).rows
+
+    [[product_id]] =
+      Dbservice.Repo.query!(
+        "INSERT INTO product (name, inserted_at, updated_at) VALUES ('Enrollment API Cleanup', now(), now()) RETURNING id"
+      ).rows
+
+    [[program_id]] =
+      Dbservice.Repo.query!(
+        "INSERT INTO program (name, product_id, inserted_at, updated_at) VALUES ('Enrollment API Cleanup', $1, now(), now()) RETURNING id",
+        [product_id]
+      ).rows
+
+    [[mapping_id]] =
+      Dbservice.Repo.query!(
+        """
+        INSERT INTO holistic_mentorship_mentor_mentee_mappings
+          (student_id, mentor_user_id, school_id, program_id, academic_year, started_at,
+           assignment_source)
+        VALUES ($1, $2, $3, $4, '2026-27', timezone('UTC', now()), 'af_lms')
+        RETURNING id
+        """,
+        [student_id, mentor_user_id, school_id, program_id]
+      ).rows
+
+    [[enrollment_id]] =
+      Dbservice.Repo.query!(
+        """
+        INSERT INTO enrollment_record
+          (user_id, group_id, group_type, academic_year, start_date, is_current, inserted_at, updated_at)
+        VALUES ($1, $2, 'program', '2026-27', '2026-04-01', true, now(), now())
+        RETURNING id
+        """,
+        [student_user_id, program_id]
+      ).rows
+
+    %{enrollment_id: enrollment_id, mapping_id: mapping_id}
   end
 end

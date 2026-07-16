@@ -133,6 +133,8 @@ defmodule Dbservice.DataImport.GroupUpdateProcessorTest do
           academic_year: "2024-25"
         })
 
+      mapping_id = insert_active_mapping(student.id)
+
       record = %{
         "student_id" => student.student_id,
         "school_code" => school.code
@@ -141,6 +143,11 @@ defmodule Dbservice.DataImport.GroupUpdateProcessorTest do
       result = GroupUpdateProcessor.process_school_update(record)
 
       assert {:ok, "School update processed successfully"} = result
+
+      assert Repo.query!(
+               "SELECT end_reason FROM holistic_mentorship_mentor_mentee_mappings WHERE id = $1",
+               [mapping_id]
+             ).rows == [["student_school_changed"]]
     end
 
     test "returns error when student is not found" do

@@ -6,6 +6,7 @@ defmodule Dbservice.Services.StudentEligibilityCleanupTest do
   alias Dbservice.Services.StudentUpdateService
   alias Dbservice.Services.GroupUpdateService
   alias Dbservice.Services.DropoutService
+  alias Dbservice.Services.EnrollmentService
 
   test "a dropout transition ends the Student's active Holistic Mapping" do
     %{mapping_id: mapping_id, student: student} = insert_mapping_scope()
@@ -53,6 +54,106 @@ defmodule Dbservice.Services.StudentEligibilityCleanupTest do
              """,
              [mapping_id]
            ).rows == [[true, "db_service_student_eligibility", "student_grade_changed"]]
+  end
+
+  test "a current School change ends the Student's active Holistic Mapping" do
+    %{mapping_id: mapping_id, student: student} = insert_mapping_scope()
+    old_school_id = insert_school()
+    new_school_id = insert_school()
+    {:ok, old_group} = Dbservice.Groups.create_group(%{type: "school", child_id: old_school_id})
+    {:ok, new_group} = Dbservice.Groups.create_group(%{type: "school", child_id: new_school_id})
+
+    {:ok, _group_user} =
+      Dbservice.GroupUsers.create_group_user(%{user_id: student.user_id, group_id: old_group.id})
+
+    [[enrollment_id]] =
+      Repo.query!(
+        """
+        INSERT INTO enrollment_record
+          (user_id, group_id, group_type, academic_year, start_date, is_current, inserted_at, updated_at)
+        VALUES ($1, $2, 'school', '2026-27', '2026-04-01', true, now(), now())
+        RETURNING id
+        """,
+        [student.user_id, old_school_id]
+      ).rows
+
+    assert {:ok, _group_user} =
+             GroupUpdateService.update_user_group_by_type(%{
+               "user_id" => student.user_id,
+               "group_id" => new_group.id,
+               "type" => "school"
+             })
+
+    assert Repo.get!(Dbservice.EnrollmentRecords.EnrollmentRecord, enrollment_id).group_id ==
+             new_school_id
+
+    assert Repo.query!(
+             "SELECT end_source, end_reason FROM holistic_mentorship_mentor_mentee_mappings WHERE id = $1",
+             [mapping_id]
+           ).rows == [["db_service_student_eligibility", "student_school_changed"]]
+
+    assert Repo.query!("SELECT count(*) FROM holistic_mentorship_mentor_mentee_mappings").rows ==
+             [[1]]
+  end
+
+  test "a current Program change takes precedence over a simultaneous School change" do
+    %{mapping_id: mapping_id, student: student} = insert_mapping_scope()
+    school_id = insert_school()
+
+    [[enrollment_id]] =
+      Repo.query!(
+        """
+        INSERT INTO enrollment_record
+          (user_id, group_id, group_type, academic_year, start_date, is_current, inserted_at, updated_at)
+        VALUES ($1, $2, 'school', '2026-27', '2026-04-01', true, now(), now())
+        RETURNING id
+        """,
+        [student.user_id, school_id]
+      ).rows
+
+    enrollment = Repo.get!(Dbservice.EnrollmentRecords.EnrollmentRecord, enrollment_id)
+
+    assert {:ok, _enrollment} =
+             Dbservice.EnrollmentRecords.update_enrollment_record(enrollment, %{
+               group_type: "program",
+               group_id: 1
+             })
+
+    assert Repo.query!(
+             "SELECT end_reason FROM holistic_mentorship_mentor_mentee_mappings WHERE id = $1",
+             [mapping_id]
+           ).rows == [["student_program_changed"]]
+  end
+
+  test "a batch enrollment failure rolls back School membership cleanup" do
+    %{mapping_id: mapping_id, student: student} = insert_mapping_scope()
+
+    [[school_id]] =
+      Repo.query!(
+        "INSERT INTO school (code, inserted_at, updated_at) VALUES ('BATCH-SCHOOL', now(), now()) RETURNING id"
+      ).rows
+
+    {:ok, _group} = Dbservice.Groups.create_group(%{type: "school", child_id: school_id})
+    install_failing_group_user_trigger()
+
+    assert_raise Postgrex.Error, fn ->
+      EnrollmentService.process_enrollment(%{
+        "user_id" => student.user_id,
+        "enrollment_type" => "school",
+        "school_code" => "BATCH-SCHOOL",
+        "academic_year" => "2026-27",
+        "start_date" => ~D[2026-04-01]
+      })
+    end
+
+    refute Repo.exists?(
+             from enrollment in Dbservice.EnrollmentRecords.EnrollmentRecord,
+               where:
+                 enrollment.user_id == ^student.user_id and
+                   enrollment.group_type == "school" and enrollment.is_current
+           )
+
+    assert mapping_active?(mapping_id)
   end
 
   test "a cleanup failure rolls back the Grade correction and its enrollment changes" do
@@ -161,6 +262,25 @@ defmodule Dbservice.Services.StudentEligibilityCleanupTest do
            ).rows == [[nil, nil, nil]]
   end
 
+  test "an unrelated enrollment mutation leaves the active Mapping unchanged" do
+    %{mapping_id: mapping_id, student: student} = insert_mapping_scope()
+
+    {:ok, enrollment} =
+      Dbservice.EnrollmentRecords.create_enrollment_record(%{
+        user_id: student.user_id,
+        group_id: 10,
+        group_type: "batch",
+        academic_year: "2026-27",
+        start_date: ~D[2026-04-01],
+        is_current: true
+      })
+
+    assert {:ok, _enrollment} =
+             Dbservice.EnrollmentRecords.update_enrollment_record(enrollment, %{group_id: 11})
+
+    assert mapping_active?(mapping_id)
+  end
+
   defp insert_mapping_scope do
     [[student_user_id], [mentor_user_id]] =
       Repo.query!(
@@ -214,6 +334,15 @@ defmodule Dbservice.Services.StudentEligibilityCleanupTest do
     id
   end
 
+  defp insert_school do
+    [[id]] =
+      Repo.query!(
+        "INSERT INTO school (inserted_at, updated_at) VALUES (now(), now()) RETURNING id"
+      ).rows
+
+    id
+  end
+
   defp install_failing_cleanup_trigger do
     Repo.query!("""
     CREATE FUNCTION pg_temp.fail_holistic_mapping_cleanup() RETURNS trigger AS $$
@@ -227,6 +356,22 @@ defmodule Dbservice.Services.StudentEligibilityCleanupTest do
     CREATE TRIGGER fail_holistic_mapping_cleanup
     BEFORE UPDATE ON holistic_mentorship_mentor_mentee_mappings
     FOR EACH ROW EXECUTE FUNCTION pg_temp.fail_holistic_mapping_cleanup()
+    """)
+  end
+
+  defp install_failing_group_user_trigger do
+    Repo.query!("""
+    CREATE FUNCTION pg_temp.fail_group_user_insert() RETURNS trigger AS $$
+    BEGIN
+      RAISE EXCEPTION 'forced group user failure';
+    END;
+    $$ LANGUAGE plpgsql
+    """)
+
+    Repo.query!("""
+    CREATE TRIGGER fail_group_user_insert
+    BEFORE INSERT ON group_user
+    FOR EACH ROW EXECUTE FUNCTION pg_temp.fail_group_user_insert()
     """)
   end
 
