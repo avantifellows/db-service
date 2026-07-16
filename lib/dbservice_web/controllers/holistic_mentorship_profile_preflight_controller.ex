@@ -5,7 +5,11 @@ defmodule DbserviceWeb.HolisticMentorshipProfilePreflightController do
 
   def create(conn, %{"records" => records})
       when is_list(records) and records != [] and length(records) <= 100 do
-    json(conn, %{results: HolisticMentorship.profile_preflight(records)})
+    if Enum.all?(records, &is_map/1) do
+      json(conn, %{results: HolisticMentorship.profile_preflight(records)})
+    else
+      invalid_request(conn)
+    end
   end
 
   def create(conn, %{"records" => records}) when is_list(records) and length(records) > 100 do
@@ -19,7 +23,9 @@ defmodule DbserviceWeb.HolisticMentorshipProfilePreflightController do
     })
   end
 
-  def create(conn, _params) do
+  def create(conn, _params), do: invalid_request(conn)
+
+  defp invalid_request(conn) do
     conn
     |> put_status(:unprocessable_entity)
     |> json(%{

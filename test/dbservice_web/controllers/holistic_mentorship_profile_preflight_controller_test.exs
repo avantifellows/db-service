@@ -88,7 +88,7 @@ defmodule DbserviceWeb.HolisticMentorshipProfilePreflightControllerTest do
   end
 
   test "rejects an empty or missing records batch safely", %{conn: conn} do
-    for params <- [%{"records" => []}, %{}] do
+    for params <- [%{"records" => []}, %{"records" => ["not-a-record"]}, %{}] do
       assert conn
              |> post("/api/holistic-mentorship/profile-preflight", params)
              |> json_response(422) == %{
