@@ -30,6 +30,16 @@ defmodule Dbservice.HolisticMentorshipPhaseSchemaTest do
       "position",
       "text",
       "updated_at"
+    ],
+    "holistic_mentorship_phase_state_transitions" => [
+      "actor_user_id",
+      "from_state",
+      "id",
+      "inserted_at",
+      "occurred_at",
+      "phase_id",
+      "to_state",
+      "updated_at"
     ]
   }
 
@@ -62,6 +72,16 @@ defmodule Dbservice.HolisticMentorshipPhaseSchemaTest do
       "position" => "integer",
       "text" => "text",
       "updated_at" => "timestamp without time zone"
+    },
+    "holistic_mentorship_phase_state_transitions" => %{
+      "actor_user_id" => "bigint",
+      "from_state" => "character varying",
+      "id" => "bigint",
+      "inserted_at" => "timestamp without time zone",
+      "occurred_at" => "timestamp without time zone",
+      "phase_id" => "bigint",
+      "to_state" => "character varying",
+      "updated_at" => "timestamp without time zone"
     }
   }
 
@@ -72,7 +92,10 @@ defmodule Dbservice.HolisticMentorshipPhaseSchemaTest do
       "hm_phases_revision_check",
       "hm_phases_state_check"
     ],
-    "holistic_mentorship_phase_questions" => ["hm_phase_questions_position_check"]
+    "holistic_mentorship_phase_questions" => ["hm_phase_questions_position_check"],
+    "holistic_mentorship_phase_state_transitions" => [
+      "hm_phase_state_transitions_states_check"
+    ]
   }
 
   describe "Holistic Mentorship Phase Plan schema" do
@@ -111,6 +134,11 @@ defmodule Dbservice.HolisticMentorshipPhaseSchemaTest do
                {"phase_id", "holistic_mentorship_phases", "NO ACTION"}
              ]
 
+      assert foreign_keys("holistic_mentorship_phase_state_transitions") == [
+               {"actor_user_id", "user", "NO ACTION"},
+               {"phase_id", "holistic_mentorship_phases", "NO ACTION"}
+             ]
+
       for table <- Map.keys(@expected_columns) do
         assert_required(table, ["id", "inserted_at", "updated_at"])
       end
@@ -128,6 +156,14 @@ defmodule Dbservice.HolisticMentorshipPhaseSchemaTest do
       ])
 
       assert_required("holistic_mentorship_phase_questions", ["phase_id", "text", "position"])
+
+      assert_required("holistic_mentorship_phase_state_transitions", [
+        "phase_id",
+        "from_state",
+        "to_state",
+        "actor_user_id",
+        "occurred_at"
+      ])
 
       assert index_names("holistic_mentorship_phase_plans") == [
                "hm_phase_plan_scope_unique",
@@ -147,6 +183,12 @@ defmodule Dbservice.HolisticMentorshipPhaseSchemaTest do
                "hm_phase_questions_phase_idx",
                "hm_phase_questions_phase_position_unique",
                "holistic_mentorship_phase_questions_pkey"
+             ]
+
+      assert index_names("holistic_mentorship_phase_state_transitions") == [
+               "hm_phase_state_transitions_actor_idx",
+               "hm_phase_state_transitions_timeline_idx",
+               "holistic_mentorship_phase_state_transitions_pkey"
              ]
     end
 
@@ -244,6 +286,69 @@ defmodule Dbservice.HolisticMentorshipPhaseSchemaTest do
                """,
                [plan_id, grade_11_id]
              ).rows == [[active_phase_id]]
+    end
+
+    test "retains valid state transitions in timeline order" do
+      %{plan_id: plan_id, grade_11_id: grade_11_id} = insert_scope()
+      phase_id = insert_phase(plan_id, grade_11_id, 1, "locked")
+      actor = Dbservice.UsersFixtures.user_fixture(%{email: "hm-phase-actor@test.local"})
+
+      Repo.query!(
+        "INSERT INTO holistic_mentorship_phase_questions (phase_id, text, position) VALUES ($1, 'Question', 1)",
+        [phase_id]
+      )
+
+      times = [~U[2026-07-17 09:00:00Z], ~U[2026-07-17 10:00:00Z], ~U[2026-07-17 11:00:00Z]]
+
+      for {{from_state, to_state}, occurred_at} <-
+            Enum.zip([{"locked", "open"}, {"open", "locked"}, {"locked", "open"}], times) do
+        Repo.query!(
+          """
+          INSERT INTO holistic_mentorship_phase_state_transitions
+            (phase_id, from_state, to_state, actor_user_id, occurred_at)
+          VALUES ($1, $2, $3, $4, $5)
+          """,
+          [phase_id, from_state, to_state, actor.id, occurred_at]
+        )
+      end
+
+      assert Repo.query!(
+               """
+               SELECT from_state, to_state
+               FROM holistic_mentorship_phase_state_transitions
+               WHERE phase_id = $1
+               ORDER BY occurred_at, id
+               """,
+               [phase_id]
+             ).rows == [
+               ["locked", "open"],
+               ["open", "locked"],
+               ["locked", "open"]
+             ]
+
+      assert Repo.query!(
+               """
+               SELECT to_state
+               FROM holistic_mentorship_phase_state_transitions
+               WHERE phase_id = $1 AND occurred_at <= $2
+               ORDER BY occurred_at DESC, id DESC
+               LIMIT 1
+               """,
+               [phase_id, ~U[2026-07-17 10:30:00Z]]
+             ).rows == [["locked"]]
+
+      for {from_state, to_state} <- [{"open", "open"}, {"draft", "open"}] do
+        assert_constraint_violation(fn ->
+          Repo.query(
+            """
+            INSERT INTO holistic_mentorship_phase_state_transitions
+              (phase_id, from_state, to_state, actor_user_id, occurred_at)
+            VALUES ($1, $2, $3, $4, now())
+            """,
+            [phase_id, from_state, to_state, actor.id]
+          )
+        end)
+      end
     end
 
     test "defers Question cardinality until commit" do

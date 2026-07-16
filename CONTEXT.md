@@ -46,6 +46,12 @@ _Avoid_: storing the displayed Phase number as identity
 The latest ordered Open Phase for a Grade in a Phase Plan, derived at read time.
 _Avoid_: persisted active flag, manual Make Active action
 
+**Phase State Transition**:
+An audit event recording a Phase's Open/Locked change, human actor, and
+occurrence time. The timeline lets LMS derive which Phase was Active when a
+Mentor-Mentee Mapping began.
+_Avoid_: persisted Active Phase, progress snapshot
+
 **Mentor-Mentee Mapping**:
 A time-bounded assignment of one Student to one Mentor User at a School for a
 Program and Academic Year. Ended rows remain as history.
@@ -100,6 +106,8 @@ _Avoid_: best-effort identity matching
 - Main Postgres is the sole durable Holistic Mentorship store.
 - Displayed Phase number, Active Phase, Student Context, progress summaries, and
   Grade 12 placeholders are derived rather than stored.
+- Open/Locked transition history is retained with actor/time so past Active Phase
+  state can be reconstructed without storing an Active or progress snapshot.
 - Raw questionnaire answers and rendered per-Student prompts are not persisted.
 - Profile publication is atomic per Student and revalidates identity and scope.
 - Student eligibility mutations end affected active Mappings atomically.
