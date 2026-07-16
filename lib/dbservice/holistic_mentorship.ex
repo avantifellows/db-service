@@ -110,7 +110,7 @@ defmodule Dbservice.HolisticMentorship do
          "force" => false,
          "summaries" => summaries
        }) do
-    with {:ok, user_id} <- parse_source_user_id(source_user_id),
+    with {:ok, user_id} <- source_user_id(%{"source_user_id" => source_user_id}),
          {:ok, warehouse_loaded_at} <- parse_timestamp(warehouse_loaded_at),
          {:ok, generated_at} <- parse_timestamp(generated_at),
          :ok <- valid_summaries(summaries),
@@ -152,15 +152,6 @@ defmodule Dbservice.HolisticMentorship do
 
   defp bounded_string?(value, maximum),
     do: is_binary(value) and byte_size(value) in 1..maximum
-
-  defp parse_source_user_id(value) do
-    case Integer.parse(value) do
-      {id, ""} when id > 0 and id <= 2_147_483_647 -> {:ok, id}
-      _ -> {:error, :invalid_request}
-    end
-  rescue
-    ArgumentError -> {:error, :invalid_request}
-  end
 
   defp parse_timestamp(value) when is_binary(value) do
     case DateTime.from_iso8601(value) do
@@ -234,17 +225,17 @@ defmodule Dbservice.HolisticMentorship do
       journey_id = insert_profile_journey!(fields)
 
       case generation_status_row(fields) do
-        [[_id, "completed", outcome]] ->
+        [[_id, "completed", outcome, revision]] when is_integer(revision) ->
           case current_profile(journey_id, fields.configuration_id) do
-            {_profile_id, _fingerprint, revision} ->
+            {_profile_id, _fingerprint, _current_revision} ->
               %{result: outcome, revision: revision}
 
             nil ->
               Repo.rollback(:invalid_request)
           end
 
-        [[_id, "running", nil]] ->
-          publish_running_profile!(journey_id, fields)
+        [[status_id, "running", nil, nil]] ->
+          publish_running_profile!(journey_id, status_id, fields)
 
         _ ->
           Repo.rollback(:invalid_request)
@@ -252,24 +243,24 @@ defmodule Dbservice.HolisticMentorship do
     end)
   end
 
-  defp publish_running_profile!(journey_id, fields) do
+  defp publish_running_profile!(journey_id, status_id, fields) do
     case current_profile(journey_id, fields.configuration_id) do
       nil when is_nil(fields.expected_revision) ->
         profile_id = insert_profile!(journey_id, fields)
         insert_profile_summaries!(profile_id, fields.summaries)
-        complete_generation_status!(fields, "published")
+        complete_generation_status!(status_id, "published", 1)
         %{result: "published", revision: 1}
 
       {_profile_id, answer_fingerprint, revision}
       when revision == fields.expected_revision and
              answer_fingerprint == fields.answer_fingerprint ->
-        complete_generation_status!(fields, "unchanged")
+        complete_generation_status!(status_id, "unchanged", revision)
         %{result: "unchanged", revision: revision}
 
       {profile_id, _answer_fingerprint, revision} when revision == fields.expected_revision ->
         revision = revision + 1
         replace_profile!(profile_id, fields, revision)
-        complete_generation_status!(fields, "replaced")
+        complete_generation_status!(status_id, "replaced", revision)
         %{result: "replaced", revision: revision}
 
       _ ->
@@ -387,7 +378,7 @@ defmodule Dbservice.HolisticMentorship do
   defp generation_status_row(fields) do
     Repo.query!(
       """
-      SELECT id, state, completed_outcome
+      SELECT id, state, completed_outcome, completed_profile_revision
       FROM holistic_mentorship_profile_generation_statuses
       WHERE etl_run_id = $1 AND student_id = $2 AND form_id = $3
         AND af_session_id = $4 AND entry_grade = $5 AND prompt_configuration_id = $6
@@ -419,14 +410,15 @@ defmodule Dbservice.HolisticMentorship do
     end)
   end
 
-  defp complete_generation_status!(fields, outcome) do
+  defp complete_generation_status!(status_id, outcome, revision) do
     Repo.query!(
       """
       UPDATE holistic_mentorship_profile_generation_statuses
-      SET state = 'completed', completed_outcome = $2, updated_at = now()
+      SET state = 'completed', completed_outcome = $2, completed_profile_revision = $3,
+          updated_at = now()
       WHERE id = $1
       """,
-      [generation_status_row(fields) |> hd() |> hd(), outcome],
+      [status_id, outcome, revision],
       log: false
     )
   end

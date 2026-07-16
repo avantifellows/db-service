@@ -126,7 +126,7 @@ defmodule DbserviceWeb.HolisticMentorshipProfilePublishControllerTest do
       })
 
     assert publish(conn, new_params) == %{"result" => "replaced", "revision" => 2}
-    assert publish(conn, old_params) == %{"result" => "published", "revision" => 2}
+    assert publish(conn, old_params) == %{"result" => "published", "revision" => 1}
 
     assert Repo.query!("""
            SELECT profile.answer_fingerprint, profile.revision, min(summary.summary)
@@ -197,6 +197,31 @@ defmodule DbserviceWeb.HolisticMentorshipProfilePublishControllerTest do
            SELECT etl_run_id, state FROM holistic_mentorship_profile_generation_statuses
            WHERE etl_run_id IN ('rollback-stale', 'rollback-child') ORDER BY etl_run_id
            """).rows == [["rollback-child", "running"], ["rollback-stale", "running"]]
+  end
+
+  test "rejects a malformed source User ID safely", %{conn: conn} do
+    {user, student} = eligible_student()
+    configuration_id = insert_prompt_configuration!()
+    insert_running_status!(student.id, configuration_id, "malformed-source")
+
+    assert conn
+           |> post(
+             "/api/holistic-mentorship/profiles/publish",
+             publish_params(user.id, student.id, configuration_id, "malformed-source", %{
+               "source_user_id" => user.id
+             })
+           )
+           |> json_response(422) == %{
+             "error" => %{
+               "code" => "invalid_request",
+               "message" => "Profile publication request is invalid"
+             }
+           }
+
+    assert Repo.query!("""
+           SELECT state FROM holistic_mentorship_profile_generation_statuses
+           WHERE etl_run_id = 'malformed-source'
+           """).rows == [["running"]]
   end
 
   test "concurrent workers allow one replacement and reject the stale writer", %{conn: conn} do
