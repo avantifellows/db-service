@@ -59,6 +59,93 @@ defmodule DbserviceWeb.HolisticMentorshipProfilePreflightControllerTest do
     refute response |> inspect() =~ "BUSINESS-G"
   end
 
+  test "keeps a Grade 11 journey after progression and rejects a conflicting Grade 12 source", %{
+    conn: conn
+  } do
+    prompt_configuration_id = prompt_configuration_id(conn)
+    {user, student} = eligible_student(11, "JOURNEY-G11")
+    insert_journey!(student.id, @grade_11_source)
+
+    grade_12 = grade_fixture(%{number: 12})
+    Repo.query!("UPDATE student SET grade_id = $2 WHERE id = $1", [student.id, grade_12.id])
+
+    Repo.query!(
+      "UPDATE enrollment_record SET group_id = $2 WHERE user_id = $1 AND group_type = 'grade'",
+      [user.id, grade_12.id]
+    )
+
+    response =
+      conn
+      |> post("/api/holistic-mentorship/profile-preflight", %{
+        "records" => [
+          record("original", user.id, prompt_configuration_id, @grade_11_source),
+          record("conflict", user.id, prompt_configuration_id, @grade_12_source)
+        ]
+      })
+      |> json_response(200)
+
+    assert response == %{
+             "results" => [
+               %{
+                 "record_ref" => "original",
+                 "student_id" => student.id,
+                 "prompt_configuration_id" => prompt_configuration_id,
+                 "profile_state" => "missing",
+                 "profile_revision" => nil
+               },
+               rejected("conflict", "journey_source_conflict")
+             ]
+           }
+  end
+
+  test "reports configuration-specific Profile state and revision from the answer fingerprint", %{
+    conn: conn
+  } do
+    first_configuration_id = prompt_configuration_id(conn)
+    second_configuration_id = prompt_configuration_id(conn, "google/gemini-2.5-flash")
+    {user, student} = eligible_student(11, "PROFILE-STATE")
+    journey_id = insert_journey!(student.id, @grade_11_source)
+    insert_profile!(journey_id, first_configuration_id, "answers-v1", 7)
+
+    baseline = record("unchanged", user.id, first_configuration_id, @grade_11_source)
+
+    records = [
+      Map.put(baseline, "answer_fingerprint", "answers-v1"),
+      baseline
+      |> Map.put("record_ref", "changed")
+      |> Map.put("answer_fingerprint", "answers-v2"),
+      record("other-configuration", user.id, second_configuration_id, @grade_11_source)
+    ]
+
+    assert conn
+           |> post("/api/holistic-mentorship/profile-preflight", %{"records" => records})
+           |> json_response(200) == %{
+             "results" => [
+               %{
+                 "record_ref" => "unchanged",
+                 "student_id" => student.id,
+                 "prompt_configuration_id" => first_configuration_id,
+                 "profile_state" => "unchanged",
+                 "profile_revision" => 7
+               },
+               %{
+                 "record_ref" => "changed",
+                 "student_id" => student.id,
+                 "prompt_configuration_id" => first_configuration_id,
+                 "profile_state" => "changed_answers",
+                 "profile_revision" => 7
+               },
+               %{
+                 "record_ref" => "other-configuration",
+                 "student_id" => student.id,
+                 "prompt_configuration_id" => second_configuration_id,
+                 "profile_state" => "missing",
+                 "profile_revision" => nil
+               }
+             ]
+           }
+  end
+
   test "accepts 100 records and rejects 101 records wholly", %{conn: conn} do
     prompt_configuration_id = prompt_configuration_id(conn)
     {user, _student} = eligible_student(11, "BOUNDARY")
@@ -305,14 +392,14 @@ defmodule DbserviceWeb.HolisticMentorshipProfilePreflightControllerTest do
       })
   end
 
-  defp prompt_configuration_id(conn) do
+  defp prompt_configuration_id(conn, model_id \\ "openai/gpt-5-mini") do
     response =
       conn
       |> post("/api/holistic-mentorship/prompt-configurations", %{
         "prompt_version" => "profile-preflight-v1",
         "template_text" => "abc",
         "template_hash" => @template_hash,
-        "model_id" => "openai/gpt-5-mini"
+        "model_id" => model_id
       })
       |> json_response(200)
 
@@ -335,6 +422,48 @@ defmodule DbserviceWeb.HolisticMentorshipProfilePreflightControllerTest do
 
   defp rejected(record_ref, reason_code) do
     %{"record_ref" => record_ref, "reason_code" => reason_code}
+  end
+
+  defp insert_journey!(student_id, source) do
+    [[journey_id]] =
+      Repo.query!(
+        """
+        INSERT INTO holistic_mentorship_profile_journeys
+          (student_id, form_id, af_session_id, entry_grade)
+        VALUES ($1, $2, $3, $4)
+        RETURNING id
+        """,
+        [student_id, source["form_id"], source["af_session_id"], source["entry_grade"]]
+      ).rows
+
+    journey_id
+  end
+
+  defp insert_profile!(journey_id, configuration_id, answer_fingerprint, revision) do
+    [[profile_id]] =
+      Repo.query!(
+        """
+        INSERT INTO holistic_mentorship_student_profiles
+          (profile_journey_id, prompt_configuration_id, schema_fingerprint,
+           answer_fingerprint, warehouse_loaded_at, generated_at, revision,
+           last_successful_etl_run_id)
+        VALUES ($1, $2, 'schema-v1', $3, '2026-07-16 10:00:00',
+                '2026-07-16 10:05:00', $4, 'etl-run-1')
+        RETURNING id
+        """,
+        [journey_id, configuration_id, answer_fingerprint, revision]
+      ).rows
+
+    for position <- 1..5 do
+      Repo.query!(
+        """
+        INSERT INTO holistic_mentorship_student_profile_summaries
+          (student_profile_id, position, question_set_title, summary)
+        VALUES ($1, $2, $3, $4)
+        """,
+        [profile_id, position, "Question Set #{position}", "Summary #{position}"]
+      )
+    end
   end
 
   defp with_debug_log(operation) do

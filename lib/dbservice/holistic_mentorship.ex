@@ -191,14 +191,22 @@ defmodule Dbservice.HolisticMentorship do
          :ok <- user_exists(user_id),
          {:ok, student_id} <- student_id(user_id),
          :ok <- approved_profile_source(record),
+         {:ok, journey_id} <- matching_profile_journey(student_id, record),
          :ok <- prompt_configuration_exists(record["prompt_configuration_id"]),
          :ok <- eligible_student(student_id, user_id) do
+      {profile_state, profile_revision} =
+        profile_state(
+          journey_id,
+          record["prompt_configuration_id"],
+          record["answer_fingerprint"]
+        )
+
       %{
         record_ref: record_ref,
         student_id: student_id,
         prompt_configuration_id: record["prompt_configuration_id"],
-        profile_state: "missing",
-        profile_revision: nil
+        profile_state: profile_state,
+        profile_revision: profile_revision
       }
     else
       {:error, reason_code} -> rejected(record_ref, reason_code)
@@ -244,6 +252,50 @@ defmodule Dbservice.HolisticMentorship do
 
       true ->
         {:error, :form_not_approved}
+    end
+  end
+
+  defp matching_profile_journey(student_id, record) do
+    form_id = record["form_id"]
+    af_session_id = record["af_session_id"]
+    entry_grade = record["entry_grade"]
+
+    case Repo.query!(
+           """
+           SELECT id, form_id, af_session_id, entry_grade
+           FROM holistic_mentorship_profile_journeys
+           WHERE student_id = $1
+           """,
+           [student_id],
+           log: false
+         ).rows do
+      [] ->
+        {:ok, nil}
+
+      [[journey_id, ^form_id, ^af_session_id, ^entry_grade]] ->
+        {:ok, journey_id}
+
+      _ ->
+        {:error, :journey_source_conflict}
+    end
+  end
+
+  defp profile_state(nil, _prompt_configuration_id, _answer_fingerprint),
+    do: {"missing", nil}
+
+  defp profile_state(journey_id, prompt_configuration_id, answer_fingerprint) do
+    case Repo.query!(
+           """
+           SELECT answer_fingerprint, revision
+           FROM holistic_mentorship_student_profiles
+           WHERE profile_journey_id = $1 AND prompt_configuration_id = $2
+           """,
+           [journey_id, prompt_configuration_id],
+           log: false
+         ).rows do
+      [] -> {"missing", nil}
+      [[^answer_fingerprint, revision]] -> {"unchanged", revision}
+      [[_stored_answer_fingerprint, revision]] -> {"changed_answers", revision}
     end
   end
 
