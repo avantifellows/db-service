@@ -86,6 +86,407 @@ defmodule Dbservice.HolisticMentorship do
     end
   end
 
+  def publish_profile(params) do
+    with {:ok, fields} <- publication_fields(params) do
+      persist_profile_publication(fields)
+    end
+  rescue
+    Postgrex.Error -> {:error, :invalid_request}
+  end
+
+  defp publication_fields(
+         %{
+           "etl_run_id" => run_id,
+           "student_id" => student_id,
+           "source_user_id" => source_user_id,
+           "form_id" => form_id,
+           "af_session_id" => session_id,
+           "entry_grade" => grade,
+           "prompt_configuration_id" => configuration_id,
+           "schema_fingerprint" => schema_fingerprint,
+           "answer_fingerprint" => answer_fingerprint,
+           "warehouse_loaded_at" => warehouse_loaded_at,
+           "generated_at" => generated_at,
+           "expected_profile_revision" => expected_revision,
+           "force" => force,
+           "summaries" => summaries
+         } = params
+       ) do
+    request_key = params["regeneration_request_key"]
+
+    with {:ok, user_id} <- parse_source_user_id(source_user_id),
+         {:ok, warehouse_loaded_at} <- parse_timestamp(warehouse_loaded_at),
+         {:ok, generated_at} <- parse_timestamp(generated_at),
+         :ok <- valid_summaries(summaries),
+         fields = %{
+           run_id: run_id,
+           student_id: student_id,
+           user_id: user_id,
+           form_id: form_id,
+           session_id: session_id,
+           grade: grade,
+           configuration_id: configuration_id,
+           schema_fingerprint: schema_fingerprint,
+           answer_fingerprint: answer_fingerprint,
+           warehouse_loaded_at: warehouse_loaded_at,
+           generated_at: generated_at,
+           expected_revision: expected_revision,
+           force: force,
+           regeneration_request_key: request_key,
+           summaries: summaries
+         },
+         true <- valid_publication_fields?(fields) do
+      {:ok, fields}
+    else
+      _ -> {:error, :invalid_request}
+    end
+  end
+
+  defp publication_fields(_params), do: {:error, :invalid_request}
+
+  defp valid_publication_fields?(fields) do
+    Enum.all?([
+      positive_integer?(fields.student_id),
+      positive_integer?(fields.configuration_id),
+      bounded_string?(fields.run_id, 255),
+      bounded_string?(fields.schema_fingerprint, 255),
+      bounded_string?(fields.answer_fingerprint, 255),
+      is_nil(fields.expected_revision) or positive_integer?(fields.expected_revision),
+      valid_force?(fields.force, fields.regeneration_request_key),
+      NaiveDateTime.compare(fields.generated_at, fields.warehouse_loaded_at) != :lt
+    ])
+  end
+
+  defp valid_force?(false, nil), do: true
+  defp valid_force?(true, request_key), do: present_string?(request_key)
+  defp valid_force?(_force, _request_key), do: false
+
+  defp bounded_string?(value, maximum),
+    do: is_binary(value) and byte_size(value) in 1..maximum
+
+  defp parse_source_user_id(value) do
+    case Integer.parse(value) do
+      {id, ""} when id > 0 and id <= 2_147_483_647 -> {:ok, id}
+      _ -> {:error, :invalid_request}
+    end
+  rescue
+    ArgumentError -> {:error, :invalid_request}
+  end
+
+  defp parse_timestamp(value) when is_binary(value) do
+    case DateTime.from_iso8601(value) do
+      {:ok, datetime, _offset} -> {:ok, DateTime.to_naive(datetime)}
+      _ -> {:error, :invalid_request}
+    end
+  end
+
+  defp parse_timestamp(_value), do: {:error, :invalid_request}
+
+  defp valid_summaries(summaries) when is_list(summaries) and length(summaries) == 5 do
+    if Enum.with_index(summaries, 1)
+       |> Enum.all?(fn
+         {%{
+            "position" => position,
+            "question_set_title" => title,
+            "summary" => summary
+          }, position} ->
+           present_string?(String.trim(title)) and present_string?(String.trim(summary))
+
+         _ ->
+           false
+       end),
+       do: :ok,
+       else: {:error, :invalid_request}
+  rescue
+    FunctionClauseError -> {:error, :invalid_request}
+  end
+
+  defp valid_summaries(_summaries), do: {:error, :invalid_request}
+
+  defp publication_references(fields) do
+    with :ok <- approved_profile_source(publication_source(fields)),
+         :ok <- user_exists(fields.user_id),
+         {:ok, student_id} <- student_id(fields.user_id),
+         true <- student_id == fields.student_id,
+         :ok <- prompt_configuration_exists(fields.configuration_id),
+         :ok <- eligible_student(fields.student_id, fields.user_id) do
+      :ok
+    else
+      false -> {:error, :student_not_found}
+      error -> error
+    end
+  end
+
+  defp publication_source(fields) do
+    %{
+      "form_id" => fields.form_id,
+      "af_session_id" => fields.session_id,
+      "entry_grade" => fields.grade
+    }
+  end
+
+  defp persist_profile_publication(fields) do
+    Repo.transaction(fn ->
+      Repo.query!(
+        "SELECT pg_advisory_xact_lock($1, $2)",
+        [fields.student_id, 0],
+        log: false
+      )
+
+      Repo.query!("SELECT 1 FROM student WHERE id = $1 FOR UPDATE", [fields.student_id],
+        log: false
+      )
+
+      case publication_references(fields) do
+        :ok -> :ok
+        {:error, reason} -> Repo.rollback(reason)
+      end
+
+      journey_id = insert_profile_journey!(fields)
+
+      case generation_status_row(fields) do
+        [[_id, "completed", outcome]] ->
+          case current_profile(journey_id, fields.configuration_id) do
+            {_profile_id, _fingerprint, revision} ->
+              %{result: outcome, revision: revision}
+
+            nil ->
+              Repo.rollback(:invalid_request)
+          end
+
+        [[_id, "running", nil]] ->
+          publish_running_profile!(journey_id, fields)
+
+        _ ->
+          Repo.rollback(:invalid_request)
+      end
+    end)
+  end
+
+  defp publish_running_profile!(journey_id, fields) do
+    validate_regeneration_request!(fields)
+
+    case current_profile(journey_id, fields.configuration_id) do
+      nil when is_nil(fields.expected_revision) ->
+        profile_id = insert_profile!(journey_id, fields)
+        insert_profile_summaries!(profile_id, fields.summaries)
+        complete_generation_status!(fields, "published")
+        complete_regeneration_request!(fields)
+        %{result: "published", revision: 1}
+
+      {_profile_id, answer_fingerprint, revision}
+      when revision == fields.expected_revision and
+             answer_fingerprint == fields.answer_fingerprint and not fields.force ->
+        complete_generation_status!(fields, "unchanged")
+        complete_regeneration_request!(fields)
+        %{result: "unchanged", revision: revision}
+
+      {profile_id, _answer_fingerprint, revision} when revision == fields.expected_revision ->
+        revision = revision + 1
+        replace_profile!(profile_id, fields, revision)
+        complete_generation_status!(fields, "replaced")
+        complete_regeneration_request!(fields)
+        %{result: "replaced", revision: revision}
+
+      _ ->
+        Repo.rollback(:stale_profile_revision)
+    end
+  end
+
+  defp current_profile(journey_id, configuration_id) do
+    case Repo.query!(
+           """
+           SELECT id, answer_fingerprint, revision
+           FROM holistic_mentorship_student_profiles
+           WHERE profile_journey_id = $1 AND prompt_configuration_id = $2
+           FOR UPDATE
+           """,
+           [journey_id, configuration_id],
+           log: false
+         ).rows do
+      [[id, answer_fingerprint, revision]] -> {id, answer_fingerprint, revision}
+      [] -> nil
+    end
+  end
+
+  defp insert_profile!(journey_id, fields) do
+    [[profile_id]] =
+      Repo.query!(
+        """
+        INSERT INTO holistic_mentorship_student_profiles
+          (profile_journey_id, prompt_configuration_id, schema_fingerprint,
+           answer_fingerprint, warehouse_loaded_at, generated_at, revision,
+           last_successful_etl_run_id)
+        VALUES ($1, $2, $3, $4, $5, $6, 1, $7)
+        RETURNING id
+        """,
+        [
+          journey_id,
+          fields.configuration_id,
+          fields.schema_fingerprint,
+          fields.answer_fingerprint,
+          fields.warehouse_loaded_at,
+          fields.generated_at,
+          fields.run_id
+        ],
+        log: false
+      ).rows
+
+    profile_id
+  end
+
+  defp replace_profile!(profile_id, fields, revision) do
+    Repo.query!(
+      """
+      UPDATE holistic_mentorship_student_profiles
+      SET schema_fingerprint = $2, answer_fingerprint = $3, warehouse_loaded_at = $4,
+          generated_at = $5, revision = $6, last_successful_etl_run_id = $7,
+          updated_at = now()
+      WHERE id = $1
+      """,
+      [
+        profile_id,
+        fields.schema_fingerprint,
+        fields.answer_fingerprint,
+        fields.warehouse_loaded_at,
+        fields.generated_at,
+        revision,
+        fields.run_id
+      ],
+      log: false
+    )
+
+    Repo.query!(
+      "DELETE FROM holistic_mentorship_student_profile_summaries WHERE student_profile_id = $1",
+      [profile_id],
+      log: false
+    )
+
+    insert_profile_summaries!(profile_id, fields.summaries)
+  end
+
+  defp insert_profile_journey!(fields) do
+    case Repo.query!(
+           """
+           SELECT id, form_id, af_session_id, entry_grade
+           FROM holistic_mentorship_profile_journeys
+           WHERE student_id = $1
+           FOR UPDATE
+           """,
+           [fields.student_id],
+           log: false
+         ).rows do
+      [] ->
+        [[journey_id]] =
+          Repo.query!(
+            """
+            INSERT INTO holistic_mentorship_profile_journeys
+              (student_id, form_id, af_session_id, entry_grade)
+            VALUES ($1, $2, $3, $4)
+            RETURNING id
+            """,
+            [fields.student_id, fields.form_id, fields.session_id, fields.grade],
+            log: false
+          ).rows
+
+        journey_id
+
+      [[journey_id, form_id, session_id, grade]]
+      when form_id == fields.form_id and session_id == fields.session_id and grade == fields.grade ->
+        journey_id
+
+      _ ->
+        Repo.rollback(:journey_source_conflict)
+    end
+  end
+
+  defp validate_regeneration_request!(%{force: false}), do: :ok
+
+  defp validate_regeneration_request!(fields) do
+    case Repo.query!(
+           """
+           SELECT id
+           FROM holistic_mentorship_regeneration_requests
+           WHERE request_key = $1 AND student_id = $2 AND prompt_configuration_id = $3
+             AND force
+             AND ((state = 'queued' AND etl_run_id IS NULL)
+                  OR (state = 'running' AND etl_run_id = $4))
+           FOR UPDATE
+           """,
+           [
+             fields.regeneration_request_key,
+             fields.student_id,
+             fields.configuration_id,
+             fields.run_id
+           ],
+           log: false
+         ).rows do
+      [[_id]] -> :ok
+      [] -> Repo.rollback(:invalid_request)
+    end
+  end
+
+  defp generation_status_row(fields) do
+    Repo.query!(
+      """
+      SELECT id, state, completed_outcome
+      FROM holistic_mentorship_profile_generation_statuses
+      WHERE etl_run_id = $1 AND student_id = $2 AND form_id = $3
+        AND af_session_id = $4 AND entry_grade = $5 AND prompt_configuration_id = $6
+      FOR UPDATE
+      """,
+      [
+        fields.run_id,
+        fields.student_id,
+        fields.form_id,
+        fields.session_id,
+        fields.grade,
+        fields.configuration_id
+      ],
+      log: false
+    ).rows
+  end
+
+  defp insert_profile_summaries!(profile_id, summaries) do
+    Enum.each(summaries, fn summary ->
+      Repo.query!(
+        """
+        INSERT INTO holistic_mentorship_student_profile_summaries
+          (student_profile_id, position, question_set_title, summary)
+        VALUES ($1, $2, $3, $4)
+        """,
+        [profile_id, summary["position"], summary["question_set_title"], summary["summary"]],
+        log: false
+      )
+    end)
+  end
+
+  defp complete_generation_status!(fields, outcome) do
+    Repo.query!(
+      """
+      UPDATE holistic_mentorship_profile_generation_statuses
+      SET state = 'completed', completed_outcome = $2, updated_at = now()
+      WHERE id = $1
+      """,
+      [generation_status_row(fields) |> hd() |> hd(), outcome],
+      log: false
+    )
+  end
+
+  defp complete_regeneration_request!(%{force: false}), do: :ok
+
+  defp complete_regeneration_request!(fields) do
+    Repo.query!(
+      """
+      UPDATE holistic_mentorship_regeneration_requests
+      SET state = 'completed', etl_run_id = $2, updated_at = now()
+      WHERE request_key = $1
+      """,
+      [fields.regeneration_request_key, fields.run_id],
+      log: false
+    )
+  end
+
   def get_regeneration_request(request_key) when is_binary(request_key) do
     case Repo.query!(
            """

@@ -86,6 +86,13 @@ defmodule DbserviceWeb.Router do
       log: false
     )
 
+    post(
+      "/holistic-mentorship/profiles/publish",
+      HolisticMentorshipProfilePublishController,
+      :create,
+      log: false
+    )
+
     get(
       "/holistic-mentorship/regeneration-requests/:request_key",
       HolisticMentorshipRegenerationRequestController,
