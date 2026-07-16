@@ -62,6 +62,12 @@ Complex operations that span multiple domains:
 - `group_update_service` - Group synchronization
 - `student_update_service` - Bulk student operations
 
+Holistic Mentorship eligibility cleanup is transaction-coupled to canonical Student
+and enrollment mutations. Route Student status/Grade changes through
+`Dbservice.Users.update_student/2` and current School/Program changes through
+`Dbservice.EnrollmentRecords`; do not update those records directly from controllers
+or import processors.
+
 ### Web Layer (`lib/dbservice_web/`)
 
 - **Controllers** (`/controllers`): 53 controllers handling REST API endpoints
