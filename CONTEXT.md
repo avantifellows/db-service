@@ -52,6 +52,12 @@ occurrence time. The timeline lets LMS derive which Phase was Active when a
 Mentor-Mentee Mapping began.
 _Avoid_: persisted Active Phase, progress snapshot
 
+**Phase Mutation Audit**:
+A content-free actor/time record for Phase creation, definition edits, reorder,
+or deletion. It stores no Guidance or Question snapshot and survives deletion
+of a never-opened Phase.
+_Avoid_: definition history, content snapshot
+
 **Mentor-Mentee Mapping**:
 A time-bounded assignment of one Student to one Mentor User at a School for a
 Program and Academic Year. Ended rows remain as history.
@@ -108,6 +114,8 @@ _Avoid_: best-effort identity matching
   Grade 12 placeholders are derived rather than stored.
 - Open/Locked transition history is retained with actor/time so past Active Phase
   state can be reconstructed without storing an Active or progress snapshot.
+- Phase definition mutations retain content-free actor/time audit without storing
+  prior Guidance or Question versions.
 - Raw questionnaire answers and rendered per-Student prompts are not persisted.
 - Profile publication is atomic per Student and revalidates identity and scope.
 - Student eligibility mutations end affected active Mappings atomically.

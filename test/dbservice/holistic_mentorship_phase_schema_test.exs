@@ -40,6 +40,16 @@ defmodule Dbservice.HolisticMentorshipPhaseSchemaTest do
       "phase_id",
       "to_state",
       "updated_at"
+    ],
+    "holistic_mentorship_phase_mutation_audits" => [
+      "action",
+      "actor_user_id",
+      "id",
+      "inserted_at",
+      "occurred_at",
+      "phase_id",
+      "phase_plan_id",
+      "updated_at"
     ]
   }
 
@@ -82,6 +92,16 @@ defmodule Dbservice.HolisticMentorshipPhaseSchemaTest do
       "phase_id" => "bigint",
       "to_state" => "character varying",
       "updated_at" => "timestamp without time zone"
+    },
+    "holistic_mentorship_phase_mutation_audits" => %{
+      "action" => "character varying",
+      "actor_user_id" => "bigint",
+      "id" => "bigint",
+      "inserted_at" => "timestamp without time zone",
+      "occurred_at" => "timestamp without time zone",
+      "phase_id" => "bigint",
+      "phase_plan_id" => "bigint",
+      "updated_at" => "timestamp without time zone"
     }
   }
 
@@ -95,6 +115,10 @@ defmodule Dbservice.HolisticMentorshipPhaseSchemaTest do
     "holistic_mentorship_phase_questions" => ["hm_phase_questions_position_check"],
     "holistic_mentorship_phase_state_transitions" => [
       "hm_phase_state_transitions_states_check"
+    ],
+    "holistic_mentorship_phase_mutation_audits" => [
+      "hm_phase_mutation_audits_action_check",
+      "hm_phase_mutation_audits_phase_id_check"
     ]
   }
 
@@ -139,6 +163,11 @@ defmodule Dbservice.HolisticMentorshipPhaseSchemaTest do
                {"phase_id", "holistic_mentorship_phases", "NO ACTION"}
              ]
 
+      assert foreign_keys("holistic_mentorship_phase_mutation_audits") == [
+               {"actor_user_id", "user", "NO ACTION"},
+               {"phase_plan_id", "holistic_mentorship_phase_plans", "NO ACTION"}
+             ]
+
       for table <- Map.keys(@expected_columns) do
         assert_required(table, ["id", "inserted_at", "updated_at"])
       end
@@ -161,6 +190,14 @@ defmodule Dbservice.HolisticMentorshipPhaseSchemaTest do
         "phase_id",
         "from_state",
         "to_state",
+        "actor_user_id",
+        "occurred_at"
+      ])
+
+      assert_required("holistic_mentorship_phase_mutation_audits", [
+        "phase_plan_id",
+        "phase_id",
+        "action",
         "actor_user_id",
         "occurred_at"
       ])
@@ -189,6 +226,13 @@ defmodule Dbservice.HolisticMentorshipPhaseSchemaTest do
                "hm_phase_state_transitions_actor_idx",
                "hm_phase_state_transitions_timeline_idx",
                "holistic_mentorship_phase_state_transitions_pkey"
+             ]
+
+      assert index_names("holistic_mentorship_phase_mutation_audits") == [
+               "hm_phase_mutation_audits_actor_idx",
+               "hm_phase_mutation_audits_plan_idx",
+               "hm_phase_mutation_audits_timeline_idx",
+               "holistic_mentorship_phase_mutation_audits_pkey"
              ]
     end
 
@@ -349,6 +393,50 @@ defmodule Dbservice.HolisticMentorshipPhaseSchemaTest do
           )
         end)
       end
+    end
+
+    test "retains content-free mutation audit after a never-opened Phase is deleted" do
+      %{plan_id: plan_id, grade_11_id: grade_11_id} = insert_scope()
+      phase_id = insert_phase(plan_id, grade_11_id, 1, "locked")
+      actor = Dbservice.UsersFixtures.user_fixture(%{email: "hm-phase-audit@test.local"})
+
+      Repo.query!(
+        "INSERT INTO holistic_mentorship_phase_questions (phase_id, text, position) VALUES ($1, 'Question', 1)",
+        [phase_id]
+      )
+
+      Repo.query!(
+        """
+        INSERT INTO holistic_mentorship_phase_mutation_audits
+          (phase_plan_id, phase_id, action, actor_user_id, occurred_at)
+        VALUES ($1, $2, 'created', $3, now())
+        """,
+        [plan_id, phase_id, actor.id]
+      )
+
+      Repo.transaction(fn ->
+        Repo.query!("DELETE FROM holistic_mentorship_phase_questions WHERE phase_id = $1", [
+          phase_id
+        ])
+
+        Repo.query!("DELETE FROM holistic_mentorship_phases WHERE id = $1", [phase_id])
+      end)
+
+      assert Repo.query!(
+               "SELECT action, actor_user_id FROM holistic_mentorship_phase_mutation_audits WHERE phase_id = $1",
+               [phase_id]
+             ).rows == [["created", actor.id]]
+
+      assert_constraint_violation(fn ->
+        Repo.query(
+          """
+          INSERT INTO holistic_mentorship_phase_mutation_audits
+            (phase_plan_id, phase_id, action, actor_user_id, occurred_at)
+          VALUES ($1, 0, 'unknown', $2, now())
+          """,
+          [plan_id, actor.id]
+        )
+      end)
     end
 
     test "defers Question cardinality until commit" do
