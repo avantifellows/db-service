@@ -36,7 +36,12 @@ defmodule Dbservice.Services.DropoutService do
     if student.status == "dropout" do
       {:error, "Student is already marked as dropout"}
     else
-      create_dropout_enrollment(student, start_date, academic_year)
+      Repo.transaction(fn ->
+        case create_dropout_enrollment(student, start_date, academic_year) do
+          {:ok, updated_student} -> updated_student
+          {:error, reason} -> Repo.rollback(reason)
+        end
+      end)
     end
   end
 

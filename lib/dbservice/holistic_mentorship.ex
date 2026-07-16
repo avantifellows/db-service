@@ -13,21 +13,22 @@ defmodule Dbservice.HolisticMentorship do
   }
 
   def end_active_mappings(student_id, reason) when reason in @eligibility_end_reasons do
-    ended_at = NaiveDateTime.utc_now() |> NaiveDateTime.truncate(:second)
+    reason = Atom.to_string(reason)
 
     {count, _} =
       from(mapping in @mapping_table,
-        where: field(mapping, :student_id) == ^student_id and is_nil(field(mapping, :ended_at))
-      )
-      |> Repo.update_all(
-        set: [
-          ended_at: ended_at,
-          ended_by_user_id: nil,
-          end_source: "db_service_student_eligibility",
-          end_reason: Atom.to_string(reason),
-          updated_at: ended_at
+        where: field(mapping, :student_id) == ^student_id and is_nil(field(mapping, :ended_at)),
+        update: [
+          set: [
+            ended_at: fragment("timezone('UTC', now())"),
+            ended_by_user_id: nil,
+            end_source: "db_service_student_eligibility",
+            end_reason: ^reason,
+            updated_at: fragment("timezone('UTC', now())")
+          ]
         ]
       )
+      |> Repo.update_all([])
 
     {:ok, count}
   end

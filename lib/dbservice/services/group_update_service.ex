@@ -24,6 +24,15 @@ defmodule Dbservice.Services.GroupUpdateService do
   - `{:error, reason}` on failure
   """
   def update_user_group_by_type(params) do
+    Repo.transaction(fn ->
+      case do_update_user_group_by_type(params) do
+        {:ok, updated_group_user} -> updated_group_user
+        {:error, reason} -> Repo.rollback(reason)
+      end
+    end)
+  end
+
+  defp do_update_user_group_by_type(params) do
     user_id = params["user_id"]
 
     with {:ok, type} <- fetch_type(params),

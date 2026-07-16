@@ -186,6 +186,7 @@ defmodule Dbservice.DataImport.GroupUpdateProcessorTest do
     test "successfully processes grade update with valid data" do
       # Create fixtures
       {user, student} = student_fixture(%{student_id: "STUDENT001"})
+      mapping_id = insert_active_mapping(student.id)
       grade = grade_fixture(%{number: 9998})
 
       # Get existing group for the grade
@@ -217,6 +218,11 @@ defmodule Dbservice.DataImport.GroupUpdateProcessorTest do
       result = GroupUpdateProcessor.process_grade_update(record)
 
       assert {:ok, "Grade update processed successfully"} = result
+
+      assert Repo.query!(
+               "SELECT end_reason FROM holistic_mentorship_mentor_mentee_mappings WHERE id = $1",
+               [mapping_id]
+             ).rows == [["student_grade_changed"]]
     end
 
     test "returns error when student is not found" do
@@ -333,5 +339,35 @@ defmodule Dbservice.DataImport.GroupUpdateProcessorTest do
 
       assert {:error, "Group user or enrollment record not found"} = result
     end
+  end
+
+  defp insert_active_mapping(student_id) do
+    mentor = user_fixture()
+    school = school_fixture()
+
+    [[product_id]] =
+      Repo.query!(
+        "INSERT INTO product (name, inserted_at, updated_at) VALUES ('CSV Cleanup', now(), now()) RETURNING id"
+      ).rows
+
+    [[program_id]] =
+      Repo.query!(
+        "INSERT INTO program (name, product_id, inserted_at, updated_at) VALUES ('CSV Cleanup', $1, now(), now()) RETURNING id",
+        [product_id]
+      ).rows
+
+    [[mapping_id]] =
+      Repo.query!(
+        """
+        INSERT INTO holistic_mentorship_mentor_mentee_mappings
+          (student_id, mentor_user_id, school_id, program_id, academic_year, started_at,
+           assignment_source)
+        VALUES ($1, $2, $3, $4, '2026-27', timezone('UTC', now()), 'af_lms')
+        RETURNING id
+        """,
+        [student_id, mentor.id, school.id, program_id]
+      ).rows
+
+    mapping_id
   end
 end

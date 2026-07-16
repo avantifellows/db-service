@@ -127,6 +127,22 @@ defmodule DbserviceWeb.StudentControllerTest do
       conn = put(conn, ~p"/api/student/#{student.id}", @invalid_attrs)
       assert json_response(conn, 422)["errors"] != %{}
     end
+
+    test "ends an active Holistic Mapping when status becomes dropout", %{
+      conn: conn,
+      student: student
+    } do
+      mapping_id = insert_active_mapping(student.id)
+
+      conn = put(conn, ~p"/api/student/#{student.id}", %{status: "dropout"})
+
+      assert json_response(conn, 200)["status"] == "dropout"
+
+      assert Dbservice.Repo.query!(
+               "SELECT end_reason FROM holistic_mentorship_mentor_mentee_mappings WHERE id = $1",
+               [mapping_id]
+             ).rows == [["student_dropout"]]
+    end
   end
 
   describe "delete student" do
@@ -145,5 +161,39 @@ defmodule DbserviceWeb.StudentControllerTest do
   defp create_student(_) do
     {_user, student} = student_fixture()
     %{student: student}
+  end
+
+  defp insert_active_mapping(student_id) do
+    mentor = user_fixture()
+
+    [[school_id]] =
+      Dbservice.Repo.query!(
+        "INSERT INTO school (inserted_at, updated_at) VALUES (now(), now()) RETURNING id"
+      ).rows
+
+    [[product_id]] =
+      Dbservice.Repo.query!(
+        "INSERT INTO product (name, inserted_at, updated_at) VALUES ('HTTP Cleanup', now(), now()) RETURNING id"
+      ).rows
+
+    [[program_id]] =
+      Dbservice.Repo.query!(
+        "INSERT INTO program (name, product_id, inserted_at, updated_at) VALUES ('HTTP Cleanup', $1, now(), now()) RETURNING id",
+        [product_id]
+      ).rows
+
+    [[mapping_id]] =
+      Dbservice.Repo.query!(
+        """
+        INSERT INTO holistic_mentorship_mentor_mentee_mappings
+          (student_id, mentor_user_id, school_id, program_id, academic_year, started_at,
+           assignment_source)
+        VALUES ($1, $2, $3, $4, '2026-27', timezone('UTC', now()), 'af_lms')
+        RETURNING id
+        """,
+        [student_id, mentor.id, school_id, program_id]
+      ).rows
+
+    mapping_id
   end
 end

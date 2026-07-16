@@ -256,9 +256,12 @@ defmodule Dbservice.Users do
 
   """
   def update_student(%Student{} = student, attrs) do
-    student
-    |> Student.changeset(attrs)
-    |> Repo.update()
+    Repo.transaction(fn ->
+      case update_student_in_transaction(student, attrs) do
+        {:ok, updated_student} -> updated_student
+        {:error, reason} -> Repo.rollback(reason)
+      end
+    end)
   end
 
   @doc """
@@ -312,16 +315,45 @@ defmodule Dbservice.Users do
 
   """
   def update_student_with_user(student, user, attrs \\ %{}) do
-    alias Dbservice.Users
+    Repo.transaction(fn ->
+      with {:ok, %User{} = user} <- update_user(user, attrs),
+           {:ok, %Student{} = student} <-
+             update_student_in_transaction(
+               student,
+               Map.merge(stringify_keys(attrs), %{"user_id" => user.id})
+             ) do
+        student
+      else
+        {:error, reason} -> Repo.rollback(reason)
+      end
+    end)
+  end
 
-    with {:ok, %User{} = user} <- Users.update_user(user, attrs),
-         {:ok, %Student{} = student} <-
-           Users.update_student(
-             student,
-             Map.merge(stringify_keys(attrs), %{"user_id" => user.id})
-           ) do
-      {:ok, student}
+  defp update_student_in_transaction(student, attrs) do
+    student = Repo.get!(Student, student.id, lock: "FOR UPDATE")
+
+    with {:ok, updated_student} <- Repo.update(Student.changeset(student, attrs)),
+         {:ok, _count} <- cleanup_holistic_mappings(student, updated_student) do
+      {:ok, updated_student}
     end
+  end
+
+  defp cleanup_holistic_mappings(student, updated_student) do
+    reason =
+      cond do
+        student.status != updated_student.status and updated_student.status == "dropout" ->
+          :student_dropout
+
+        student.grade_id != updated_student.grade_id ->
+          :student_grade_changed
+
+        true ->
+          nil
+      end
+
+    if reason,
+      do: Dbservice.HolisticMentorship.end_active_mappings(student.id, reason),
+      else: {:ok, 0}
   end
 
   @doc """
