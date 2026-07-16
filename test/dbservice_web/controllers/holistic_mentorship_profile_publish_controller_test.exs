@@ -209,6 +209,48 @@ defmodule DbserviceWeb.HolisticMentorshipProfilePublishControllerTest do
            """).rows == [["completed", "running-force-run"]]
   end
 
+  test "a queued force request follows the request state machine", %{conn: conn} do
+    {user, student} = eligible_student()
+    configuration_id = insert_prompt_configuration!()
+    insert_running_status!(student.id, configuration_id, "queued-force-base")
+    publish(conn, publish_params(user.id, student.id, configuration_id, "queued-force-base"))
+
+    insert_running_status!(student.id, configuration_id, "queued-force-run")
+    insert_regeneration_request!("queued-force-request", user.id, student.id, configuration_id)
+
+    Repo.query!("""
+    CREATE FUNCTION reject_queued_to_completed() RETURNS trigger AS $$
+    BEGIN
+      IF OLD.request_key = 'queued-force-request'
+         AND OLD.state = 'queued' AND NEW.state = 'completed' THEN
+        RAISE EXCEPTION 'invalid regeneration transition';
+      END IF;
+      RETURN NEW;
+    END;
+    $$ LANGUAGE plpgsql
+    """)
+
+    Repo.query!("""
+    CREATE TRIGGER reject_queued_to_completed
+    BEFORE UPDATE ON holistic_mentorship_regeneration_requests
+    FOR EACH ROW EXECUTE FUNCTION reject_queued_to_completed()
+    """)
+
+    params =
+      publish_params(user.id, student.id, configuration_id, "queued-force-run", %{
+        "expected_profile_revision" => 1,
+        "force" => true,
+        "regeneration_request_key" => "queued-force-request"
+      })
+
+    assert publish(conn, params) == %{"result" => "replaced", "revision" => 2}
+
+    assert Repo.query!("""
+           SELECT state, etl_run_id FROM holistic_mentorship_regeneration_requests
+           WHERE request_key = 'queued-force-request'
+           """).rows == [["completed", "queued-force-run"]]
+  end
+
   test "repeating a completed force publication returns its prior result", %{conn: conn} do
     {user, student} = eligible_student()
     configuration_id = insert_prompt_configuration!()

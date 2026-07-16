@@ -313,11 +313,11 @@ defmodule Dbservice.HolisticMentorship do
            log: false
          ).rows do
       [[id, _student_id, _configuration_id, true, "queued", nil]] ->
-        %{request_id: id, request_state: :active}
+        %{request_id: id, request_state: :queued}
 
       [[id, _student_id, _configuration_id, true, "running", run_id]]
       when run_id == fields.run_id ->
-        %{request_id: id, request_state: :active}
+        %{request_id: id, request_state: :running}
 
       [[id, _student_id, _configuration_id, true, "completed", run_id]]
       when run_id == fields.run_id ->
@@ -490,18 +490,11 @@ defmodule Dbservice.HolisticMentorship do
     complete_generation_status!(status_id, outcome, revision)
 
     if fields.request_id do
-      case Repo.query!(
-             """
-             UPDATE holistic_mentorship_regeneration_requests
-             SET state = 'completed', etl_run_id = $2, updated_at = now()
-             WHERE id = $1
-             """,
-             [fields.request_id, fields.run_id],
-             log: false
-           ).num_rows do
-        1 -> :ok
-        _ -> Repo.rollback(:invalid_request)
+      if fields.request_state == :queued do
+        update_regeneration_request!(fields.request_id, "running", fields.run_id, nil, nil)
       end
+
+      update_regeneration_request!(fields.request_id, "completed", fields.run_id, nil, nil)
     end
   end
 
@@ -621,20 +614,23 @@ defmodule Dbservice.HolisticMentorship do
     do: Repo.rollback(:invalid_transition)
 
   defp update_regeneration_request!(id, state, run_id, error_code, error_message) do
-    [[state, run_id, error_code, error_message]] =
-      Repo.query!(
-        """
-        UPDATE holistic_mentorship_regeneration_requests
-        SET state = $2, etl_run_id = $3, error_code = $4, error_message = $5,
-            updated_at = now()
-        WHERE id = $1
-        RETURNING state, etl_run_id, error_code, error_message
-        """,
-        [id, state, run_id, error_code, error_message],
-        log: false
-      ).rows
+    case Repo.query!(
+           """
+           UPDATE holistic_mentorship_regeneration_requests
+           SET state = $2, etl_run_id = $3, error_code = $4, error_message = $5,
+               updated_at = now()
+           WHERE id = $1
+           RETURNING state, etl_run_id, error_code, error_message
+           """,
+           [id, state, run_id, error_code, error_message],
+           log: false
+         ).rows do
+      [[state, run_id, error_code, error_message]] ->
+        regeneration_status_response(state, run_id, error_code, error_message)
 
-    regeneration_status_response(state, run_id, error_code, error_message)
+      _ ->
+        Repo.rollback(:invalid_request)
+    end
   end
 
   defp regeneration_status_response(state, run_id, error_code, error_message) do
