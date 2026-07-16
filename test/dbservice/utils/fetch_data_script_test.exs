@@ -76,7 +76,7 @@ defmodule Dbservice.Utils.FetchDataScriptTest do
     assert {output, status} = run_script(context, "y")
     assert status != 0
     assert output =~ "Invalid FETCH_ENVIRONMENT 'invalid'"
-    refute File.exists?(Path.join(context.capture, "pg_dump.args"))
+    refute_database_commands(context)
   end
 
   test "invalid target is rejected before database commands run", context do
@@ -85,7 +85,7 @@ defmodule Dbservice.Utils.FetchDataScriptTest do
     assert {output, status} = run_script(context, "y")
     assert status != 0
     assert output =~ "Invalid TARGET_ENVIRONMENT 'invalid'"
-    refute File.exists?(Path.join(context.capture, "pg_dump.args"))
+    refute_database_commands(context)
   end
 
   test "production cannot be used as a sync target", context do
@@ -94,7 +94,7 @@ defmodule Dbservice.Utils.FetchDataScriptTest do
     assert {output, status} = run_script(context, "y")
     assert status != 0
     assert output =~ "Production cannot be used as a sync target"
-    refute File.exists?(Path.join(context.capture, "pg_dump.args"))
+    refute_database_commands(context)
   end
 
   defp run_script(context, confirmation) do
@@ -114,6 +114,11 @@ defmodule Dbservice.Utils.FetchDataScriptTest do
     |> Path.join(file)
     |> File.read!()
     |> String.split("\n", trim: true)
+  end
+
+  defp refute_database_commands(context) do
+    refute File.exists?(Path.join(context.capture, "pg_dump.args"))
+    refute File.exists?(Path.join(context.capture, "psql.args"))
   end
 
   defp set_environments(context, source, target) do
