@@ -33,11 +33,66 @@ defmodule Dbservice.HolisticMentorshipPhaseSchemaTest do
     ]
   }
 
+  @expected_column_types %{
+    "holistic_mentorship_phase_plans" => %{
+      "academic_year" => "character varying",
+      "id" => "bigint",
+      "inserted_at" => "timestamp without time zone",
+      "program_id" => "bigint",
+      "updated_at" => "timestamp without time zone"
+    },
+    "holistic_mentorship_phases" => %{
+      "frozen_at" => "timestamp without time zone",
+      "frozen_by_user_id" => "bigint",
+      "grade_id" => "bigint",
+      "guidance_markdown" => "text",
+      "id" => "bigint",
+      "inserted_at" => "timestamp without time zone",
+      "phase_plan_id" => "bigint",
+      "position" => "integer",
+      "revision" => "integer",
+      "state" => "character varying",
+      "title" => "character varying",
+      "updated_at" => "timestamp without time zone"
+    },
+    "holistic_mentorship_phase_questions" => %{
+      "id" => "bigint",
+      "inserted_at" => "timestamp without time zone",
+      "phase_id" => "bigint",
+      "position" => "integer",
+      "text" => "text",
+      "updated_at" => "timestamp without time zone"
+    }
+  }
+
+  @expected_checks %{
+    "holistic_mentorship_phase_plans" => [],
+    "holistic_mentorship_phases" => [
+      "hm_phases_position_check",
+      "hm_phases_revision_check",
+      "hm_phases_state_check"
+    ],
+    "holistic_mentorship_phase_questions" => ["hm_phase_questions_position_check"]
+  }
+
   describe "Holistic Mentorship Phase Plan schema" do
     test "creates only the required Phase Plan tables and columns" do
       for {table, expected_columns} <- @expected_columns do
         assert column_names(table) == expected_columns
+        assert column_types(table) == @expected_column_types[table]
+        assert check_names(table) == @expected_checks[table]
       end
+    end
+
+    test "uses deferred Question-cardinality constraint triggers" do
+      assert trigger_properties("holistic_mentorship_phases") == [
+               {"hm_phases_grade_check", false, false},
+               {"hm_phases_question_count", true, true}
+             ]
+
+      assert trigger_properties("holistic_mentorship_phase_questions") == [
+               {"hm_phase_questions_count", true, true}
+             ]
     end
 
     test "uses restrictive canonical relationships, timestamps, and lookup indexes" do
@@ -245,6 +300,52 @@ defmodule Dbservice.HolisticMentorshipPhaseSchemaTest do
     |> Enum.map(fn [name] -> name end)
   end
 
+  defp column_types(table) do
+    Repo.query!(
+      """
+      SELECT column_name, data_type
+      FROM information_schema.columns
+      WHERE table_schema = 'public' AND table_name = $1
+      """,
+      [table]
+    ).rows
+    |> Map.new(fn [name, type] -> {name, type} end)
+  end
+
+  defp check_names(table) do
+    Repo.query!(
+      """
+      SELECT constraint_record.conname
+      FROM pg_constraint AS constraint_record
+      JOIN pg_class AS relation ON relation.oid = constraint_record.conrelid
+      JOIN pg_namespace AS namespace ON namespace.oid = relation.relnamespace
+      WHERE namespace.nspname = 'public'
+        AND relation.relname = $1
+        AND constraint_record.contype = 'c'
+      ORDER BY constraint_record.conname
+      """,
+      [table]
+    ).rows
+    |> Enum.map(fn [name] -> name end)
+  end
+
+  defp trigger_properties(table) do
+    Repo.query!(
+      """
+      SELECT trigger.tgname, trigger.tgdeferrable, trigger.tginitdeferred
+      FROM pg_trigger AS trigger
+      JOIN pg_class AS relation ON relation.oid = trigger.tgrelid
+      JOIN pg_namespace AS namespace ON namespace.oid = relation.relnamespace
+      WHERE namespace.nspname = 'public' AND relation.relname = $1 AND NOT trigger.tgisinternal
+      ORDER BY trigger.tgname
+      """,
+      [table]
+    ).rows
+    |> Enum.map(fn [name, deferrable, initially_deferred] ->
+      {name, deferrable, initially_deferred}
+    end)
+  end
+
   defp assert_required(table, expected) do
     nullable =
       Repo.query!(
@@ -299,21 +400,8 @@ defmodule Dbservice.HolisticMentorshipPhaseSchemaTest do
   end
 
   defp insert_scope do
-    [[product_id]] =
-      Repo.query!(
-        "INSERT INTO product (name, inserted_at, updated_at) VALUES ('HM test', now(), now()) RETURNING id"
-      ).rows
-
-    [[program_id]] =
-      Repo.query!(
-        "INSERT INTO program (name, product_id, inserted_at, updated_at) VALUES ('HM test', $1, now(), now()) RETURNING id",
-        [product_id]
-      ).rows
-
-    [[grade_11_id]] =
-      Repo.query!(
-        "INSERT INTO grade (number, inserted_at, updated_at) VALUES (11, now(), now()) RETURNING id"
-      ).rows
+    %{program_id: program_id, grade_id: grade_11_id} =
+      canonical = insert_committed_canonical_scope("HM test")
 
     [[grade_10_id]] =
       Repo.query!(
@@ -330,12 +418,11 @@ defmodule Dbservice.HolisticMentorshipPhaseSchemaTest do
         [program_id]
       ).rows
 
-    %{
+    Map.merge(canonical, %{
       plan_id: plan_id,
-      program_id: program_id,
       grade_11_id: grade_11_id,
       grade_10_id: grade_10_id
-    }
+    })
   end
 
   defp insert_phase(plan_id, grade_id, position, state \\ "open") do
@@ -364,16 +451,17 @@ defmodule Dbservice.HolisticMentorshipPhaseSchemaTest do
     assert code in [:check_violation, :foreign_key_violation, :raise_exception, :unique_violation]
   end
 
-  defp insert_committed_canonical_scope do
+  defp insert_committed_canonical_scope(label \\ "HM cardinality") do
     [[product_id]] =
       Repo.query!(
-        "INSERT INTO product (name, inserted_at, updated_at) VALUES ('HM cardinality', now(), now()) RETURNING id"
+        "INSERT INTO product (name, inserted_at, updated_at) VALUES ($1, now(), now()) RETURNING id",
+        [label]
       ).rows
 
     [[program_id]] =
       Repo.query!(
-        "INSERT INTO program (name, product_id, inserted_at, updated_at) VALUES ('HM cardinality', $1, now(), now()) RETURNING id",
-        [product_id]
+        "INSERT INTO program (name, product_id, inserted_at, updated_at) VALUES ($1, $2, now(), now()) RETURNING id",
+        [label, product_id]
       ).rows
 
     [[grade_id]] =
