@@ -60,6 +60,18 @@ defmodule DbserviceWeb.Router do
     get("/health", HealthController, :index)
     get("/health/ready", HealthController, :ready)
 
+    post(
+      "/holistic-mentorship/prompt-configurations",
+      HolisticMentorshipPromptConfigurationController,
+      :create
+    )
+
+    post(
+      "/holistic-mentorship/prompt-configurations/:id/activate",
+      HolisticMentorshipPromptConfigurationController,
+      :activate
+    )
+
     resources("/auth-group", AuthGroupController, except: [:new, :edit])
     post("/group/:id/update-users", GroupController, :update_users)
     post("/group/:id/update-sessions", GroupController, :update_sessions)
