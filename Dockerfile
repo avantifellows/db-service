@@ -80,7 +80,9 @@ COPY --from=build --chown=app:app /app/_build/prod/rel/dbservice ./
 
 USER app
 
-EXPOSE 4000
+# Matches the ECS task/container port (PORT=8080 is injected at runtime). Keep
+# in sync with terraform var.app_port so the image metadata isn't misleading.
+EXPOSE 8080
 
 # bin/dbservice start invokes rel/env.sh.eex first, which exports
 # PHX_SERVER=true so config/runtime.exs flips Endpoint server: true.

@@ -45,12 +45,20 @@ defmodule DbserviceWeb.Router do
     post("/imports/program", ImportController, :create_program_import)
     post("/imports/batch", ImportController, :create_batch_import)
     post("/imports/school", ImportController, :create_school_import)
+    post("/imports/school_deletion", ImportController, :create_school_deletion_import)
+
+    post(
+      "/imports/batch_id_correction",
+      ImportController,
+      :create_batch_id_correction_import
+    )
   end
 
   scope "/api", DbserviceWeb do
     pipe_through(:api)
 
     get("/health", HealthController, :index)
+    get("/health/ready", HealthController, :ready)
 
     resources("/auth-group", AuthGroupController, except: [:new, :edit])
     post("/group/:id/update-users", GroupController, :update_users)

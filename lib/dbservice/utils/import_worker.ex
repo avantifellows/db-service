@@ -88,11 +88,13 @@ defmodule Dbservice.DataImport.ImportWorker do
       "program_addition" => &process_program_addition_record/1,
       "batch_addition" => &process_batch_addition_record/1,
       "school_addition" => &process_school_addition_record/1,
+      "school_deletion" => &process_school_deletion_record/1,
       "student" => &process_student_record/1,
       "student_update" => &process_student_update_record/1,
       "batch_movement" => &process_batch_movement_record/1,
       "alumni_addition" => &process_alumni_record/1,
       "teacher_batch_assignment" => &process_teacher_batch_assignment_record/1,
+      "batch_id_correction" => &process_batch_id_correction_record/1,
       "update_incorrect_batch_id_to_correct_batch_id" => &process_batch_id_update_record/1,
       "update_incorrect_school_to_correct_school" => &process_school_update_record/1,
       "update_incorrect_grade_to_correct_grade" => &process_grade_update_record/1,
@@ -1387,6 +1389,8 @@ defmodule Dbservice.DataImport.ImportWorker do
     |> maybe_put_school("state", record["school_state"] |> trim_str())
     |> maybe_put_school("district_code", record["district_code"] |> trim_str())
     |> maybe_put_school("district", record["school_district"] |> trim_str())
+    |> maybe_put_school("block_code", record["block_code"] |> trim_str())
+    |> maybe_put_school("block_name", record["block_name"] |> trim_str())
     |> maybe_put_school("board", record["school_board"] |> trim_str())
   end
 
@@ -1647,6 +1651,37 @@ defmodule Dbservice.DataImport.ImportWorker do
 
   defp process_teacher_batch_assignment_record(record) do
     DataImport.TeacherBatchAssignment.process_teacher_batch_assignment(record)
+  end
+
+  # Renames a batch's batch_id in place (typo fix); all enrollments stay with the batch since
+  # they reference its primary key, not the batch_id string. Distinct from the per-student
+  # batch migration handled by process_batch_id_update_record/1.
+  defp process_batch_id_correction_record(record) do
+    case Batches.correct_batch_id(record["old_batch_id"], record["new_batch_id"]) do
+      {:ok, _batch} ->
+        {:ok, "Batch ID corrected successfully"}
+
+      {:error, %Ecto.Changeset{} = changeset} ->
+        {:error, ChangesetFormatter.format_errors(changeset)}
+
+      {:error, reason} ->
+        {:error, reason}
+    end
+  end
+
+  # Deletes a school by its code; Schools.delete_school_by_code/1 refuses when students are
+  # still enrolled (enrollment records / group memberships) or sessions target the school.
+  defp process_school_deletion_record(record) do
+    case Schools.delete_school_by_code(record["school_code"]) do
+      {:ok, school} ->
+        {:ok, "School #{school.code} deleted successfully"}
+
+      {:error, %Ecto.Changeset{} = changeset} ->
+        {:error, ChangesetFormatter.format_errors(changeset)}
+
+      {:error, reason} ->
+        {:error, reason}
+    end
   end
 
   defp process_batch_id_update_record(record) do
