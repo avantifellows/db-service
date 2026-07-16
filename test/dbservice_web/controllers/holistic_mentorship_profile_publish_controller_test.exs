@@ -109,54 +109,6 @@ defmodule DbserviceWeb.HolisticMentorshipProfilePublishControllerTest do
            """).rows == [[1, "unchanged-run-1", "Fixed summary 1", "unchanged"]]
   end
 
-  test "force replaces unchanged answers only for the matching Regeneration Request", %{
-    conn: conn
-  } do
-    {user, student} = eligible_student()
-    configuration_id = insert_prompt_configuration!()
-    insert_running_status!(student.id, configuration_id, "force-run-1")
-    publish(conn, publish_params(user.id, student.id, configuration_id, "force-run-1"))
-    insert_running_status!(student.id, configuration_id, "force-run-2")
-
-    request_key =
-      insert_running_regeneration_request!(student.id, configuration_id, "force-run-2")
-
-    params =
-      publish_params(user.id, student.id, configuration_id, "force-run-2", %{
-        "expected_profile_revision" => 1,
-        "force" => true,
-        "regeneration_request_key" => request_key,
-        "summaries" => summaries("Forced")
-      })
-
-    assert publish(conn, params) == %{"result" => "replaced", "revision" => 2}
-
-    assert Repo.query!(
-             "SELECT state, etl_run_id FROM holistic_mentorship_regeneration_requests WHERE request_key = $1",
-             [request_key]
-           ).rows == [["completed", "force-run-2"]]
-  end
-
-  test "force accepts a matching queued Regeneration Request", %{conn: conn} do
-    {user, student} = eligible_student()
-    configuration_id = insert_prompt_configuration!()
-    insert_running_status!(student.id, configuration_id, "queued-force-run")
-    request_key = insert_queued_regeneration_request!(student.id, configuration_id)
-
-    params =
-      publish_params(user.id, student.id, configuration_id, "queued-force-run", %{
-        "force" => true,
-        "regeneration_request_key" => request_key
-      })
-
-    assert publish(conn, params) == %{"result" => "published", "revision" => 1}
-
-    assert Repo.query!(
-             "SELECT state, etl_run_id FROM holistic_mentorship_regeneration_requests WHERE request_key = $1",
-             [request_key]
-           ).rows == [["completed", "queued-force-run"]]
-  end
-
   test "repeating a completed run cannot replay older output", %{conn: conn} do
     {user, student} = eligible_student()
     configuration_id = insert_prompt_configuration!()
@@ -393,39 +345,6 @@ defmodule DbserviceWeb.HolisticMentorshipProfilePublishControllerTest do
         configuration_id
       ]
     )
-  end
-
-  defp insert_running_regeneration_request!(student_id, configuration_id, run_id) do
-    requested_by_user = user_fixture()
-    request_key = "request-#{run_id}"
-
-    Repo.query!(
-      """
-      INSERT INTO holistic_mentorship_regeneration_requests
-        (request_key, requested_by_user_id, student_id, prompt_configuration_id,
-         force, state, etl_run_id)
-      VALUES ($1, $2, $3, $4, true, 'running', $5)
-      """,
-      [request_key, requested_by_user.id, student_id, configuration_id, run_id]
-    )
-
-    request_key
-  end
-
-  defp insert_queued_regeneration_request!(student_id, configuration_id) do
-    requested_by_user = user_fixture()
-    request_key = "queued-request-#{student_id}"
-
-    Repo.query!(
-      """
-      INSERT INTO holistic_mentorship_regeneration_requests
-        (request_key, requested_by_user_id, student_id, prompt_configuration_id, force)
-      VALUES ($1, $2, $3, $4, true)
-      """,
-      [request_key, requested_by_user.id, student_id, configuration_id]
-    )
-
-    request_key
   end
 
   defp publish(conn, params) do

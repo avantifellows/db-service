@@ -94,26 +94,22 @@ defmodule Dbservice.HolisticMentorship do
     Postgrex.Error -> {:error, :invalid_request}
   end
 
-  defp publication_fields(
-         %{
-           "etl_run_id" => run_id,
-           "student_id" => student_id,
-           "source_user_id" => source_user_id,
-           "form_id" => form_id,
-           "af_session_id" => session_id,
-           "entry_grade" => grade,
-           "prompt_configuration_id" => configuration_id,
-           "schema_fingerprint" => schema_fingerprint,
-           "answer_fingerprint" => answer_fingerprint,
-           "warehouse_loaded_at" => warehouse_loaded_at,
-           "generated_at" => generated_at,
-           "expected_profile_revision" => expected_revision,
-           "force" => force,
-           "summaries" => summaries
-         } = params
-       ) do
-    request_key = params["regeneration_request_key"]
-
+  defp publication_fields(%{
+         "etl_run_id" => run_id,
+         "student_id" => student_id,
+         "source_user_id" => source_user_id,
+         "form_id" => form_id,
+         "af_session_id" => session_id,
+         "entry_grade" => grade,
+         "prompt_configuration_id" => configuration_id,
+         "schema_fingerprint" => schema_fingerprint,
+         "answer_fingerprint" => answer_fingerprint,
+         "warehouse_loaded_at" => warehouse_loaded_at,
+         "generated_at" => generated_at,
+         "expected_profile_revision" => expected_revision,
+         "force" => false,
+         "summaries" => summaries
+       }) do
     with {:ok, user_id} <- parse_source_user_id(source_user_id),
          {:ok, warehouse_loaded_at} <- parse_timestamp(warehouse_loaded_at),
          {:ok, generated_at} <- parse_timestamp(generated_at),
@@ -131,8 +127,6 @@ defmodule Dbservice.HolisticMentorship do
            warehouse_loaded_at: warehouse_loaded_at,
            generated_at: generated_at,
            expected_revision: expected_revision,
-           force: force,
-           regeneration_request_key: request_key,
            summaries: summaries
          },
          true <- valid_publication_fields?(fields) do
@@ -152,14 +146,9 @@ defmodule Dbservice.HolisticMentorship do
       bounded_string?(fields.schema_fingerprint, 255),
       bounded_string?(fields.answer_fingerprint, 255),
       is_nil(fields.expected_revision) or positive_integer?(fields.expected_revision),
-      valid_force?(fields.force, fields.regeneration_request_key),
       NaiveDateTime.compare(fields.generated_at, fields.warehouse_loaded_at) != :lt
     ])
   end
-
-  defp valid_force?(false, nil), do: true
-  defp valid_force?(true, request_key), do: present_string?(request_key)
-  defp valid_force?(_force, _request_key), do: false
 
   defp bounded_string?(value, maximum),
     do: is_binary(value) and byte_size(value) in 1..maximum
@@ -264,28 +253,23 @@ defmodule Dbservice.HolisticMentorship do
   end
 
   defp publish_running_profile!(journey_id, fields) do
-    validate_regeneration_request!(fields)
-
     case current_profile(journey_id, fields.configuration_id) do
       nil when is_nil(fields.expected_revision) ->
         profile_id = insert_profile!(journey_id, fields)
         insert_profile_summaries!(profile_id, fields.summaries)
         complete_generation_status!(fields, "published")
-        complete_regeneration_request!(fields)
         %{result: "published", revision: 1}
 
       {_profile_id, answer_fingerprint, revision}
       when revision == fields.expected_revision and
-             answer_fingerprint == fields.answer_fingerprint and not fields.force ->
+             answer_fingerprint == fields.answer_fingerprint ->
         complete_generation_status!(fields, "unchanged")
-        complete_regeneration_request!(fields)
         %{result: "unchanged", revision: revision}
 
       {profile_id, _answer_fingerprint, revision} when revision == fields.expected_revision ->
         revision = revision + 1
         replace_profile!(profile_id, fields, revision)
         complete_generation_status!(fields, "replaced")
-        complete_regeneration_request!(fields)
         %{result: "replaced", revision: revision}
 
       _ ->
@@ -400,32 +384,6 @@ defmodule Dbservice.HolisticMentorship do
     end
   end
 
-  defp validate_regeneration_request!(%{force: false}), do: :ok
-
-  defp validate_regeneration_request!(fields) do
-    case Repo.query!(
-           """
-           SELECT id
-           FROM holistic_mentorship_regeneration_requests
-           WHERE request_key = $1 AND student_id = $2 AND prompt_configuration_id = $3
-             AND force
-             AND ((state = 'queued' AND etl_run_id IS NULL)
-                  OR (state = 'running' AND etl_run_id = $4))
-           FOR UPDATE
-           """,
-           [
-             fields.regeneration_request_key,
-             fields.student_id,
-             fields.configuration_id,
-             fields.run_id
-           ],
-           log: false
-         ).rows do
-      [[_id]] -> :ok
-      [] -> Repo.rollback(:invalid_request)
-    end
-  end
-
   defp generation_status_row(fields) do
     Repo.query!(
       """
@@ -469,20 +427,6 @@ defmodule Dbservice.HolisticMentorship do
       WHERE id = $1
       """,
       [generation_status_row(fields) |> hd() |> hd(), outcome],
-      log: false
-    )
-  end
-
-  defp complete_regeneration_request!(%{force: false}), do: :ok
-
-  defp complete_regeneration_request!(fields) do
-    Repo.query!(
-      """
-      UPDATE holistic_mentorship_regeneration_requests
-      SET state = 'completed', etl_run_id = $2, updated_at = now()
-      WHERE request_key = $1
-      """,
-      [fields.regeneration_request_key, fields.run_id],
       log: false
     )
   end
