@@ -79,6 +79,13 @@ defmodule DbserviceWeb.Router do
       log: false
     )
 
+    post(
+      "/holistic-mentorship/profile-generation-statuses",
+      HolisticMentorshipProfileGenerationStatusController,
+      :create,
+      log: false
+    )
+
     resources("/auth-group", AuthGroupController, except: [:new, :edit])
     post("/group/:id/update-users", GroupController, :update_users)
     post("/group/:id/update-sessions", GroupController, :update_sessions)

@@ -79,6 +79,204 @@ defmodule Dbservice.HolisticMentorship do
     end)
   end
 
+  def record_profile_generation_status(params) do
+    with {:ok, fields} <- generation_status_fields(params),
+         :ok <- generation_status_references_exist(fields) do
+      persist_generation_status(fields)
+    end
+  end
+
+  defp generation_status_references_exist({_, student_id, _, _, _, configuration_id, _, _, _, _}) do
+    case Repo.query!(
+           """
+           SELECT EXISTS(SELECT 1 FROM student WHERE id = $1),
+                  EXISTS(SELECT 1 FROM holistic_mentorship_prompt_configurations WHERE id = $2)
+           """,
+           [student_id, configuration_id],
+           log: false
+         ).rows do
+      [[true, true]] -> :ok
+      _ -> {:error, :invalid_request}
+    end
+  end
+
+  defp generation_status_fields(
+         %{
+           "etl_run_id" => etl_run_id,
+           "student_id" => student_id,
+           "form_id" => form_id,
+           "af_session_id" => af_session_id,
+           "entry_grade" => entry_grade,
+           "prompt_configuration_id" => configuration_id,
+           "state" => state
+         } = params
+       ) do
+    outcome = params["completed_outcome"]
+    error_code = params["error_code"]
+    error_message = params["error_message"]
+
+    if valid_generation_identity?(
+         etl_run_id,
+         student_id,
+         form_id,
+         af_session_id,
+         entry_grade,
+         configuration_id,
+         state
+       ) and
+         valid_generation_result?(state, outcome, error_code, error_message) do
+      {:ok,
+       {etl_run_id, student_id, form_id, af_session_id, entry_grade, configuration_id, state,
+        outcome, error_code, error_message}}
+    else
+      {:error, :invalid_request}
+    end
+  end
+
+  defp generation_status_fields(_params), do: {:error, :invalid_request}
+
+  defp valid_generation_identity?(
+         run_id,
+         student_id,
+         form_id,
+         session_id,
+         grade,
+         configuration_id,
+         state
+       ) do
+    Enum.all?([
+      present_string?(run_id),
+      positive_integer?(student_id),
+      Map.has_key?(@approved_profile_sources, {form_id, session_id, grade}),
+      positive_integer?(configuration_id),
+      state in ["queued", "running", "completed", "failed"]
+    ])
+  end
+
+  defp present_string?(value), do: is_binary(value) and value != ""
+  defp positive_integer?(value), do: is_integer(value) and value > 0
+
+  defp valid_generation_result?("completed", outcome, nil, nil),
+    do: outcome in ["published", "replaced", "unchanged"]
+
+  defp valid_generation_result?("failed", nil, error_code, error_message),
+    do: bounded_optional_string?(error_code, 64) and bounded_optional_string?(error_message, 500)
+
+  defp valid_generation_result?(state, nil, nil, nil) when state in ["queued", "running"],
+    do: true
+
+  defp valid_generation_result?(_state, _outcome, _error_code, _error_message), do: false
+
+  defp bounded_optional_string?(nil, _maximum), do: true
+
+  defp bounded_optional_string?(value, maximum),
+    do: is_binary(value) and byte_size(value) in 1..maximum
+
+  defp persist_generation_status(fields) do
+    Repo.transaction(fn ->
+      case generation_status(fields) do
+        nil -> insert_generation_status!(fields)
+        status -> transition_generation_status!(status, fields)
+      end
+    end)
+  end
+
+  defp generation_status(
+         {run_id, student_id, form_id, session_id, grade, configuration_id, _, _, _, _}
+       ) do
+    case Repo.query!(
+           """
+           SELECT id, state, completed_outcome, error_code, error_message
+           FROM holistic_mentorship_profile_generation_statuses
+           WHERE etl_run_id = $1 AND student_id = $2 AND form_id = $3
+             AND af_session_id = $4 AND entry_grade = $5 AND prompt_configuration_id = $6
+           FOR UPDATE
+           """,
+           [run_id, student_id, form_id, session_id, grade, configuration_id],
+           log: false
+         ).rows do
+      [[id, state, outcome, error_code, error_message]] ->
+        {id, state, outcome, error_code, error_message}
+
+      [] ->
+        nil
+    end
+  end
+
+  defp insert_generation_status!(
+         {run_id, student_id, form_id, session_id, grade, configuration_id, "queued", nil, nil,
+          nil}
+       ) do
+    [[state, outcome, error_code, error_message]] =
+      Repo.query!(
+        """
+        INSERT INTO holistic_mentorship_profile_generation_statuses
+          (etl_run_id, student_id, form_id, af_session_id, entry_grade,
+           prompt_configuration_id, state)
+        VALUES ($1, $2, $3, $4, $5, $6, 'queued')
+        RETURNING state, completed_outcome, error_code, error_message
+        """,
+        [run_id, student_id, form_id, session_id, grade, configuration_id],
+        log: false
+      ).rows
+
+    generation_status_response(state, outcome, error_code, error_message)
+  end
+
+  defp insert_generation_status!(_fields), do: Repo.rollback(:invalid_transition)
+
+  defp transition_generation_status!(
+         {_id, current_state, current_outcome, current_code, current_message},
+         {_, _, _, _, _, _, current_state, current_outcome, current_code, current_message}
+       ),
+       do:
+         generation_status_response(current_state, current_outcome, current_code, current_message)
+
+  defp transition_generation_status!(
+         {id, "queued", nil, nil, nil},
+         {_, _, _, _, _, _, "running", nil, nil, nil}
+       ),
+       do: update_generation_status!(id, "running", nil, nil, nil)
+
+  defp transition_generation_status!(
+         {id, "running", nil, nil, nil},
+         {_, _, _, _, _, _, state, outcome, error_code, error_message}
+       )
+       when state in ["completed", "failed"],
+       do: update_generation_status!(id, state, outcome, error_code, error_message)
+
+  defp transition_generation_status!({_, state, _, _, _}, _fields)
+       when state in ["completed", "failed"],
+       do: Repo.rollback(:terminal_status_conflict)
+
+  defp transition_generation_status!(_status, _fields), do: Repo.rollback(:invalid_transition)
+
+  defp update_generation_status!(id, state, outcome, error_code, error_message) do
+    [[state, outcome, error_code, error_message]] =
+      Repo.query!(
+        """
+        UPDATE holistic_mentorship_profile_generation_statuses
+        SET state = $2, completed_outcome = $3, error_code = $4, error_message = $5,
+            updated_at = now()
+        WHERE id = $1
+        RETURNING state, completed_outcome, error_code, error_message
+        """,
+        [id, state, outcome, error_code, error_message],
+        log: false
+      ).rows
+
+    generation_status_response(state, outcome, error_code, error_message)
+  end
+
+  defp generation_status_response(state, outcome, error_code, error_message) do
+    %{
+      state: state,
+      completed_outcome: outcome,
+      error_code: error_code,
+      error_message: error_message
+    }
+  end
+
   defp prompt_fields(%{
          "prompt_version" => version,
          "template_text" => template_text,
