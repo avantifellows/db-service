@@ -17,6 +17,29 @@ defmodule DbserviceWeb.BranchController do
       SwaggerSchemaBranch.branch(),
       SwaggerSchemaBranch.branches()
     )
+    |> Map.merge(SwaggerSchemaBranch.branch_names())
+  end
+
+  swagger_path :names do
+    get("/api/branch/names")
+    summary("Fetch branch names only")
+
+    description(
+      "Lightweight list of branches — just id, branch_id and name — for dropdowns. " <>
+        "Sorted by name."
+    )
+
+    parameters do
+      name(:query, :string, "Case-insensitive substring to match in the branch name",
+        required: false
+      )
+    end
+
+    response(200, "OK", Schema.ref(:BranchNames))
+  end
+
+  def names(conn, params) do
+    render(conn, :names, branch_names: Branches.list_branch_names(params))
   end
 
   swagger_path :index do

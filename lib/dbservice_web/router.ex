@@ -107,6 +107,10 @@ defmodule DbserviceWeb.Router do
     resources("/resource", ResourceController, except: [:new, :edit])
 
     # routes for college-predictors
+    # names routes must come before the resources macros so "names" isn't
+    # captured as the :id of the show route
+    get("/college/names", CollegeController, :names)
+    get("/branch/names", BranchController, :names)
     resources("/college", CollegeController, except: [:new, :edit])
     resources("/exam", ExamController)
     resources("/exam_occurrence", ExamOccurrenceController, except: [:new, :edit])

@@ -17,6 +17,32 @@ defmodule DbserviceWeb.CollegeController do
       SwaggerSchemaCollege.college(),
       SwaggerSchemaCollege.colleges()
     )
+    |> Map.merge(SwaggerSchemaCollege.college_names())
+  end
+
+  swagger_path :names do
+    get("/api/college/names")
+    summary("Fetch college names only")
+
+    description(
+      "Lightweight list of colleges — just college_id and name — for dropdowns and " <>
+        "autocomplete, where the full college payload is too heavy. Sorted by name."
+    )
+
+    parameters do
+      name(:query, :string, "Case-insensitive substring to match in the college name",
+        required: false
+      )
+
+      limit(:query, :integer, "Number of results to return", required: false)
+      offset(:query, :integer, "Number of results to skip", required: false)
+    end
+
+    response(200, "OK", Schema.ref(:CollegeNames))
+  end
+
+  def names(conn, params) do
+    render(conn, :names, college_names: Colleges.list_college_names(params))
   end
 
   swagger_path :index do
