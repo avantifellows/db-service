@@ -205,22 +205,27 @@ defmodule Dbservice.HolisticMentorship do
 
   defp insert_generation_status!(
          {run_id, student_id, form_id, session_id, grade, configuration_id, "queued", nil, nil,
-          nil}
+          nil} = fields
        ) do
-    [[state, outcome, error_code, error_message]] =
-      Repo.query!(
-        """
-        INSERT INTO holistic_mentorship_profile_generation_statuses
-          (etl_run_id, student_id, form_id, af_session_id, entry_grade,
-           prompt_configuration_id, state)
-        VALUES ($1, $2, $3, $4, $5, $6, 'queued')
-        RETURNING state, completed_outcome, error_code, error_message
-        """,
-        [run_id, student_id, form_id, session_id, grade, configuration_id],
-        log: false
-      ).rows
+    case Repo.query!(
+           """
+           INSERT INTO holistic_mentorship_profile_generation_statuses
+             (etl_run_id, student_id, form_id, af_session_id, entry_grade,
+              prompt_configuration_id, state)
+           VALUES ($1, $2, $3, $4, $5, $6, 'queued')
+           ON CONFLICT (etl_run_id, student_id, form_id, af_session_id, entry_grade,
+                        prompt_configuration_id) DO NOTHING
+           RETURNING state, completed_outcome, error_code, error_message
+           """,
+           [run_id, student_id, form_id, session_id, grade, configuration_id],
+           log: false
+         ).rows do
+      [[state, outcome, error_code, error_message]] ->
+        generation_status_response(state, outcome, error_code, error_message)
 
-    generation_status_response(state, outcome, error_code, error_message)
+      [] ->
+        generation_status(fields) |> transition_generation_status!(fields)
+    end
   end
 
   defp insert_generation_status!(_fields), do: Repo.rollback(:invalid_transition)

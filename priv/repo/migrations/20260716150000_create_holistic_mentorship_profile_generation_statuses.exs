@@ -16,7 +16,7 @@ defmodule Dbservice.Repo.Migrations.CreateHolisticMentorshipProfileGenerationSta
       add :state, :string, null: false
       add :completed_outcome, :string
       add :error_code, :string
-      add :error_message, :string
+      add :error_message, :text
 
       timestamps(default: fragment("now()"), null: false)
     end

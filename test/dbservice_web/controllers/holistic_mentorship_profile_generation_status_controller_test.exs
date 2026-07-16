@@ -96,6 +96,58 @@ defmodule DbserviceWeb.HolisticMentorshipProfileGenerationStatusControllerTest d
            """).rows == [[1, "completed", "published"]]
   end
 
+  test "accepts concurrent retries of the initial queued state", %{conn: conn} do
+    authorization = conn |> get_req_header("authorization") |> List.first()
+
+    Ecto.Adapters.SQL.Sandbox.unboxed_run(Repo, fn ->
+      student_id = insert_student!()
+      configuration_id = insert_prompt_configuration!()
+      params = status_params(student_id, configuration_id)
+      parent = self()
+
+      try do
+        tasks =
+          for _ <- 1..2 do
+            Task.async(fn ->
+              Ecto.Adapters.SQL.Sandbox.unboxed_run(Repo, fn ->
+                send(parent, {:ready, self()})
+
+                receive do
+                  :go ->
+                    build_conn()
+                    |> put_req_header("authorization", authorization)
+                    |> post("/api/holistic-mentorship/profile-generation-statuses", params)
+                    |> json_response(200)
+                end
+              end)
+            end)
+          end
+
+        task_pids =
+          for _ <- tasks do
+            assert_receive {:ready, task_pid}
+            task_pid
+          end
+
+        Enum.each(task_pids, &send(&1, :go))
+        assert Enum.map(tasks, &Task.await/1) |> Enum.all?(&(&1["state"] == "queued"))
+
+        assert Repo.query!(
+                 "SELECT count(*) FROM holistic_mentorship_profile_generation_statuses WHERE etl_run_id = 'etl-run-623'"
+               ).rows == [[1]]
+      after
+        Repo.query!(
+          "TRUNCATE holistic_mentorship_profile_generation_statuses, holistic_mentorship_student_profile_summaries, holistic_mentorship_student_profiles, holistic_mentorship_prompt_configurations, holistic_mentorship_prompt_versions RESTART IDENTITY"
+        )
+
+        Repo.query!(
+          "WITH deleted AS (DELETE FROM student WHERE id = $1 RETURNING user_id) DELETE FROM \"user\" WHERE id IN (SELECT user_id FROM deleted)",
+          [student_id]
+        )
+      end
+    end)
+  end
+
   test "rejects invalid source, result, and unbounded error metadata with a stable safe error", %{
     conn: conn
   } do
@@ -211,6 +263,7 @@ defmodule DbserviceWeb.HolisticMentorshipProfileGenerationStatusControllerTest d
     configuration_id = insert_prompt_configuration!()
     profile_id = insert_successful_profile!(student_id, configuration_id)
     params = status_params(student_id, configuration_id)
+    error_message = String.duplicate("s", 500)
 
     post_status(conn, params)
     post_status(conn, Map.put(params, "state", "running"))
@@ -223,7 +276,7 @@ defmodule DbserviceWeb.HolisticMentorshipProfileGenerationStatusControllerTest d
           Map.merge(params, %{
             "answers" => "private answers 623",
             "error_code" => "upstream_timeout",
-            "error_message" => "Bounded safe failure",
+            "error_message" => error_message,
             "prompt" => "private prompt 623",
             "source_user_id" => "private-source-user-623",
             "state" => "failed",
@@ -235,7 +288,7 @@ defmodule DbserviceWeb.HolisticMentorshipProfileGenerationStatusControllerTest d
     assert json_response(failed_conn, 200) == %{
              "completed_outcome" => nil,
              "error_code" => "upstream_timeout",
-             "error_message" => "Bounded safe failure",
+             "error_message" => error_message,
              "state" => "failed"
            }
 
