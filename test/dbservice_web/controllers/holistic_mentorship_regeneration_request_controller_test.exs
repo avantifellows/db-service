@@ -39,6 +39,32 @@ defmodule DbserviceWeb.HolisticMentorshipRegenerationRequestControllerTest do
     refute student_user.id == admin.id
   end
 
+  test "rejects a queued request for a privacy-deleted Student", %{conn: conn} do
+    {_student_user, student} = eligible_student()
+    admin = user_fixture()
+    configuration_id = insert_prompt_configuration!()
+    insert_request!(admin.id, student.id, configuration_id, "privacy-deleted-request")
+
+    Repo.query!(
+      """
+      INSERT INTO holistic_mentorship_privacy_deletions
+        (student_id, actor_user_id, reason, profile_summaries_erased,
+         post_session_answers_erased, historical_answers_erased, occurred_at)
+      VALUES ($1, $2, 'approved-request', 0, 0, 0, now())
+      """,
+      [student.id, admin.id]
+    )
+
+    assert conn
+           |> get("/api/holistic-mentorship/regeneration-requests/privacy-deleted-request")
+           |> json_response(422) == %{
+             "error" => %{
+               "code" => "privacy_erased",
+               "message" => "Student is not eligible"
+             }
+           }
+  end
+
   test "keeps the human actor and request identity immutable" do
     {_student_user, student} = eligible_student()
     admin = user_fixture()

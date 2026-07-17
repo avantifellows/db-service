@@ -149,6 +149,20 @@ defmodule DbserviceWeb.HolisticMentorshipProfilePreflightControllerTest do
            }
   end
 
+  test "rejects a privacy-deleted Student before Profile generation", %{conn: conn} do
+    prompt_configuration_id = prompt_configuration_id(conn)
+    {user, student} = eligible_student(11, "PRIVACY-DELETED")
+    insert_privacy_deletion!(student.id, user_fixture().id)
+
+    assert conn
+           |> post("/api/holistic-mentorship/profile-preflight", %{
+             "records" => [preflight_record("privacy-deleted", user.id, prompt_configuration_id)]
+           })
+           |> json_response(200) == %{
+             "results" => [rejected("privacy-deleted", "privacy_erased")]
+           }
+  end
+
   test "accepts 100 records and rejects 101 records wholly", %{conn: conn} do
     prompt_configuration_id = prompt_configuration_id(conn)
     {user, _student} = eligible_student(11, "BOUNDARY")
@@ -445,6 +459,18 @@ defmodule DbserviceWeb.HolisticMentorshipProfilePreflightControllerTest do
 
   defp rejected(record_ref, reason_code) do
     %{"record_ref" => record_ref, "reason_code" => reason_code}
+  end
+
+  defp insert_privacy_deletion!(student_id, actor_user_id) do
+    Repo.query!(
+      """
+      INSERT INTO holistic_mentorship_privacy_deletions
+        (student_id, actor_user_id, reason, profile_summaries_erased,
+         post_session_answers_erased, historical_answers_erased, occurred_at)
+      VALUES ($1, $2, 'approved-request', 0, 0, 0, now())
+      """,
+      [student_id, actor_user_id]
+    )
   end
 
   defp insert_journey!(student_id, source) do

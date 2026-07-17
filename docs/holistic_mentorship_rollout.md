@@ -24,6 +24,9 @@ staging migration workflow for this rollout.
 6. Deploy `af_lms` Holistic Mentorship workflows.
 
 Never run a down migration after Holistic Mentorship tables contain data.
+The privacy deletion migration is also additive: its one-per-Student tombstone
+and content guards must remain in place across application rollback so erased
+Profile or Notes content cannot be recreated.
 
 ## Staging smoke checks
 
@@ -109,6 +112,17 @@ jq -nc --arg run "$ETL_RUN_ID" --arg user "$SOURCE_USER_ID" \
 
 psql "$STAGING_DATABASE_URL" -c \
   "SELECT p.revision, count(s.id) FROM holistic_mentorship_student_profiles p JOIN holistic_mentorship_student_profile_summaries s ON s.student_profile_id=p.id WHERE p.last_successful_etl_run_id='$ETL_RUN_ID' GROUP BY p.id HAVING count(s.id)=5;"
+```
+
+Before enabling callers, run the privacy schema and Profile contract tests.
+They verify the unique immutable tombstone, guarded content tables, the
+`privacy_erased` Preflight result, and normal/forced publication rejection.
+
+```bash
+mix test test/dbservice/holistic_mentorship_privacy_schema_test.exs \
+  test/dbservice_web/controllers/holistic_mentorship_profile_preflight_controller_test.exs \
+  test/dbservice_web/controllers/holistic_mentorship_profile_publish_controller_test.exs \
+  test/dbservice_web/controllers/holistic_mentorship_regeneration_request_controller_test.exs
 ```
 
 For Student cleanup, create one active Mapping for a disposable synthetic

@@ -201,6 +201,7 @@ defmodule Dbservice.HolisticMentorship do
          {:ok, student_id} <- student_id(fields.user_id),
          true <- student_id == fields.student_id,
          :ok <- prompt_configuration_exists(fields.configuration_id),
+         :ok <- privacy_not_deleted(fields.student_id),
          :ok <- eligible_student(fields.student_id, fields.user_id) do
       :ok
     else
@@ -533,7 +534,8 @@ defmodule Dbservice.HolisticMentorship do
           model_id
         ]
       ] ->
-        with :ok <- eligible_student(student_id, user_id) do
+        with :ok <- privacy_not_deleted(student_id),
+             :ok <- eligible_student(student_id, user_id) do
           {:ok,
            %{
              request_key: request_key,
@@ -1003,6 +1005,7 @@ defmodule Dbservice.HolisticMentorship do
          :ok <- user_exists(user_id),
          {:ok, student_id} <- student_id(user_id),
          :ok <- approved_profile_source(record),
+         :ok <- privacy_not_deleted(student_id),
          {:ok, journey_id} <- matching_profile_journey(student_id, record),
          :ok <- prompt_configuration_exists(record["prompt_configuration_id"]),
          :ok <- eligible_student(student_id, user_id) do
@@ -1064,6 +1067,17 @@ defmodule Dbservice.HolisticMentorship do
 
       true ->
         {:error, :form_not_approved}
+    end
+  end
+
+  defp privacy_not_deleted(student_id) do
+    case Repo.query!(
+           "SELECT 1 FROM holistic_mentorship_privacy_deletions WHERE student_id = $1",
+           [student_id],
+           log: false
+         ).rows do
+      [] -> :ok
+      [[1]] -> {:error, :privacy_erased}
     end
   end
 

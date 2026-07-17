@@ -28,6 +28,7 @@ defmodule DbserviceWeb.HolisticMentorshipProfilePublishController do
               :form_not_approved,
               :grade_ineligible,
               :journey_source_conflict,
+              :privacy_erased,
               :program_ineligible,
               :school_missing_or_ambiguous,
               :student_not_found,

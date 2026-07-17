@@ -109,6 +109,34 @@ defmodule DbserviceWeb.HolisticMentorshipProfilePublishControllerTest do
            """).rows == [[1, "unchanged-run-1", "Fixed summary 1", "unchanged"]]
   end
 
+  test "rejects normal publication for a privacy-deleted Student", %{conn: conn} do
+    {user, student} = eligible_student()
+    configuration_id = insert_prompt_configuration!()
+    insert_running_status!(student.id, configuration_id, "privacy-normal-run")
+    insert_privacy_deletion!(student.id, user_fixture().id)
+
+    assert conn
+           |> post(
+             "/api/holistic-mentorship/profiles/publish",
+             publish_params(user.id, student.id, configuration_id, "privacy-normal-run")
+           )
+           |> json_response(422) == %{
+             "error" => %{
+               "code" => "privacy_erased",
+               "message" => "Profile publication is not eligible"
+             }
+           }
+
+    assert Repo.query!(
+             "SELECT count(*) FROM holistic_mentorship_profile_journeys WHERE student_id = $1",
+             [student.id]
+           ).rows == [[0]]
+
+    assert Repo.query!(
+             "SELECT state FROM holistic_mentorship_profile_generation_statuses WHERE etl_run_id = 'privacy-normal-run'"
+           ).rows == [["running"]]
+  end
+
   test "an authorized force request replaces unchanged answers and completes atomically", %{
     conn: conn
   } do
@@ -177,6 +205,43 @@ defmodule DbserviceWeb.HolisticMentorshipProfilePublishControllerTest do
              """,
              [other_configuration_id]
            ).rows == [[1, "force-other-configuration"]]
+  end
+
+  test "rejects force publication without restoring erased summaries", %{conn: conn} do
+    {user, student} = eligible_student()
+    actor = user_fixture()
+    configuration_id = insert_prompt_configuration!()
+    insert_running_status!(student.id, configuration_id, "privacy-force-base")
+    publish(conn, publish_params(user.id, student.id, configuration_id, "privacy-force-base"))
+
+    Repo.query!(
+      "UPDATE holistic_mentorship_student_profile_summaries SET summary = 'Content erased under approved privacy request'"
+    )
+
+    insert_privacy_deletion!(student.id, actor.id)
+    insert_running_status!(student.id, configuration_id, "privacy-force-run")
+    insert_regeneration_request!("privacy-force-request", actor.id, student.id, configuration_id)
+
+    params =
+      publish_params(user.id, student.id, configuration_id, "privacy-force-run", %{
+        "expected_profile_revision" => 1,
+        "force" => true,
+        "regeneration_request_key" => "privacy-force-request",
+        "summaries" => summaries("Must not return")
+      })
+
+    assert conn
+           |> post("/api/holistic-mentorship/profiles/publish", params)
+           |> json_response(422)
+           |> get_in(["error", "code"]) == "privacy_erased"
+
+    assert Repo.query!(
+             "SELECT DISTINCT summary FROM holistic_mentorship_student_profile_summaries"
+           ).rows == [["Content erased under approved privacy request"]]
+
+    assert Repo.query!(
+             "SELECT state FROM holistic_mentorship_regeneration_requests WHERE request_key = 'privacy-force-request'"
+           ).rows == [["queued"]]
   end
 
   test "a running request authorizes force publication for its ETL run", %{conn: conn} do
@@ -977,6 +1042,18 @@ defmodule DbserviceWeb.HolisticMentorshipProfilePublishControllerTest do
       VALUES ($1, $2, $3, $4, $5, 'queued')
       """,
       [request_key, actor_id, student_id, configuration_id, force]
+    )
+  end
+
+  defp insert_privacy_deletion!(student_id, actor_user_id) do
+    Repo.query!(
+      """
+      INSERT INTO holistic_mentorship_privacy_deletions
+        (student_id, actor_user_id, reason, profile_summaries_erased,
+         post_session_answers_erased, historical_answers_erased, occurred_at)
+      VALUES ($1, $2, 'approved-request', 0, 0, 0, now())
+      """,
+      [student_id, actor_user_id]
     )
   end
 
