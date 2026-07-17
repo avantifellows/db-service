@@ -205,6 +205,11 @@ defmodule DbserviceWeb.StudentController do
     student = Users.get_student_by_id_pen_or_apaar_id(params)
 
     case student do
+      {:error, :conflicting_identifiers} ->
+        conn
+        |> put_status(:bad_request)
+        |> json(%{errors: "Conflicting student identifiers"})
+
       nil ->
         conn
         |> put_status(:not_found)
@@ -227,6 +232,11 @@ defmodule DbserviceWeb.StudentController do
     student = Users.get_student_by_id_pen_or_apaar_id(params)
 
     case student do
+      {:error, :conflicting_identifiers} ->
+        conn
+        |> put_status(:bad_request)
+        |> json(%{errors: "Conflicting student identifiers"})
+
       nil ->
         conn
         |> put_status(:not_found)

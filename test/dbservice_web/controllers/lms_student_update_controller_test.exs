@@ -104,6 +104,46 @@ defmodule DbserviceWeb.LmsStudentUpdateControllerTest do
       assert json_response(conn, 200)["status"] == "dropout"
     end
 
+    test "rejects dropout identifiers that belong to different students", %{conn: conn} do
+      school = insert_school!()
+      grade = insert_grade!(11)
+      batch = insert_nvs_batch!(11, "engineering")
+
+      {_first_user, first_student} =
+        insert_enrolled_student!(school, grade, batch, %{
+          student_id: "202812345678",
+          pen_number: "12345678901",
+          apaar_id: "123456789012"
+        })
+
+      {_second_user, second_student} =
+        Dbservice.UsersFixtures.student_fixture(%{
+          student_id: "202812345679",
+          pen_number: "12345678902",
+          apaar_id: "123456789013",
+          grade_id: grade.id
+        })
+
+      insert_enrollment!(second_student.user_id, school.id, "school")
+      insert_enrollment!(second_student.user_id, grade.id, "grade")
+      insert_enrollment!(second_student.user_id, batch.id, "batch")
+
+      conn =
+        patch(conn, "/api/dropout", %{
+          "student_id" => first_student.student_id,
+          "pen_number" => second_student.pen_number,
+          "start_date" => "2026-07-01",
+          "academic_year" => "2026-2027",
+          "actor" => actor(),
+          "school" => %{"code" => school.code, "udise_code" => school.udise_code},
+          "program_id" => 64
+        })
+
+      assert json_response(conn, 400)["errors"] == "Conflicting student identifiers"
+      assert Repo.get!(Student, first_student.id).status == first_student.status
+      assert Repo.get!(Student, second_student.id).status == second_student.status
+    end
+
     test "drops only the selected program when another program remains active", %{conn: conn} do
       school = insert_school!()
       grade = insert_grade!(11)
@@ -1041,6 +1081,26 @@ defmodule DbserviceWeb.LmsStudentUpdateControllerTest do
                "old" => "CENTRAL BOARD OF SECONDARY EDUCATION",
                "new" => nil
              }
+    end
+
+    test "trims G10 board before validating an edit", %{conn: conn} do
+      school = insert_school!()
+      grade = insert_grade!(11)
+      batch = insert_nvs_batch!(11, "engineering")
+      {_user, student} = insert_enrolled_student!(school, grade, batch)
+
+      conn =
+        patch(conn, "/api/lms/students/#{student.id}/update-with-enrollments", %{
+          "actor" => actor(),
+          "school" => %{"code" => school.code, "udise_code" => school.udise_code},
+          "program_id" => 64,
+          "academic_year" => "2026-2027",
+          "start_date" => "2026-07-01",
+          "g10_board" => " CBSE "
+        })
+
+      assert json_response(conn, 200)["changed_fields"] == ["g10_board"]
+      assert Repo.get!(Student, student.id).g10_board == "CBSE"
     end
 
     test "rejects Others board when the locked roll is not already canonical", %{conn: conn} do

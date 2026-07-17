@@ -203,9 +203,18 @@ defmodule Dbservice.Users do
   end
 
   def get_student_by_id_pen_or_apaar_id(record) when is_map(record) do
-    find_student(:student_id, record["student_id"]) ||
-      find_student(:pen_number, record["pen_number"]) ||
+    [
+      find_student(:student_id, record["student_id"]),
+      find_student(:pen_number, record["pen_number"]),
       find_student(:apaar_id, record["apaar_id"])
+    ]
+    |> Enum.reject(&is_nil/1)
+    |> Enum.uniq_by(& &1.id)
+    |> case do
+      [] -> nil
+      [student] -> student
+      _students -> {:error, :conflicting_identifiers}
+    end
   end
 
   defp find_student(_field, value) when value in [nil, ""], do: nil

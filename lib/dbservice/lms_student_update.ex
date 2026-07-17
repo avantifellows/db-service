@@ -55,6 +55,7 @@ defmodule Dbservice.LmsStudentUpdate do
     Repo.transaction(fn ->
       with :ok <- reject_locked_fields(params),
            :ok <- reject_unsupported_fields(params),
+           params = trim_g10_board(params),
            :ok <- validate_canonical_inputs(params),
            params = normalize_params(params),
            {:ok, student} <- fetch_student(student_pk_id),
@@ -118,6 +119,11 @@ defmodule Dbservice.LmsStudentUpdate do
     do:
       {:error,
        error("invalid_g10_board", "Grade 10 Board must be CBSE or Others", 422, ["g10_board"])}
+
+  defp trim_g10_board(%{"g10_board" => board} = params) when is_binary(board),
+    do: Map.put(params, "g10_board", String.trim(board))
+
+  defp trim_g10_board(params), do: params
 
   defp validate_gender_input(params) when not is_map_key(params, "gender"), do: :ok
 
