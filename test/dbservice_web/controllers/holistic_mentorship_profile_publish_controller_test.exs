@@ -909,7 +909,6 @@ defmodule DbserviceWeb.HolisticMentorshipProfilePublishControllerTest do
     school = school_fixture(%{program_ids: [1], code: "publish-school-#{user.id}"})
 
     enroll(user.id, "school", school.id)
-    enroll(user.id, "program", 1)
     enroll(user.id, "grade", grade.id)
     {user, student}
   end

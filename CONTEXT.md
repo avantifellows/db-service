@@ -117,6 +117,8 @@ _Avoid_: best-effort identity matching
 - Phase definition mutations retain content-free actor/time audit without storing
   prior Guidance or Question versions.
 - Raw questionnaire answers and rendered per-Student prompts are not persisted.
+- Profile Program eligibility comes from the Student's one current School and
+  that School's canonical Program IDs; it does not require a Program enrollment.
 - Profile publication is atomic per Student and revalidates identity and scope.
 - Student eligibility mutations end affected active Mappings atomically.
 - Production-to-staging sync excludes all Holistic table data after launch.

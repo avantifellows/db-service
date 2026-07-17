@@ -1099,7 +1099,6 @@ defmodule Dbservice.HolisticMentorship do
 
     with :ok <- not_dropout(status),
          :ok <- eligible_grade_number(grade_number),
-         :ok <- eligible_program(user_id),
          :ok <- eligible_school(user_id) do
       consistent_grade(user_id, grade_id)
     end
@@ -1110,15 +1109,6 @@ defmodule Dbservice.HolisticMentorship do
 
   defp eligible_grade_number(grade_number) when grade_number in [11, 12], do: :ok
   defp eligible_grade_number(_grade_number), do: {:error, :grade_ineligible}
-
-  defp eligible_program(user_id) do
-    case current_enrollment_ids(user_id, "program") do
-      [[1]] -> :ok
-      [] -> {:error, :program_ineligible}
-      [[_other_program_id]] -> {:error, :program_ineligible}
-      _ -> {:error, :eligibility_inconsistent}
-    end
-  end
 
   defp eligible_school(user_id) do
     case Repo.query!(

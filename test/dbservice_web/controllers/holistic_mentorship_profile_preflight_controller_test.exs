@@ -27,6 +27,9 @@ defmodule DbserviceWeb.HolisticMentorshipProfilePreflightControllerTest do
     {grade_11_user, grade_11_student} = eligible_student(11, "BUSINESS-G11")
     {grade_12_user, grade_12_student} = eligible_student(12, "BUSINESS-G12")
 
+    assert Repo.query!("SELECT count(*) FROM enrollment_record WHERE group_type = 'program'").rows ==
+             [[0]]
+
     response =
       conn
       |> post("/api/holistic-mentorship/profile-preflight", %{
@@ -281,21 +284,14 @@ defmodule DbserviceWeb.HolisticMentorshipProfilePreflightControllerTest do
 
   test "rejects out-of-scope, duplicate, and inconsistent current eligibility", %{conn: conn} do
     prompt_configuration_id = prompt_configuration_id(conn)
-    {program_user, _student} = eligible_student(11, "NO-PROGRAM")
     {school_program_user, _student} = eligible_student(11, "SCHOOL-NO-PROGRAM")
     {school_user, _student} = eligible_student(11, "NO-SCHOOL")
     {duplicate_school_user, _student} = eligible_student(11, "TWO-SCHOOLS")
-    {duplicate_program_user, _student} = eligible_student(11, "TWO-PROGRAMS")
     {grade_10_user, _student} = eligible_student(10, "GRADE-10")
     {missing_grade_user, _student} = eligible_student(11, "NO-GRADE")
     {duplicate_grade_user, duplicate_grade_student} = eligible_student(11, "TWO-GRADES")
     {mismatched_grade_user, _student} = eligible_student(11, "GRADE-MISMATCH")
     {dropout_user, _student} = eligible_student(11, "DROPOUT")
-
-    Repo.query!(
-      "UPDATE enrollment_record SET group_id = 2 WHERE user_id = $1 AND group_type = 'program'",
-      [program_user.id]
-    )
 
     Repo.query!(
       """
@@ -315,7 +311,6 @@ defmodule DbserviceWeb.HolisticMentorshipProfilePreflightControllerTest do
 
     second_school = school_fixture(%{program_ids: [1], code: "second-school"})
     enroll(duplicate_school_user.id, "school", second_school.id)
-    enroll(duplicate_program_user.id, "program", 1)
 
     Repo.query!("DELETE FROM enrollment_record WHERE user_id = $1 AND group_type = 'grade'", [
       missing_grade_user.id
@@ -333,11 +328,9 @@ defmodule DbserviceWeb.HolisticMentorshipProfilePreflightControllerTest do
     Repo.query!("UPDATE student SET status = 'dropout' WHERE user_id = $1", [dropout_user.id])
 
     records = [
-      preflight_record("program", program_user.id, prompt_configuration_id),
       preflight_record("school-program", school_program_user.id, prompt_configuration_id),
       preflight_record("school", school_user.id, prompt_configuration_id),
       preflight_record("two-schools", duplicate_school_user.id, prompt_configuration_id),
-      preflight_record("two-programs", duplicate_program_user.id, prompt_configuration_id),
       preflight_record("grade-10", grade_10_user.id, prompt_configuration_id),
       preflight_record("no-grade", missing_grade_user.id, prompt_configuration_id),
       preflight_record("two-grades", duplicate_grade_user.id, prompt_configuration_id),
@@ -349,11 +342,9 @@ defmodule DbserviceWeb.HolisticMentorshipProfilePreflightControllerTest do
            |> post("/api/holistic-mentorship/profile-preflight", %{"records" => records})
            |> json_response(200) == %{
              "results" => [
-               rejected("program", "program_ineligible"),
                rejected("school-program", "program_ineligible"),
                rejected("school", "school_missing_or_ambiguous"),
                rejected("two-schools", "school_missing_or_ambiguous"),
-               rejected("two-programs", "eligibility_inconsistent"),
                rejected("grade-10", "grade_ineligible"),
                rejected("no-grade", "grade_ineligible"),
                rejected("two-grades", "eligibility_inconsistent"),
@@ -407,7 +398,6 @@ defmodule DbserviceWeb.HolisticMentorshipProfilePreflightControllerTest do
     school = school_fixture(%{program_ids: [1], code: "school-#{user.id}"})
 
     enroll(user.id, "school", school.id)
-    enroll(user.id, "program", 1)
     enroll(user.id, "grade", grade.id)
 
     {user, student}
