@@ -1,6 +1,8 @@
 defmodule DbserviceWeb.CmsStatusController do
   use DbserviceWeb, :controller
 
+  alias Dbservice.Utils.Pagination
+
   import Ecto.Query
   alias Dbservice.Repo
   alias Dbservice.CmsStatuses
@@ -36,8 +38,8 @@ defmodule DbserviceWeb.CmsStatusController do
     query =
       from(m in CmsStatus,
         order_by: [asc: m.id],
-        offset: ^params["offset"],
-        limit: ^params["limit"]
+        offset: ^Pagination.offset(params),
+        limit: ^Pagination.limit(params)
       )
 
     query =

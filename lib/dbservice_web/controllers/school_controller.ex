@@ -1,6 +1,8 @@
 defmodule DbserviceWeb.SchoolController do
   use DbserviceWeb, :controller
 
+  alias Dbservice.Utils.Pagination
+
   import Ecto.Query
   alias Dbservice.Repo
   alias Dbservice.Schools
@@ -47,8 +49,8 @@ defmodule DbserviceWeb.SchoolController do
     query =
       from m in School,
         order_by: [asc: m.id],
-        offset: ^params["offset"],
-        limit: ^params["limit"]
+        offset: ^Pagination.offset(params),
+        limit: ^Pagination.limit(params)
 
     query =
       Enum.reduce(params, query, fn {key, value}, acc ->
