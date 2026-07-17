@@ -63,13 +63,15 @@ defmodule DbserviceWeb.Router do
     post(
       "/holistic-mentorship/prompt-configurations",
       HolisticMentorshipPromptConfigurationController,
-      :create
+      :create,
+      log: false
     )
 
     post(
       "/holistic-mentorship/prompt-configurations/:id/activate",
       HolisticMentorshipPromptConfigurationController,
-      :activate
+      :activate,
+      log: false
     )
 
     post(
