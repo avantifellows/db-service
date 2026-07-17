@@ -339,11 +339,11 @@ defmodule Dbservice.LmsStudentIngestion do
   defp validate_nonblank_g10_roll(g10_roll_no, g10_board) do
     cond do
       g10_board == @cbse_board and is_binary(g10_roll_no) and
-          Regex.match?(~r/^\d{8}$/, g10_roll_no) ->
+          Regex.match?(~r/^[1-9]\d{7}$/, g10_roll_no) ->
         :ok
 
       g10_board == @cbse_board ->
-        {:error, "CBSE Grade 10 Roll no must be exactly 8 digits"}
+        {:error, "CBSE Grade 10 Roll no must be exactly 8 digits and cannot start with zero"}
 
       is_binary(g10_roll_no) and Regex.match?(~r/^[A-Z0-9]{4,10}$/, g10_roll_no) ->
         :ok
@@ -384,9 +384,16 @@ defmodule Dbservice.LmsStudentIngestion do
 
   defp validate_profile(row) do
     with :ok <- validate_category_pair(row),
-         :ok <- validate_gender(row) do
+         :ok <- validate_gender(row),
+         :ok <- validate_phone(row) do
       validate_date_of_birth(row)
     end
+  end
+
+  defp validate_phone(row) do
+    if Regex.match?(~r/^[1-9]\d{9}$/, get_in(row, ["user", "phone"]) || ""),
+      do: :ok,
+      else: {:error, "Parents Phone Number must be exactly 10 digits and cannot start with zero"}
   end
 
   defp validate_category_pair(row) do

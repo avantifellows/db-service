@@ -223,6 +223,28 @@ defmodule DbserviceWeb.StudentController do
     end
   end
 
+  def undo_program_dropout(conn, params) do
+    student = Users.get_student_by_id_pen_or_apaar_id(params)
+
+    case student do
+      nil ->
+        conn
+        |> put_status(:not_found)
+        |> json(%{errors: "Student not found with the provided identifier"})
+
+      student ->
+        case DropoutService.undo_program_dropout(student, params) do
+          {:ok, updated_student} ->
+            render(conn, :show, student: updated_student)
+
+          {:error, reason} ->
+            conn
+            |> put_status(:bad_request)
+            |> json(%{errors: reason})
+        end
+    end
+  end
+
   def re_enroll(conn, params) do
     # Get student by either student_id or apaar_id
     student = Users.get_student_by_id_or_apaar_id(params)

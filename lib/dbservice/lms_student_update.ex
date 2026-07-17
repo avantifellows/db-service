@@ -234,17 +234,27 @@ defmodule Dbservice.LmsStudentUpdate do
   defp validate_phone(params) when not is_map_key(params, "phone"), do: :ok
 
   defp validate_phone(%{"phone" => phone}) when is_binary(phone) do
-    if Regex.match?(~r/^\d{10}$/, phone),
+    if Regex.match?(~r/^[1-9]\d{9}$/, phone),
       do: :ok,
       else:
         {:error,
-         error("invalid_phone", "Parents Phone Number must be exactly 10 digits", 422, ["phone"])}
+         error(
+           "invalid_phone",
+           "Parents Phone Number must be exactly 10 digits and cannot start with zero",
+           422,
+           ["phone"]
+         )}
   end
 
   defp validate_phone(_params),
     do:
       {:error,
-       error("invalid_phone", "Parents Phone Number must be exactly 10 digits", 422, ["phone"])}
+       error(
+         "invalid_phone",
+         "Parents Phone Number must be exactly 10 digits and cannot start with zero",
+         422,
+         ["phone"]
+       )}
 
   defp validate_date_of_birth(params) when not is_map_key(params, "date_of_birth"), do: :ok
 

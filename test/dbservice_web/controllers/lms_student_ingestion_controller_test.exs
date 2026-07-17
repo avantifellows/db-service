@@ -175,6 +175,36 @@ defmodule DbserviceWeb.LmsStudentIngestionControllerTest do
              ]
     end
 
+    test "rejects leading-zero phone and CBSE roll numbers", %{conn: conn} do
+      school = insert_school!(%{program_ids: []})
+      ensure_nvs_program!()
+      insert_auth_group!("EnableStudents")
+      insert_grade!(11)
+      insert_nvs_batch!(11, "engineering")
+
+      response =
+        conn
+        |> post(
+          "/api/lms/students/bulk-create-with-enrollments",
+          payload(school, [
+            valid_row(%{"phone" => "0876543210"}),
+            valid_row(%{
+              "row_number" => 3,
+              "pen_number" => "12345678902",
+              "g10_roll_no" => "02345678"
+            })
+          ])
+        )
+        |> json_response(200)
+
+      assert response["totals"]["rejected"] == 2
+
+      assert Enum.map(response["results"], & &1["row_errors"]) == [
+               ["Parents Phone Number must be exactly 10 digits and cannot start with zero"],
+               ["CBSE Grade 10 Roll no must be exactly 8 digits and cannot start with zero"]
+             ]
+    end
+
     test "normalizes canonical board rolls and derives Student ID from the academic year", %{
       conn: conn
     } do
@@ -190,7 +220,7 @@ defmodule DbserviceWeb.LmsStudentIngestionControllerTest do
           "pen_number" => nil,
           "apaar_id" => nil,
           "g10_board" => "CBSE",
-          "g10_roll_no" => "01234567",
+          "g10_roll_no" => "11234567",
           "stream" => "nda"
         }),
         valid_row(%{
@@ -222,13 +252,13 @@ defmodule DbserviceWeb.LmsStudentIngestionControllerTest do
              }
 
       assert Enum.map(response["results"], &{&1["status"], &1["generated_student_id"]}) == [
-               {"created", "202801234567"},
+               {"created", "202811234567"},
                {"created", "2028AB1234"},
                {"rejected", "202812345678"}
              ]
 
-      cbse = Repo.get_by!(Student, student_id: "202801234567")
-      assert {cbse.g10_board, cbse.g10_roll_no} == {"CBSE", "01234567"}
+      cbse = Repo.get_by!(Student, student_id: "202811234567")
+      assert {cbse.g10_board, cbse.g10_roll_no} == {"CBSE", "11234567"}
 
       other = Repo.get_by!(Student, student_id: "2028AB1234")
       assert {other.g10_board, other.g10_roll_no} == {nil, "AB1234"}
@@ -335,7 +365,7 @@ defmodule DbserviceWeb.LmsStudentIngestionControllerTest do
       row =
         valid_pen_row("12345678901", %{
           "g10_board" => "CBSE",
-          "g10_roll_no" => "01234567"
+          "g10_roll_no" => "11234567"
         })
 
       response =
@@ -345,7 +375,7 @@ defmodule DbserviceWeb.LmsStudentIngestionControllerTest do
 
       assert [result] = response["results"]
       assert result["status"] == "created"
-      assert result["student_id"] == "202801234567"
+      assert result["student_id"] == "202811234567"
       assert result["pen_number"] == "12345678901"
       assert result["apaar_id"] == nil
       assert is_integer(result["student_pk_id"])
@@ -377,10 +407,10 @@ defmodule DbserviceWeb.LmsStudentIngestionControllerTest do
       assert audit.affected_identifiers == %{
                "student_pk_id" => result["student_pk_id"],
                "user_id" => result["user_id"],
-               "student_id" => "202801234567",
+               "student_id" => "202811234567",
                "pen_number" => "12345678901",
                "apaar_id" => nil,
-               "g10_roll_no" => "01234567"
+               "g10_roll_no" => "11234567"
              }
 
       assert audit.created_values["batch_pk_id"] == batch.id
@@ -398,7 +428,10 @@ defmodule DbserviceWeb.LmsStudentIngestionControllerTest do
       ensure_nvs_program!()
       insert_grade!(11)
       insert_nvs_batch!(11, "nda")
-      Repo.delete_all(from(g in Group, where: g.type == "auth_group"))
+
+      Repo.update_all(from(g in Group, where: g.type == "auth_group"),
+        set: [type: "auth_group_disabled"]
+      )
 
       before_users = Repo.aggregate(User, :count, :id)
       before_students = Repo.aggregate(Student, :count, :id)

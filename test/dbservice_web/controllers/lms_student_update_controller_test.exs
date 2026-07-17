@@ -400,6 +400,168 @@ defmodule DbserviceWeb.LmsStudentUpdateControllerTest do
       assert current_program_enrollment_count(user.id, 64) == 2
       assert Repo.aggregate(Dbservice.LmsStudentWriteAudit, :count, :id) == 0
     end
+
+    test "undoes the exact NVS dropout while leaving another program active", %{conn: conn} do
+      school = insert_school!()
+      grade = insert_grade!(11)
+      nvs_batch = insert_nvs_batch!(11, "engineering")
+      coe_batch = insert_program_batch!(1, 11, "engineering")
+      {user, student} = insert_enrolled_student!(school, grade, nvs_batch)
+      insert_enrollment!(user.id, coe_batch.id, "batch")
+      ensure_group_user!(user.id, "batch", coe_batch.id)
+
+      patch(conn, "/api/dropout", %{
+        "student_id" => student.student_id,
+        "start_date" => "2026-07-01",
+        "academic_year" => "2026-2027",
+        "actor" => actor(),
+        "school" => %{"code" => school.code, "udise_code" => school.udise_code},
+        "program_id" => 64
+      })
+      |> json_response(200)
+
+      response =
+        patch(conn, "/api/lms/students/undo-program-dropout", %{
+          "student_id" => student.student_id,
+          "actor" => actor(),
+          "school" => %{"code" => school.code, "udise_code" => school.udise_code},
+          "program_id" => 64
+        })
+        |> json_response(200)
+
+      assert response["status"] == student.status
+      assert current_program_enrollment(user.id, 64).group_id == nvs_batch.id
+      assert current_program_enrollment(user.id, 1).group_id == coe_batch.id
+      assert has_group_user?(user.id, "batch", nvs_batch.id)
+      assert Repo.aggregate(Dbservice.LmsStudentWriteAudit, :count, :id) == 2
+    end
+
+    test "undo restores globally ended enrollment records for a final-program dropout", %{
+      conn: conn
+    } do
+      school = insert_school!()
+      grade = insert_grade!(11)
+      batch = insert_nvs_batch!(11, "engineering")
+      {user, student} = insert_enrolled_student!(school, grade, batch)
+      ensure_dropout_status!()
+
+      patch(conn, "/api/dropout", %{
+        "student_id" => student.student_id,
+        "start_date" => "2026-07-01",
+        "academic_year" => "2026-2027",
+        "actor" => actor(),
+        "school" => %{"code" => school.code, "udise_code" => school.udise_code},
+        "program_id" => 64
+      })
+      |> json_response(200)
+
+      patch(conn, "/api/lms/students/undo-program-dropout", %{
+        "student_id" => student.student_id,
+        "actor" => actor(),
+        "school" => %{"code" => school.code, "udise_code" => school.udise_code},
+        "program_id" => 64
+      })
+      |> json_response(200)
+
+      assert Repo.get!(Student, student.id).status == student.status
+      assert current_program_enrollment(user.id, 64).group_id == batch.id
+      assert current_enrollment(user.id, "school").group_id == school.id
+      assert current_enrollment(user.id, "grade").group_id == grade.id
+
+      refute Repo.exists?(
+               from(e in EnrollmentRecord,
+                 where:
+                   e.user_id == ^user.id and e.group_type == "status" and e.is_current == true
+               )
+             )
+    end
+
+    test "blocks a second undo and an undo when another NVS batch is active", %{conn: conn} do
+      school = insert_school!()
+      grade = insert_grade!(11)
+      old_batch = insert_nvs_batch!(11, "engineering")
+      new_batch = insert_nvs_batch!(11, "medical")
+      coe_batch = insert_program_batch!(1, 11, "engineering")
+      {user, student} = insert_enrolled_student!(school, grade, old_batch)
+      insert_enrollment!(user.id, coe_batch.id, "batch")
+      ensure_group_user!(user.id, "batch", coe_batch.id)
+
+      patch(conn, "/api/dropout", %{
+        "student_id" => student.student_id,
+        "start_date" => "2026-07-01",
+        "academic_year" => "2026-2027",
+        "actor" => actor(),
+        "school" => %{"code" => school.code, "udise_code" => school.udise_code},
+        "program_id" => 64
+      })
+      |> json_response(200)
+
+      insert_enrollment!(user.id, new_batch.id, "batch")
+
+      blocked =
+        patch(conn, "/api/lms/students/undo-program-dropout", %{
+          "student_id" => student.student_id,
+          "actor" => actor(),
+          "school" => %{"code" => school.code, "udise_code" => school.udise_code},
+          "program_id" => 64
+        })
+        |> json_response(400)
+
+      assert blocked["errors"] == "Student already has an active NVS batch"
+      Repo.delete!(current_program_enrollment(user.id, 64))
+
+      patch(conn, "/api/lms/students/undo-program-dropout", %{
+        "student_id" => student.student_id,
+        "actor" => actor(),
+        "school" => %{"code" => school.code, "udise_code" => school.udise_code},
+        "program_id" => 64
+      })
+      |> json_response(200)
+
+      second =
+        patch(conn, "/api/lms/students/undo-program-dropout", %{
+          "student_id" => student.student_id,
+          "actor" => actor(),
+          "school" => %{"code" => school.code, "udise_code" => school.udise_code},
+          "program_id" => 64
+        })
+        |> json_response(400)
+
+      assert second["errors"] == "This dropout cannot be undone"
+    end
+
+    test "blocks undo when the previous NVS batch is closed", %{conn: conn} do
+      school = insert_school!()
+      grade = insert_grade!(11)
+      batch = insert_nvs_batch!(11, "engineering")
+      {_user, student} = insert_enrolled_student!(school, grade, batch)
+      ensure_dropout_status!()
+
+      patch(conn, "/api/dropout", %{
+        "student_id" => student.student_id,
+        "start_date" => "2026-07-01",
+        "academic_year" => "2026-2027",
+        "actor" => actor(),
+        "school" => %{"code" => school.code, "udise_code" => school.udise_code},
+        "program_id" => 64
+      })
+      |> json_response(200)
+
+      batch
+      |> Ecto.Changeset.change(end_date: Date.add(Date.utc_today(), -1))
+      |> Repo.update!()
+
+      response =
+        patch(conn, "/api/lms/students/undo-program-dropout", %{
+          "student_id" => student.student_id,
+          "actor" => actor(),
+          "school" => %{"code" => school.code, "udise_code" => school.udise_code},
+          "program_id" => 64
+        })
+        |> json_response(400)
+
+      assert response["errors"] == "The previous NVS batch is closed"
+    end
   end
 
   describe "PATCH /api/lms/students/:student_id/update-with-enrollments" do
@@ -734,7 +896,7 @@ defmodule DbserviceWeb.LmsStudentUpdateControllerTest do
         patch(
           conn,
           "/api/lms/students/#{student.id}/update-with-enrollments",
-          Map.put(metadata, "phone", "123")
+          Map.put(metadata, "phone", "0123456789")
         )
 
       assert json_response(conn, 422)["error"]["code"] == "invalid_phone"
