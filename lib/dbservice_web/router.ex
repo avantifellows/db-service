@@ -117,6 +117,7 @@ defmodule DbserviceWeb.Router do
     resources("/student-exam-record", StudentExamRecordController)
     get("/user/:user_id/sessions", UserController, :get_user_sessions)
     patch("/dropout", StudentController, :dropout)
+    patch("/lms/students/undo-program-dropout", StudentController, :undo_program_dropout)
     patch("/re-enroll", StudentController, :re_enroll)
     resources("/status", StatusController, except: [:new, :edit])
     patch("/enrolled", StudentController, :enrolled)

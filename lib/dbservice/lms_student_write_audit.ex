@@ -45,6 +45,9 @@ defmodule Dbservice.LmsStudentWriteAudit do
     ])
     |> validate_required([
       :action,
+      :actor_email,
+      :actor_login_type,
+      :actor_role,
       :row_counts,
       :affected_identifiers,
       :created_values,

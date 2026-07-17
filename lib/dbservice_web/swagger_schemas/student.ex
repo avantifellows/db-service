@@ -37,6 +37,7 @@ defmodule DbserviceWeb.SwaggerSchema.Student do
             school_medium(:string, "Medium of student's school")
             g12_graduating_year(:integer, "Expected Grade 12 graduating year")
             apaar_id(:string, "APAAR ID of a student")
+            pen_number(:string, "PEN of a student")
             g10_board(:string, "Grade 10 board")
             g10_roll_no(:string, "Grade 10 roll number")
           end
@@ -100,6 +101,7 @@ defmodule DbserviceWeb.SwaggerSchema.Student do
             stream(:string, "Stream")
             user(:map, "User details associated with the student")
             apaar_id(:string, "APAAR ID of a student")
+            pen_number(:string, "PEN of a student")
             g10_board(:string, "Grade 10 board")
             g10_roll_no(:string, "Grade 10 roll number")
           end
@@ -262,6 +264,7 @@ defmodule DbserviceWeb.SwaggerSchema.Student do
             # Student fields
             student_id(:string, "Unique student identifier", required: false)
             apaar_id(:string, "APAAR ID for the student", required: false)
+            pen_number(:string, "PEN for the student", required: false)
             g10_board(:string, "Grade 10 board", required: false)
             g10_roll_no(:string, "Grade 10 roll number", required: false)
             category(:string, "Student category (e.g., General, OBC, SC, ST)", required: false)
