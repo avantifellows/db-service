@@ -504,21 +504,44 @@ defmodule Dbservice.HolisticMentorship do
   def get_regeneration_request(request_key) when is_binary(request_key) do
     case Repo.query!(
            """
-           SELECT request.student_id, student.user_id, request.prompt_configuration_id,
-                  request.force, request.state, request.etl_run_id
+           SELECT request.request_key, request.student_id, student.user_id,
+                  request.prompt_configuration_id, request.force, request.state,
+                  request.etl_run_id, version.version, version.template_hash,
+                  configuration.model_id
            FROM holistic_mentorship_regeneration_requests AS request
            JOIN student ON student.id = request.student_id
+           JOIN holistic_mentorship_prompt_configurations AS configuration
+             ON configuration.id = request.prompt_configuration_id
+           JOIN holistic_mentorship_prompt_versions AS version
+             ON version.id = configuration.prompt_version_id
            WHERE request.request_key = $1
            """,
            [request_key],
            log: false
          ).rows do
-      [[student_id, user_id, configuration_id, force, state, etl_run_id]] ->
+      [
+        [
+          request_key,
+          student_id,
+          user_id,
+          configuration_id,
+          force,
+          state,
+          etl_run_id,
+          prompt_version,
+          template_hash,
+          model_id
+        ]
+      ] ->
         with :ok <- eligible_student(student_id, user_id) do
           {:ok,
            %{
+             request_key: request_key,
              student_id: student_id,
              prompt_configuration_id: configuration_id,
+             prompt_version: prompt_version,
+             template_hash: template_hash,
+             model_id: model_id,
              force: force,
              state: state,
              etl_run_id: etl_run_id
@@ -546,7 +569,7 @@ defmodule Dbservice.HolisticMentorship do
 
     valid_result =
       case state do
-        state when state in ["running", "completed"] ->
+        state when state in ["queued", "running", "completed"] ->
           is_nil(error_code) and is_nil(error_message)
 
         "failed" ->
@@ -598,9 +621,27 @@ defmodule Dbservice.HolisticMentorship do
 
   defp transition_regeneration_request!(
          {id, "queued", nil, nil, nil},
+         {run_id, "queued", nil, nil}
+       ),
+       do: update_regeneration_request!(id, "queued", run_id, nil, nil)
+
+  defp transition_regeneration_request!(
+         {id, "queued", nil, nil, nil},
          {run_id, "running", nil, nil}
        ),
        do: update_regeneration_request!(id, "running", run_id, nil, nil)
+
+  defp transition_regeneration_request!(
+         {id, "queued", run_id, nil, nil},
+         {run_id, "running", nil, nil}
+       ),
+       do: update_regeneration_request!(id, "running", run_id, nil, nil)
+
+  defp transition_regeneration_request!(
+         {id, "queued", run_id, nil, nil},
+         {run_id, "failed", error_code, error_message}
+       ),
+       do: update_regeneration_request!(id, "failed", run_id, error_code, error_message)
 
   defp transition_regeneration_request!(
          {id, "running", run_id, nil, nil},

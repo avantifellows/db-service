@@ -27,9 +27,13 @@ defmodule DbserviceWeb.HolisticMentorshipRegenerationRequestControllerTest do
            |> json_response(200) == %{
              "etl_run_id" => nil,
              "force" => true,
+             "model_id" => "openai/gpt-5-mini",
              "prompt_configuration_id" => configuration_id,
+             "prompt_version" => "regeneration-v1",
+             "request_key" => "request-624",
              "state" => "queued",
-             "student_id" => student.id
+             "student_id" => student.id,
+             "template_hash" => "ba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad"
            }
 
     refute student_user.id == admin.id
@@ -122,6 +126,43 @@ defmodule DbserviceWeb.HolisticMentorshipRegenerationRequestControllerTest do
            ]
   end
 
+  test "binds one ETL run while the request remains queued", %{conn: conn} do
+    {_student_user, student} = eligible_student()
+    configuration_id = insert_prompt_configuration!()
+    insert_request!(user_fixture().id, student.id, configuration_id, "bound-request")
+
+    bound_params = %{"etl_run_id" => "bound-run", "state" => "queued"}
+
+    assert post_status(conn, "bound-request", bound_params) == %{
+             "error_code" => nil,
+             "error_message" => nil,
+             "etl_run_id" => "bound-run",
+             "state" => "queued"
+           }
+
+    assert post_status(conn, "bound-request", bound_params)["etl_run_id"] == "bound-run"
+
+    assert_status_error(
+      conn,
+      "bound-request",
+      %{"etl_run_id" => "losing-run", "state" => "queued"},
+      "etl_run_conflict"
+    )
+
+    assert_check_violation(fn ->
+      Repo.query("""
+      UPDATE holistic_mentorship_regeneration_requests
+      SET etl_run_id = 'bypassing-run'
+      WHERE request_key = 'bound-request'
+      """)
+    end)
+
+    assert post_status(conn, "bound-request", %{
+             "etl_run_id" => "bound-run",
+             "state" => "running"
+           })["state"] == "running"
+  end
+
   test "supports failed completion and rejects regressions or ETL run conflicts", %{conn: conn} do
     {_student_user, student} = eligible_student()
     configuration_id = insert_prompt_configuration!()
@@ -162,6 +203,39 @@ defmodule DbserviceWeb.HolisticMentorshipRegenerationRequestControllerTest do
       "queued-request",
       %{"etl_run_id" => "etl-queued", "state" => "completed"},
       "invalid_status_transition"
+    )
+  end
+
+  test "a bound request can fail before its worker reaches running", %{conn: conn} do
+    {_student_user, student} = eligible_student()
+    configuration_id = insert_prompt_configuration!()
+    insert_request!(user_fixture().id, student.id, configuration_id, "pre-running-failure")
+
+    post_status(conn, "pre-running-failure", %{
+      "etl_run_id" => "pre-running-run",
+      "state" => "queued"
+    })
+
+    failed_params = %{
+      "error_code" => "worker_start_failed",
+      "etl_run_id" => "pre-running-run",
+      "state" => "failed"
+    }
+
+    assert post_status(conn, "pre-running-failure", failed_params) == %{
+             "error_code" => "worker_start_failed",
+             "error_message" => nil,
+             "etl_run_id" => "pre-running-run",
+             "state" => "failed"
+           }
+
+    assert post_status(conn, "pre-running-failure", failed_params)["state"] == "failed"
+
+    assert_status_error(
+      conn,
+      "pre-running-failure",
+      %{"etl_run_id" => "other-run", "state" => "failed"},
+      "etl_run_conflict"
     )
   end
 
@@ -208,7 +282,11 @@ defmodule DbserviceWeb.HolisticMentorshipRegenerationRequestControllerTest do
     insert_request!(user_fixture().id, student.id, configuration_id, "invalid-request")
 
     for params <- [
-          %{"etl_run_id" => "etl-invalid", "state" => "queued"},
+          %{
+            "error_code" => "not-allowed-while-queued",
+            "etl_run_id" => "etl-invalid",
+            "state" => "queued"
+          },
           %{"etl_run_id" => String.duplicate("x", 256), "state" => "running"},
           %{
             "error_message" => String.duplicate("x", 501),
@@ -231,13 +309,25 @@ defmodule DbserviceWeb.HolisticMentorshipRegenerationRequestControllerTest do
   end
 
   test "requires the existing Bearer token for both Regeneration Request routes" do
-    assert build_conn()
-           |> get("/api/holistic-mentorship/regeneration-requests/request-624")
-           |> response(401) == "Not Authorized"
+    for authorization <- [nil, "Token malformed", "Bearer wrong-environment-secret"] do
+      conn =
+        if authorization,
+          do: put_req_header(build_conn(), "authorization", authorization),
+          else: build_conn()
 
-    assert build_conn()
-           |> post("/api/holistic-mentorship/regeneration-requests/request-624/status", %{})
-           |> response(401) == "Not Authorized"
+      assert conn
+             |> get("/api/holistic-mentorship/regeneration-requests/request-624")
+             |> response(401) == "Not Authorized"
+
+      conn =
+        if authorization,
+          do: put_req_header(build_conn(), "authorization", authorization),
+          else: build_conn()
+
+      assert conn
+             |> post("/api/holistic-mentorship/regeneration-requests/request-624/status", %{})
+             |> response(401) == "Not Authorized"
+    end
   end
 
   defp eligible_student do
