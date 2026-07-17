@@ -11,6 +11,13 @@ defmodule Dbservice.HolisticMentorship do
     {"6a44a83d1184e717b920c499", "EnableStudents_6a44a83d1184e717b920c499", 11} => true,
     {"6a4deca8e030ebe34669fb0f", "EnableStudents_6a4deca8e030ebe34669fb0f", 12} => true
   }
+  @invalid_publication_database_codes [
+    :check_violation,
+    :foreign_key_violation,
+    :not_null_violation,
+    :string_data_right_truncation,
+    :unique_violation
+  ]
 
   def end_active_mappings(student_id, reason) when reason in @eligibility_end_reasons do
     reason = Atom.to_string(reason)
@@ -94,8 +101,15 @@ defmodule Dbservice.HolisticMentorship do
       persist_profile_publication(fields)
     end
   rescue
-    Postgrex.Error -> {:error, :invalid_request}
+    error in Postgrex.Error -> publication_database_error(error)
   end
+
+  defp publication_database_error(%Postgrex.Error{postgres: %{code: code}})
+       when code in @invalid_publication_database_codes,
+       do: {:error, :invalid_request}
+
+  defp publication_database_error(%Postgrex.Error{}),
+    do: {:error, :database_temporarily_unavailable}
 
   defp publication_fields(
          %{

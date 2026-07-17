@@ -708,6 +708,61 @@ defmodule DbserviceWeb.HolisticMentorshipProfilePublishControllerTest do
            """).rows == [[1, "Fixed summary 1", "running", "queued"]]
   end
 
+  test "a transient database failure returns 503 and rolls back publication", %{conn: conn} do
+    {user, student} = eligible_student()
+    configuration_id = insert_prompt_configuration!()
+    insert_running_status!(student.id, configuration_id, "transient-base")
+    publish(conn, publish_params(user.id, student.id, configuration_id, "transient-base"))
+
+    insert_running_status!(student.id, configuration_id, "transient-replacement")
+
+    Repo.query!("""
+    CREATE FUNCTION pg_temp.raise_test_serialization_failure() RETURNS trigger AS $$
+    BEGIN
+      IF NEW.summary = 'Transient 1' THEN
+        RAISE EXCEPTION 'forced serialization failure' USING ERRCODE = '40001';
+      END IF;
+      RETURN NEW;
+    END;
+    $$ LANGUAGE plpgsql
+    """)
+
+    Repo.query!("""
+    CREATE TRIGGER raise_test_serialization_failure
+    BEFORE INSERT ON holistic_mentorship_student_profile_summaries
+    FOR EACH ROW EXECUTE FUNCTION pg_temp.raise_test_serialization_failure()
+    """)
+
+    params =
+      publish_params(user.id, student.id, configuration_id, "transient-replacement", %{
+        "answer_fingerprint" => "transient-answers",
+        "expected_profile_revision" => 1,
+        "summaries" => summaries("Transient")
+      })
+
+    assert conn
+           |> post("/api/holistic-mentorship/profiles/publish", params)
+           |> json_response(503) == %{
+             "error" => %{
+               "code" => "database_temporarily_unavailable",
+               "message" => "Profile publication is temporarily unavailable"
+             }
+           }
+
+    assert Repo.query!("""
+           SELECT profile.revision, profile.answer_fingerprint, min(summary.summary)
+           FROM holistic_mentorship_student_profiles AS profile
+           JOIN holistic_mentorship_student_profile_summaries AS summary
+             ON summary.student_profile_id = profile.id
+           GROUP BY profile.id
+           """).rows == [[1, "answers-v1", "Fixed summary 1"]]
+
+    assert Repo.query!("""
+           SELECT state FROM holistic_mentorship_profile_generation_statuses
+           WHERE etl_run_id = 'transient-replacement'
+           """).rows == [["running"]]
+  end
+
   test "repeating a completed run cannot replay older output", %{conn: conn} do
     {user, student} = eligible_student()
     configuration_id = insert_prompt_configuration!()
@@ -826,59 +881,71 @@ defmodule DbserviceWeb.HolisticMentorshipProfilePublishControllerTest do
   test "concurrent workers allow one replacement and reject the stale writer", %{conn: conn} do
     authorization = conn |> get_req_header("authorization") |> List.first()
 
-    {user, student} = eligible_student()
-    configuration_id = insert_prompt_configuration!()
-    insert_running_status!(student.id, configuration_id, "concurrent-base")
+    Ecto.Adapters.SQL.Sandbox.unboxed_run(Repo, fn ->
+      {user, student} = eligible_student()
+      school_id = current_school_id!(user.id)
+      configuration_id = insert_prompt_configuration!()
 
-    publish(
-      build_conn(authorization),
-      publish_params(user.id, student.id, configuration_id, "concurrent-base")
-    )
+      try do
+        insert_running_status!(student.id, configuration_id, "concurrent-base")
 
-    for run_id <- ["concurrent-a", "concurrent-b"] do
-      insert_running_status!(student.id, configuration_id, run_id)
-    end
+        publish(
+          build_conn(authorization),
+          publish_params(user.id, student.id, configuration_id, "concurrent-base")
+        )
 
-    parent = self()
+        for run_id <- ["concurrent-a", "concurrent-b"] do
+          insert_running_status!(student.id, configuration_id, run_id)
+        end
 
-    tasks =
-      for {run_id, fingerprint} <- [
-            {"concurrent-a", "answers-a"},
-            {"concurrent-b", "answers-b"}
-          ] do
-        Task.async(fn ->
-          send(parent, {:ready, self()})
+        parent = self()
 
-          receive do
-            :go ->
-              response =
-                build_conn(authorization)
-                |> post(
-                  "/api/holistic-mentorship/profiles/publish",
-                  publish_params(user.id, student.id, configuration_id, run_id, %{
-                    "answer_fingerprint" => fingerprint,
-                    "expected_profile_revision" => 1
-                  })
-                )
+        tasks =
+          for {run_id, fingerprint} <- [
+                {"concurrent-a", "answers-a"},
+                {"concurrent-b", "answers-b"}
+              ] do
+            Task.async(fn ->
+              Ecto.Adapters.SQL.Sandbox.unboxed_run(Repo, fn ->
+                send(parent, {:ready, self()})
 
-              {response.status, Jason.decode!(response.resp_body)}
+                receive do
+                  :go ->
+                    response =
+                      build_conn(authorization)
+                      |> post(
+                        "/api/holistic-mentorship/profiles/publish",
+                        publish_params(user.id, student.id, configuration_id, run_id, %{
+                          "answer_fingerprint" => fingerprint,
+                          "expected_profile_revision" => 1
+                        })
+                      )
+
+                    {response.status, Jason.decode!(response.resp_body)}
+                end
+              end)
+            end)
           end
-        end)
+
+        task_pids =
+          for _ <- tasks do
+            assert_receive {:ready, task_pid}
+            task_pid
+          end
+
+        Enum.each(task_pids, &send(&1, :go))
+        results = Enum.map(tasks, &Task.await/1)
+
+        assert Enum.sort(Enum.map(results, &elem(&1, 0))) == [200, 409]
+        assert Enum.any?(results, fn {_, body} -> body["result"] == "replaced" end)
+
+        assert Repo.query!("SELECT revision FROM holistic_mentorship_student_profiles").rows == [
+                 [2]
+               ]
+      after
+        cleanup_unboxed_profile_scope!(user.id, student.id, student.grade_id, school_id)
       end
-
-    task_pids =
-      for _ <- tasks do
-        assert_receive {:ready, task_pid}
-        task_pid
-      end
-
-    Enum.each(task_pids, &send(&1, :go))
-    results = Enum.map(tasks, &Task.await/1)
-
-    assert Enum.sort(Enum.map(results, &elem(&1, 0))) == [200, 409]
-    assert Enum.any?(results, fn {_, body} -> body["result"] == "replaced" end)
-
-    assert Repo.query!("SELECT revision FROM holistic_mentorship_student_profiles").rows == [[2]]
+    end)
   end
 
   test "revalidates eligibility at publication time", %{conn: conn} do
@@ -1093,6 +1160,41 @@ defmodule DbserviceWeb.HolisticMentorshipProfilePublishControllerTest do
   defp build_conn(authorization) do
     Phoenix.ConnTest.build_conn()
     |> put_req_header("authorization", authorization)
+  end
+
+  defp current_school_id!(user_id) do
+    [[school_id]] =
+      Repo.query!(
+        "SELECT group_id FROM enrollment_record WHERE user_id = $1 AND group_type = 'school' AND is_current",
+        [user_id]
+      ).rows
+
+    school_id
+  end
+
+  defp cleanup_unboxed_profile_scope!(user_id, student_id, grade_id, school_id) do
+    Repo.query!("""
+    TRUNCATE holistic_mentorship_regeneration_requests,
+             holistic_mentorship_profile_generation_statuses,
+             holistic_mentorship_student_profile_summaries,
+             holistic_mentorship_student_profiles,
+             holistic_mentorship_profile_journeys,
+             holistic_mentorship_prompt_configurations,
+             holistic_mentorship_prompt_versions
+    RESTART IDENTITY
+    """)
+
+    Repo.query!("DELETE FROM enrollment_record WHERE user_id = $1", [user_id])
+    Repo.query!("DELETE FROM student WHERE id = $1", [student_id])
+
+    Repo.query!(
+      "DELETE FROM \"group\" WHERE (type = 'grade' AND child_id = $1) OR (type = 'school' AND child_id = $2)",
+      [grade_id, school_id]
+    )
+
+    Repo.query!("DELETE FROM grade WHERE id = $1", [grade_id])
+    Repo.query!("DELETE FROM school WHERE id = $1", [school_id])
+    Repo.query!("DELETE FROM \"user\" WHERE id = $1", [user_id])
   end
 
   defp with_debug_log(operation) do

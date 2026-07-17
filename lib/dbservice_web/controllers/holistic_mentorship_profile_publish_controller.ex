@@ -20,6 +20,11 @@ defmodule DbserviceWeb.HolisticMentorshipProfilePublishController do
   defp error(:stale_profile_revision),
     do: {:conflict, "stale_profile_revision", "Profile revision is stale"}
 
+  defp error(:database_temporarily_unavailable),
+    do:
+      {:service_unavailable, "database_temporarily_unavailable",
+       "Profile publication is temporarily unavailable"}
+
   defp error(reason)
        when reason in [
               :dropout,

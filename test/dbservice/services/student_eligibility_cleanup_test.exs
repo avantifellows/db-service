@@ -199,8 +199,8 @@ defmodule Dbservice.Services.StudentEligibilityCleanupTest do
 
   test "a cleanup failure rolls back the dropout status and enrollment changes" do
     %{mapping_id: mapping_id, student: student} = insert_mapping_scope()
-    {:ok, enrolled_status} = Dbservice.Statuses.create_status(%{"title" => "enrolled"})
-    {:ok, dropout_status} = Dbservice.Statuses.create_status(%{"title" => "dropout"})
+    enrolled_status = Dbservice.Statuses.get_status_by_title(:enrolled)
+    dropout_status = Dbservice.Statuses.get_status_by_title(:dropout)
 
     {:ok, current_enrollment} =
       Dbservice.EnrollmentRecords.create_enrollment_record(%{
