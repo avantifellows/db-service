@@ -6,11 +6,14 @@ defmodule Dbservice.LmsStudentIngestion do
   alias Ecto.Multi
   alias Dbservice.Batches.Batch
   alias Dbservice.DataImport.StudentEnrollment
+  alias Dbservice.EnrollmentRecords.EnrollmentRecord
+  alias Dbservice.Grades.Grade
   alias Dbservice.Grades
   alias Dbservice.Groups
   alias Dbservice.LmsStudentWriteAudit
   alias Dbservice.Programs.Program
   alias Dbservice.Repo
+  alias Dbservice.Schools.School
   alias Dbservice.Schools
   alias Dbservice.Users.Student
   alias Dbservice.Users.User
@@ -90,7 +93,7 @@ defmodule Dbservice.LmsStudentIngestion do
          :ok <- validate_identifier_match(row) do
       {:create, row}
     else
-      {:already_exists, existing} -> {:skip, already_exists(row, existing)}
+      {:already_exists, existing} -> {:skip, already_exists(row, existing, school.code)}
       {:error, message} -> {:skip, rejected(row, [message])}
     end
   end
@@ -169,7 +172,7 @@ defmodule Dbservice.LmsStudentIngestion do
           result =
             case existing_student(row) do
               nil -> rejected(row, ["Student could not be created"])
-              existing -> already_exists(row, existing)
+              existing -> already_exists(row, existing, school.code)
             end
 
           {result, nil}
@@ -549,7 +552,12 @@ defmodule Dbservice.LmsStudentIngestion do
     }
   end
 
-  defp already_exists(row, existing) do
+  defp already_exists(row, existing, requested_school_code) do
+    user = Repo.get(User, existing.user_id)
+    grade = optional_get(Grade, existing.grade_id)
+    school = existing_school(existing.user_id, requested_school_code)
+    batch = existing_batch(existing.user_id)
+
     row
     |> result("already_exists")
     |> Map.put("existing_match", %{
@@ -558,8 +566,86 @@ defmodule Dbservice.LmsStudentIngestion do
       "student_id" => existing.student_id,
       "pen_number" => existing.pen_number,
       "apaar_id" => existing.apaar_id,
-      "g10_roll_no" => existing.g10_roll_no
+      "g10_roll_no" => existing.g10_roll_no,
+      "matched_identifier" => matched_identifier(row, existing),
+      "student_name" => user_name(user),
+      "school_name" => optional_field(school, :name),
+      "school_code" => optional_field(school, :code),
+      "udise_code" => optional_field(school, :udise_code),
+      "district" => optional_field(school, :district),
+      "state" => optional_field(school, :state),
+      "grade" => optional_field(grade, :number),
+      "program" => optional_field(batch, :program),
+      "stream" => optional_field(batch, :stream) || existing.stream
     })
+  end
+
+  defp optional_get(_schema, nil), do: nil
+  defp optional_get(schema, id), do: Repo.get(schema, id)
+  defp optional_field(nil, _field), do: nil
+  defp optional_field(record, field), do: Map.get(record, field)
+
+  defp existing_school(user_id, requested_school_code) do
+    from(e in EnrollmentRecord,
+      join: s in School,
+      on: s.id == e.group_id,
+      where: e.user_id == ^user_id and e.group_type == "school",
+      order_by: [
+        desc: e.is_current,
+        desc: fragment("? = ?", s.code, ^requested_school_code),
+        desc: e.inserted_at,
+        desc: e.id
+      ],
+      select: s,
+      limit: 1
+    )
+    |> Repo.one()
+  end
+
+  defp existing_batch(user_id) do
+    from(e in EnrollmentRecord,
+      join: b in Batch,
+      on: b.id == e.group_id,
+      join: p in Program,
+      on: p.id == b.program_id,
+      where: e.user_id == ^user_id and e.group_type == "batch",
+      order_by: [desc: e.is_current, desc: e.inserted_at, desc: e.id],
+      select: %{
+        program: p.name,
+        stream: fragment("?->>'stream'", b.metadata)
+      },
+      limit: 1
+    )
+    |> Repo.one()
+  end
+
+  defp matched_identifier(row, existing) do
+    [
+      matched_identifier_value(
+        get_in(row, ["student", "student_id"]),
+        existing.student_id,
+        "Student ID"
+      ),
+      matched_identifier_value(
+        get_in(row, ["student", "pen_number"]),
+        existing.pen_number,
+        "PEN Number"
+      )
+    ]
+    |> Enum.reject(&is_nil/1)
+    |> Enum.join(" + ")
+  end
+
+  defp matched_identifier_value(value, _stored, _label) when value in [nil, ""], do: nil
+  defp matched_identifier_value(value, value, label), do: label
+  defp matched_identifier_value(_value, _stored, _label), do: nil
+
+  defp user_name(nil), do: nil
+
+  defp user_name(user) do
+    [user.first_name, user.last_name]
+    |> Enum.reject(&(&1 in [nil, ""]))
+    |> Enum.join(" ")
   end
 
   defp rejected(row, errors), do: row |> result("rejected") |> Map.put("row_errors", errors)

@@ -5,6 +5,7 @@ defmodule DbserviceWeb.LmsStudentIngestionControllerTest do
 
   alias Dbservice.AuthGroups
   alias Dbservice.Batches.Batch
+  alias Dbservice.EnrollmentRecords.EnrollmentRecord
   alias Dbservice.Grades.Grade
   alias Dbservice.Groups.Group
   alias Dbservice.Groups.AuthGroup
@@ -462,7 +463,7 @@ defmodule DbserviceWeb.LmsStudentIngestionControllerTest do
 
       {_user, existing_pen} =
         Dbservice.UsersFixtures.student_fixture(%{
-          student_id: "HISTORICAL-ID",
+          student_id: nil,
           pen_number: "12345678901",
           apaar_id: "998877665544",
           g10_roll_no: "HIST1234"
@@ -498,14 +499,18 @@ defmodule DbserviceWeb.LmsStudentIngestionControllerTest do
                "duplicate_in_file"
              ]
 
-      assert Enum.at(response["results"], 0)["existing_match"] == %{
-               "student_pk_id" => existing_pen.id,
-               "user_id" => existing_pen.user_id,
-               "student_id" => "HISTORICAL-ID",
+      existing_pen_id = existing_pen.id
+      existing_user_id = existing_pen.user_id
+
+      assert %{
+               "student_pk_id" => ^existing_pen_id,
+               "user_id" => ^existing_user_id,
+               "student_id" => nil,
                "pen_number" => "12345678901",
                "apaar_id" => "998877665544",
-               "g10_roll_no" => "HIST1234"
-             }
+               "g10_roll_no" => "HIST1234",
+               "matched_identifier" => "PEN Number"
+             } = Enum.at(response["results"], 0)["existing_match"]
 
       assert Enum.at(response["results"], 1)["row_errors"] == [
                "PEN Number and generated Student ID match different existing students"
@@ -762,17 +767,41 @@ defmodule DbserviceWeb.LmsStudentIngestionControllerTest do
 
     test "returns already_exists for existing identifiers without updating records", %{conn: conn} do
       school = insert_eligible_school!()
-      insert_auth_group!("EnableStudents")
-      insert_grade!(11)
-      insert_nvs_batch!(11, "engineering")
 
-      {_user, existing_student} =
+      existing_school =
+        insert_school!(%{
+          code: "JNV999",
+          name: "JNV Other",
+          udise_code: "99999999999",
+          district_code: "D999",
+          district: "Jaipur",
+          state_code: "RJ",
+          state: "Rajasthan"
+        })
+
+      insert_auth_group!("EnableStudents")
+      grade = insert_grade!(11)
+      batch = insert_nvs_batch!(11, "engineering")
+
+      {user, existing_student} =
         Dbservice.UsersFixtures.student_fixture(%{
           student_id: "202812345678",
           pen_number: "12345678901",
           g10_board: "OLD BOARD",
-          g10_roll_no: "12345678"
+          g10_roll_no: "12345678",
+          grade_id: grade.id,
+          stream: "engineering"
         })
+
+      for {group_id, group_type} <- [{existing_school.id, "school"}, {batch.id, "batch"}] do
+        Repo.insert!(%EnrollmentRecord{
+          user_id: user.id,
+          group_id: group_id,
+          group_type: group_type,
+          academic_year: "2027-2028",
+          start_date: ~D[2027-04-01]
+        })
+      end
 
       before_users = Repo.aggregate(User, :count, :id)
 
@@ -787,7 +816,24 @@ defmodule DbserviceWeb.LmsStudentIngestionControllerTest do
 
       assert response["totals"]["already_exists"] == 1
 
-      assert [%{"status" => "already_exists", "existing_match" => %{"student_pk_id" => id}}] =
+      assert [
+               %{
+                 "status" => "already_exists",
+                 "existing_match" => %{
+                   "student_pk_id" => id,
+                   "matched_identifier" => "Student ID + PEN Number",
+                   "student_name" => "some first name some last name",
+                   "school_name" => "JNV Other",
+                   "school_code" => "JNV999",
+                   "udise_code" => "99999999999",
+                   "district" => "Jaipur",
+                   "state" => "Rajasthan",
+                   "grade" => 11,
+                   "program" => "JNV NVS",
+                   "stream" => "engineering"
+                 }
+               }
+             ] =
                response["results"]
 
       assert id == existing_student.id
