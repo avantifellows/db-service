@@ -30,7 +30,12 @@ SINCE_DATE=$(date -u -d "-${WINDOW_DAYS} days" +%Y-%m-%d 2>/dev/null || date -u 
 SINCE_ISO="${SINCE_DATE}T00:00:00Z"
 TAG="v$(date -u +%Y.%m.%d)"
 
+# Human-readable window label for release/post titles, e.g. "Jul 4 – Jul 18, 2026"
+fmt_day() { { date -u -d "$1" "+%b %d" 2>/dev/null || date -ju -f %Y-%m-%d "$1" "+%b %d"; } | sed 's/ 0/ /'; }
+RANGE="$(fmt_day "$SINCE_DATE") – $(date -u "+%b %d, %Y" | sed 's/ 0/ /')"
+
 echo "tag=$TAG" >> "$GITHUB_OUTPUT"
+echo "range=$RANGE" >> "$GITHUB_OUTPUT"
 
 prs=$(gh pr list --repo "$REPO" --state merged \
   --search "merged:>=$SINCE_DATE base:$DEFAULT_BRANCH" \

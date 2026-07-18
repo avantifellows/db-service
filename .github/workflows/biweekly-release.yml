@@ -1,6 +1,6 @@
 name: Biweekly Release
 
-# Biweekly LLM-written release notes (see avantifellows/af_lms#219 for the decision record).
+# Biweekly LLM-written release notes (issue #219).
 # GitHub cron can't express "every 14 days", so a weekly cron fires and the
 # gate step runs the job only on odd epoch-weeks: Jul 27 2026, Aug 10, … .
 # Manual runs bypass the gate. Local run:
@@ -67,6 +67,7 @@ jobs:
         if: steps.gate.outputs.run == 'true'
         env:
           WINDOW_DAYS: ${{ inputs.window_days || '14' }}
+          DEFAULT_BRANCH: ${{ github.event.repository.default_branch }}
         run: bash release-notes/gather.sh
 
       - name: Set up Node
@@ -116,7 +117,7 @@ jobs:
             --jq ".[] | select(.tagName == \"$TAG\" and .isDraft) | .tagName")
           [ -n "$EXISTING" ] && gh release delete "$TAG" --repo "$GH_REPO" --yes
           URL=$(gh release create "$TAG" --repo "$GH_REPO" --draft \
-            --title "Release $TAG" --notes-file out/notes.md)
+            --title "Release $TAG (${{ steps.gather.outputs.range }})" --notes-file out/notes.md)
           echo "url=$URL" >> "$GITHUB_OUTPUT"
           echo "Draft release: $URL"
 
@@ -126,7 +127,7 @@ jobs:
           DISCORD_WEBHOOK_URL: ${{ secrets.DISCORD_WEBHOOK_URL }}
         run: |
           jq -n \
-            --arg title "${GH_REPO#*/} — release ${{ steps.gather.outputs.tag }} (draft)" \
+            --arg title "${GH_REPO#*/} — release ${{ steps.gather.outputs.tag }} · ${{ steps.gather.outputs.range }} (draft)" \
             --arg url "${{ steps.release.outputs.url }}" \
             --arg desc "$(head -c 4000 out/notes.md)" \
             '{embeds: [{title: $title, url: $url, description: $desc, color: 5793266}]}' \
