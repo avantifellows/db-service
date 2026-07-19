@@ -62,4 +62,56 @@ defmodule Dbservice.ProblemLanguagesTest do
       assert ProblemLanguages.list_lang_versions_by_resource_id(problem.id) == []
     end
   end
+
+  describe "list_lang_versions_by_resource_ids/1" do
+    test "returns an empty map for an empty list of ids" do
+      assert ProblemLanguages.list_lang_versions_by_resource_ids([]) == %{}
+    end
+
+    test "groups lang_versions by resource id in a single lookup" do
+      en = language_fixture("zbe", "Batch EN")
+      hi = language_fixture("zbh", "Batch HI")
+      problem_one = problem_fixture()
+      problem_two = problem_fixture()
+
+      {:ok, _} =
+        ProblemLanguages.create_problem_language(%{
+          res_id: problem_one.id,
+          lang_id: en.id,
+          meta_data: %{"text" => "one-en"}
+        })
+
+      {:ok, _} =
+        ProblemLanguages.create_problem_language(%{
+          res_id: problem_one.id,
+          lang_id: hi.id,
+          meta_data: %{"text" => "one-hi"}
+        })
+
+      {:ok, _} =
+        ProblemLanguages.create_problem_language(%{
+          res_id: problem_two.id,
+          lang_id: en.id,
+          meta_data: %{"text" => "two-en"}
+        })
+
+      result =
+        ProblemLanguages.list_lang_versions_by_resource_ids([problem_one.id, problem_two.id])
+
+      assert result[problem_one.id] == [
+               %{lang_code: "zbe", meta_data: %{"text" => "one-en"}},
+               %{lang_code: "zbh", meta_data: %{"text" => "one-hi"}}
+             ]
+
+      assert result[problem_two.id] == [
+               %{lang_code: "zbe", meta_data: %{"text" => "two-en"}}
+             ]
+    end
+
+    test "omits ids that have no language versions" do
+      problem = problem_fixture()
+
+      assert ProblemLanguages.list_lang_versions_by_resource_ids([problem.id]) == %{}
+    end
+  end
 end

@@ -62,6 +62,30 @@ defmodule Dbservice.ProblemLanguages do
   end
 
   @doc """
+  Batched version of `list_lang_versions_by_resource_id/1`. Fetches the
+  language versions for many resources in a single query and returns a map of
+  `resource_id => [%{lang_code, meta_data}]`. Use this instead of calling
+  `list_lang_versions_by_resource_id/1` in a loop to avoid N+1 queries when
+  rendering a list of problems.
+  ## Examples
+      iex> list_lang_versions_by_resource_ids([1, 2])
+      %{1 => [%{lang_code: "en", meta_data: %{...}}], 2 => [...]}
+  """
+  def list_lang_versions_by_resource_ids([]), do: %{}
+
+  def list_lang_versions_by_resource_ids(resource_ids) do
+    from(pl in ProblemLanguage,
+      join: l in Language,
+      on: l.id == pl.lang_id,
+      where: pl.res_id in ^resource_ids,
+      order_by: [asc: pl.id],
+      select: %{res_id: pl.res_id, lang_code: l.code, meta_data: pl.meta_data}
+    )
+    |> Repo.all()
+    |> Enum.group_by(& &1.res_id, &Map.take(&1, [:lang_code, :meta_data]))
+  end
+
+  @doc """
   Creates a problem_language.
   ## Examples
       iex> create_problem_language(%{field: value})
