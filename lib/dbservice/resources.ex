@@ -67,6 +67,47 @@ defmodule Dbservice.Resources do
     end
   end
 
+  @doc """
+  All-languages counterpart of `get_problems_by_test_and_language/3`. Returns
+  every problem in the test once (no language filter); each problem's languages
+  are attached as `lang_versions` by the JSON layer.
+  """
+  def get_problems_by_test(test_id, curriculum_id) do
+    test_resource = Repo.get(Resource, test_id)
+
+    cond do
+      is_nil(test_resource) -> {:error, :test_not_found}
+      test_resource.type != "test" -> {:error, :resource_not_test_type}
+      true -> fetch_and_format_problems_all_langs(test_resource, curriculum_id)
+    end
+  end
+
+  defp fetch_and_format_problems_all_langs(test_resource, curriculum_id) do
+    problem_ids = extract_problem_ids_from_test(test_resource.type_params)
+
+    problems =
+      from(r in Resource,
+        where: r.id in ^problem_ids and r.type == "problem",
+        preload: [:resource_curriculum, :chapter]
+      )
+      |> Repo.all()
+      # SQL `IN` does not preserve list order, so re-sort to match the order the
+      # ids appear in the test's type_params (the order the test defines).
+      |> order_problems_by_ids(problem_ids)
+
+    resource_topic_by_resource_id = resource_topics_by_resource_id(problem_ids)
+
+    Enum.map(problems, fn resource ->
+      %{
+        resource: resource,
+        resource_topic: Map.get(resource_topic_by_resource_id, resource.id, %{}),
+        resource_curriculums: resource.resource_curriculum,
+        problem_lang: %{},
+        requested_curriculum_id: curriculum_id
+      }
+    end)
+  end
+
   defp get_problems_for_test(test_id, lang_id, curriculum_id) do
     test_resource = Repo.get(Resource, test_id)
 
@@ -1259,6 +1300,84 @@ defmodule Dbservice.Resources do
     |> apply_problem_search_filters(params)
     |> select([pl], count(pl.id))
     |> Repo.one()
+  end
+
+  @doc """
+  All-languages counterpart of `search_problems/1`. A problem can match the
+  search in more than one language, so results are deduped to one entry per
+  problem (`problem_lang` is left empty; every language is attached as
+  `lang_versions` by the JSON layer). Sorting supports `code`/`subtype`;
+  `text` is language-specific and falls back to problem order.
+  """
+  def search_problems_all_langs(params \\ %{}) do
+    page =
+      ProblemLanguage
+      |> from(as: :pl)
+      |> apply_problem_search_filters(params)
+      |> all_langs_resources_query(params)
+      |> apply_problem_pagination(params)
+      |> Repo.all()
+
+    page
+    |> Enum.map(& &1.res_id)
+    |> build_all_langs_results()
+  end
+
+  @doc """
+  Counts distinct problems matching the search filters, ignoring language (the
+  count for `search_problems_all_langs/1`).
+  """
+  def count_problems_all_langs(params \\ %{}) do
+    ProblemLanguage
+    |> from(as: :pl)
+    |> apply_problem_search_filters(params)
+    |> select([pl], count(pl.res_id, :distinct))
+    |> Repo.one()
+  end
+
+  # Distinct problems (by res_id) for the current search filters, ordered for
+  # stable pagination. code/subtype are functionally dependent on res_id, so
+  # selecting them alongside keeps DISTINCT one-row-per-problem while allowing
+  # ORDER BY on those columns.
+  defp all_langs_resources_query(query, params) do
+    sort_order = get_sort_order(params["sort_order"])
+
+    base =
+      from(pl in query,
+        join: r in Resource,
+        as: :res,
+        on: r.id == pl.res_id,
+        distinct: true,
+        select: %{res_id: pl.res_id, code: r.code, subtype: r.subtype}
+      )
+
+    case params["sort_by"] do
+      "code" -> from([res: r] in base, order_by: [{^sort_order, r.code}])
+      "subtype" -> from([res: r] in base, order_by: [{^sort_order, r.subtype}])
+      _ -> from([pl: pl] in base, order_by: [{^sort_order, pl.res_id}])
+    end
+  end
+
+  defp build_all_langs_results([]), do: []
+
+  defp build_all_langs_results(ordered_ids) do
+    resources_by_id =
+      from(r in Resource, where: r.id in ^ordered_ids)
+      |> Repo.all()
+      |> Map.new(&{&1.id, &1})
+
+    curriculums_by_res_id =
+      from(rc in Dbservice.Resources.ResourceCurriculum, where: rc.resource_id in ^ordered_ids)
+      |> Repo.all()
+      |> Enum.group_by(& &1.resource_id)
+
+    Enum.map(ordered_ids, fn id ->
+      %{
+        resource: Map.get(resources_by_id, id),
+        problem_lang: %{},
+        resource_curriculums: Map.get(curriculums_by_res_id, id, [])
+      }
+    end)
   end
 
   # Private query building functions for problem search

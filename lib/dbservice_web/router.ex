@@ -165,6 +165,14 @@ defmodule DbserviceWeb.Router do
       :get_problem
     )
 
+    # All-languages variant (no lang_code): returns the problem with every
+    # language in lang_versions so the frontend can filter client-side.
+    get(
+      "/resource/problem/:problem_id/:curriculum_id",
+      ResourceController,
+      :get_problem_all_languages
+    )
+
     resources("/cms-status", CmsStatusController, except: [:new, :edit])
 
     def swagger_info do
