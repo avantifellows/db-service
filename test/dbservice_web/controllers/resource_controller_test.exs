@@ -34,7 +34,13 @@ defmodule DbserviceWeb.ResourceControllerTest do
           ]
         })
 
-      assert %{"id" => id} = json_response(conn, 201)
+      assert %{"id" => id, "lang_versions" => lang_versions} = json_response(conn, 201)
+
+      # The create response echoes back every language version that was stored.
+      assert lang_versions == [
+               %{"lang_code" => "rce", "meta_data" => %{"text" => "What is 2+2?"}},
+               %{"lang_code" => "rch", "meta_data" => %{"text" => "2+2 क्या है?"}}
+             ]
 
       assert [first, second] = problem_lang_rows(id)
       assert first.lang_id == en.id
@@ -155,6 +161,10 @@ defmodule DbserviceWeb.ResourceControllerTest do
         })
 
       assert %{"created" => [c1, c2], "failed" => []} = json_response(conn, 200)
+
+      # Each created problem echoes back its stored language versions.
+      assert c1["lang_versions"] == [%{"lang_code" => "rcb", "meta_data" => %{"text" => "Q1"}}]
+      assert c2["lang_versions"] == [%{"lang_code" => "rcb", "meta_data" => %{"text" => "Q2"}}]
 
       [row1] = problem_lang_rows(c1["id"])
       [row2] = problem_lang_rows(c2["id"])

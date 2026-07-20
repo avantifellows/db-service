@@ -111,8 +111,22 @@ defmodule DbserviceWeb.ResourceJSON do
       end
 
     # Add meta_data if it exists
-    if Map.has_key?(resource, :meta_data) do
-      Map.put(base_map, :meta_data, resource.meta_data)
+    base_map =
+      if Map.has_key?(resource, :meta_data) do
+        Map.put(base_map, :meta_data, resource.meta_data)
+      else
+        base_map
+      end
+
+    # Problems always expose their language versions (create/show responses),
+    # so the frontend gets lang_versions back on a successful create. Other
+    # resource types don't have this concept.
+    if resource.type == "problem" do
+      Map.put(
+        base_map,
+        :lang_versions,
+        ProblemLanguages.list_lang_versions_by_resource_id(resource.id)
+      )
     else
       base_map
     end
@@ -263,11 +277,10 @@ defmodule DbserviceWeb.ResourceJSON do
     # the curriculum_grades list is redundant here.
     |> Map.delete(:curriculum_grades)
     # Top-level meta_data/lang_code keep the requested language for backward
-    # compatibility (see issue #610); lang_versions carries every available
-    # language for the new frontend.
+    # compatibility (see issue #610); lang_versions (added by render/1 for
+    # problems) carries every available language for the new frontend.
     |> Map.put(:meta_data, meta_data)
     |> Map.put(:lang_code, lang_code)
-    |> Map.put(:lang_versions, ProblemLanguages.list_lang_versions_by_resource_id(resource.id))
     |> Map.merge(%{
       curriculum_id: rc.curriculum_id,
       grade_id: rc.grade_id,
