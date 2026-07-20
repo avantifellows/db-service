@@ -67,3 +67,7 @@ config/service_account.json
 docs/ai
 
 .DS_Store
+
+# release runner
+.secrets
+out/
