@@ -43,6 +43,6 @@ defmodule DbserviceWeb.ErrorJsonTest do
 
   test "template_not_found returns correct structure" do
     assert DbserviceWeb.ErrorJSON.template_not_found("422.json", []) ==
-             %{errors: %{detail: "Unprocessable Entity"}}
+             %{errors: %{detail: "Unprocessable Content"}}
   end
 end

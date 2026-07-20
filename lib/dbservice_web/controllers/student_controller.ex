@@ -19,6 +19,8 @@ defmodule DbserviceWeb.StudentController do
   alias Dbservice.Services.DropoutService
   alias Dbservice.Services.ReEnrollmentService
   alias Dbservice.Utils.ChangesetFormatter
+  alias Dbservice.LmsStudentIngestion
+  alias Dbservice.LmsStudentUpdate
 
   action_fallback(DbserviceWeb.FallbackController)
 
@@ -119,6 +121,18 @@ defmodule DbserviceWeb.StudentController do
     end
   end
 
+  def lms_update_with_enrollments(conn, %{"student_id" => student_id} = params) do
+    case LmsStudentUpdate.update(student_id, conn.body_params || params) do
+      {:ok, result} ->
+        json(conn, result)
+
+      {:error, %{"status" => status} = error} ->
+        conn
+        |> put_status(status)
+        |> json(%{"error" => Map.delete(error, "status")})
+    end
+  end
+
   swagger_path :show do
     get("/api/student/{id}")
 
@@ -188,19 +202,48 @@ defmodule DbserviceWeb.StudentController do
       "academic_year" => academic_year
     } = params
 
-    # Get student by either student_id or apaar_id
-    # Expects params to contain either "student_id" or "apaar_id" key
-    # Falls back to apaar_id if student_id is not provided or empty
-    student = Users.get_student_by_id_or_apaar_id(params)
+    student = Users.get_student_by_id_pen_or_apaar_id(params)
 
     case student do
+      {:error, :conflicting_identifiers} ->
+        conn
+        |> put_status(:bad_request)
+        |> json(%{errors: "Conflicting student identifiers"})
+
       nil ->
         conn
         |> put_status(:not_found)
         |> json(%{errors: "Student not found with the provided identifier"})
 
       student ->
-        case DropoutService.process_dropout(student, dropout_start_date, academic_year) do
+        case DropoutService.process_dropout(student, dropout_start_date, academic_year, params) do
+          {:ok, updated_student} ->
+            render(conn, :show, student: updated_student)
+
+          {:error, reason} ->
+            conn
+            |> put_status(:bad_request)
+            |> json(%{errors: reason})
+        end
+    end
+  end
+
+  def undo_program_dropout(conn, params) do
+    student = Users.get_student_by_id_pen_or_apaar_id(params)
+
+    case student do
+      {:error, :conflicting_identifiers} ->
+        conn
+        |> put_status(:bad_request)
+        |> json(%{errors: "Conflicting student identifiers"})
+
+      nil ->
+        conn
+        |> put_status(:not_found)
+        |> json(%{errors: "Student not found with the provided identifier"})
+
+      student ->
+        case DropoutService.undo_program_dropout(student, params) do
           {:ok, updated_student} ->
             render(conn, :show, student: updated_student)
 
@@ -942,6 +985,18 @@ defmodule DbserviceWeb.StudentController do
         conn
         |> put_status(:bad_request)
         |> json(%{error: inspect(reason)})
+    end
+  end
+
+  def lms_bulk_create_with_enrollments(conn, params) do
+    case LmsStudentIngestion.bulk_create(params) do
+      {:ok, response} ->
+        json(conn, response)
+
+      {:error, :bad_request, response} ->
+        conn
+        |> put_status(:bad_request)
+        |> json(response)
     end
   end
 

@@ -10,8 +10,8 @@ defmodule Dbservice.Utils.Util do
   alias Dbservice.Users
 
   @valid_categories ~w(Gen OBC SC ST Gen-EWS PWD-SC PWD-Gen PWD-OBC PWD-EWS PWD-ST)
-  @valid_genders ~w(Male Female Others)
-  @valid_streams ~w(engineering medical pcmb pcm pcb foundation ca clat)
+  @valid_genders ~w(Male Female Other Others)
+  @valid_streams ~w(engineering medical pcmb pcm pcb foundation ca clat nda)
 
   @doc """
   Requires `field` to be present, but only when inserting a new record.
@@ -188,7 +188,7 @@ defmodule Dbservice.Utils.Util do
             put_change(changeset, field, normalized)
 
           {:error, message} ->
-            raise ArgumentError, message
+            add_error(changeset, field, message)
         end
     end
   end
@@ -207,7 +207,7 @@ defmodule Dbservice.Utils.Util do
          "Invalid #{field_type}: #{value}. Valid values are: #{Enum.join(valid_values, ", ")}"}
 
       value ->
-        {:ok, value}
+        {:ok, canonical_value(field_type, value)}
     end
   end
 
@@ -215,6 +215,9 @@ defmodule Dbservice.Utils.Util do
 
   defp normalize_value(invalid, field_type, _valid_values),
     do: {:error, "#{field_type} must be a string, got: #{inspect(invalid)}"}
+
+  defp canonical_value(:gender, "Others"), do: "Other"
+  defp canonical_value(_field_type, value), do: value
 
   def to_ist(datetime) do
     ist_offset = 5 * 60 * 60 + 30 * 60

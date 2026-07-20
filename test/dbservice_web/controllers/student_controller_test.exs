@@ -81,7 +81,7 @@ defmodule DbserviceWeb.StudentControllerTest do
   describe "create student" do
     test "renders student when data is valid", %{conn: conn} do
       conn = post(conn, ~p"/api/student", @create_attrs)
-      %{"id" => id} = json_response(conn, 201)
+      %{"id" => id} = json_response(conn, 200)
 
       conn = get(conn, ~p"/api/student/#{id}")
 
@@ -94,9 +94,15 @@ defmodule DbserviceWeb.StudentControllerTest do
       assert is_integer(resp["user"]["id"])
     end
 
+    test "renders PEN in the full student response", %{conn: conn} do
+      conn = post(conn, ~p"/api/student", Map.put(@create_attrs, :pen_number, "12345678901"))
+
+      assert json_response(conn, 200)["pen_number"] == "12345678901"
+    end
+
     test "renders errors when data is invalid", %{conn: conn} do
       conn = post(conn, ~p"/api/student", @invalid_attrs)
-      assert json_response(conn, 422)["errors"] != %{}
+      assert json_response(conn, 400)["error"] != nil
     end
   end
 
