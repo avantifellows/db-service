@@ -128,12 +128,6 @@ defmodule Dbservice.Constants.Mappings do
       optional: ["student_update", "alumni_addition"],
       type: :string
     },
-    "student_family_income" => %{
-      db_field: "family_income",
-      required: ["student"],
-      optional: ["student_update", "alumni_addition"],
-      type: :string
-    },
     "student_father_profession" => %{
       db_field: "father_profession",
       required: ["student"],
