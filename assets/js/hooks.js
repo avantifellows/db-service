@@ -74,6 +74,7 @@ const Hooks = {
       // Register for all protected import types (basic auth required)
       this.handleEvent("submit_dropout_import", submitAuthenticatedImport);
       this.handleEvent("submit_re_enrollment_import", submitAuthenticatedImport);
+      this.handleEvent("submit_student_enrollment_import", submitAuthenticatedImport);
       this.handleEvent("submit_auth_group_import", submitAuthenticatedImport);
       this.handleEvent("submit_product_import", submitAuthenticatedImport);
       this.handleEvent("submit_program_import", submitAuthenticatedImport);
