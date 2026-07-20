@@ -51,8 +51,7 @@ defmodule Dbservice.Repo.Migrations.CreateScholarshipTables do
 
     # ── Eligibility rules (one row per cycle) ─────────────────────────────────
     create table(:scholarship_eligibility_rules) do
-      add :cycle_id, references(:scholarship_cycles, on_delete: :delete_all),
-        null: false
+      add :cycle_id, references(:scholarship_cycles, on_delete: :delete_all), null: false
 
       add :eligible_categories, {:array, :string}, null: false, default: []
       add :target_states, {:array, :string}, null: false, default: []
@@ -66,8 +65,7 @@ defmodule Dbservice.Repo.Migrations.CreateScholarshipTables do
 
     # ── Approved colleges (cycle-scoped; college_id is the string business key) ─
     create table(:scholarship_approved_colleges) do
-      add :cycle_id, references(:scholarship_cycles, on_delete: :delete_all),
-        null: false
+      add :cycle_id, references(:scholarship_cycles, on_delete: :delete_all), null: false
 
       add :college_id, :string, null: false
 
@@ -79,8 +77,7 @@ defmodule Dbservice.Repo.Migrations.CreateScholarshipTables do
     # ── Gate attempts (EVERY attempt persisted, incl. rejections — ADR 0001) ──
     create table(:scholarship_gate_attempts) do
       add :applicant_id, references(:scholarship_applicants, on_delete: :nilify_all)
-      add :cycle_id, references(:scholarship_cycles, on_delete: :delete_all),
-        null: false
+      add :cycle_id, references(:scholarship_cycles, on_delete: :delete_all), null: false
 
       add :stream, :string
       add :college_id, :string
@@ -98,11 +95,9 @@ defmodule Dbservice.Repo.Migrations.CreateScholarshipTables do
 
     # ── Applications (one per applicant per cycle) ────────────────────────────
     create table(:scholarship_applications) do
-      add :applicant_id, references(:scholarship_applicants, on_delete: :delete_all),
-        null: false
+      add :applicant_id, references(:scholarship_applicants, on_delete: :delete_all), null: false
 
-      add :cycle_id, references(:scholarship_cycles, on_delete: :delete_all),
-        null: false
+      add :cycle_id, references(:scholarship_cycles, on_delete: :delete_all), null: false
 
       # Locked gate fields (typed).
       add :stream, :string
@@ -138,8 +133,8 @@ defmodule Dbservice.Repo.Migrations.CreateScholarshipTables do
     # ── Documents ─────────────────────────────────────────────────────────────
     create table(:scholarship_documents) do
       add :application_id,
-        references(:scholarship_applications, on_delete: :delete_all),
-        null: false
+          references(:scholarship_applications, on_delete: :delete_all),
+          null: false
 
       add :doc_type, :string, null: false
       add :document_uuid, :string, null: false
@@ -172,8 +167,8 @@ defmodule Dbservice.Repo.Migrations.CreateScholarshipTables do
 
     create table(:scholarship_options) do
       add :option_set_id,
-        references(:scholarship_option_sets, on_delete: :delete_all),
-        null: false
+          references(:scholarship_option_sets, on_delete: :delete_all),
+          null: false
 
       add :code, :string, null: false
       add :label, :string, null: false
@@ -188,8 +183,8 @@ defmodule Dbservice.Repo.Migrations.CreateScholarshipTables do
     # ── Status events (append-only audit trail) ───────────────────────────────
     create table(:scholarship_status_events) do
       add :application_id,
-        references(:scholarship_applications, on_delete: :delete_all),
-        null: false
+          references(:scholarship_applications, on_delete: :delete_all),
+          null: false
 
       add :from_status, :string
       add :to_status, :string, null: false
