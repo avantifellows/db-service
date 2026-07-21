@@ -32,6 +32,7 @@ defmodule Dbservice.HolisticMentorshipPhaseSchemaTest do
       "updated_at"
     ],
     "holistic_mentorship_phase_state_transitions" => [
+      "actor_email",
       "actor_user_id",
       "from_state",
       "id",
@@ -43,6 +44,7 @@ defmodule Dbservice.HolisticMentorshipPhaseSchemaTest do
     ],
     "holistic_mentorship_phase_mutation_audits" => [
       "action",
+      "actor_email",
       "actor_user_id",
       "id",
       "inserted_at",
@@ -84,6 +86,7 @@ defmodule Dbservice.HolisticMentorshipPhaseSchemaTest do
       "updated_at" => "timestamp without time zone"
     },
     "holistic_mentorship_phase_state_transitions" => %{
+      "actor_email" => "character varying",
       "actor_user_id" => "bigint",
       "from_state" => "character varying",
       "id" => "bigint",
@@ -95,6 +98,7 @@ defmodule Dbservice.HolisticMentorshipPhaseSchemaTest do
     },
     "holistic_mentorship_phase_mutation_audits" => %{
       "action" => "character varying",
+      "actor_email" => "character varying",
       "actor_user_id" => "bigint",
       "id" => "bigint",
       "inserted_at" => "timestamp without time zone",
@@ -190,7 +194,7 @@ defmodule Dbservice.HolisticMentorshipPhaseSchemaTest do
         "phase_id",
         "from_state",
         "to_state",
-        "actor_user_id",
+        "actor_email",
         "occurred_at"
       ])
 
@@ -198,7 +202,7 @@ defmodule Dbservice.HolisticMentorshipPhaseSchemaTest do
         "phase_plan_id",
         "phase_id",
         "action",
-        "actor_user_id",
+        "actor_email",
         "occurred_at"
       ])
 
@@ -349,10 +353,10 @@ defmodule Dbservice.HolisticMentorshipPhaseSchemaTest do
         Repo.query!(
           """
           INSERT INTO holistic_mentorship_phase_state_transitions
-            (phase_id, from_state, to_state, actor_user_id, occurred_at)
-          VALUES ($1, $2, $3, $4, $5)
+            (phase_id, from_state, to_state, actor_user_id, actor_email, occurred_at)
+          VALUES ($1, $2, $3, $4, $5, $6)
           """,
-          [phase_id, from_state, to_state, actor.id, occurred_at]
+          [phase_id, from_state, to_state, actor.id, actor.email, occurred_at]
         )
       end
 
@@ -386,13 +390,51 @@ defmodule Dbservice.HolisticMentorshipPhaseSchemaTest do
           Repo.query(
             """
             INSERT INTO holistic_mentorship_phase_state_transitions
-              (phase_id, from_state, to_state, actor_user_id, occurred_at)
-            VALUES ($1, $2, $3, $4, now())
+              (phase_id, from_state, to_state, actor_user_id, actor_email, occurred_at)
+            VALUES ($1, $2, $3, $4, $5, now())
             """,
-            [phase_id, from_state, to_state, actor.id]
+            [phase_id, from_state, to_state, actor.id, actor.email]
           )
         end)
       end
+    end
+
+    test "accepts an authenticated audit email without a canonical User" do
+      %{plan_id: plan_id, grade_11_id: grade_11_id} = insert_scope()
+      phase_id = insert_phase(plan_id, grade_11_id, 1, "locked")
+
+      Repo.query!(
+        "INSERT INTO holistic_mentorship_phase_questions (phase_id, text, position) VALUES ($1, 'Question', 1)",
+        [phase_id]
+      )
+
+      Repo.query!(
+        """
+        INSERT INTO holistic_mentorship_phase_state_transitions
+          (phase_id, from_state, to_state, actor_email, occurred_at)
+        VALUES ($1, 'locked', 'open', $2, now())
+        """,
+        [phase_id, "lms-admin@example.com"]
+      )
+
+      Repo.query!(
+        """
+        INSERT INTO holistic_mentorship_phase_mutation_audits
+          (phase_plan_id, phase_id, action, actor_email, occurred_at)
+        VALUES ($1, $2, 'definition_updated', $3, now())
+        """,
+        [plan_id, phase_id, "lms-admin@example.com"]
+      )
+
+      assert Repo.query!(
+               "SELECT actor_email, actor_user_id FROM holistic_mentorship_phase_state_transitions WHERE phase_id = $1",
+               [phase_id]
+             ).rows == [["lms-admin@example.com", nil]]
+
+      assert Repo.query!(
+               "SELECT actor_email, actor_user_id FROM holistic_mentorship_phase_mutation_audits WHERE phase_id = $1",
+               [phase_id]
+             ).rows == [["lms-admin@example.com", nil]]
     end
 
     test "retains content-free mutation audit after a never-opened Phase is deleted" do
@@ -408,10 +450,10 @@ defmodule Dbservice.HolisticMentorshipPhaseSchemaTest do
       Repo.query!(
         """
         INSERT INTO holistic_mentorship_phase_mutation_audits
-          (phase_plan_id, phase_id, action, actor_user_id, occurred_at)
-        VALUES ($1, $2, 'created', $3, now())
+          (phase_plan_id, phase_id, action, actor_user_id, actor_email, occurred_at)
+        VALUES ($1, $2, 'created', $3, $4, now())
         """,
-        [plan_id, phase_id, actor.id]
+        [plan_id, phase_id, actor.id, actor.email]
       )
 
       Repo.transaction(fn ->
@@ -431,10 +473,10 @@ defmodule Dbservice.HolisticMentorshipPhaseSchemaTest do
         Repo.query(
           """
           INSERT INTO holistic_mentorship_phase_mutation_audits
-            (phase_plan_id, phase_id, action, actor_user_id, occurred_at)
-          VALUES ($1, 0, 'unknown', $2, now())
+            (phase_plan_id, phase_id, action, actor_user_id, actor_email, occurred_at)
+          VALUES ($1, 0, 'unknown', $2, $3, now())
           """,
-          [plan_id, actor.id]
+          [plan_id, actor.id, actor.email]
         )
       end)
     end

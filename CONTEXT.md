@@ -50,12 +50,15 @@ _Avoid_: persisted active flag, manual Make Active action
 An audit event recording a Phase's Open/Locked change, human actor, and
 occurrence time. The timeline lets LMS derive which Phase was Active when a
 Mentor-Mentee Mapping began.
+The authenticated email is the required actor snapshot; `actor_user_id` is an
+optional link because LMS access does not require a canonical `user` row.
 _Avoid_: persisted Active Phase, progress snapshot
 
 **Phase Mutation Audit**:
 A content-free actor/time record for Phase creation, definition edits, reorder,
 or deletion. It stores no Guidance or Question snapshot and survives deletion
 of a never-opened Phase.
+The authenticated email is required and `actor_user_id` is optional.
 _Avoid_: definition history, content snapshot
 
 **Mentor-Mentee Mapping**:
