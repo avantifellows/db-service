@@ -61,6 +61,35 @@ defmodule DbserviceWeb.ResourceJSONTest do
     end
   end
 
+  describe "show/1" do
+    test "includes lang_versions for a problem (create/show response)" do
+      en = language_fixture("zse", "JSON Show EN")
+      hi = language_fixture("zsh", "JSON Show HI")
+      problem = problem_fixture()
+
+      en_meta = %{"text" => "What is 2+2?"}
+      hi_meta = %{"text" => "2+2 क्या है?"}
+      problem_language_fixture(problem, en, en_meta)
+      problem_language_fixture(problem, hi, hi_meta)
+
+      rendered = ResourceJSON.show(%{resource: problem})
+
+      assert rendered.lang_versions == [
+               %{lang_code: "zse", meta_data: en_meta},
+               %{lang_code: "zsh", meta_data: hi_meta}
+             ]
+    end
+
+    test "omits lang_versions for a non-problem resource" do
+      {:ok, resource} =
+        Resources.create_resource(%{"type" => "video", "type_params" => %{}})
+
+      rendered = ResourceJSON.show(%{resource: resource})
+
+      refute Map.has_key?(rendered, :lang_versions)
+    end
+  end
+
   describe "problem_lang/1" do
     test "renders top-level meta_data for the requested language plus all lang_versions" do
       en = language_fixture("zke", "JSON Lang EN")

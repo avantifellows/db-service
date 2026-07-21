@@ -547,6 +547,11 @@ defmodule DbserviceWeb.ResourceController do
         conn
         |> put_status(:unprocessable_entity)
         |> json(%{error: reason})
+
+      {:error, {:language_error, reason}} ->
+        conn
+        |> put_status(:unprocessable_entity)
+        |> json(%{error: reason})
     end
   end
 
@@ -648,6 +653,10 @@ defmodule DbserviceWeb.ResourceController do
     %{error: reason}
   end
 
+  defp format_batch_transaction_error({:language_error, reason}) do
+    %{error: reason}
+  end
+
   defp format_batch_transaction_error(other) do
     %{error: inspect(other)}
   end
@@ -680,26 +689,72 @@ defmodule DbserviceWeb.ResourceController do
     end
   end
 
+  # New multi-language path (issues #602/#603): one problem_lang row per
+  # lang_versions entry. Takes precedence over the flat lang_code/meta_data
+  # format when both are present.
+  defp insert_problem_language(resource, %{"lang_versions" => [_ | _] = lang_versions} = params) do
+    params = resolve_shared_paragraph_for_lang_versions(resource, params)
+
+    Enum.each(lang_versions, fn version ->
+      lang_code = version["lang_code"]
+
+      case lang_code && Repo.get_by(Language, code: lang_code) do
+        %Language{} = language ->
+          version_params = Map.put(params, "meta_data", version["meta_data"])
+          do_insert_problem_language(resource, version_params, language.id)
+
+        _ ->
+          Repo.rollback({:language_error, "Language with code '#{lang_code}' not found"})
+      end
+    end)
+  end
+
+  # Old single-language path — kept for backward compatibility until the new
+  # frontend (which sends lang_versions) is deployed.
   defp insert_problem_language(resource, %{"lang_code" => lang_code} = params)
        when not is_nil(lang_code) do
     if language = Repo.get_by(Language, code: lang_code) do
-      case Paragraphs.problem_language_insert_attrs(resource, params, language.id) do
-        {:ok, attrs} ->
-          case Dbservice.ProblemLanguages.create_problem_language(attrs) do
-            {:ok, _} -> :ok
-            {:error, cs} -> Repo.rollback({:changeset_error, cs})
-          end
-
-        {:error, %Ecto.Changeset{} = cs} ->
-          Repo.rollback({:changeset_error, cs})
-
-        {:error, {:missing_paragraph_body, msg}} ->
-          Repo.rollback({:comprehension_error, msg})
-      end
+      do_insert_problem_language(resource, params, language.id)
     end
   end
 
   defp insert_problem_language(_, _), do: :ok
+
+  defp do_insert_problem_language(resource, params, lang_id) do
+    case Paragraphs.problem_language_insert_attrs(resource, params, lang_id) do
+      {:ok, attrs} ->
+        case Dbservice.ProblemLanguages.create_problem_language(attrs) do
+          {:ok, _} -> :ok
+          {:error, cs} -> Repo.rollback({:changeset_error, cs})
+        end
+
+      {:error, %Ecto.Changeset{} = cs} ->
+        Repo.rollback({:changeset_error, cs})
+
+      {:error, {:missing_paragraph_body, msg}} ->
+        Repo.rollback({:comprehension_error, msg})
+    end
+  end
+
+  # For comprehension problems with multiple language versions, the paragraph
+  # body must become ONE shared paragraph row referenced by every problem_lang
+  # row — creating it inside the per-version insert would duplicate it per language.
+  defp resolve_shared_paragraph_for_lang_versions(resource, params) do
+    body = Paragraphs.paragraph_body_for_comprehension(params)
+
+    if is_binary(body) and Paragraphs.comprehension_problem?(resource, params) and
+         not is_integer(params["paragraph_id"]) do
+      case Paragraphs.create_paragraph(%{"body" => body}) do
+        {:ok, paragraph} ->
+          params |> Map.drop(["paragraph"]) |> Map.put("paragraph_id", paragraph.id)
+
+        {:error, cs} ->
+          Repo.rollback({:changeset_error, cs})
+      end
+    else
+      params
+    end
+  end
 
   defp insert_resource_chapter(resource, %{"chapter_id" => chapter_id})
        when not is_nil(chapter_id) do
