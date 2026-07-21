@@ -1,6 +1,8 @@
 defmodule DbserviceWeb.TagController do
   use DbserviceWeb, :controller
 
+  alias Dbservice.Utils.Pagination
+
   import Ecto.Query
   alias Dbservice.Repo
   alias Dbservice.Tags
@@ -38,8 +40,8 @@ defmodule DbserviceWeb.TagController do
     query =
       from m in Tag,
         order_by: [asc: m.id],
-        offset: ^params["offset"],
-        limit: ^params["limit"]
+        offset: ^Pagination.offset(params),
+        limit: ^Pagination.limit(params)
 
     query =
       Enum.reduce(params, query, fn {key, value}, acc ->

@@ -12,6 +12,7 @@ defmodule Dbservice.Resources do
   alias Dbservice.Languages.Language
   alias Dbservice.Resources.{ResourceTopic, ResourceChapter, ResourceConcept}
   alias Dbservice.Utils.Util
+  alias Dbservice.Utils.Pagination
   alias Dbservice.CmsStatuses
   alias Dbservice.Chapters.Chapter
   alias Dbservice.Topics.Topic
@@ -1207,13 +1208,10 @@ defmodule Dbservice.Resources do
 
   defp apply_pagination(query, params) do
     from(r in query,
-      offset: ^get_offset(params),
-      limit: ^get_limit(params)
+      offset: ^Pagination.offset(params),
+      limit: ^Pagination.limit(params)
     )
   end
-
-  defp get_offset(params), do: params["offset"]
-  defp get_limit(params), do: params["limit"]
 
   @doc """
   Searches for problems with optional filtering, sorting and pagination.
@@ -1365,8 +1363,8 @@ defmodule Dbservice.Resources do
 
   defp apply_problem_pagination(query, params) do
     from(pl in query,
-      offset: ^get_offset(params),
-      limit: ^get_limit(params)
+      offset: ^Pagination.offset(params),
+      limit: ^Pagination.limit(params)
     )
   end
 end

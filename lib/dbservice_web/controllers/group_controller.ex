@@ -1,6 +1,8 @@
 defmodule DbserviceWeb.GroupController do
   use DbserviceWeb, :controller
 
+  alias Dbservice.Utils.Pagination
+
   import Ecto.Query
   alias Dbservice.Repo
   alias Dbservice.Groups
@@ -46,8 +48,8 @@ defmodule DbserviceWeb.GroupController do
     query =
       from m in Group,
         order_by: [asc: m.id],
-        offset: ^params["offset"],
-        limit: ^params["limit"]
+        offset: ^Pagination.offset(params),
+        limit: ^Pagination.limit(params)
 
     query =
       Enum.reduce(params, query, fn {key, value}, acc ->
