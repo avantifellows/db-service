@@ -26,9 +26,9 @@ provider "aws" {
 }
 
 provider "cloudflare" {
-  # Authenticates with a legacy Global API Key (account-wide) rather than a
-  # scoped API token. email is the key owner; api_key is the sensitive value,
-  # supplied via TF_VAR_cloudflare_api_key at apply time.
-  email   = var.cloudflare_email
-  api_key = var.cloudflare_api_key
+  # Authenticates with a scoped API token (Zone → DNS → Edit on avantifellows.org)
+  # instead of the account-wide legacy Global API Key, so the blast radius is
+  # limited to the DNS records this config manages. Sensitive — supply via
+  # TF_VAR_cloudflare_api_token at apply time; not needed by the deploy workflow.
+  api_token = var.cloudflare_api_token
 }

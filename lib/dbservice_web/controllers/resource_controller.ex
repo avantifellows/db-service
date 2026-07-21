@@ -18,6 +18,7 @@ defmodule DbserviceWeb.ResourceController do
   alias Dbservice.Resources.ResourceTopic
   alias Dbservice.TopicCurriculums.TopicCurriculum
   alias Dbservice.Topics.Topic
+  alias Dbservice.Utils.Pagination
 
   action_fallback(DbserviceWeb.FallbackController)
 
@@ -981,21 +982,7 @@ defmodule DbserviceWeb.ResourceController do
   defp filter_by_subtype(query, _), do: query
 
   defp apply_pagination(query, params) do
-    case Map.get(params, "limit") do
-      nil ->
-        query
-
-      limit_str ->
-        limit = String.to_integer(limit_str)
-
-        offset =
-          case Map.get(params, "offset") do
-            nil -> 0
-            offset_str -> String.to_integer(offset_str)
-          end
-
-        from(r in query, limit: ^limit, offset: ^offset)
-    end
+    from(r in query, limit: ^Pagination.limit(params), offset: ^Pagination.offset(params))
   end
 
   swagger_path :test_problems do

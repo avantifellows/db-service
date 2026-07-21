@@ -1,6 +1,8 @@
 defmodule DbserviceWeb.BranchController do
   use DbserviceWeb, :controller
 
+  alias Dbservice.Utils.Pagination
+
   import Ecto.Query
   alias Dbservice.Repo
   alias Dbservice.Branches
@@ -34,8 +36,8 @@ defmodule DbserviceWeb.BranchController do
     query =
       from(b in Branch,
         order_by: [asc: b.id],
-        offset: ^params["offset"],
-        limit: ^params["limit"]
+        offset: ^Pagination.offset(params),
+        limit: ^Pagination.limit(params)
       )
 
     query =

@@ -88,6 +88,7 @@ defmodule Dbservice.DataImport.ImportWorker do
       "program_addition" => &process_program_addition_record/1,
       "batch_addition" => &process_batch_addition_record/1,
       "school_addition" => &process_school_addition_record/1,
+      "school_deletion" => &process_school_deletion_record/1,
       "student" => &process_student_record/1,
       "student_update" => &process_student_update_record/1,
       "batch_movement" => &process_batch_movement_record/1,
@@ -1388,6 +1389,8 @@ defmodule Dbservice.DataImport.ImportWorker do
     |> maybe_put_school("state", record["school_state"] |> trim_str())
     |> maybe_put_school("district_code", record["district_code"] |> trim_str())
     |> maybe_put_school("district", record["school_district"] |> trim_str())
+    |> maybe_put_school("block_code", record["block_code"] |> trim_str())
+    |> maybe_put_school("block_name", record["block_name"] |> trim_str())
     |> maybe_put_school("board", record["school_board"] |> trim_str())
   end
 
@@ -1657,6 +1660,21 @@ defmodule Dbservice.DataImport.ImportWorker do
     case Batches.correct_batch_id(record["old_batch_id"], record["new_batch_id"]) do
       {:ok, _batch} ->
         {:ok, "Batch ID corrected successfully"}
+
+      {:error, %Ecto.Changeset{} = changeset} ->
+        {:error, ChangesetFormatter.format_errors(changeset)}
+
+      {:error, reason} ->
+        {:error, reason}
+    end
+  end
+
+  # Deletes a school by its code; Schools.delete_school_by_code/1 refuses when students are
+  # still enrolled (enrollment records / group memberships) or sessions target the school.
+  defp process_school_deletion_record(record) do
+    case Schools.delete_school_by_code(record["school_code"]) do
+      {:ok, school} ->
+        {:ok, "School #{school.code} deleted successfully"}
 
       {:error, %Ecto.Changeset{} = changeset} ->
         {:error, ChangesetFormatter.format_errors(changeset)}

@@ -107,6 +107,16 @@ resource "aws_ecs_service" "this" {
   deployment_minimum_healthy_percent = 100
   deployment_maximum_percent         = 200
 
+  # If a newly deployed revision can't reach a steady/healthy state behind the
+  # ALB, ECS automatically rolls back to the last working task definition rather
+  # than churning on the bad one. Matters here because CI registers new task-def
+  # revisions and the service has ignore_changes = [task_definition], so a later
+  # terraform apply won't self-correct a stuck deploy.
+  deployment_circuit_breaker {
+    enable   = true
+    rollback = true
+  }
+
   network_configuration {
     subnets          = var.subnet_ids
     security_groups  = [aws_security_group.tasks.id]

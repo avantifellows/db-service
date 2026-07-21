@@ -45,6 +45,7 @@ defmodule DbserviceWeb.Router do
     post("/imports/program", ImportController, :create_program_import)
     post("/imports/batch", ImportController, :create_batch_import)
     post("/imports/school", ImportController, :create_school_import)
+    post("/imports/school_deletion", ImportController, :create_school_deletion_import)
 
     post(
       "/imports/batch_id_correction",
@@ -57,6 +58,7 @@ defmodule DbserviceWeb.Router do
     pipe_through(:api)
 
     get("/health", HealthController, :index)
+    get("/health/ready", HealthController, :ready)
 
     resources("/auth-group", AuthGroupController, except: [:new, :edit])
     post("/group/:id/update-users", GroupController, :update_users)
@@ -115,6 +117,7 @@ defmodule DbserviceWeb.Router do
     resources("/student-exam-record", StudentExamRecordController)
     get("/user/:user_id/sessions", UserController, :get_user_sessions)
     patch("/dropout", StudentController, :dropout)
+    patch("/lms/students/undo-program-dropout", StudentController, :undo_program_dropout)
     patch("/re-enroll", StudentController, :re_enroll)
     resources("/status", StatusController, except: [:new, :edit])
     patch("/enrolled", StudentController, :enrolled)
@@ -155,7 +158,19 @@ defmodule DbserviceWeb.Router do
       only: [:index, :create, :show, :delete]
     )
 
+    post(
+      "/lms/students/bulk-create-with-enrollments",
+      StudentController,
+      :lms_bulk_create_with_enrollments
+    )
+
     post("/student/create-with-enrollments", StudentController, :create_with_enrollments)
+
+    patch(
+      "/lms/students/:student_id/update-with-enrollments",
+      StudentController,
+      :lms_update_with_enrollments
+    )
 
     get(
       "/resource/problem/:problem_id/:lang_code/:curriculum_id",

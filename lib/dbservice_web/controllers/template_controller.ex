@@ -19,6 +19,8 @@ defmodule DbserviceWeb.TemplateController do
          "product_addition",
          "program_addition",
          "batch_addition",
+         "school_addition",
+         "school_deletion",
          "alumni_addition",
          "batch_movement",
          "dropout",

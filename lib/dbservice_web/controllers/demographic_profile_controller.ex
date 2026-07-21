@@ -1,6 +1,8 @@
 defmodule DbserviceWeb.DemographicProfileController do
   use DbserviceWeb, :controller
 
+  alias Dbservice.Utils.Pagination
+
   import Ecto.Query
   alias Dbservice.Repo
   alias Dbservice.Demographics
@@ -34,8 +36,8 @@ defmodule DbserviceWeb.DemographicProfileController do
     query =
       from(dp in DemographicProfile,
         order_by: [asc: dp.id],
-        offset: ^params["offset"],
-        limit: ^params["limit"]
+        offset: ^Pagination.offset(params),
+        limit: ^Pagination.limit(params)
       )
 
     query =

@@ -3,6 +3,8 @@ defmodule DbserviceWeb.GroupUserController do
   alias Dbservice.Services.GroupUpdateService
   use DbserviceWeb, :controller
 
+  alias Dbservice.Utils.Pagination
+
   import Ecto.Query
   alias Dbservice.Repo
   alias Dbservice.GroupUsers
@@ -31,8 +33,8 @@ defmodule DbserviceWeb.GroupUserController do
     query =
       from(m in GroupUser,
         order_by: [asc: m.id],
-        offset: ^params["offset"],
-        limit: ^params["limit"]
+        offset: ^Pagination.offset(params),
+        limit: ^Pagination.limit(params)
       )
 
     query =

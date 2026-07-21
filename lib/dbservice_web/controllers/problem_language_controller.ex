@@ -1,6 +1,8 @@
 defmodule DbserviceWeb.ProblemLanguageController do
   use DbserviceWeb, :controller
 
+  alias Dbservice.Utils.Pagination
+
   import Ecto.Query
   alias Dbservice.Repo
   alias Dbservice.ProblemLanguages
@@ -38,8 +40,8 @@ defmodule DbserviceWeb.ProblemLanguageController do
     query =
       from(m in ProblemLanguage,
         order_by: [asc: m.id],
-        offset: ^params["offset"],
-        limit: ^params["limit"],
+        offset: ^Pagination.offset(params),
+        limit: ^Pagination.limit(params),
         preload: [:paragraph, :resource]
       )
 

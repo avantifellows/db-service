@@ -1,6 +1,8 @@
 defmodule DbserviceWeb.ExamOccurrenceController do
   use DbserviceWeb, :controller
 
+  alias Dbservice.Utils.Pagination
+
   import Ecto.Query
   alias Dbservice.Repo
   alias Dbservice.Exams
@@ -34,8 +36,8 @@ defmodule DbserviceWeb.ExamOccurrenceController do
     query =
       from(eo in ExamOccurrence,
         order_by: [asc: eo.id],
-        offset: ^params["offset"],
-        limit: ^params["limit"]
+        offset: ^Pagination.offset(params),
+        limit: ^Pagination.limit(params)
       )
 
     query =
