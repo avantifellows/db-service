@@ -452,6 +452,21 @@ defmodule Dbservice.UsersTest do
       assert updated_student.father_name == "some father name"
       assert updated_student.stream == "medical"
     end
+
+    test "create_student_with_user rolls back the user when student creation fails" do
+      before_count = Dbservice.Repo.aggregate(Dbservice.Users.User, :count)
+
+      # `grade_id` is an integer column; a non-integer makes the Student changeset fail
+      # *after* the user row is inserted. With the transaction, that user must be rolled back.
+      attrs = %{
+        "first_name" => "Orphan",
+        "role" => "student",
+        "grade_id" => "not-an-integer"
+      }
+
+      assert {:error, %Ecto.Changeset{}} = Users.create_student_with_user(attrs)
+      assert Dbservice.Repo.aggregate(Dbservice.Users.User, :count) == before_count
+    end
   end
 
   describe "teacher" do

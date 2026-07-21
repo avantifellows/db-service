@@ -313,14 +313,18 @@ defmodule Dbservice.Users do
   def update_student_with_user(student, user, attrs \\ %{}) do
     alias Dbservice.Users
 
-    with {:ok, %User{} = user} <- Users.update_user(user, attrs),
-         {:ok, %Student{} = student} <-
-           Users.update_student(
-             student,
-             Map.merge(stringify_keys(attrs), %{"user_id" => user.id})
-           ) do
-      {:ok, student}
-    end
+    Repo.transaction(fn ->
+      with {:ok, %User{} = user} <- Users.update_user(user, attrs),
+           {:ok, %Student{} = student} <-
+             Users.update_student(
+               student,
+               Map.merge(stringify_keys(attrs), %{"user_id" => user.id})
+             ) do
+        student
+      else
+        {:error, changeset} -> Repo.rollback(changeset)
+      end
+    end)
   end
 
   @doc """
@@ -660,11 +664,15 @@ defmodule Dbservice.Users do
   def create_teacher_with_user(attrs \\ %{}) do
     alias Dbservice.Users
 
-    with {:ok, %User{} = user} <- Users.create_user(attrs),
-         {:ok, %Teacher{} = teacher} <-
-           Users.create_teacher(Map.merge(stringify_keys(attrs), %{"user_id" => user.id})) do
-      {:ok, teacher}
-    end
+    Repo.transaction(fn ->
+      with {:ok, %User{} = user} <- Users.create_user(attrs),
+           {:ok, %Teacher{} = teacher} <-
+             Users.create_teacher(Map.merge(stringify_keys(attrs), %{"user_id" => user.id})) do
+        teacher
+      else
+        {:error, changeset} -> Repo.rollback(changeset)
+      end
+    end)
   end
 
   @doc """
@@ -682,14 +690,18 @@ defmodule Dbservice.Users do
   def update_teacher_with_user(teacher, user, attrs \\ %{}) do
     alias Dbservice.Users
 
-    with {:ok, %User{} = user} <- Users.update_user(user, attrs),
-         {:ok, %Teacher{} = teacher} <-
-           Users.update_teacher(
-             teacher,
-             Map.merge(stringify_keys(attrs), %{"user_id" => user.id})
-           ) do
-      {:ok, teacher}
-    end
+    Repo.transaction(fn ->
+      with {:ok, %User{} = user} <- Users.update_user(user, attrs),
+           {:ok, %Teacher{} = teacher} <-
+             Users.update_teacher(
+               teacher,
+               Map.merge(stringify_keys(attrs), %{"user_id" => user.id})
+             ) do
+        teacher
+      else
+        {:error, changeset} -> Repo.rollback(changeset)
+      end
+    end)
   end
 
   @doc """
@@ -814,11 +826,15 @@ defmodule Dbservice.Users do
   def create_candidate_with_user(attrs \\ %{}) do
     alias Dbservice.Users
 
-    with {:ok, %User{} = user} <- Users.create_user(attrs),
-         {:ok, %Candidate{} = candidate} <-
-           Users.create_candidate(Map.merge(attrs, %{"user_id" => user.id})) do
-      {:ok, candidate}
-    end
+    Repo.transaction(fn ->
+      with {:ok, %User{} = user} <- Users.create_user(attrs),
+           {:ok, %Candidate{} = candidate} <-
+             Users.create_candidate(Map.merge(attrs, %{"user_id" => user.id})) do
+        candidate
+      else
+        {:error, changeset} -> Repo.rollback(changeset)
+      end
+    end)
   end
 
   @doc """
@@ -836,11 +852,15 @@ defmodule Dbservice.Users do
   def update_candidate_with_user(candidate, user, attrs \\ %{}) do
     alias Dbservice.Users
 
-    with {:ok, %User{} = user} <- Users.update_user(user, attrs),
-         {:ok, %Candidate{} = candidate} <-
-           Users.update_candidate(candidate, Map.merge(attrs, %{"user_id" => user.id})) do
-      {:ok, candidate}
-    end
+    Repo.transaction(fn ->
+      with {:ok, %User{} = user} <- Users.update_user(user, attrs),
+           {:ok, %Candidate{} = candidate} <-
+             Users.update_candidate(candidate, Map.merge(attrs, %{"user_id" => user.id})) do
+        candidate
+      else
+        {:error, changeset} -> Repo.rollback(changeset)
+      end
+    end)
   end
 
   @doc """
