@@ -1,6 +1,8 @@
 defmodule DbserviceWeb.TestRuleController do
   use DbserviceWeb, :controller
 
+  alias Dbservice.Utils.Pagination
+
   import Ecto.Query
   alias Dbservice.Repo
   alias Dbservice.TestRules
@@ -36,8 +38,8 @@ defmodule DbserviceWeb.TestRuleController do
     query =
       from(tr in TestRule,
         order_by: [asc: tr.id],
-        offset: ^params["offset"],
-        limit: ^params["limit"]
+        offset: ^Pagination.offset(params),
+        limit: ^Pagination.limit(params)
       )
 
     query =

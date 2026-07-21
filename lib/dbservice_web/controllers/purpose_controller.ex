@@ -1,6 +1,8 @@
 defmodule DbserviceWeb.PurposeController do
   use DbserviceWeb, :controller
 
+  alias Dbservice.Utils.Pagination
+
   import Ecto.Query
   alias Dbservice.Repo
   alias Dbservice.Purposes
@@ -36,8 +38,8 @@ defmodule DbserviceWeb.PurposeController do
     query =
       from(m in Purpose,
         order_by: [asc: m.id],
-        offset: ^params["offset"],
-        limit: ^params["limit"]
+        offset: ^Pagination.offset(params),
+        limit: ^Pagination.limit(params)
       )
 
     query =

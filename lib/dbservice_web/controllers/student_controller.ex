@@ -1,6 +1,8 @@
 defmodule DbserviceWeb.StudentController do
   use DbserviceWeb, :controller
 
+  alias Dbservice.Utils.Pagination
+
   import Ecto.Query
   alias Dbservice.Repo
   alias Dbservice.Users.User
@@ -78,8 +80,8 @@ defmodule DbserviceWeb.StudentController do
     query =
       from(m in Student,
         order_by: [asc: m.id],
-        offset: ^params["offset"],
-        limit: ^params["limit"]
+        offset: ^Pagination.offset(params),
+        limit: ^Pagination.limit(params)
       )
 
     query =

@@ -1,6 +1,8 @@
 defmodule DbserviceWeb.ChapterCurriculumController do
   use DbserviceWeb, :controller
 
+  alias Dbservice.Utils.Pagination
+
   import Ecto.Query
   alias Dbservice.Repo
   alias Dbservice.ChapterCurriculums.ChapterCurriculum
@@ -34,8 +36,8 @@ defmodule DbserviceWeb.ChapterCurriculumController do
     query =
       from(cc in ChapterCurriculum,
         order_by: [asc: cc.id],
-        offset: ^params["offset"],
-        limit: ^params["limit"]
+        offset: ^Pagination.offset(params),
+        limit: ^Pagination.limit(params)
       )
 
     query =

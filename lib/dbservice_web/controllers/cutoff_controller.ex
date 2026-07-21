@@ -1,6 +1,8 @@
 defmodule DbserviceWeb.CutoffController do
   use DbserviceWeb, :controller
 
+  alias Dbservice.Utils.Pagination
+
   import Ecto.Query
   alias Dbservice.Repo
   alias Dbservice.Cutoffs
@@ -37,8 +39,8 @@ defmodule DbserviceWeb.CutoffController do
     query =
       from(c in Cutoff,
         order_by: [asc: c.id],
-        offset: ^params["offset"],
-        limit: ^params["limit"],
+        offset: ^Pagination.offset(params),
+        limit: ^Pagination.limit(params),
         preload: [:exam_occurrence, :college, :branch, :demographic_profile]
       )
 
