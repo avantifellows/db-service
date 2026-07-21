@@ -4,16 +4,25 @@ defmodule DbserviceWeb.ResourceJSON do
   alias Dbservice.Resources.ResourceChapter
   alias Dbservice.Concepts
   alias Dbservice.Paragraphs
+  alias Dbservice.ProblemLanguages
   alias Dbservice.ResourceConcepts
   alias Dbservice.ResourceCurriculums
   alias Dbservice.Repo
   import Ecto.Query
 
   def index(%{resource: resources}) do
+    # Batch-fetch lang_versions for the problem-structure entries to avoid an
+    # N+1 query inside render_problem/2.
+    lang_versions_by_res_id =
+      resources
+      |> Enum.filter(&Map.has_key?(&1, :resource))
+      |> Enum.map(& &1.resource.id)
+      |> ProblemLanguages.list_lang_versions_by_resource_ids()
+
     Enum.map(resources, fn resource ->
       # If resource is a map with :resource key, it's the new structure
       if Map.has_key?(resource, :resource) do
-        render_problem(resource)
+        render_problem(resource, lang_versions_by_res_id)
       else
         render(resource)
       end
@@ -110,10 +119,17 @@ defmodule DbserviceWeb.ResourceJSON do
   end
 
   def problems(%{problems: problems}) do
-    Enum.map(problems, fn problem -> render_problem(problem) end)
+    # Batch-fetch lang_versions for every problem up front to avoid an N+1
+    # query (one lookup per problem inside render_problem/2).
+    lang_versions_by_res_id =
+      problems
+      |> Enum.map(& &1.resource.id)
+      |> ProblemLanguages.list_lang_versions_by_resource_ids()
+
+    Enum.map(problems, fn problem -> render_problem(problem, lang_versions_by_res_id) end)
   end
 
-  defp render_problem(problem) do
+  defp render_problem(problem, lang_versions_by_res_id) do
     # First get the base resource
     resource = problem.resource
     resource_topic = Map.get(problem, :resource_topic, %{})
@@ -193,12 +209,19 @@ defmodule DbserviceWeb.ResourceJSON do
         subject_id: Map.get(curriculum, :subject_id, nil)
       })
 
-    # Add problem language data
+    # lang_versions comes from the batched map (see problems/1 and index/1),
+    # keyed by resource id, to avoid an N+1 query per problem.
+    lang_versions = Map.get(lang_versions_by_res_id, resource.id, [])
+
+    # Add problem language data. Top-level meta_data keeps the currently
+    # requested language for backward compatibility (see issue #610);
+    # lang_versions carries every available language for the new frontend.
     problem_map =
       Map.merge(resource_with_curriculum, %{
         meta_data: Map.get(problem_lang, :meta_data, nil),
         lang_id: Map.get(problem_lang, :lang_id, nil),
-        paragraph_id: Map.get(problem_lang, :paragraph_id, nil)
+        paragraph_id: Map.get(problem_lang, :paragraph_id, nil),
+        lang_versions: lang_versions
       })
 
     # Fetch concept information
@@ -239,8 +262,12 @@ defmodule DbserviceWeb.ResourceJSON do
     # top-level fields (merged below from the resolved resource_curriculum), so
     # the curriculum_grades list is redundant here.
     |> Map.delete(:curriculum_grades)
+    # Top-level meta_data/lang_code keep the requested language for backward
+    # compatibility (see issue #610); lang_versions carries every available
+    # language for the new frontend.
     |> Map.put(:meta_data, meta_data)
     |> Map.put(:lang_code, lang_code)
+    |> Map.put(:lang_versions, ProblemLanguages.list_lang_versions_by_resource_id(resource.id))
     |> Map.merge(%{
       curriculum_id: rc.curriculum_id,
       grade_id: rc.grade_id,
