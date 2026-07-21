@@ -629,26 +629,29 @@ defmodule DbserviceWeb.LmsStudentUpdateControllerTest do
       assert Users.get_user!(user.id).first_name == "Updated Name"
     end
 
-    test "rejects a program that is not current NVS", %{conn: conn} do
+    test "updates a student regardless of which program they are enrolled in", %{conn: conn} do
+      # The update guard is program-agnostic: it only checks that the student is
+      # currently enrolled in the supplied program at the supplied school. Any
+      # program id works — program eligibility policy belongs in the LMS layer,
+      # not here. Uses an arbitrary program id to make that independence explicit.
+      arbitrary_program_id = 7
       school = insert_school!()
       grade = insert_grade!(11)
-      batch = insert_nvs_batch!(11, "engineering")
+      batch = insert_program_batch!(arbitrary_program_id, 11, "engineering")
       {user, student} = insert_enrolled_student!(school, grade, batch)
-      program = Repo.get!(Dbservice.Programs.Program, 64)
-      Repo.update!(Ecto.Changeset.change(program, is_current: false))
 
       conn =
         patch(conn, "/api/lms/students/#{student.id}/update-with-enrollments", %{
           "actor" => actor(),
           "school" => %{"code" => school.code, "udise_code" => school.udise_code},
-          "program_id" => 64,
+          "program_id" => arbitrary_program_id,
           "academic_year" => "2026-2027",
           "start_date" => "2026-07-01",
-          "first_name" => "Should Not Apply"
+          "first_name" => "Updated Name"
         })
 
-      assert json_response(conn, 403)["error"]["code"] == "program_not_allowed"
-      assert Users.get_user!(user.id).first_name == user.first_name
+      assert json_response(conn, 200)["status"] == "updated"
+      assert Users.get_user!(user.id).first_name == "Updated Name"
     end
 
     test "rejects a school outside the student's current enrollment", %{conn: conn} do

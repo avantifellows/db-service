@@ -162,18 +162,22 @@ defmodule Dbservice.LmsStudentUpdate do
     current_program_batches = current_program_batch_count(student.user_id, program_id)
 
     cond do
-      not LmsStudentIngestion.current_nvs_program?(program_id) ->
-        {:error, error("program_not_allowed", "Program must be a current NVS program", 403)}
+      is_nil(program_id) ->
+        {:error, error("program_required", "Program is required", 400)}
 
       not enrolled?(student.user_id, school.id, "school") ->
         {:error, error("school_mismatch", "Student is not enrolled in this school", 403)}
 
+      # Program-agnostic, data-integrity only: the student must be currently
+      # enrolled in exactly one batch of the supplied program. Which programs a
+      # given actor may edit is business policy that lives in the LMS API layer,
+      # not in this service.
       current_program_batches == 0 ->
         {:error, error("program_mismatch", "Student is not enrolled in this program", 403)}
 
       current_program_batches > 1 ->
         {:error,
-         error("multiple_current_batches", "Multiple current NVS batches found", 409, ["stream"])}
+         error("multiple_current_batches", "Multiple current batches found", 409, ["stream"])}
 
       true ->
         :ok
