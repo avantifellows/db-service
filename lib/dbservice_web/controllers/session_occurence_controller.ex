@@ -268,9 +268,14 @@ defmodule DbserviceWeb.SessionOccurrenceController do
             )
 
       "active" ->
-        from(so in query,
-          where: so.start_time <= ^current_time and so.end_time >= ^current_time
-        )
+        # Active-window lookups filter by end_time (served by the end_time index). Override
+        # the base `ORDER BY id` - which makes PostgreSQL walk the primary key and scan
+        # ~630K rows to find the few active ones - with temporal ordering. `id` is a
+        # deterministic pagination tie-breaker for rows sharing an end_time.
+        query
+        |> exclude(:order_by)
+        |> where([so], so.start_time <= ^current_time and so.end_time >= ^current_time)
+        |> order_by([so], asc: so.end_time, asc: so.id)
 
       _ ->
         query
