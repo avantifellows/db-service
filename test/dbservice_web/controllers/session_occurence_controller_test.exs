@@ -39,13 +39,15 @@ defmodule DbserviceWeb.SessionOccurrenceControllerTest do
     test "is_start_time=active returns active occurrences ordered by end_time ascending", %{
       conn: conn
     } do
-      past = ~U[2020-01-01 00:00:00Z]
+      now = DateTime.utc_now()
+      past = DateTime.add(now, -365, :day)
 
       # All currently active (started in the past, end in the future), inserted in an order
-      # that differs from their end_time order.
-      mid = session_occurrence_fixture(%{start_time: past, end_time: ~U[2030-06-01 00:00:00Z]})
-      late = session_occurrence_fixture(%{start_time: past, end_time: ~U[2031-06-01 00:00:00Z]})
-      soon = session_occurrence_fixture(%{start_time: past, end_time: ~U[2029-06-01 00:00:00Z]})
+      # that differs from their end_time order. Anchored to `now` with fixed offsets so the
+      # relative ordering stays deterministic and the fixtures never expire with the calendar.
+      mid = session_occurrence_fixture(%{start_time: past, end_time: DateTime.add(now, 2, :day)})
+      late = session_occurrence_fixture(%{start_time: past, end_time: DateTime.add(now, 3, :day)})
+      soon = session_occurrence_fixture(%{start_time: past, end_time: DateTime.add(now, 1, :day)})
 
       # No limit/offset so all active rows come back; assert our three are end_time-ordered.
       conn = get(conn, ~p"/api/session-occurrence?is_start_time=active")
