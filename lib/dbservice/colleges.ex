@@ -55,6 +55,68 @@ defmodule Dbservice.Colleges do
   end
 
   @doc """
+  Returns college names only — one `%{college_id, name}` map per college,
+  selecting just those two columns. Built for name dropdowns/autocomplete
+  where the full college payload (20+ fields) is too heavy.
+
+  Options in `params` (all optional):
+    * `"name"` — case-insensitive substring match on the college name
+    * `"limit"` / `"offset"` — pagination
+
+  ## Examples
+
+      iex> list_college_names(%{"name" => "iit", "limit" => "20"})
+      [%{college_id: "C123", name: "IIT Madras"}, ...]
+
+  """
+  def list_college_names(params \\ %{}) do
+    from(c in College,
+      order_by: [asc: c.name],
+      select: %{college_id: c.college_id, name: c.name}
+    )
+    |> filter_by_name_ilike(params)
+    |> paginate(params)
+    |> Repo.all()
+  end
+
+  defp filter_by_name_ilike(query, %{"name" => name}) when is_binary(name) and name != "" do
+    from(q in query, where: ilike(q.name, ^"%#{name}%"))
+  end
+
+  defp filter_by_name_ilike(query, _), do: query
+
+  defp paginate(query, params) do
+    query
+    |> maybe_limit(params["limit"])
+    |> maybe_offset(params["offset"])
+  end
+
+  defp maybe_limit(query, limit) do
+    case to_pagination_integer(limit) do
+      nil -> query
+      value -> from(q in query, limit: ^value)
+    end
+  end
+
+  defp maybe_offset(query, offset) do
+    case to_pagination_integer(offset) do
+      nil -> query
+      value -> from(q in query, offset: ^value)
+    end
+  end
+
+  defp to_pagination_integer(value) when is_integer(value) and value >= 0, do: value
+
+  defp to_pagination_integer(value) when is_binary(value) do
+    case Integer.parse(value) do
+      {int, ""} when int >= 0 -> int
+      _ -> nil
+    end
+  end
+
+  defp to_pagination_integer(_), do: nil
+
+  @doc """
   Creates a college.
 
   ## Examples
