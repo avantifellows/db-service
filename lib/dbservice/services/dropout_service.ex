@@ -49,6 +49,7 @@ defmodule Dbservice.Services.DropoutService do
     Repo.transaction(fn ->
       with {:ok, student} <- lock_student(student.id),
            :ok <- validate_dropout_status(student),
+           :ok <- validate_academic_year(student, academic_year),
            :ok <- validate_lms_audit_params(student, audit_params),
            {:ok, updated_student} <-
              create_dropout_with_audit(student, start_date, academic_year, audit_params) do
@@ -71,6 +72,38 @@ defmodule Dbservice.Services.DropoutService do
     do: {:error, "Student is already marked as dropout"}
 
   defp validate_dropout_status(_student), do: :ok
+
+  # Guards against stamping a dropout with an academic year that does not match
+  # the student's actual current enrollment (the Wardha bug: a 2025-2026 dropout
+  # written for a student who is currently enrolled for 2026-2027). The academic
+  # year is caller-supplied (dropout API param / CSV column), so we reject it when
+  # it does not match any of the student's current enrollment years. When the
+  # student has no current enrollment carrying an academic year, there is nothing
+  # to validate against and we allow the dropout through.
+  defp validate_academic_year(student, academic_year) do
+    case current_enrollment_academic_years(student.user_id) do
+      [] ->
+        :ok
+
+      current_years ->
+        if academic_year in current_years do
+          :ok
+        else
+          {:error,
+           "Academic year mismatch: provided #{inspect(academic_year)} but the student's " <>
+             "current enrollment is for #{Enum.join(current_years, ", ")}"}
+        end
+    end
+  end
+
+  defp current_enrollment_academic_years(user_id) do
+    from(e in EnrollmentRecord,
+      where: e.user_id == ^user_id and e.is_current == true and not is_nil(e.academic_year),
+      distinct: true,
+      select: e.academic_year
+    )
+    |> Repo.all()
+  end
 
   defp create_dropout_with_audit(student, start_date, academic_year, audit_params) do
     dropout_result =
