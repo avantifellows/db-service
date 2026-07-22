@@ -10,6 +10,12 @@ import Config
 config :dbservice,
   ecto_repos: [Dbservice.Repo]
 
+# Pagination guardrails for list endpoints: applied when no `limit` query
+# param is given (default_limit) and as a hard cap when one is (max_limit).
+config :dbservice, Dbservice.Utils.Pagination,
+  default_limit: 1000,
+  max_limit: 10_000
+
 # Configures the endpoint
 config :dbservice, DbserviceWeb.Endpoint,
   load_from_system_env: false,

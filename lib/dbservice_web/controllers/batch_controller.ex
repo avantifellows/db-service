@@ -1,6 +1,8 @@
 defmodule DbserviceWeb.BatchController do
   use DbserviceWeb, :controller
 
+  alias Dbservice.Utils.Pagination
+
   import Ecto.Query
   alias Dbservice.Repo
   alias Dbservice.Batches
@@ -37,8 +39,8 @@ defmodule DbserviceWeb.BatchController do
     query =
       from(m in Batch,
         order_by: [asc: m.id],
-        offset: ^params["offset"],
-        limit: ^params["limit"]
+        offset: ^Pagination.offset(params),
+        limit: ^Pagination.limit(params)
       )
 
     query =

@@ -132,4 +132,55 @@ defmodule Dbservice.ResourcesTest do
       assert Enum.map(result, & &1.resource.id) == ordered_ids
     end
   end
+
+  describe "list_resources/1 and search_problems/1 pagination limits" do
+    setup do
+      # Shrink the guardrails so a handful of rows is enough to observe the cap.
+      original = Application.get_env(:dbservice, Dbservice.Utils.Pagination)
+
+      Application.put_env(:dbservice, Dbservice.Utils.Pagination,
+        default_limit: 2,
+        max_limit: 3
+      )
+
+      on_exit(fn ->
+        case original do
+          nil -> Application.delete_env(:dbservice, Dbservice.Utils.Pagination)
+          env -> Application.put_env(:dbservice, Dbservice.Utils.Pagination, env)
+        end
+      end)
+
+      :ok
+    end
+
+    test "list_resources caps the row count regardless of the requested limit" do
+      for _ <- 1..5, do: resource_fixture("video")
+
+      # An over-max limit (e.g. ?limit=100000) is clamped to max_limit, not honored verbatim.
+      assert length(Resources.list_resources(%{"limit" => "100000"})) == 3
+
+      # With no limit given, the default limit applies.
+      assert length(Resources.list_resources(%{})) == 2
+    end
+
+    test "search_problems caps the row count regardless of the requested limit" do
+      {:ok, language} =
+        Dbservice.Languages.create_language(%{"name" => "Cap Test", "code" => "zct"})
+
+      for _ <- 1..5 do
+        resource = resource_fixture("problem")
+
+        {:ok, _problem_lang} =
+          Dbservice.ProblemLanguages.create_problem_language(%{
+            "res_id" => resource.id,
+            "lang_id" => language.id,
+            "meta_data" => %{}
+          })
+      end
+
+      # The problem search runs extra per-row queries, so the cap matters most here.
+      assert length(Resources.search_problems(%{"limit" => "100000"})) == 3
+      assert length(Resources.search_problems(%{})) == 2
+    end
+  end
 end

@@ -186,8 +186,7 @@ defmodule Dbservice.Users do
   end
 
   @doc """
-  Gets a student by either student_id or apaar_id.
-  Returns the first student found with either identifier.
+  Gets a student by student ID or APAAR ID, in that order.
 
   ## Examples
 
@@ -198,32 +197,28 @@ defmodule Dbservice.Users do
       iex> get_student_by_id_or_apaar_id(%{"student_id" => nil, "apaar_id" => nil})
       nil
   """
-  def get_student_by_id_or_apaar_id(%{"student_id" => student_id, "apaar_id" => apaar_id}) do
-    # Try student_id first if provided
-    student =
-      if student_id && student_id != "" do
-        get_student_by_student_id(student_id)
-      else
-        nil
-      end
+  def get_student_by_id_or_apaar_id(record) when is_map(record) do
+    find_student(:student_id, record["student_id"]) ||
+      find_student(:apaar_id, record["apaar_id"])
+  end
 
-    # If student_id lookup didn't find a student, try apaar_id
-    if student do
-      student
-    else
-      if apaar_id && apaar_id != "" do
-        Repo.get_by(Student, apaar_id: apaar_id)
-      else
-        nil
-      end
+  def get_student_by_id_pen_or_apaar_id(record) when is_map(record) do
+    [
+      find_student(:student_id, record["student_id"]),
+      find_student(:pen_number, record["pen_number"]),
+      find_student(:apaar_id, record["apaar_id"])
+    ]
+    |> Enum.reject(&is_nil/1)
+    |> Enum.uniq_by(& &1.id)
+    |> case do
+      [] -> nil
+      [student] -> student
+      _students -> {:error, :conflicting_identifiers}
     end
   end
 
-  def get_student_by_id_or_apaar_id(record) when is_map(record) do
-    student_id = Map.get(record, "student_id")
-    apaar_id = Map.get(record, "apaar_id")
-    get_student_by_id_or_apaar_id(%{"student_id" => student_id, "apaar_id" => apaar_id})
-  end
+  defp find_student(_field, value) when value in [nil, ""], do: nil
+  defp find_student(field, value), do: Repo.get_by(Student, [{field, value}])
 
   @doc """
   Creates a student.
@@ -295,11 +290,15 @@ defmodule Dbservice.Users do
   def create_student_with_user(attrs \\ %{}) do
     alias Dbservice.Users
 
-    with {:ok, %User{} = user} <- Users.create_user(attrs),
-         {:ok, %Student{} = student} <-
-           Users.create_student(Map.merge(stringify_keys(attrs), %{"user_id" => user.id})) do
-      {:ok, student}
-    end
+    Repo.transaction(fn ->
+      with {:ok, %User{} = user} <- Users.create_user(attrs),
+           {:ok, %Student{} = student} <-
+             Users.create_student(Map.merge(stringify_keys(attrs), %{"user_id" => user.id})) do
+        student
+      else
+        {:error, reason} -> Repo.rollback(reason)
+      end
+    end)
   end
 
   @doc """

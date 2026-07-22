@@ -18,6 +18,7 @@ defmodule DbserviceWeb.ResourceController do
   alias Dbservice.Resources.ResourceTopic
   alias Dbservice.TopicCurriculums.TopicCurriculum
   alias Dbservice.Topics.Topic
+  alias Dbservice.Utils.Pagination
 
   action_fallback(DbserviceWeb.FallbackController)
 
@@ -546,6 +547,11 @@ defmodule DbserviceWeb.ResourceController do
         conn
         |> put_status(:unprocessable_entity)
         |> json(%{error: reason})
+
+      {:error, {:language_error, reason}} ->
+        conn
+        |> put_status(:unprocessable_entity)
+        |> json(%{error: reason})
     end
   end
 
@@ -647,6 +653,10 @@ defmodule DbserviceWeb.ResourceController do
     %{error: reason}
   end
 
+  defp format_batch_transaction_error({:language_error, reason}) do
+    %{error: reason}
+  end
+
   defp format_batch_transaction_error(other) do
     %{error: inspect(other)}
   end
@@ -679,26 +689,72 @@ defmodule DbserviceWeb.ResourceController do
     end
   end
 
+  # New multi-language path (issues #602/#603): one problem_lang row per
+  # lang_versions entry. Takes precedence over the flat lang_code/meta_data
+  # format when both are present.
+  defp insert_problem_language(resource, %{"lang_versions" => [_ | _] = lang_versions} = params) do
+    params = resolve_shared_paragraph_for_lang_versions(resource, params)
+
+    Enum.each(lang_versions, fn version ->
+      lang_code = version["lang_code"]
+
+      case lang_code && Repo.get_by(Language, code: lang_code) do
+        %Language{} = language ->
+          version_params = Map.put(params, "meta_data", version["meta_data"])
+          do_insert_problem_language(resource, version_params, language.id)
+
+        _ ->
+          Repo.rollback({:language_error, "Language with code '#{lang_code}' not found"})
+      end
+    end)
+  end
+
+  # Old single-language path — kept for backward compatibility until the new
+  # frontend (which sends lang_versions) is deployed.
   defp insert_problem_language(resource, %{"lang_code" => lang_code} = params)
        when not is_nil(lang_code) do
     if language = Repo.get_by(Language, code: lang_code) do
-      case Paragraphs.problem_language_insert_attrs(resource, params, language.id) do
-        {:ok, attrs} ->
-          case Dbservice.ProblemLanguages.create_problem_language(attrs) do
-            {:ok, _} -> :ok
-            {:error, cs} -> Repo.rollback({:changeset_error, cs})
-          end
-
-        {:error, %Ecto.Changeset{} = cs} ->
-          Repo.rollback({:changeset_error, cs})
-
-        {:error, {:missing_paragraph_body, msg}} ->
-          Repo.rollback({:comprehension_error, msg})
-      end
+      do_insert_problem_language(resource, params, language.id)
     end
   end
 
   defp insert_problem_language(_, _), do: :ok
+
+  defp do_insert_problem_language(resource, params, lang_id) do
+    case Paragraphs.problem_language_insert_attrs(resource, params, lang_id) do
+      {:ok, attrs} ->
+        case Dbservice.ProblemLanguages.create_problem_language(attrs) do
+          {:ok, _} -> :ok
+          {:error, cs} -> Repo.rollback({:changeset_error, cs})
+        end
+
+      {:error, %Ecto.Changeset{} = cs} ->
+        Repo.rollback({:changeset_error, cs})
+
+      {:error, {:missing_paragraph_body, msg}} ->
+        Repo.rollback({:comprehension_error, msg})
+    end
+  end
+
+  # For comprehension problems with multiple language versions, the paragraph
+  # body must become ONE shared paragraph row referenced by every problem_lang
+  # row — creating it inside the per-version insert would duplicate it per language.
+  defp resolve_shared_paragraph_for_lang_versions(resource, params) do
+    body = Paragraphs.paragraph_body_for_comprehension(params)
+
+    if is_binary(body) and Paragraphs.comprehension_problem?(resource, params) and
+         not is_integer(params["paragraph_id"]) do
+      case Paragraphs.create_paragraph(%{"body" => body}) do
+        {:ok, paragraph} ->
+          params |> Map.drop(["paragraph"]) |> Map.put("paragraph_id", paragraph.id)
+
+        {:error, cs} ->
+          Repo.rollback({:changeset_error, cs})
+      end
+    else
+      params
+    end
+  end
 
   defp insert_resource_chapter(resource, %{"chapter_id" => chapter_id})
        when not is_nil(chapter_id) do
@@ -981,21 +1037,7 @@ defmodule DbserviceWeb.ResourceController do
   defp filter_by_subtype(query, _), do: query
 
   defp apply_pagination(query, params) do
-    case Map.get(params, "limit") do
-      nil ->
-        query
-
-      limit_str ->
-        limit = String.to_integer(limit_str)
-
-        offset =
-          case Map.get(params, "offset") do
-            nil -> 0
-            offset_str -> String.to_integer(offset_str)
-          end
-
-        from(r in query, limit: ^limit, offset: ^offset)
-    end
+    from(r in query, limit: ^Pagination.limit(params), offset: ^Pagination.offset(params))
   end
 
   swagger_path :test_problems do
@@ -1061,15 +1103,46 @@ defmodule DbserviceWeb.ResourceController do
     end
   end
 
+  # All-languages variant of test_problems/2: no lang_code, so every problem in
+  # the test is returned once with all its languages in lang_versions.
+  # GET /api/resource/test/:id/problems?curriculum_id=1
+  def test_problems(conn, %{"id" => test_id, "curriculum_id" => curriculum_id}) do
+    test_id = String.to_integer(test_id)
+    curriculum_id = String.to_integer(curriculum_id)
+
+    case Resources.get_problems_by_test(test_id, curriculum_id) do
+      {:error, :test_not_found} ->
+        conn
+        |> put_status(:not_found)
+        |> json(%{error: "Test resource not found"})
+
+      {:error, :resource_not_test_type} ->
+        conn
+        |> put_status(:bad_request)
+        |> json(%{error: "The specified resource is not a test"})
+
+      problems ->
+        conn
+        |> put_status(:ok)
+        |> render("index.json", resource: problems)
+    end
+  end
+
   swagger_path :fetch_problems do
     get("/api/problems")
-    summary("Fetch problems by topic, curriculum and language")
-    description("Returns problems filtered by topic_id, curriculum_id and lang_code")
+    summary("Fetch problems by topic and curriculum (optionally a language)")
+
+    description(
+      "Returns problems filtered by topic_id and curriculum_id. When lang_code is " <>
+        "given, results are limited to that language (top-level meta_data is that " <>
+        "language). When lang_code is omitted, every problem is returned once with all " <>
+        "languages in lang_versions for client-side filtering."
+    )
 
     parameters do
       topic_id(:query, :integer, "Topic ID", required: true)
       curriculum_id(:query, :integer, "Curriculum ID", required: true)
-      lang_code(:query, :string, "Language code", required: true)
+      lang_code(:query, :string, "Language code (omit for all languages)", required: false)
 
       include_paragraph_siblings(
         :query,
@@ -1108,6 +1181,17 @@ defmodule DbserviceWeb.ResourceController do
 
       render(conn, "problems.json", problems: problems)
     end
+  end
+
+  def fetch_problems(conn, %{"topic_id" => topic_id, "curriculum_id" => curriculum_id} = params) do
+    problems =
+      topic_id
+      |> problems_query_all_langs(curriculum_id)
+      |> Repo.all()
+      |> Enum.uniq_by(& &1.resource.id)
+      |> maybe_add_paragraph_siblings_all_langs(params, curriculum_id)
+
+    render(conn, "problems.json", problems: problems)
   end
 
   defp problems_base_query(curriculum_id, lang_code) do
@@ -1188,6 +1272,81 @@ defmodule DbserviceWeb.ResourceController do
     )
   end
 
+  # All-languages counterpart of problems_base_query/2. No problem_lang/language
+  # join, so a problem appears at most once regardless of how many languages it
+  # has; the per-language data is attached as lang_versions by the JSON layer.
+  defp problems_base_query_all_langs(curriculum_id) do
+    from(r in Resource,
+      as: :resource,
+      join: rt in ResourceTopic,
+      as: :resource_topic,
+      on: rt.resource_id == r.id,
+      join: t in Topic,
+      on: t.id == rt.topic_id,
+      join: rc in ResourceCurriculum,
+      on: rc.resource_id == r.id,
+      where: rc.curriculum_id == ^curriculum_id,
+      where: r.type == "problem",
+      order_by: [asc: r.code],
+      select: %{
+        resource: r,
+        resource_topic: rt,
+        chapter_id: t.chapter_id,
+        resource_curriculums: [rc],
+        requested_curriculum_id: ^curriculum_id
+      }
+    )
+  end
+
+  defp problems_query_all_langs(topic_id, curriculum_id) do
+    from([resource_topic: rt] in problems_base_query_all_langs(curriculum_id),
+      where: rt.topic_id == ^topic_id
+    )
+  end
+
+  defp maybe_add_paragraph_siblings_all_langs(problems, params, curriculum_id) do
+    if params["include_paragraph_siblings"] == "true" do
+      res_ids = Enum.map(problems, & &1.resource.id)
+
+      paragraph_ids =
+        from(pl in ProblemLanguage,
+          where: pl.res_id in ^res_ids and not is_nil(pl.paragraph_id),
+          distinct: true,
+          select: pl.paragraph_id
+        )
+        |> Repo.all()
+
+      add_paragraph_siblings_all_langs(problems, paragraph_ids, curriculum_id)
+    else
+      problems
+    end
+  end
+
+  defp add_paragraph_siblings_all_langs(problems, [], _curriculum_id), do: problems
+
+  defp add_paragraph_siblings_all_langs(problems, paragraph_ids, curriculum_id) do
+    existing_res_ids = MapSet.new(Enum.map(problems, & &1.resource.id))
+
+    # Any problem sharing one of these paragraphs, in any language.
+    sibling_res_ids =
+      from(pl in ProblemLanguage,
+        where: pl.paragraph_id in ^paragraph_ids,
+        distinct: true,
+        select: pl.res_id
+      )
+      |> Repo.all()
+
+    siblings =
+      from([resource: r] in problems_base_query_all_langs(curriculum_id),
+        where: r.id in ^sibling_res_ids
+      )
+      |> Repo.all()
+      |> Enum.reject(fn p -> MapSet.member?(existing_res_ids, p.resource.id) end)
+      |> Enum.uniq_by(& &1.resource.id)
+
+    problems ++ siblings
+  end
+
   swagger_path :get_problem do
     get("/api/resource/problem/{problem_id}/{lang_code}/{curriculum_id}")
 
@@ -1252,6 +1411,72 @@ defmodule DbserviceWeb.ResourceController do
     end
   end
 
+  swagger_path :get_problem_all_languages do
+    get("/api/resource/problem/{problem_id}/{curriculum_id}")
+    summary("Fetch a problem in all languages")
+
+    description(
+      "All-languages variant of the problem endpoint. Returns the problem for the " <>
+        "given curriculum_id with every available language in `lang_versions`, so the " <>
+        "frontend can filter by language client-side. Top-level `meta_data`/`lang_code` " <>
+        "are null since no single language is requested."
+    )
+
+    parameters do
+      problem_id(:path, :integer, "The id of the problem resource", required: true)
+      curriculum_id(:path, :integer, "The curriculum ID", required: true)
+    end
+
+    response(200, "OK", Schema.ref(:ProblemResource))
+    response(404, "Not Found")
+  end
+
+  @doc """
+  Get a specific problem in all languages by resource ID and curriculum ID.
+
+  Unlike `get_problem/2`, this does not take a lang_code: the response carries
+  every language in `lang_versions` and leaves the top-level single-language
+  fields (`meta_data`, `lang_code`, `paragraph`) empty.
+  """
+  def get_problem_all_languages(conn, %{
+        "problem_id" => res_id,
+        "curriculum_id" => curriculum_id
+      }) do
+    query =
+      from(r in Resource,
+        where: r.id == ^res_id and r.type == "problem",
+        preload: [:resource_curriculum]
+      )
+
+    case Repo.one(query) do
+      nil ->
+        conn
+        |> put_status(:not_found)
+        |> json(%{error: "Problem not found for given inputs"})
+
+      resource ->
+        resource_curriculum =
+          Enum.find(resource.resource_curriculum, fn rc ->
+            rc.curriculum_id == String.to_integer(curriculum_id)
+          end)
+
+        case resource_curriculum do
+          nil ->
+            conn
+            |> put_status(:not_found)
+            |> json(%{error: "No resource found for given curriculum_id"})
+
+          rc ->
+            render(conn, "problem_lang.json",
+              resource: resource,
+              meta_data: nil,
+              lang_code: nil,
+              resource_curriculum: rc
+            )
+        end
+    end
+  end
+
   swagger_path :search_problems do
     get("/api/problems/search")
 
@@ -1292,11 +1517,21 @@ defmodule DbserviceWeb.ResourceController do
       |> Map.put_new("limit", 10)
       |> Map.put_new("offset", 0)
 
-    total_count = Resources.count_problems(params)
-    problems = Resources.search_problems(params)
+    # With a lang_code, results are one row per problem in that language. Without
+    # it, the same problem can match on several languages, so use the deduped
+    # all-languages search (one entry per problem, all languages in lang_versions).
+    {total_count, problems} =
+      if lang_code_present?(params) do
+        {Resources.count_problems(params), Resources.search_problems(params)}
+      else
+        {Resources.count_problems_all_langs(params), Resources.search_problems_all_langs(params)}
+      end
 
     conn
     |> put_resp_header("x-total-count", Integer.to_string(total_count))
     |> render("problems.json", problems: problems)
   end
+
+  defp lang_code_present?(%{"lang_code" => code}) when is_binary(code) and code != "", do: true
+  defp lang_code_present?(_), do: false
 end

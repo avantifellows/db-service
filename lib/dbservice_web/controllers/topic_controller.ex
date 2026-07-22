@@ -1,6 +1,8 @@
 defmodule DbserviceWeb.TopicController do
   use DbserviceWeb, :controller
 
+  alias Dbservice.Utils.Pagination
+
   import Ecto.Query
   alias Dbservice.Repo
   alias Dbservice.Topics
@@ -42,8 +44,8 @@ defmodule DbserviceWeb.TopicController do
     query =
       from(m in Topic,
         order_by: [asc: m.id],
-        offset: ^params["offset"],
-        limit: ^params["limit"]
+        offset: ^Pagination.offset(params),
+        limit: ^Pagination.limit(params)
       )
 
     # |> Ecto.Query.preload(:tag)

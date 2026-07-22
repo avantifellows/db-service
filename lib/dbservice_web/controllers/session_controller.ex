@@ -1,6 +1,8 @@
 defmodule DbserviceWeb.SessionController do
   use DbserviceWeb, :controller
 
+  alias Dbservice.Utils.Pagination
+
   import Ecto.Query
   alias Dbservice.Repo
   alias Dbservice.Sessions
@@ -138,8 +140,8 @@ defmodule DbserviceWeb.SessionController do
 
     from m in Session,
       order_by: [{^sort_order, m.id}],
-      offset: ^params["offset"],
-      limit: ^params["limit"]
+      offset: ^Pagination.offset(params),
+      limit: ^Pagination.limit(params)
   end
 
   defp apply_session_id_null_filter(value, acc) do

@@ -39,6 +39,13 @@ mix assets.deploy             # Minify CSS/JS + digest for production
 
 Note: `mix check` has tests disabled (configured in `.check.exs`). Run `mix test` separately if needed.
 
+For final verification, run both commands; `mix check` alone does not execute ExUnit:
+
+```bash
+mix check
+mix test
+```
+
 ## Architecture
 
 ### Domain Structure (`lib/dbservice/`)
@@ -67,6 +74,12 @@ and enrollment mutations. Route Student status/Grade changes through
 `Dbservice.Users.update_student/2` and current School/Program changes through
 `Dbservice.EnrollmentRecords`; do not update those records directly from controllers
 or import processors.
+
+### Revised NVS student writes
+
+- Reuse `Dbservice.LmsStudentIngestion` canonical normalization in the LMS create and update flows so identifiers, DOB, gender, board, and stream rules do not drift.
+- Resolve NVS scope through current Program 64, matching school code/UDISE, and exact program + grade + stream batch selection. Do not infer NVS from its deployed `TP-Async` Product code, and do not add Centre or `school.program_ids` checks to these flows.
+- Keep each row create, NVS grade/stream replacement, and NVS program dropout atomic with its audit record. Other programs' current enrollments and batch memberships must remain unchanged.
 
 ### Web Layer (`lib/dbservice_web/`)
 

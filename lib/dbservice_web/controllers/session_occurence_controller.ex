@@ -1,6 +1,8 @@
 defmodule DbserviceWeb.SessionOccurrenceController do
   use DbserviceWeb, :controller
 
+  alias Dbservice.Utils.Pagination
+
   import Ecto.Query
   alias Dbservice.Repo
   alias Dbservice.Sessions
@@ -100,8 +102,8 @@ defmodule DbserviceWeb.SessionOccurrenceController do
     base_query =
       from(m in SessionOccurrence,
         order_by: [asc: m.id],
-        offset: ^params["offset"],
-        limit: ^params["limit"]
+        offset: ^Pagination.offset(params),
+        limit: ^Pagination.limit(params)
       )
 
     params
