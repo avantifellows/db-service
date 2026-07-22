@@ -68,6 +68,47 @@ defmodule Dbservice.Resources do
     end
   end
 
+  @doc """
+  All-languages counterpart of `get_problems_by_test_and_language/3`. Returns
+  every problem in the test once (no language filter); each problem's languages
+  are attached as `lang_versions` by the JSON layer.
+  """
+  def get_problems_by_test(test_id, curriculum_id) do
+    test_resource = Repo.get(Resource, test_id)
+
+    cond do
+      is_nil(test_resource) -> {:error, :test_not_found}
+      test_resource.type != "test" -> {:error, :resource_not_test_type}
+      true -> fetch_and_format_problems_all_langs(test_resource, curriculum_id)
+    end
+  end
+
+  defp fetch_and_format_problems_all_langs(test_resource, curriculum_id) do
+    problem_ids = extract_problem_ids_from_test(test_resource.type_params)
+
+    problems =
+      from(r in Resource,
+        where: r.id in ^problem_ids and r.type == "problem",
+        preload: [:resource_curriculum, :chapter]
+      )
+      |> Repo.all()
+      # SQL `IN` does not preserve list order, so re-sort to match the order the
+      # ids appear in the test's type_params (the order the test defines).
+      |> order_problems_by_ids(problem_ids)
+
+    resource_topic_by_resource_id = resource_topics_by_resource_id(problem_ids)
+
+    Enum.map(problems, fn resource ->
+      %{
+        resource: resource,
+        resource_topic: Map.get(resource_topic_by_resource_id, resource.id, %{}),
+        resource_curriculums: resource.resource_curriculum,
+        problem_lang: %{},
+        requested_curriculum_id: curriculum_id
+      }
+    end)
+  end
+
   defp get_problems_for_test(test_id, lang_id, curriculum_id) do
     test_resource = Repo.get(Resource, test_id)
 
@@ -897,6 +938,10 @@ defmodule Dbservice.Resources do
 
   defp update_problem_language(resource, params) do
     cond do
+      has_lang_versions?(params) ->
+        params = pre_sync_shared_paragraph(resource, params)
+        sync_problem_lang_versions(resource, params)
+
       has_lang_code?(params) ->
         params = pre_sync_shared_paragraph(resource, params)
         update_problem_language_for_lang(resource, params)
@@ -909,6 +954,91 @@ defmodule Dbservice.Resources do
         :ok
     end
   end
+
+  # New multi-language path (issue #611): syncs problem_lang rows to exactly
+  # the languages present in lang_versions — upserts one row per entry and
+  # deletes rows whose language is absent from the request. Takes precedence
+  # over the flat lang_code/meta_data format, which remains as a backward
+  # compatibility fallback until the new frontend is deployed.
+  defp sync_problem_lang_versions(resource, %{"lang_versions" => versions} = params) do
+    existing = Repo.all(from(pl in ProblemLanguage, where: pl.res_id == ^resource.id))
+    existing_by_lang_id = Map.new(existing, &{&1.lang_id, &1})
+
+    # New rows of a comprehension problem must join the problem's shared paragraph.
+    shared_paragraph_id = params["paragraph_id"] || Enum.find_value(existing, & &1.paragraph_id)
+
+    base_params = Map.drop(params, ["lang_versions", "lang_code", "meta_data"])
+
+    kept_lang_ids =
+      versions
+      |> Enum.map(
+        &upsert_problem_lang_version(
+          resource,
+          base_params,
+          shared_paragraph_id,
+          existing_by_lang_id,
+          &1
+        )
+      )
+      |> Enum.reject(&is_nil/1)
+      |> MapSet.new()
+
+    existing
+    |> Enum.reject(&MapSet.member?(kept_lang_ids, &1.lang_id))
+    |> Enum.each(&Dbservice.ProblemLanguages.delete_problem_language/1)
+  end
+
+  # Upserts the problem_lang row for one lang_versions entry and returns its
+  # lang_id, or nil when the lang_code doesn't resolve to a language (skipped,
+  # matching the flat lang_code path which no-ops on unknown languages).
+  defp upsert_problem_lang_version(
+         resource,
+         base_params,
+         shared_paragraph_id,
+         existing_by_lang_id,
+         version
+       ) do
+    lang_code = version["lang_code"]
+    lang = is_binary(lang_code) && Dbservice.Languages.get_language_by_code(lang_code)
+
+    case lang do
+      %Language{id: lang_id} ->
+        version_params = Map.put(base_params, "meta_data", version["meta_data"])
+
+        case Map.get(existing_by_lang_id, lang_id) do
+          nil ->
+            insert_problem_lang_version(resource, version_params, shared_paragraph_id, lang_id)
+
+          pl ->
+            do_update_problem_language(resource, version_params, pl)
+        end
+
+        lang_id
+
+      _ ->
+        nil
+    end
+  end
+
+  defp insert_problem_lang_version(resource, version_params, shared_paragraph_id, lang_id) do
+    version_params =
+      if shared_paragraph_id,
+        do: Map.put_new(version_params, "paragraph_id", shared_paragraph_id),
+        else: version_params
+
+    case Paragraphs.problem_language_insert_attrs(resource, version_params, lang_id) do
+      {:ok, attrs} ->
+        Dbservice.ProblemLanguages.create_problem_language(attrs)
+
+      # Comprehension language with no resolvable paragraph: skip the insert,
+      # consistent with how the other association updates swallow errors.
+      {:error, _} ->
+        :ok
+    end
+  end
+
+  defp has_lang_versions?(%{"lang_versions" => [_ | _]}), do: true
+  defp has_lang_versions?(_), do: false
 
   # When `params["paragraph"]` carries a body for a comprehension problem, upsert the
   # shared paragraph once. Existing distinct paragraphs are updated via a single helper;
@@ -1257,6 +1387,84 @@ defmodule Dbservice.Resources do
     |> apply_problem_search_filters(params)
     |> select([pl], count(pl.id))
     |> Repo.one()
+  end
+
+  @doc """
+  All-languages counterpart of `search_problems/1`. A problem can match the
+  search in more than one language, so results are deduped to one entry per
+  problem (`problem_lang` is left empty; every language is attached as
+  `lang_versions` by the JSON layer). Sorting supports `code`/`subtype`;
+  `text` is language-specific and falls back to problem order.
+  """
+  def search_problems_all_langs(params \\ %{}) do
+    page =
+      ProblemLanguage
+      |> from(as: :pl)
+      |> apply_problem_search_filters(params)
+      |> all_langs_resources_query(params)
+      |> apply_problem_pagination(params)
+      |> Repo.all()
+
+    page
+    |> Enum.map(& &1.res_id)
+    |> build_all_langs_results()
+  end
+
+  @doc """
+  Counts distinct problems matching the search filters, ignoring language (the
+  count for `search_problems_all_langs/1`).
+  """
+  def count_problems_all_langs(params \\ %{}) do
+    ProblemLanguage
+    |> from(as: :pl)
+    |> apply_problem_search_filters(params)
+    |> select([pl], count(pl.res_id, :distinct))
+    |> Repo.one()
+  end
+
+  # Distinct problems (by res_id) for the current search filters, ordered for
+  # stable pagination. code/subtype are functionally dependent on res_id, so
+  # selecting them alongside keeps DISTINCT one-row-per-problem while allowing
+  # ORDER BY on those columns.
+  defp all_langs_resources_query(query, params) do
+    sort_order = get_sort_order(params["sort_order"])
+
+    base =
+      from(pl in query,
+        join: r in Resource,
+        as: :res,
+        on: r.id == pl.res_id,
+        distinct: true,
+        select: %{res_id: pl.res_id, code: r.code, subtype: r.subtype}
+      )
+
+    case params["sort_by"] do
+      "code" -> from([res: r] in base, order_by: [{^sort_order, r.code}])
+      "subtype" -> from([res: r] in base, order_by: [{^sort_order, r.subtype}])
+      _ -> from([pl: pl] in base, order_by: [{^sort_order, pl.res_id}])
+    end
+  end
+
+  defp build_all_langs_results([]), do: []
+
+  defp build_all_langs_results(ordered_ids) do
+    resources_by_id =
+      from(r in Resource, where: r.id in ^ordered_ids)
+      |> Repo.all()
+      |> Map.new(&{&1.id, &1})
+
+    curriculums_by_res_id =
+      from(rc in Dbservice.Resources.ResourceCurriculum, where: rc.resource_id in ^ordered_ids)
+      |> Repo.all()
+      |> Enum.group_by(& &1.resource_id)
+
+    Enum.map(ordered_ids, fn id ->
+      %{
+        resource: Map.get(resources_by_id, id),
+        problem_lang: %{},
+        resource_curriculums: Map.get(curriculums_by_res_id, id, [])
+      }
+    end)
   end
 
   # Private query building functions for problem search
