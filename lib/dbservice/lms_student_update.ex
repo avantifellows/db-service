@@ -168,16 +168,15 @@ defmodule Dbservice.LmsStudentUpdate do
       not enrolled?(student.user_id, school.id, "school") ->
         {:error, error("school_mismatch", "Student is not enrolled in this school", 403)}
 
-      # Program-agnostic, data-integrity only: the student must be currently
-      # enrolled in exactly one batch of the supplied program. Which programs a
-      # given actor may edit is business policy that lives in the LMS API layer,
-      # not in this service.
+      # Data-integrity only: the student must be enrolled in the supplied
+      # program. We deliberately do NOT enforce "one batch per program per
+      # student" here — that is a business invariant owned by the LMS layer, and
+      # the batch<->program FK does not guarantee it. A grade/stream change does
+      # need a single resolvable batch, but that is checked at the point that
+      # operation happens (current_program_batch), not as a blanket precondition
+      # that would also block harmless profile-only edits.
       current_program_batches == 0 ->
         {:error, error("program_mismatch", "Student is not enrolled in this program", 403)}
-
-      current_program_batches > 1 ->
-        {:error,
-         error("multiple_current_batches", "Multiple current batches found", 409, ["stream"])}
 
       true ->
         :ok
@@ -433,11 +432,11 @@ defmodule Dbservice.LmsStudentUpdate do
         {:ok, current}
 
       [] ->
-        {:error, error("current_batch_not_found", "Current NVS batch not found", 422, ["stream"])}
+        {:error, error("current_batch_not_found", "Current batch not found", 422, ["stream"])}
 
       _ ->
         {:error,
-         error("multiple_current_batches", "Multiple current NVS batches found", 409, ["stream"])}
+         error("multiple_current_batches", "Multiple current batches found", 409, ["stream"])}
     end
   end
 

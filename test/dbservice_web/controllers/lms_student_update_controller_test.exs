@@ -790,7 +790,12 @@ defmodule DbserviceWeb.LmsStudentUpdateControllerTest do
       assert Users.get_user!(user.id).first_name != "Should Not Apply"
     end
 
-    test "rejects multiple current NVS batches without changing profile data", %{conn: conn} do
+    test "allows a profile-only edit even with multiple current batches", %{conn: conn} do
+      # "One batch per program per student" is a business invariant owned by the
+      # LMS, not the schema — so the update service must not block a harmless
+      # profile-only edit just because the student has more than one current
+      # batch in the program. (A grade/stream reassignment is a separate case,
+      # covered below.)
       school = insert_school!()
       grade = insert_grade!(11)
       batch = insert_nvs_batch!(11, "engineering")
@@ -805,11 +810,37 @@ defmodule DbserviceWeb.LmsStudentUpdateControllerTest do
           "program_id" => 64,
           "academic_year" => "2026-2027",
           "start_date" => "2026-07-01",
-          "first_name" => "Should Not Apply"
+          "first_name" => "Applied"
+        })
+
+      assert json_response(conn, 200)["status"] == "updated"
+      assert Users.get_user!(user.id).first_name == "Applied"
+    end
+
+    test "rejects a grade/stream reassignment when multiple current batches are ambiguous",
+         %{conn: conn} do
+      # The single-batch requirement still applies where it is actually needed:
+      # resolving which current batch to move the student off during a
+      # grade/stream change.
+      school = insert_school!()
+      grade = insert_grade!(11)
+      batch = insert_nvs_batch!(11, "engineering")
+      extra_batch = insert_nvs_batch!(11, "medical")
+      {user, student} = insert_enrolled_student!(school, grade, batch)
+      insert_enrollment!(user.id, extra_batch.id, "batch")
+
+      conn =
+        patch(conn, "/api/lms/students/#{student.id}/update-with-enrollments", %{
+          "actor" => actor(),
+          "school" => %{"code" => school.code, "udise_code" => school.udise_code},
+          "program_id" => 64,
+          "academic_year" => "2026-2027",
+          "start_date" => "2026-07-01",
+          "stream" => "medical"
         })
 
       assert json_response(conn, 409)["error"]["code"] == "multiple_current_batches"
-      assert Users.get_user!(user.id).first_name != "Should Not Apply"
+      assert Users.get_user!(user.id).first_name == user.first_name
     end
 
     test "returns 422 for invalid editable enum values", %{conn: conn} do
