@@ -35,7 +35,7 @@ defmodule Dbservice.Services.EnrollmentServiceTest do
         "enrollment_type" => "school",
         "school_code" => "SCH001",
         "user_id" => user.id,
-        "academic_year" => "2024-25",
+        "academic_year" => "2024-2025",
         "start_date" => "2024-01-01"
       }
 
@@ -53,7 +53,7 @@ defmodule Dbservice.Services.EnrollmentServiceTest do
         "enrollment_type" => "batch",
         "batch_id" => "BATCH001",
         "user_id" => user.id,
-        "academic_year" => "2024-25",
+        "academic_year" => "2024-2025",
         "start_date" => "2024-01-01"
       }
 
@@ -70,7 +70,7 @@ defmodule Dbservice.Services.EnrollmentServiceTest do
         "enrollment_type" => "grade",
         "grade_id" => 9,
         "user_id" => user.id,
-        "academic_year" => "2024-25",
+        "academic_year" => "2024-2025",
         "start_date" => "2024-01-01"
       }
 
@@ -134,22 +134,22 @@ defmodule Dbservice.Services.EnrollmentServiceTest do
 
   describe "resolve_academic_year/2" do
     test "returns nil for auth_group type" do
-      params = %{"academic_year" => "2024-25"}
+      params = %{"academic_year" => "2024-2025"}
       result = EnrollmentService.resolve_academic_year("auth_group", params)
       assert result == nil
     end
 
     test "returns academic_year for other group types" do
-      params = %{"academic_year" => "2024-25"}
+      params = %{"academic_year" => "2024-2025"}
 
       result = EnrollmentService.resolve_academic_year("school", params)
-      assert result == "2024-25"
+      assert result == "2024-2025"
 
       result = EnrollmentService.resolve_academic_year("batch", params)
-      assert result == "2024-25"
+      assert result == "2024-2025"
 
       result = EnrollmentService.resolve_academic_year("grade", params)
-      assert result == "2024-25"
+      assert result == "2024-2025"
     end
 
     test "handles missing academic_year in params" do
@@ -168,7 +168,7 @@ defmodule Dbservice.Services.EnrollmentServiceTest do
       params = %{
         "user_id" => user.id,
         "group_id" => group_id,
-        "academic_year" => "2024-25",
+        "academic_year" => "2024-2025",
         "start_date" => ~D[2024-01-01]
       }
 
@@ -187,7 +187,7 @@ defmodule Dbservice.Services.EnrollmentServiceTest do
       initial_params = %{
         "user_id" => user.id,
         "group_id" => group_id,
-        "academic_year" => "2024-25",
+        "academic_year" => "2024-2025",
         "start_date" => ~D[2024-01-01]
       }
 
@@ -232,7 +232,7 @@ defmodule Dbservice.Services.EnrollmentServiceTest do
         "user_id" => user.id,
         "group_id" => school.id,
         "group_type" => "school",
-        "academic_year" => "2023-24",
+        "academic_year" => "2023-2024",
         "start_date" => ~D[2023-06-01],
         "is_current" => true
       }
@@ -240,7 +240,7 @@ defmodule Dbservice.Services.EnrollmentServiceTest do
       {:ok, _} = Dbservice.EnrollmentRecords.create_enrollment_record(existing_enrollment)
 
       # Update school enrollment with new academic year
-      new_academic_year = "2024-25"
+      new_academic_year = "2024-2025"
       end_date = ~D[2024-05-31]
 
       EnrollmentService.update_school_enrollment(
@@ -255,7 +255,7 @@ defmodule Dbservice.Services.EnrollmentServiceTest do
         Dbservice.Repo.get_by(Dbservice.EnrollmentRecords.EnrollmentRecord, %{
           user_id: user.id,
           group_id: school.id,
-          academic_year: "2023-24"
+          academic_year: "2023-2024"
         })
 
       assert updated_record.is_current == false
@@ -271,7 +271,7 @@ defmodule Dbservice.Services.EnrollmentServiceTest do
         "user_id" => user.id,
         "group_id" => school.id,
         "group_type" => "school",
-        "academic_year" => "2024-25",
+        "academic_year" => "2024-2025",
         "start_date" => ~D[2024-01-01],
         "is_current" => true
       }
@@ -283,7 +283,7 @@ defmodule Dbservice.Services.EnrollmentServiceTest do
         user.id,
         school.id,
         # Same academic year
-        "2024-25",
+        "2024-2025",
         ~D[2024-05-31]
       )
 
@@ -292,7 +292,7 @@ defmodule Dbservice.Services.EnrollmentServiceTest do
         Dbservice.Repo.get_by(Dbservice.EnrollmentRecords.EnrollmentRecord, %{
           user_id: user.id,
           group_id: school.id,
-          academic_year: "2024-25"
+          academic_year: "2024-2025"
         })
 
       assert record.is_current == true
@@ -308,7 +308,7 @@ defmodule Dbservice.Services.EnrollmentServiceTest do
         "user_id" => user.id,
         "group_id" => school.id,
         "group_type" => "school",
-        "academic_year" => "2023-24",
+        "academic_year" => "2023-2024",
         "start_date" => ~D[2023-06-01],
         "is_current" => false,
         "end_date" => ~D[2023-12-31]
@@ -320,7 +320,7 @@ defmodule Dbservice.Services.EnrollmentServiceTest do
       EnrollmentService.update_school_enrollment(
         user.id,
         school.id,
-        "2024-25",
+        "2024-2025",
         ~D[2024-05-31]
       )
 
@@ -329,7 +329,7 @@ defmodule Dbservice.Services.EnrollmentServiceTest do
         Dbservice.Repo.get_by(Dbservice.EnrollmentRecords.EnrollmentRecord, %{
           user_id: user.id,
           group_id: school.id,
-          academic_year: "2023-24"
+          academic_year: "2023-2024"
         })
 
       assert record.is_current == false
@@ -345,7 +345,7 @@ defmodule Dbservice.Services.EnrollmentServiceTest do
       EnrollmentService.update_school_enrollment(
         user.id,
         school.id,
-        "2024-25",
+        "2024-2025",
         ~D[2024-05-31]
       )
 
@@ -369,7 +369,7 @@ defmodule Dbservice.Services.EnrollmentServiceTest do
           "user_id" => user.id,
           "group_id" => school.id,
           "group_type" => "school",
-          "academic_year" => "2022-23",
+          "academic_year" => "2022-2023",
           "start_date" => ~D[2022-06-01],
           "is_current" => true
         },
@@ -377,7 +377,7 @@ defmodule Dbservice.Services.EnrollmentServiceTest do
           "user_id" => user.id,
           "group_id" => school.id,
           "group_type" => "school",
-          "academic_year" => "2023-24",
+          "academic_year" => "2023-2024",
           "start_date" => ~D[2023-06-01],
           "is_current" => true
         }
@@ -391,7 +391,7 @@ defmodule Dbservice.Services.EnrollmentServiceTest do
       EnrollmentService.update_school_enrollment(
         user.id,
         school.id,
-        "2024-25",
+        "2024-2025",
         ~D[2024-05-31]
       )
 
@@ -401,7 +401,7 @@ defmodule Dbservice.Services.EnrollmentServiceTest do
           from er in Dbservice.EnrollmentRecords.EnrollmentRecord,
             where:
               er.user_id == ^user.id and er.group_id == ^school.id and
-                er.academic_year != "2024-25"
+                er.academic_year != "2024-2025"
         )
 
       assert length(records) == 2
@@ -417,7 +417,7 @@ defmodule Dbservice.Services.EnrollmentServiceTest do
     test "creates a new enrollment record when none exists" do
       user = user_fixture()
       school = school_fixture()
-      academic_year = "2024-25"
+      academic_year = "2024-2025"
       start_date = ~D[2024-01-01]
 
       # Ensure no enrollment record exists initially
@@ -456,7 +456,7 @@ defmodule Dbservice.Services.EnrollmentServiceTest do
     test "does not create duplicate enrollment record when one already exists" do
       user = user_fixture()
       school = school_fixture()
-      academic_year = "2024-25"
+      academic_year = "2024-2025"
       start_date = ~D[2024-01-01]
 
       # Create an existing enrollment record
@@ -510,7 +510,7 @@ defmodule Dbservice.Services.EnrollmentServiceTest do
           "user_id" => user.id,
           "group_id" => school.id,
           "group_type" => "school",
-          "academic_year" => "2023-24",
+          "academic_year" => "2023-2024",
           "start_date" => start_date
         })
 
@@ -520,13 +520,13 @@ defmodule Dbservice.Services.EnrollmentServiceTest do
           user.id,
           school.id,
           "school",
-          "2024-25",
+          "2024-2025",
           start_date
         )
 
       # Should create new record for different academic year
       assert {:ok, %Dbservice.EnrollmentRecords.EnrollmentRecord{} = record} = result
-      assert record.academic_year == "2024-25"
+      assert record.academic_year == "2024-2025"
 
       # Verify both records exist
       records =
@@ -540,14 +540,14 @@ defmodule Dbservice.Services.EnrollmentServiceTest do
 
       assert length(records) == 2
       academic_years = Enum.map(records, & &1.academic_year) |> Enum.sort()
-      assert academic_years == ["2023-24", "2024-25"]
+      assert academic_years == ["2023-2024", "2024-2025"]
     end
 
     test "handles different group types correctly" do
       user = user_fixture()
       school = school_fixture()
       batch = batch_fixture()
-      academic_year = "2024-25"
+      academic_year = "2024-2025"
       start_date = ~D[2024-01-01]
 
       # Create school enrollment record
@@ -591,7 +591,7 @@ defmodule Dbservice.Services.EnrollmentServiceTest do
       user1 = user_fixture()
       user2 = user_fixture()
       school = school_fixture()
-      academic_year = "2024-25"
+      academic_year = "2024-2025"
       start_date = ~D[2024-01-01]
 
       # Create record for user1

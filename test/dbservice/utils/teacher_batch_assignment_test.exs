@@ -17,7 +17,7 @@ defmodule Dbservice.DataImport.TeacherBatchAssignmentTest do
         "teacher_id" => teacher.teacher_id,
         "batch_id" => batch.batch_id,
         "start_date" => "2024-01-01",
-        "academic_year" => "2024-25"
+        "academic_year" => "2024-2025"
       }
 
       result = TeacherBatchAssignment.process_teacher_batch_assignment(record)
@@ -30,7 +30,7 @@ defmodule Dbservice.DataImport.TeacherBatchAssignmentTest do
         "teacher_id" => "NONEXISTENT_TEACHER",
         "batch_id" => "BATCH001",
         "start_date" => "2024-01-01",
-        "academic_year" => "2024-25"
+        "academic_year" => "2024-2025"
       }
 
       result = TeacherBatchAssignment.process_teacher_batch_assignment(record)
@@ -47,7 +47,7 @@ defmodule Dbservice.DataImport.TeacherBatchAssignmentTest do
         "teacher_id" => teacher.teacher_id,
         "batch_id" => "NONEXISTENT_BATCH",
         "start_date" => "2024-01-01",
-        "academic_year" => "2024-25"
+        "academic_year" => "2024-2025"
       }
 
       result = TeacherBatchAssignment.process_teacher_batch_assignment(record)
@@ -66,7 +66,7 @@ defmodule Dbservice.DataImport.TeacherBatchAssignmentTest do
         "teacher_id" => teacher.teacher_id,
         "batch_id" => batch.batch_id,
         "start_date" => "2024-01-01",
-        "academic_year" => "2024-25"
+        "academic_year" => "2024-2025"
       }
 
       # Process first assignment
@@ -78,7 +78,7 @@ defmodule Dbservice.DataImport.TeacherBatchAssignmentTest do
         "teacher_id" => teacher.teacher_id,
         "batch_id" => batch.batch_id,
         "start_date" => "2024-01-01",
-        "academic_year" => "2024-25"
+        "academic_year" => "2024-2025"
       }
 
       result2 = TeacherBatchAssignment.process_teacher_batch_assignment(record2)
@@ -94,7 +94,7 @@ defmodule Dbservice.DataImport.TeacherBatchAssignmentTest do
       record = %{
         "teacher_id" => teacher.teacher_id,
         "batch_id" => batch.batch_id,
-        "academic_year" => "2024-25"
+        "academic_year" => "2024-2025"
       }
 
       result = TeacherBatchAssignment.process_teacher_batch_assignment(record)
@@ -131,7 +131,7 @@ defmodule Dbservice.DataImport.TeacherBatchAssignmentTest do
         "teacher_id" => teacher.teacher_id,
         "batch_id" => batch1.batch_id,
         "start_date" => "2024-01-01",
-        "academic_year" => "2024-25"
+        "academic_year" => "2024-2025"
       }
 
       result1 = TeacherBatchAssignment.process_teacher_batch_assignment(record1)
@@ -142,7 +142,7 @@ defmodule Dbservice.DataImport.TeacherBatchAssignmentTest do
         "teacher_id" => teacher.teacher_id,
         "batch_id" => batch2.batch_id,
         "start_date" => "2025-01-01",
-        "academic_year" => "2025-26"
+        "academic_year" => "2025-2026"
       }
 
       result2 = TeacherBatchAssignment.process_teacher_batch_assignment(record2)
