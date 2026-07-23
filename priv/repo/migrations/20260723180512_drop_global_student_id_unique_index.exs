@@ -2,6 +2,7 @@ defmodule Dbservice.Repo.Migrations.DropGlobalStudentIdUniqueIndex do
   use Ecto.Migration
 
   @disable_ddl_transaction true
+  @disable_migration_lock true
 
   def up do
     drop_if_exists index(:student, [:student_id],
