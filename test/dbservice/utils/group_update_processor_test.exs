@@ -34,7 +34,7 @@ defmodule Dbservice.DataImport.GroupUpdateProcessorTest do
           group_type: "batch",
           is_current: true,
           start_date: ~D[2024-01-01],
-          academic_year: "2024-25"
+          academic_year: "2024-2025"
         })
 
       record = %{
@@ -131,7 +131,7 @@ defmodule Dbservice.DataImport.GroupUpdateProcessorTest do
           group_type: "school",
           is_current: true,
           start_date: ~D[2024-01-01],
-          academic_year: "2024-25"
+          academic_year: "2024-2025"
         })
 
       record = %{
@@ -208,7 +208,7 @@ defmodule Dbservice.DataImport.GroupUpdateProcessorTest do
           group_type: "grade",
           is_current: true,
           start_date: ~D[2024-01-01],
-          academic_year: "2024-25"
+          academic_year: "2024-2025"
         })
 
       record = %{
@@ -286,7 +286,7 @@ defmodule Dbservice.DataImport.GroupUpdateProcessorTest do
           group_type: "auth_group",
           is_current: true,
           start_date: ~D[2024-01-01],
-          academic_year: "2024-25"
+          academic_year: "2024-2025"
         })
 
       record = %{

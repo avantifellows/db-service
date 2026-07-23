@@ -29,7 +29,7 @@ defmodule Dbservice.Services.GroupUpdateServiceTest do
           user_id: user.id,
           group_id: old_school.id,
           group_type: "school",
-          academic_year: "2024-25",
+          academic_year: "2024-2025",
           start_date: ~D[2024-01-01],
           is_current: true
         })
@@ -69,7 +69,7 @@ defmodule Dbservice.Services.GroupUpdateServiceTest do
           user_id: user.id,
           group_id: old_batch.id,
           group_type: "batch",
-          academic_year: "2024-25",
+          academic_year: "2024-2025",
           start_date: ~D[2024-01-01],
           is_current: true
         })
@@ -171,7 +171,7 @@ defmodule Dbservice.Services.GroupUpdateServiceTest do
           user_id: user.id,
           group_id: school.id,
           group_type: "school",
-          academic_year: "2024-25",
+          academic_year: "2024-2025",
           start_date: ~D[2024-01-01],
           is_current: true
         })
@@ -206,7 +206,7 @@ defmodule Dbservice.Services.GroupUpdateServiceTest do
           user_id: user.id,
           group_id: batch.id,
           group_type: "batch",
-          academic_year: "2024-25",
+          academic_year: "2024-2025",
           start_date: ~D[2024-01-01],
           is_current: true
         })
@@ -322,7 +322,7 @@ defmodule Dbservice.Services.GroupUpdateServiceTest do
           user_id: user.id,
           group_id: school.id,
           group_type: "school",
-          academic_year: "2024-25",
+          academic_year: "2024-2025",
           start_date: ~D[2024-01-01],
           is_current: true
         })
@@ -347,7 +347,7 @@ defmodule Dbservice.Services.GroupUpdateServiceTest do
           user_id: user.id,
           group_id: batch.id,
           group_type: "batch",
-          academic_year: "2024-25",
+          academic_year: "2024-2025",
           start_date: ~D[2024-01-01],
           is_current: true
         })
@@ -382,7 +382,7 @@ defmodule Dbservice.Services.GroupUpdateServiceTest do
           user_id: user.id,
           group_id: school.id,
           group_type: "school",
-          academic_year: "2024-25",
+          academic_year: "2024-2025",
           start_date: ~D[2024-01-01],
           # Not current
           is_current: false
@@ -419,7 +419,7 @@ defmodule Dbservice.Services.GroupUpdateServiceTest do
           user_id: user.id,
           group_id: old_school.id,
           group_type: "school",
-          academic_year: "2024-25",
+          academic_year: "2024-2025",
           start_date: ~D[2024-01-01],
           is_current: true
         })
@@ -467,7 +467,7 @@ defmodule Dbservice.Services.GroupUpdateServiceTest do
           user_id: user.id,
           group_id: school.id,
           group_type: "school",
-          academic_year: "2024-25",
+          academic_year: "2024-2025",
           start_date: ~D[2024-01-01],
           is_current: true
         })
