@@ -281,6 +281,42 @@ defmodule Dbservice.Services.StudentEligibilityCleanupTest do
     assert mapping_active?(mapping_id)
   end
 
+  test "a School enrollment without an active Mapping skips the Student lock" do
+    [[user_id]] =
+      Repo.query!(
+        "INSERT INTO \"user\" (inserted_at, updated_at) VALUES (now(), now()) RETURNING id"
+      ).rows
+
+    Repo.query!(
+      "INSERT INTO student (user_id, status, inserted_at, updated_at) VALUES ($1, 'enrolled', now(), now())",
+      [user_id]
+    )
+
+    school_id = insert_school()
+    handler_id = {__MODULE__, self()}
+
+    :telemetry.attach(
+      handler_id,
+      [:dbservice, :repo, :query],
+      fn _, _, metadata, pid -> send(pid, {:enrollment_query, metadata.query}) end,
+      self()
+    )
+
+    on_exit(fn -> :telemetry.detach(handler_id) end)
+
+    assert {:ok, _enrollment} =
+             Dbservice.EnrollmentRecords.create_enrollment_record(%{
+               user_id: user_id,
+               group_id: school_id,
+               group_type: "school",
+               academic_year: "2026-27",
+               start_date: ~D[2026-04-01],
+               is_current: true
+             })
+
+    refute Enum.any?(received_enrollment_queries(), &String.contains?(&1, "FOR UPDATE"))
+  end
+
   defp insert_mapping_scope do
     [[student_user_id], [mentor_user_id]] =
       Repo.query!(
@@ -380,5 +416,13 @@ defmodule Dbservice.Services.StudentEligibilityCleanupTest do
       "SELECT ended_at IS NULL FROM holistic_mentorship_mentor_mentee_mappings WHERE id = $1",
       [mapping_id]
     ).rows == [[true]]
+  end
+
+  defp received_enrollment_queries(queries \\ []) do
+    receive do
+      {:enrollment_query, query} -> received_enrollment_queries([query | queries])
+    after
+      0 -> queries
+    end
   end
 end

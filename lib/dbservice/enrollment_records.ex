@@ -200,13 +200,22 @@ defmodule Dbservice.EnrollmentRecords do
   defp mutate_membership(user_ids, operation) do
     user_ids = user_ids |> Enum.reject(&is_nil/1) |> Enum.uniq()
 
+    if active_holistic_mapping?(user_ids) do
+      mutate_mapped_membership(user_ids, operation)
+    else
+      operation.()
+    end
+  end
+
+  defp mutate_mapped_membership(user_ids, operation) do
     Repo.transaction(fn ->
       before = Map.new(user_ids, &{&1, current_memberships(&1)})
 
       case operation.() do
         {:ok, result} ->
-          user_ids
-          |> Enum.each(fn user_id -> cleanup_membership_change(user_id, before[user_id]) end)
+          Enum.each(user_ids, fn user_id ->
+            cleanup_membership_change(user_id, before[user_id])
+          end)
 
           result
 
@@ -214,6 +223,15 @@ defmodule Dbservice.EnrollmentRecords do
           Repo.rollback(reason)
       end
     end)
+  end
+
+  defp active_holistic_mapping?(user_ids) do
+    Repo.exists?(
+      from student in Student,
+        join: mapping in "holistic_mentorship_mentor_mentee_mappings",
+        on: field(mapping, :student_id) == student.id,
+        where: student.user_id in ^user_ids and is_nil(field(mapping, :ended_at))
+    )
   end
 
   defp current_memberships(user_id) do
