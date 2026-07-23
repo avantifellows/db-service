@@ -6,6 +6,7 @@ defmodule Dbservice.DataImport.ImportWorkerTest do
   alias Dbservice.DataImport
   alias Dbservice.Users
   import Dbservice.DataImportFixtures
+  import Dbservice.UsersFixtures
 
   setup do
     # Create required entities for the test
@@ -205,6 +206,53 @@ defmodule Dbservice.DataImport.ImportWorkerTest do
       assert updated_import.total_rows == 2
 
       cleanup_test_csv("start_row_test.csv")
+    end
+  end
+
+  describe "student_update imports (issue #641)" do
+    test "halts with a clear error when a row moves another student's apaar_id, and does not overwrite either student" do
+      {_u1, _target} = student_fixture(%{student_id: "UPD-TARGET", apaar_id: "111111111111"})
+      {_u2, other} = student_fixture(%{student_id: "UPD-OTHER", apaar_id: "222222222222"})
+
+      # The row identifies UPD-TARGET but tries to set UPD-OTHER's APAAR ID on it.
+      csv_content = student_update_csv_content([{"UPD-TARGET", "222222222222", "Hacked"}])
+      filename = create_test_csv("student_update_conflict.csv", csv_content)
+      on_exit(fn -> cleanup_test_csv("student_update_conflict.csv") end)
+
+      import_record =
+        import_fixture(%{filename: filename, type: "student_update", status: "pending"})
+
+      job = %Oban.Job{args: %{"id" => import_record.id}}
+      perform_job(ImportWorker, job.args)
+
+      updated_import = DataImport.get_import!(import_record.id)
+      assert updated_import.error_count > 0
+
+      first_error = List.first(updated_import.error_details)
+      assert Map.has_key?(first_error, "row")
+      assert first_error["error"] =~ "APAAR ID '222222222222' already exists for another student"
+
+      # No duplicate created: the other student keeps its APAAR ID and the target row is untouched.
+      assert Users.get_student!(other.id).apaar_id == "222222222222"
+      assert Users.get_student_by_student_id("UPD-TARGET").apaar_id == "111111111111"
+    end
+
+    test "applies a clean update row with no identifier conflict" do
+      {_u, target} = student_fixture(%{student_id: "UPD-CLEAN", apaar_id: "333333333333"})
+
+      csv_content = student_update_csv_content([{"UPD-CLEAN", "", "Renamed"}])
+      filename = create_test_csv("student_update_clean.csv", csv_content)
+      on_exit(fn -> cleanup_test_csv("student_update_clean.csv") end)
+
+      import_record =
+        import_fixture(%{filename: filename, type: "student_update", status: "pending"})
+
+      job = %Oban.Job{args: %{"id" => import_record.id}}
+      assert :ok = perform_job(ImportWorker, job.args)
+
+      updated_import = DataImport.get_import!(import_record.id)
+      assert updated_import.status in ["completed", "processing"]
+      assert Users.get_user!(target.user_id).first_name == "Renamed"
     end
   end
 

@@ -691,6 +691,48 @@ defmodule Dbservice.Users do
     end
   end
 
+  @doc """
+  Validates that the globally-unique identifiers in `params` (`apaar_id`, `pen_number`)
+  do not already belong to another student, mirroring the student table's global unique
+  constraints so a conflict is reported clearly before the write instead of surfacing as
+  a raw constraint error.
+
+  `student_id` is deliberately NOT checked here: it is only unique within an auth group
+  (see `create_or_update_student/1`), so a global check would falsely flag a student
+  whose id is legitimately reused in another auth group. Only the identifiers the
+  database enforces globally are validated.
+
+  Only identifiers that are present and non-empty in `params` are checked, so a partial
+  update touching unrelated fields passes untouched. Accepts string or atom keys. When
+  `existing_student` is given, that student is excluded from the check (re-saving its
+  own identifiers is allowed); pass `nil` when validating a brand new student.
+
+  Returns `:ok`, or `{:error, message}` naming the conflicting identifier.
+  """
+  def validate_identifier_conflicts(params, existing_student \\ nil) do
+    apaar_id = identifier_param(params, :apaar_id)
+    pen_number = identifier_param(params, :pen_number)
+
+    cond do
+      identifier_present?(apaar_id) and
+          duplicate_exists?(:apaar_id, apaar_id, existing_student) ->
+        {:error, "APAAR ID '#{apaar_id}' already exists for another student"}
+
+      identifier_present?(pen_number) and
+          duplicate_exists?(:pen_number, pen_number, existing_student) ->
+        {:error, "PEN Number '#{pen_number}' already exists for another student"}
+
+      true ->
+        :ok
+    end
+  end
+
+  defp identifier_param(params, key) do
+    Map.get(params, key) || Map.get(params, Atom.to_string(key))
+  end
+
+  defp identifier_present?(value), do: not (is_nil(value) or value == "")
+
   # Validates that student_id and apaar_id are not duplicated in other students
   # When updating, validates that the NEW values in params don't conflict with other students
   defp validate_identifiers_not_duplicated(student_id, apaar_id, existing_student) do
@@ -726,6 +768,7 @@ defmodule Dbservice.Users do
       case field do
         :student_id -> from(s in Student, where: s.student_id == ^value)
         :apaar_id -> from(s in Student, where: s.apaar_id == ^value)
+        :pen_number -> from(s in Student, where: s.pen_number == ^value)
       end
 
     query =
