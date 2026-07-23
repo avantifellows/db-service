@@ -20,7 +20,9 @@ defmodule Dbservice.Services.StudentUpdateService do
   - {:error, reason} if student not found or update fails
   """
   def update_student_by_student_id(student_id, params) do
-    case Users.get_student_by_student_id(student_id) do
+    # Scope to the auth group when params carry it, so a student_id shared across auth groups
+    # resolves to the right student (falls back to unscoped when no auth group is present).
+    case Users.get_student_by_student_id(student_id, params) do
       nil ->
         {:error, "Student not found with ID: #{student_id}"}
 

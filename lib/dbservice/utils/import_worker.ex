@@ -751,32 +751,42 @@ defmodule Dbservice.DataImport.ImportWorker do
 
   # Record processor functions for each import type
   defp process_student_record(record) do
-    # For student imports, if student already exists, returns error
-    # Check if student exists first to determine if this would be an update
-    existing_student = Users.get_student_by_id_or_apaar_id(record)
+    # For student imports, if the student already exists, return an error (updates must go
+    # through the student_update import type). `student_id` is only unique within an auth
+    # group, so the "already exists" check is scoped to the incoming auth group - a matching
+    # id in a different auth group is treated as a new student.
+    case existing_student_for_record(record) do
+      nil ->
+        create_student_with_enrollments(record)
 
-    case Users.create_or_update_student(record) do
-      {:ok, student} ->
-        handle_student_creation_result(existing_student, student, record)
-
-      {:error, reason} ->
-        {:error, reason}
+      %Dbservice.Users.Student{} = existing_student ->
+        {:error, build_student_exists_error_message(existing_student)}
     end
   end
 
-  defp handle_student_creation_result(nil, student, record) do
-    # Student was created - proceed with enrollments
-    student = Dbservice.Repo.preload(student, [:user])
+  defp existing_student_for_record(record) do
+    case Users.resolve_auth_group_id(record) do
+      nil ->
+        Users.get_student_by_id_or_apaar_id(record)
 
-    case DataImport.StudentEnrollment.create_enrollments(student.user, record) do
-      {:ok, _} -> {:ok, {:ok, student}}
-      {:error, reason} -> {:error, reason}
+      auth_group_id ->
+        Users.get_student_by_student_id_and_auth_group(record["student_id"], auth_group_id)
     end
   end
 
-  defp handle_student_creation_result(_existing_student, student, _record) do
-    # Student already exists - return detailed error (student_update import type should be used for updates)
-    {:error, build_student_exists_error_message(student)}
+  # Creates the student and all enrollments atomically. create_or_update_student already
+  # establishes auth-group ownership; create_enrollments then adds school/batch/grade
+  # records (its auth-group step is an idempotent no-op).
+  defp create_student_with_enrollments(record) do
+    Dbservice.Repo.transaction(fn ->
+      with {:ok, student} <- Users.create_or_update_student(record),
+           student <- Dbservice.Repo.preload(student, [:user]),
+           {:ok, _} <- DataImport.StudentEnrollment.create_enrollments(student.user, record) do
+        student
+      else
+        {:error, reason} -> Dbservice.Repo.rollback(reason)
+      end
+    end)
   end
 
   defp build_student_exists_error_message(student) do
