@@ -22,6 +22,7 @@ defmodule Dbservice.LmsStudentIngestion do
   @auth_group "EnableStudents"
   @cbse_board "CBSE"
   @nvs_program_id 64
+  @row_concurrency 8
   @duplicate_identifier_labels %{
     "pen_number" => "PEN Number",
     "g10_roll_no" => "Grade 10 Roll no",
@@ -41,13 +42,17 @@ defmodule Dbservice.LmsStudentIngestion do
     classified =
       rows
       |> Enum.map(&normalize_row(&1, params["academic_year"]))
-      |> classify_rows(school, program_id)
+      |> classify_rows()
 
     results_with_audits =
-      Enum.map(classified, fn
-        {:create, row} -> create_row(params, school, row)
-        {:skip, result} -> {result, nil}
-      end)
+      classified
+      |> Task.async_stream(
+        &process_row(&1, params, school, program_id),
+        max_concurrency: @row_concurrency,
+        ordered: true,
+        timeout: :infinity
+      )
+      |> Enum.map(fn {:ok, result} -> result end)
 
     results = Enum.map(results_with_audits, &elem(&1, 0))
     final_totals = totals(results)
@@ -64,7 +69,7 @@ defmodule Dbservice.LmsStudentIngestion do
 
   def bulk_create(_params), do: {:error, :bad_request, %{"error" => "rows must be a list"}}
 
-  defp classify_rows(rows, school, program_id) do
+  defp classify_rows(rows) do
     duplicate_keys =
       rows
       |> Enum.flat_map(&identifier_keys/1)
@@ -92,9 +97,18 @@ defmodule Dbservice.LmsStudentIngestion do
           {:skip, duplicate_in_file(row, duplicate_identifiers)}
 
         true ->
-          classify_row(row, school, program_id)
+          {:process, row}
       end
     end)
+  end
+
+  defp process_row({:skip, result}, _params, _school, _program_id), do: {result, nil}
+
+  defp process_row({:process, row}, params, school, program_id) do
+    case classify_row(row, school, program_id) do
+      {:create, row} -> create_row(params, school, row)
+      {:skip, result} -> {result, nil}
+    end
   end
 
   defp classify_row(row, nil, _program_id), do: {:skip, rejected(row, ["School not found"])}
