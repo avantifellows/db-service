@@ -146,9 +146,9 @@ defmodule Dbservice.DataImport.GroupUpdateProcessorTest do
       assert {:ok, "School update processed successfully"} = result
 
       assert Repo.query!(
-               "SELECT end_reason FROM holistic_mentorship_mentor_mentee_mappings WHERE id = $1",
+               "SELECT ended_at IS NULL FROM holistic_mentorship_mentor_mentee_mappings WHERE id = $1",
                [mapping_id]
-             ).rows == [["student_school_changed"]]
+             ).rows == [[true]]
     end
 
     test "returns error when student is not found" do

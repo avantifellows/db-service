@@ -56,7 +56,7 @@ defmodule Dbservice.Services.StudentEligibilityCleanupTest do
            ).rows == [[true, "db_service_student_eligibility", "student_grade_changed"]]
   end
 
-  test "a current School change ends the Student's active Holistic Mapping" do
+  test "a current School change leaves Mapping cleanup to AF LMS reconciliation" do
     %{mapping_id: mapping_id, student: student} = insert_mapping_scope()
     old_school_id = insert_school()
     new_school_id = insert_school()
@@ -87,16 +87,13 @@ defmodule Dbservice.Services.StudentEligibilityCleanupTest do
     assert Repo.get!(Dbservice.EnrollmentRecords.EnrollmentRecord, enrollment_id).group_id ==
              new_school_id
 
-    assert Repo.query!(
-             "SELECT end_source, end_reason FROM holistic_mentorship_mentor_mentee_mappings WHERE id = $1",
-             [mapping_id]
-           ).rows == [["db_service_student_eligibility", "student_school_changed"]]
+    assert mapping_active?(mapping_id)
 
     assert Repo.query!("SELECT count(*) FROM holistic_mentorship_mentor_mentee_mappings").rows ==
              [[1]]
   end
 
-  test "a current Program change takes precedence over a simultaneous School change" do
+  test "a current Program change leaves Mapping cleanup to AF LMS reconciliation" do
     %{mapping_id: mapping_id, student: student} = insert_mapping_scope()
     school_id = insert_school()
 
@@ -119,13 +116,10 @@ defmodule Dbservice.Services.StudentEligibilityCleanupTest do
                group_id: 1
              })
 
-    assert Repo.query!(
-             "SELECT end_reason FROM holistic_mentorship_mentor_mentee_mappings WHERE id = $1",
-             [mapping_id]
-           ).rows == [["student_program_changed"]]
+    assert mapping_active?(mapping_id)
   end
 
-  test "a batch enrollment failure rolls back School membership cleanup" do
+  test "a batch enrollment failure rolls back School membership" do
     %{mapping_id: mapping_id, student: student} = insert_mapping_scope()
 
     [[school_id]] =
@@ -281,17 +275,8 @@ defmodule Dbservice.Services.StudentEligibilityCleanupTest do
     assert mapping_active?(mapping_id)
   end
 
-  test "a School enrollment without an active Mapping skips the Student lock" do
-    [[user_id]] =
-      Repo.query!(
-        "INSERT INTO \"user\" (inserted_at, updated_at) VALUES (now(), now()) RETURNING id"
-      ).rows
-
-    Repo.query!(
-      "INSERT INTO student (user_id, status, inserted_at, updated_at) VALUES ($1, 'enrolled', now(), now())",
-      [user_id]
-    )
-
+  test "generic enrollment CRUD performs no Holistic query even with an active Mapping" do
+    %{mapping_id: mapping_id, student: student} = insert_mapping_scope()
     school_id = insert_school()
     handler_id = {__MODULE__, self()}
 
@@ -306,7 +291,7 @@ defmodule Dbservice.Services.StudentEligibilityCleanupTest do
 
     assert {:ok, _enrollment} =
              Dbservice.EnrollmentRecords.create_enrollment_record(%{
-               user_id: user_id,
+               user_id: student.user_id,
                group_id: school_id,
                group_type: "school",
                academic_year: "2026-27",
@@ -314,7 +299,26 @@ defmodule Dbservice.Services.StudentEligibilityCleanupTest do
                is_current: true
              })
 
-    refute Enum.any?(received_enrollment_queries(), &String.contains?(&1, "FOR UPDATE"))
+    {:ok, enrollment} =
+      Dbservice.EnrollmentRecords.create_enrollment_record(%{
+        user_id: student.user_id,
+        group_id: 1,
+        group_type: "program",
+        academic_year: "2026-27",
+        start_date: ~D[2026-04-01],
+        is_current: true
+      })
+
+    assert {:ok, enrollment} =
+             Dbservice.EnrollmentRecords.update_enrollment_record(enrollment, %{group_id: 2})
+
+    assert {:ok, _enrollment} = Dbservice.EnrollmentRecords.delete_enrollment_record(enrollment)
+    assert {:ok, 1} = Dbservice.EnrollmentRecords.delete_all_by_user_id(student.user_id)
+
+    queries = received_enrollment_queries()
+    refute Enum.any?(queries, &String.contains?(&1, "holistic_mentorship_"))
+    refute Enum.any?(queries, &String.contains?(&1, "FOR UPDATE"))
+    assert mapping_active?(mapping_id)
   end
 
   defp insert_mapping_scope do

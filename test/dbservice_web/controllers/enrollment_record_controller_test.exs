@@ -142,7 +142,7 @@ defmodule DbserviceWeb.EnrollmentRecordControllerTest do
       end
     end
 
-    test "ending current Program membership through the API ends the active Holistic Mapping", %{
+    test "ending current Program membership leaves Mapping cleanup to AF LMS", %{
       conn: conn
     } do
       %{enrollment_id: enrollment_id, mapping_id: mapping_id} = insert_program_mapping_scope()
@@ -152,9 +152,9 @@ defmodule DbserviceWeb.EnrollmentRecordControllerTest do
       assert response(conn, 204)
 
       assert Dbservice.Repo.query!(
-               "SELECT end_source, end_reason FROM holistic_mentorship_mentor_mentee_mappings WHERE id = $1",
+               "SELECT ended_at IS NULL FROM holistic_mentorship_mentor_mentee_mappings WHERE id = $1",
                [mapping_id]
-             ).rows == [["db_service_student_eligibility", "student_program_changed"]]
+             ).rows == [[true]]
     end
   end
 

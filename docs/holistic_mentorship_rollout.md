@@ -125,11 +125,12 @@ mix test test/dbservice/holistic_mentorship_privacy_schema_test.exs \
   test/dbservice_web/controllers/holistic_mentorship_regeneration_request_controller_test.exs
 ```
 
-For Student cleanup, create one active Mapping for a disposable synthetic
-Student, mutate the Student through the normal db-service API, and confirm in
-the same staging database that the canonical mutation committed, exactly that
-Mapping now has `ended_at`, `end_source = 'db_service_student_eligibility'`,
-the expected deterministic `end_reason`, and no replacement Mapping exists.
+For targeted Student status/Grade/dropout cleanup, create one active Mapping
+for a disposable synthetic Student, mutate the Student through the normal
+db-service API, and confirm in the same staging database that the canonical
+mutation committed, exactly that Mapping now has `ended_at`,
+`end_source = 'db_service_student_eligibility'`, the expected deterministic
+`end_reason`, and no replacement Mapping exists.
 
 ```bash
 curl -fsS -X PUT -H "Authorization: Bearer $BEARER_TOKEN" \
@@ -141,6 +142,11 @@ psql "$STAGING_DATABASE_URL" -c \
 psql "$STAGING_DATABASE_URL" -c \
   "SELECT count(*) FROM holistic_mentorship_mentor_mentee_mappings WHERE student_id=$STUDENT_ID AND ended_at IS NULL;"
 ```
+
+School and Program enrollment CRUD intentionally performs no Holistic query.
+For those changes, confirm the Mapping remains stored temporarily, then open
+the AF LMS Holistic roster or direct Student page and confirm AF LMS closes the
+stale row before returning protected data.
 
 Verify the sync guard before any production-to-staging refresh:
 

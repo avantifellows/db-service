@@ -8,9 +8,6 @@ defmodule Dbservice.EnrollmentRecords do
   alias Dbservice.Repo
 
   alias Dbservice.EnrollmentRecords.EnrollmentRecord
-  alias Dbservice.Users.Student
-
-  @holistic_membership_types ~w(program school)
 
   @doc """
   Returns the list of enrollment_record.
@@ -129,19 +126,9 @@ defmodule Dbservice.EnrollmentRecords do
 
   """
   def create_enrollment_record(attrs \\ %{}) do
-    enrollment_record = %EnrollmentRecord{}
-
-    if holistic_membership?(enrollment_record, attrs) do
-      mutate_membership([attr(attrs, :user_id)], fn ->
-        enrollment_record
-        |> EnrollmentRecord.changeset(attrs)
-        |> Repo.insert()
-      end)
-    else
-      enrollment_record
-      |> EnrollmentRecord.changeset(attrs)
-      |> Repo.insert()
-    end
+    %EnrollmentRecord{}
+    |> EnrollmentRecord.changeset(attrs)
+    |> Repo.insert()
   end
 
   @doc """
@@ -157,17 +144,9 @@ defmodule Dbservice.EnrollmentRecords do
 
   """
   def update_enrollment_record(%EnrollmentRecord{} = enrollment_record, attrs) do
-    if holistic_membership?(enrollment_record, attrs) do
-      mutate_membership([enrollment_record.user_id, attr(attrs, :user_id)], fn ->
-        enrollment_record
-        |> EnrollmentRecord.changeset(attrs)
-        |> Repo.update()
-      end)
-    else
-      enrollment_record
-      |> EnrollmentRecord.changeset(attrs)
-      |> Repo.update()
-    end
+    enrollment_record
+    |> EnrollmentRecord.changeset(attrs)
+    |> Repo.update()
   end
 
   @doc """
@@ -183,96 +162,7 @@ defmodule Dbservice.EnrollmentRecords do
 
   """
   def delete_enrollment_record(%EnrollmentRecord{} = enrollment_record) do
-    if enrollment_record.group_type in @holistic_membership_types do
-      mutate_membership([enrollment_record.user_id], fn -> Repo.delete(enrollment_record) end)
-    else
-      Repo.delete(enrollment_record)
-    end
-  end
-
-  defp holistic_membership?(enrollment_record, attrs) do
-    enrollment_record.group_type in @holistic_membership_types or
-      attr(attrs, :group_type) in @holistic_membership_types
-  end
-
-  defp attr(attrs, key), do: Map.get(attrs, key) || Map.get(attrs, Atom.to_string(key))
-
-  defp mutate_membership(user_ids, operation) do
-    user_ids = user_ids |> Enum.reject(&is_nil/1) |> Enum.uniq()
-
-    if active_holistic_mapping?(user_ids) do
-      mutate_mapped_membership(user_ids, operation)
-    else
-      operation.()
-    end
-  end
-
-  defp mutate_mapped_membership(user_ids, operation) do
-    Repo.transaction(fn ->
-      before = Map.new(user_ids, &{&1, current_memberships(&1)})
-
-      case operation.() do
-        {:ok, result} ->
-          Enum.each(user_ids, fn user_id ->
-            cleanup_membership_change(user_id, before[user_id])
-          end)
-
-          result
-
-        {:error, reason} ->
-          Repo.rollback(reason)
-      end
-    end)
-  end
-
-  defp active_holistic_mapping?(user_ids) do
-    Repo.exists?(
-      from student in Student,
-        join: mapping in "holistic_mentorship_mentor_mentee_mappings",
-        on: field(mapping, :student_id) == student.id,
-        where: student.user_id in ^user_ids and is_nil(field(mapping, :ended_at))
-    )
-  end
-
-  defp current_memberships(user_id) do
-    Repo.one(from student in Student, where: student.user_id == ^user_id, lock: "FOR UPDATE")
-
-    from(enrollment in EnrollmentRecord,
-      where:
-        enrollment.user_id == ^user_id and enrollment.is_current and
-          enrollment.group_type in @holistic_membership_types,
-      select: {enrollment.group_type, enrollment.group_id}
-    )
-    |> Repo.all()
-    |> MapSet.new()
-  end
-
-  defp cleanup_membership_change(user_id, before) do
-    after_memberships = current_memberships(user_id)
-
-    reason =
-      cond do
-        membership_ids(before, "program") != membership_ids(after_memberships, "program") ->
-          :student_program_changed
-
-        membership_ids(before, "school") != membership_ids(after_memberships, "school") ->
-          :student_school_changed
-
-        true ->
-          nil
-      end
-
-    with reason when not is_nil(reason) <- reason,
-         %Student{id: student_id} <- Repo.get_by(Student, user_id: user_id),
-         {:error, error} <- Dbservice.HolisticMentorship.end_active_mappings(student_id, reason) do
-      Repo.rollback(error)
-    else
-      _ -> :ok
-    end
-  end
-
-  defp membership_ids(memberships, type) do
-    for {^type, id} <- memberships, into: MapSet.new(), do: id
+    Repo.delete(enrollment_record)
   end
 
   @doc """
@@ -317,12 +207,10 @@ defmodule Dbservice.EnrollmentRecords do
   logging/metrics or conditional logic.
   """
   def delete_all_by_user_id(user_id) do
-    mutate_membership([user_id], fn ->
-      {count, _} =
-        from(er in EnrollmentRecord, where: er.user_id == ^user_id) |> Repo.delete_all()
+    {count, _} =
+      from(er in EnrollmentRecord, where: er.user_id == ^user_id) |> Repo.delete_all()
 
-      {:ok, count}
-    end)
+    {:ok, count}
   end
 
   @doc """
