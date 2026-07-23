@@ -134,7 +134,6 @@ defmodule Dbservice.Users.Student do
     |> validate_format(:pen_number, ~r/^[1-9][0-9]{10}$/,
       message: "must be exactly 11 digits and cannot start with zero"
     )
-    |> unique_constraint(:student_id, name: :student_student_id_unique_not_null)
     |> unique_constraint(:apaar_id, name: :student_apaar_id_unique_not_null)
     |> unique_constraint(:pen_number, name: :student_pen_number_unique_not_null)
     |> validate_required([:user_id])
