@@ -22,6 +22,11 @@ defmodule Dbservice.LmsStudentIngestion do
   @auth_group "EnableStudents"
   @cbse_board "CBSE"
   @nvs_program_id 64
+  @duplicate_identifier_labels %{
+    "pen_number" => "PEN Number",
+    "g10_roll_no" => "Grade 10 Roll no",
+    "student_id" => "Generated Student ID"
+  }
   @empty_totals %{
     "created" => 0,
     "duplicate_in_file" => 0,
@@ -60,23 +65,36 @@ defmodule Dbservice.LmsStudentIngestion do
   def bulk_create(_params), do: {:error, :bad_request, %{"error" => "rows must be a list"}}
 
   defp classify_rows(rows, school, program_id) do
-    rows
-    |> Enum.map_reduce(MapSet.new(), fn row, seen ->
+    duplicate_keys =
+      rows
+      |> Enum.flat_map(&identifier_keys/1)
+      |> Enum.frequencies()
+      |> Enum.filter(fn {_key, count} -> count > 1 end)
+      |> Enum.map(&elem(&1, 0))
+      |> MapSet.new()
+
+    Enum.map(rows, fn row ->
       identifiers = identifier_keys(row)
+
+      duplicate_identifiers =
+        row
+        |> identifiers()
+        |> Enum.filter(fn {key, value} ->
+          MapSet.member?(duplicate_keys, "#{key}:#{value}")
+        end)
+        |> Enum.map(fn {key, _value} -> Map.fetch!(@duplicate_identifier_labels, key) end)
 
       cond do
         identifiers == [] ->
-          {{:skip, rejected(row, ["PEN Number or Grade 10 Roll no is required"])}, seen}
+          {:skip, rejected(row, ["PEN Number or Grade 10 Roll no is required"])}
 
-        Enum.any?(identifiers, &MapSet.member?(seen, &1)) ->
-          {{:skip, result(row, "duplicate_in_file")}, seen}
+        duplicate_identifiers != [] ->
+          {:skip, duplicate_in_file(row, duplicate_identifiers)}
 
         true ->
-          seen = Enum.reduce(identifiers, seen, &MapSet.put(&2, &1))
-          {classify_row(row, school, program_id), seen}
+          classify_row(row, school, program_id)
       end
     end)
-    |> elem(0)
   end
 
   defp classify_row(row, nil, _program_id), do: {:skip, rejected(row, ["School not found"])}
@@ -171,14 +189,14 @@ defmodule Dbservice.LmsStudentIngestion do
         {:error, :student, _changeset, _changes} ->
           result =
             case existing_student(row) do
-              nil -> rejected(row, ["Student could not be created"])
+              nil -> rejected(row, ["Student could not be created. Please contact the admin"])
               existing -> already_exists(row, existing, school.code)
             end
 
           {result, nil}
 
         {:error, _step, _reason, _changes} ->
-          {rejected(row, ["Student could not be created"]), nil}
+          {rejected(row, ["Student could not be created. Please contact the admin"]), nil}
       end
     else
       {:error, message} -> {rejected(row, [message]), nil}
@@ -370,18 +388,18 @@ defmodule Dbservice.LmsStudentIngestion do
   defp validate_pen(row) do
     case {row["pen_number"], get_in(row, ["student", "pen_number"])} do
       {value, _normalized} when not is_nil(value) and not is_binary(value) ->
-        {:error, "PEN Number must be exactly 11 digits and cannot start with zero"}
+        {:error, "PEN Number must be exactly 11 digits"}
 
       {_input, nil} ->
         :ok
 
       {_input, pen} when is_binary(pen) ->
-        if Regex.match?(~r/^[1-9][0-9]{10}$/, pen),
+        if Regex.match?(~r/^[0-9]{11}$/, pen),
           do: :ok,
-          else: {:error, "PEN Number must be exactly 11 digits and cannot start with zero"}
+          else: {:error, "PEN Number must be exactly 11 digits"}
 
       _ ->
-        {:error, "PEN Number must be exactly 11 digits and cannot start with zero"}
+        {:error, "PEN Number must be exactly 11 digits"}
     end
   end
 
@@ -454,13 +472,13 @@ defmodule Dbservice.LmsStudentIngestion do
   defp identifier_conflict(student_by_id, student_by_pen, student_id, pen_number) do
     cond do
       student_by_id && student_by_pen && student_by_id.id != student_by_pen.id ->
-        "PEN Number and generated Student ID match different existing students"
+        "The PEN Number and the Student ID generated from Grade and Grade 10 Roll no match different existing records. Correct the PEN Number, Grade, or Grade 10 Roll no."
 
       student_by_id && conflicting_identifier?(student_by_id.pen_number, pen_number) ->
-        "PEN Number conflicts with the existing generated Student ID"
+        "The Grade 10 Roll no already exists for a student with a different PEN Number. Correct or remove the Grade 10 Roll no to proceed using the PEN Number."
 
       student_by_pen && conflicting_identifier?(student_by_pen.student_id, student_id) ->
-        "Generated Student ID conflicts with the existing PEN Number"
+        "The PEN Number already exists with a different Student ID. Correct or remove the PEN Number to proceed using the Grade 10 Roll no."
 
       true ->
         nil
@@ -532,13 +550,12 @@ defmodule Dbservice.LmsStudentIngestion do
   end
 
   defp identifiers(row) do
-    %{
-      "student_id" => get_in(row, ["student", "student_id"]),
-      "pen_number" => get_in(row, ["student", "pen_number"]),
-      "g10_roll_no" => get_in(row, ["student", "g10_roll_no"])
-    }
+    [
+      {"pen_number", get_in(row, ["student", "pen_number"])},
+      {"g10_roll_no", get_in(row, ["student", "g10_roll_no"])},
+      {"student_id", get_in(row, ["student", "student_id"])}
+    ]
     |> Enum.reject(fn {_key, value} -> value in [nil, ""] end)
-    |> Map.new()
   end
 
   defp audit_identifiers(row, user, student) do
@@ -649,6 +666,12 @@ defmodule Dbservice.LmsStudentIngestion do
   end
 
   defp rejected(row, errors), do: row |> result("rejected") |> Map.put("row_errors", errors)
+
+  defp duplicate_in_file(row, identifiers) do
+    row
+    |> result("duplicate_in_file")
+    |> Map.put("duplicate_identifiers", identifiers)
+  end
 
   defp result(row, status) do
     %{
