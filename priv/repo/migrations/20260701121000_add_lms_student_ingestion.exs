@@ -1,3 +1,4 @@
+# This version must remain distinct from 20260701120000_add_user_session_indexes.exs.
 defmodule Dbservice.Repo.Migrations.AddLmsStudentIngestion do
   use Ecto.Migration
 
