@@ -7,6 +7,10 @@ defmodule Dbservice.Users do
   alias Dbservice.Utils.Util
   alias Dbservice.Repo
 
+  alias Dbservice.AuthGroups
+  alias Dbservice.EnrollmentRecords.EnrollmentRecord
+  alias Dbservice.Services.EnrollmentService
+
   alias Dbservice.Users.User
 
   @doc """
@@ -165,16 +169,38 @@ defmodule Dbservice.Users do
   def get_student!(id), do: Repo.get!(Student, id)
 
   @doc """
-  Gets a student by student ID.
-  Raises `Ecto.NoResultsError` if the Student does not exist.
+  Gets a student by `student_id`, or `nil` if none exists.
+
+  `student_id` is not globally unique - the same id can exist across auth groups. Pass a
+  params map carrying `auth_group` (name) or `auth_group_id` to get an unambiguous,
+  auth-group-scoped match (the student in *that* group, or `nil`). This is what identity-
+  sensitive callers should do so they never act on another auth group's student.
+
+  Without a resolvable auth group it falls back to the earliest-created matching student,
+  rather than raising `Ecto.MultipleResultsError` (which `Repo.get_by/2` would on duplicates).
+
   ## Examples
-      iex> get_student_by_student_id(1234)
+      iex> get_student_by_student_id("1234")
       %Student{}
-      iex> get_student_by_student_id(abc)
-      ** (Ecto.NoResultsError)
+      iex> get_student_by_student_id("1234", %{"auth_group" => "DelhiStudents"})
+      %Student{}
+      iex> get_student_by_student_id("does-not-exist")
+      nil
   """
-  def get_student_by_student_id(student_id) do
-    Repo.get_by(Student, student_id: student_id)
+  def get_student_by_student_id(student_id, auth_group_params \\ %{}) do
+    case resolve_auth_group_id(auth_group_params) do
+      nil -> get_student_by_student_id_unscoped(student_id)
+      auth_group_id -> get_student_by_student_id_and_auth_group(student_id, auth_group_id)
+    end
+  end
+
+  defp get_student_by_student_id_unscoped(student_id) do
+    from(s in Student,
+      where: s.student_id == ^student_id,
+      order_by: [asc: s.id],
+      limit: 1
+    )
+    |> Repo.one()
   end
 
   @doc """
@@ -219,6 +245,77 @@ defmodule Dbservice.Users do
 
   defp find_student(_field, value) when value in [nil, ""], do: nil
   defp find_student(field, value), do: Repo.get_by(Student, [{field, value}])
+
+  @doc """
+  Gets a student scoped to an auth group.
+
+  A `student_id` is only unique within the scope of an auth group, so a student is the
+  *same logical student* only when its `student_id` matches AND there is an enrollment
+  record tying it to the given auth group (`group_type = "auth_group"`,
+  `group_id = auth_group.id`).
+
+  By default only a *current* (`is_current = true`) ownership record counts. Pass
+  `include_inactive: true` to also match a student whose ownership record was deactivated
+  (e.g. by a dropout, which flips all current records to `is_current = false`) - the
+  create/update path uses this so re-POSTing a dropped student revives the same row rather
+  than inserting a duplicate. A current record is preferred when both exist.
+
+  Returns the matching `%Student{}` or `nil`.
+  """
+  def get_student_by_student_id_and_auth_group(student_id, auth_group_id, opts \\ [])
+
+  def get_student_by_student_id_and_auth_group(student_id, auth_group_id, opts)
+      when not is_nil(student_id) and not is_nil(auth_group_id) do
+    base =
+      from(s in Student,
+        join: er in EnrollmentRecord,
+        on: er.user_id == s.user_id,
+        where:
+          s.student_id == ^student_id and
+            er.group_type == "auth_group" and
+            er.group_id == ^auth_group_id,
+        order_by: [desc: er.is_current, asc: s.id],
+        limit: 1
+      )
+
+    query =
+      if Keyword.get(opts, :include_inactive, false) do
+        base
+      else
+        from([_s, er] in base, where: er.is_current == true)
+      end
+
+    Repo.one(query)
+  end
+
+  def get_student_by_student_id_and_auth_group(_student_id, _auth_group_id, _opts), do: nil
+
+  @doc """
+  Resolves the incoming auth group id from request/import params.
+
+  Prefers an explicit `auth_group_id` (the data-import pipeline already sets this to
+  `auth_group.id`); otherwise resolves the `auth_group` name via `AuthGroups`.
+  Returns the `auth_group.id` (which is what enrollment records store as `group_id`),
+  or `nil` when no auth group can be determined.
+  """
+  def resolve_auth_group_id(params) do
+    case params["auth_group_id"] do
+      id when not is_nil(id) and id != "" ->
+        id
+
+      _ ->
+        resolve_auth_group_id_by_name(params["auth_group"])
+    end
+  end
+
+  defp resolve_auth_group_id_by_name(name) when is_binary(name) and name != "" do
+    case AuthGroups.get_auth_group_by_name(name) do
+      nil -> nil
+      auth_group -> auth_group.id
+    end
+  end
+
+  defp resolve_auth_group_id_by_name(_name), do: nil
 
   @doc """
   Creates a student.
@@ -351,19 +448,132 @@ defmodule Dbservice.Users do
     if (is_nil(student_id) or student_id == "") and (is_nil(apaar_id) or apaar_id == "") do
       {:error, "Student ID or APAAR ID is required"}
     else
-      case get_student_by_id_or_apaar_id_with_validation(params) do
-        {:ok, nil} ->
-          # Student doesn't exist and no duplicates - create new
-          create_student_with_user(params)
-
-        {:ok, existing_student} ->
-          # Student exists and no duplicates - update
-          user = get_user!(existing_student.user_id)
-          update_student_with_user(existing_student, user, params)
-
-        {:error, _reason} = error ->
-          error
+      # `student_id` is only unique within an auth group. When an auth group is provided
+      # we scope the lookup to it; otherwise we fall back to the legacy global behavior so
+      # callers that don't send an auth group keep working.
+      case resolve_auth_group_id(params) do
+        nil -> create_or_update_student_global(params)
+        auth_group_id -> create_or_update_student_scoped(params, auth_group_id)
       end
+    end
+  end
+
+  # Auth-group-scoped create/update. A student is the same logical student only if its
+  # `student_id` matches AND it already belongs to the incoming auth group. The student
+  # row and its auth-group ownership (enrollment record + group_user) are created/updated
+  # atomically in a single transaction.
+  defp create_or_update_student_scoped(params, auth_group_id) do
+    student_id = params["student_id"]
+    apaar_id = params["apaar_id"]
+
+    # Match the logical student in this auth group even if a dropout deactivated its
+    # ownership record - re-POSTing must revive that row, never create a duplicate (:466).
+    existing_student =
+      get_student_by_student_id_and_auth_group(student_id, auth_group_id, include_inactive: true)
+
+    # `apaar_id` remains globally unique even though `student_id` is auth-group-scoped.
+    with :ok <- validate_apaar_id_not_duplicated(apaar_id, existing_student) do
+      Repo.transaction(fn ->
+        case upsert_student_scoped(existing_student, params, auth_group_id) do
+          {:ok, student} -> student
+          {:error, reason} -> Repo.rollback(reason)
+        end
+      end)
+    end
+  end
+
+  # New student: create it and establish auth-group ownership (enrollment record + group_user).
+  defp upsert_student_scoped(nil, params, auth_group_id) do
+    with {:ok, student} <- create_student_with_user(params),
+         {:ok, _ownership} <- ensure_auth_group_ownership(student, params, auth_group_id) do
+      {:ok, student}
+    end
+  end
+
+  # Existing student in this auth group: update fields. Guard against silently overwriting a
+  # stored `apaar_id` with a different one (:475), then revive the ownership record if a
+  # prior dropout had deactivated it (:466).
+  defp upsert_student_scoped(%Student{} = existing_student, params, auth_group_id) do
+    user = get_user!(existing_student.user_id)
+
+    with :ok <- validate_incoming_apaar_matches(existing_student, params),
+         {:ok, student} <- update_student_with_user(existing_student, user, params) do
+      reactivate_auth_group_enrollment(student.user_id, auth_group_id)
+      {:ok, student}
+    end
+  end
+
+  # Mirrors the global path's apaar-mismatch check: if an `apaar_id` is supplied and the
+  # student already has a different one, reject rather than overwrite it.
+  defp validate_incoming_apaar_matches(existing_student, params) do
+    apaar_id = params["apaar_id"]
+
+    if apaar_id && apaar_id != "" do
+      validate_apaar_id_match(existing_student, params["student_id"], apaar_id)
+    else
+      :ok
+    end
+  end
+
+  # Revives a previously-deactivated auth_group ownership record (no-op if already current),
+  # so a re-POSTed (e.g. dropped) student is owned by - and findable in - this auth group again.
+  defp reactivate_auth_group_enrollment(user_id, auth_group_id) do
+    from(er in EnrollmentRecord,
+      where:
+        er.user_id == ^user_id and er.group_type == "auth_group" and
+          er.group_id == ^auth_group_id and er.is_current == false
+    )
+    |> Repo.update_all(set: [is_current: true, end_date: nil])
+
+    :ok
+  end
+
+  # Ensures the auth-group ownership enrollment record + group_user mapping exist for the
+  # student. Reuses the shared EnrollmentService, which is idempotent on the group_user
+  # (an existing mapping results in an update, never a duplicate enrollment record).
+  defp ensure_auth_group_ownership(%Student{} = student, params, auth_group_id) do
+    auth_group_name = params["auth_group"] || auth_group_name_from_id(auth_group_id)
+
+    enrollment_data = %{
+      "enrollment_type" => "auth_group",
+      "auth_group" => auth_group_name,
+      "user_id" => student.user_id,
+      "start_date" => params["start_date"] || Date.utc_today()
+    }
+
+    EnrollmentService.process_enrollment(enrollment_data)
+  end
+
+  defp auth_group_name_from_id(auth_group_id) do
+    case AuthGroups.get_auth_group!(auth_group_id) do
+      %{name: name} -> name
+      _ -> nil
+    end
+  end
+
+  defp validate_apaar_id_not_duplicated(apaar_id, existing_student) do
+    if apaar_id && apaar_id != "" && duplicate_exists?(:apaar_id, apaar_id, existing_student) do
+      {:error, "APAAR ID '#{apaar_id}' already exists for another student"}
+    else
+      :ok
+    end
+  end
+
+  # Legacy, globally-scoped create/update used when no auth group is supplied. Treats
+  # `student_id`/`apaar_id` as globally unique (the original behavior).
+  defp create_or_update_student_global(params) do
+    case get_student_by_id_or_apaar_id_with_validation(params) do
+      {:ok, nil} ->
+        # Student doesn't exist and no duplicates - create new
+        create_student_with_user(params)
+
+      {:ok, existing_student} ->
+        # Student exists and no duplicates - update
+        user = get_user!(existing_student.user_id)
+        update_student_with_user(existing_student, user, params)
+
+      {:error, _reason} = error ->
+        error
     end
   end
 
@@ -525,7 +735,9 @@ defmodule Dbservice.Users do
         query
       end
 
-    not is_nil(Repo.one(query))
+    # `Repo.exists?` (not `Repo.one`) - a `student_id` can legitimately match multiple rows
+    # now that it is only unique within an auth group, which would crash `Repo.one`.
+    Repo.exists?(query)
   end
 
   @doc """
