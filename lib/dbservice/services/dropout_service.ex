@@ -49,6 +49,7 @@ defmodule Dbservice.Services.DropoutService do
     Repo.transaction(fn ->
       with {:ok, student} <- lock_student(student.id),
            :ok <- validate_dropout_status(student),
+           :ok <- validate_academic_year(student, academic_year, audit_params),
            :ok <- validate_lms_audit_params(student, audit_params),
            {:ok, updated_student} <-
              create_dropout_with_audit(student, start_date, academic_year, audit_params) do
@@ -71,6 +72,65 @@ defmodule Dbservice.Services.DropoutService do
     do: {:error, "Student is already marked as dropout"}
 
   defp validate_dropout_status(_student), do: :ok
+
+  # Guards against stamping a dropout with an academic year that does not match
+  # the enrollment actually being ended. The academic year is caller-supplied
+  # (dropout API param / CSV column), so a wrong value silently attributes the
+  # dropout to the wrong year (the Wardha bug), or for a multi-program student to
+  # a different program's year than the one being dropped.
+  #
+  # When the request targets a specific program (LMS/portal path carrying a
+  # program_id), validate against that program's current enrollment year. For a
+  # plain/bulk dropout that ends every current enrollment, validate against the
+  # student's most recent current academic year. When there is no current
+  # enrollment to compare against, there is nothing to validate and we allow it.
+  defp validate_academic_year(student, academic_year, audit_params) do
+    expected_years =
+      if lms_program_dropout?(audit_params) do
+        program_academic_years(student.user_id, audit_params["program_id"])
+      else
+        most_recent_academic_years(student.user_id)
+      end
+
+    cond do
+      expected_years == [] -> :ok
+      academic_year in expected_years -> :ok
+      true -> {:error, academic_year_mismatch_error(academic_year, expected_years)}
+    end
+  end
+
+  defp academic_year_mismatch_error(academic_year, expected_years) do
+    "Academic year mismatch: provided #{inspect(academic_year)} but the student's " <>
+      "current enrollment is for #{Enum.join(expected_years, ", ")}"
+  end
+
+  # Academic year(s) of the student's current batch enrollment in a specific
+  # program. Empty when the student has no current batch in that program, in
+  # which case create_program_dropout surfaces the "not enrolled" error instead.
+  defp program_academic_years(user_id, program_id) do
+    from(e in EnrollmentRecord,
+      join: b in Batch,
+      on: b.id == e.group_id,
+      where:
+        e.user_id == ^user_id and e.group_type == "batch" and e.is_current == true and
+          b.program_id == ^program_id and not is_nil(e.academic_year),
+      distinct: true,
+      select: e.academic_year
+    )
+    |> Repo.all()
+  end
+
+  # Most recent academic year across the student's current enrollments, as a
+  # single-element list (or [] when none carry an academic year).
+  defp most_recent_academic_years(user_id) do
+    from(e in EnrollmentRecord,
+      where: e.user_id == ^user_id and e.is_current == true and not is_nil(e.academic_year),
+      order_by: [desc: e.academic_year],
+      limit: 1,
+      select: e.academic_year
+    )
+    |> Repo.all()
+  end
 
   defp create_dropout_with_audit(student, start_date, academic_year, audit_params) do
     dropout_result =
