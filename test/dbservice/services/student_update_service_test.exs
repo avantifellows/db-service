@@ -117,4 +117,71 @@ defmodule Dbservice.Services.StudentUpdateServiceTest do
       assert updated_user.first_name == original_first_name
     end
   end
+
+  describe "update_student_with_user_data/2 duplicate identifier validation (issue #641)" do
+    alias Dbservice.Users
+
+    test "rejects a row that moves another student's apaar_id onto this student" do
+      {_u1, target} = student_fixture(%{student_id: "TARGET-641", apaar_id: "111111111111"})
+      {_u2, other} = student_fixture(%{student_id: "OTHER-641", apaar_id: "222222222222"})
+
+      result =
+        StudentUpdateService.update_student_with_user_data(target, %{
+          "apaar_id" => "222222222222",
+          "first_name" => "ShouldNotApply"
+        })
+
+      assert {:error, message} = result
+      assert message =~ "APAAR ID '222222222222' already exists for another student"
+
+      # The conflicting student keeps its APAAR ID; the target is not overwritten.
+      assert Users.get_student!(other.id).apaar_id == "222222222222"
+      assert Users.get_student!(target.id).apaar_id == "111111111111"
+      assert Users.get_user!(target.user_id).first_name != "ShouldNotApply"
+    end
+
+    test "rejects a row that moves another student's pen_number onto this student" do
+      {_u1, target} = student_fixture(%{student_id: "TARGET-PEN", pen_number: "12345678901"})
+      {_u2, _other} = student_fixture(%{student_id: "OTHER-PEN", pen_number: "19999999999"})
+
+      result =
+        StudentUpdateService.update_student_with_user_data(target, %{
+          "pen_number" => "19999999999"
+        })
+
+      assert {:error, message} = result
+      assert message =~ "PEN Number '19999999999' already exists for another student"
+      assert Users.get_student!(target.id).pen_number == "12345678901"
+    end
+
+    test "allows re-saving the student's own identifiers alongside other updates" do
+      {_u, target} =
+        student_fixture(%{
+          student_id: "TARGET-SELF",
+          apaar_id: "333333333333",
+          pen_number: "13333333333"
+        })
+
+      result =
+        StudentUpdateService.update_student_with_user_data(target, %{
+          "apaar_id" => "333333333333",
+          "pen_number" => "13333333333",
+          "first_name" => "Renamed"
+        })
+
+      assert {:ok, updated} = result
+      assert updated.apaar_id == "333333333333"
+      assert Users.get_user!(target.user_id).first_name == "Renamed"
+    end
+
+    test "allows assigning a brand new, non-conflicting apaar_id" do
+      {_u, target} = student_fixture(%{student_id: "TARGET-NEW"})
+
+      result =
+        StudentUpdateService.update_student_with_user_data(target, %{"apaar_id" => "444444444444"})
+
+      assert {:ok, updated} = result
+      assert updated.apaar_id == "444444444444"
+    end
+  end
 end

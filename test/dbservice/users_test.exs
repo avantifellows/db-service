@@ -620,6 +620,51 @@ defmodule Dbservice.UsersTest do
     end
   end
 
+  describe "validate_identifier_conflicts/2" do
+    alias Dbservice.Users.Student
+
+    import Dbservice.UsersFixtures
+
+    test "flags an apaar_id already used by another student" do
+      {_u, _s} = student_fixture(%{apaar_id: "123456789012"})
+
+      assert {:error, message} =
+               Users.validate_identifier_conflicts(%{"apaar_id" => "123456789012"})
+
+      assert message =~ "APAAR ID '123456789012' already exists for another student"
+    end
+
+    test "flags a pen_number already used by another student" do
+      {_u, _s} = student_fixture(%{pen_number: "12345678901"})
+
+      assert {:error, message} =
+               Users.validate_identifier_conflicts(%{"pen_number" => "12345678901"})
+
+      assert message =~ "PEN Number '12345678901' already exists for another student"
+    end
+
+    test "excludes the student being updated from its own identifiers" do
+      {_u, %Student{} = s} =
+        student_fixture(%{apaar_id: "123456789012", pen_number: "12345678901"})
+
+      assert :ok =
+               Users.validate_identifier_conflicts(
+                 %{"apaar_id" => "123456789012", "pen_number" => "12345678901"},
+                 s
+               )
+    end
+
+    test "does not flag a student_id (auth-group-scoped, not globally unique)" do
+      {_u, _s} = student_fixture(%{student_id: "SHARED-ID"})
+
+      assert :ok = Users.validate_identifier_conflicts(%{"student_id" => "SHARED-ID"})
+    end
+
+    test "returns :ok when no globally-unique identifiers are present" do
+      assert :ok = Users.validate_identifier_conflicts(%{"first_name" => "NoIdentifiers"})
+    end
+  end
+
   describe "teacher" do
     alias Dbservice.Users.Teacher
 
