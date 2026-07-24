@@ -91,6 +91,7 @@ defmodule Dbservice.DataImport.ImportWorker do
       "school_deletion" => &process_school_deletion_record/1,
       "student" => &process_student_record/1,
       "student_update" => &process_student_update_record/1,
+      "student_enrollment" => &process_student_enrollment_record/1,
       "batch_movement" => &process_batch_movement_record/1,
       "alumni_addition" => &process_alumni_record/1,
       "teacher_batch_assignment" => &process_teacher_batch_assignment_record/1,
@@ -854,6 +855,33 @@ defmodule Dbservice.DataImport.ImportWorker do
 
         student ->
           StudentUpdateService.update_student_with_user_data(student, record)
+      end
+    end
+  end
+
+  # Backfills group-user + enrollment records for a student that ALREADY exists but
+  # has no enrollments (historical data). Reuses the same enrollment logic as the
+  # new-student branch of process_student_record/1; unlike that path it never creates
+  # a student — a missing student is a hard error.
+  defp process_student_enrollment_record(record) do
+    student_id = record["student_id"]
+    apaar_id = record["apaar_id"]
+
+    if (is_nil(student_id) or student_id == "") and (is_nil(apaar_id) or apaar_id == "") do
+      {:error, "Either student_id or apaar_id is required for student enrollment"}
+    else
+      case Users.get_student_by_id_or_apaar_id(record) do
+        nil ->
+          {:error,
+           "Student not found. student_id: #{record["student_id"]}, apaar_id: #{record["apaar_id"]}"}
+
+        student ->
+          student = Dbservice.Repo.preload(student, [:user])
+
+          case DataImport.StudentEnrollment.create_enrollments(student.user, record) do
+            {:ok, _} -> {:ok, student}
+            {:error, reason} -> {:error, reason}
+          end
       end
     end
   end
