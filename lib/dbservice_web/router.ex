@@ -60,6 +60,55 @@ defmodule DbserviceWeb.Router do
     get("/health", HealthController, :index)
     get("/health/ready", HealthController, :ready)
 
+    post(
+      "/holistic-mentorship/prompt-configurations",
+      HolisticMentorshipPromptConfigurationController,
+      :create,
+      log: false
+    )
+
+    post(
+      "/holistic-mentorship/prompt-configurations/:id/activate",
+      HolisticMentorshipPromptConfigurationController,
+      :activate,
+      log: false
+    )
+
+    post(
+      "/holistic-mentorship/profile-preflight",
+      HolisticMentorshipProfilePreflightController,
+      :create,
+      log: false
+    )
+
+    post(
+      "/holistic-mentorship/profile-generation-statuses",
+      HolisticMentorshipProfileGenerationStatusController,
+      :create,
+      log: false
+    )
+
+    post(
+      "/holistic-mentorship/profiles/publish",
+      HolisticMentorshipProfilePublishController,
+      :create,
+      log: false
+    )
+
+    get(
+      "/holistic-mentorship/regeneration-requests/:request_key",
+      HolisticMentorshipRegenerationRequestController,
+      :show,
+      log: false
+    )
+
+    post(
+      "/holistic-mentorship/regeneration-requests/:request_key/status",
+      HolisticMentorshipRegenerationRequestController,
+      :update_status,
+      log: false
+    )
+
     resources("/auth-group", AuthGroupController, except: [:new, :edit])
     post("/group/:id/update-users", GroupController, :update_users)
     post("/group/:id/update-sessions", GroupController, :update_sessions)

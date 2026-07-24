@@ -25,6 +25,15 @@ defmodule Dbservice.Services.ReEnrollmentService do
   Returns {:ok, student} on success or {:error, reason} on failure.
   """
   def process_re_enrollment(student, params) do
+    Repo.transaction(fn ->
+      case do_process_re_enrollment(student, params) do
+        {:ok, updated_student} -> updated_student
+        {:error, reason} -> Repo.rollback(reason)
+      end
+    end)
+  end
+
+  defp do_process_re_enrollment(student, params) do
     with :ok <- validate_dropout_status(student),
          :ok <- validate_auth_group_match(student, params),
          {:ok, _} <- create_re_enrollment_records(student, params) do
