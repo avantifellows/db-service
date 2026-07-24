@@ -1205,7 +1205,7 @@ defmodule DbserviceWeb.LmsStudentIngestionControllerTest do
   end
 
   describe "student identifier schema constraints" do
-    test "enforces uniqueness only when Student ID or APAAR ID is present" do
+    test "allows duplicate Student IDs while keeping APAAR ID unique" do
       assert {:ok, _student} = create_student(%{"student_id" => nil, "apaar_id" => nil})
       assert {:ok, _student} = create_student(%{"student_id" => nil, "apaar_id" => nil})
       assert {:ok, _student} = create_student(%{"student_id" => " ", "apaar_id" => " "})
@@ -1214,10 +1214,8 @@ defmodule DbserviceWeb.LmsStudentIngestionControllerTest do
       assert {:ok, _student} =
                create_student(%{"student_id" => "SID-1", "apaar_id" => "111111111111"})
 
-      assert {:error, changeset} =
+      assert {:ok, _student} =
                create_student(%{"student_id" => "SID-1", "apaar_id" => "222222222222"})
-
-      assert {"has already been taken", _} = changeset.errors[:student_id]
 
       assert {:error, changeset} =
                create_student(%{"student_id" => "SID-2", "apaar_id" => "111111111111"})

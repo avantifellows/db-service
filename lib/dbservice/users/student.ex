@@ -132,7 +132,6 @@ defmodule Dbservice.Users.Student do
         end
     end)
     |> validate_format(:pen_number, ~r/^[0-9]{11}$/, message: "must be exactly 11 digits")
-    |> unique_constraint(:student_id, name: :student_student_id_unique_not_null)
     |> unique_constraint(:apaar_id, name: :student_apaar_id_unique_not_null)
     |> unique_constraint(:pen_number, name: :student_pen_number_unique_not_null)
     |> validate_required([:user_id])
