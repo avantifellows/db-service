@@ -164,16 +164,24 @@ defmodule DbserviceWeb.LmsStudentIngestionControllerTest do
         |> post("/api/lms/students/bulk-create-with-enrollments", payload(school, rows))
         |> json_response(200)
 
-      assert response["totals"]["rejected"] == 6
+      assert response["totals"] == %{
+               "total" => 6,
+               "created" => 1,
+               "duplicate_in_file" => 0,
+               "already_exists" => 0,
+               "rejected" => 5
+             }
 
       assert Enum.map(response["results"], & &1["row_errors"]) == [
-               ["PEN Number must be exactly 11 digits and cannot start with zero"],
-               ["PEN Number must be exactly 11 digits and cannot start with zero"],
-               ["PEN Number must be exactly 11 digits and cannot start with zero"],
+               [],
+               ["PEN Number must be exactly 11 digits"],
+               ["PEN Number must be exactly 11 digits"],
                ["PEN Number or Grade 10 Roll no is required"],
                ["Grade 10 Board must be CBSE or Others"],
                ["Grade 10 Board must be CBSE or Others"]
              ]
+
+      assert Repo.get_by!(Student, pen_number: "01234567890")
     end
 
     test "rejects leading-zero phone and CBSE roll numbers", %{conn: conn} do
@@ -446,7 +454,12 @@ defmodule DbserviceWeb.LmsStudentIngestionControllerTest do
         )
         |> json_response(200)
 
-      assert [%{"status" => "rejected", "row_errors" => ["Student could not be created"]}] =
+      assert [
+               %{
+                 "status" => "rejected",
+                 "row_errors" => ["Student could not be created. Please contact the admin"]
+               }
+             ] =
                response["results"]
 
       assert Repo.aggregate(User, :count, :id) == before_users
@@ -495,7 +508,7 @@ defmodule DbserviceWeb.LmsStudentIngestionControllerTest do
       assert Enum.map(response["results"], & &1["status"]) == [
                "already_exists",
                "rejected",
-               "created",
+               "duplicate_in_file",
                "duplicate_in_file"
              ]
 
@@ -513,8 +526,11 @@ defmodule DbserviceWeb.LmsStudentIngestionControllerTest do
              } = Enum.at(response["results"], 0)["existing_match"]
 
       assert Enum.at(response["results"], 1)["row_errors"] == [
-               "PEN Number and generated Student ID match different existing students"
+               "The PEN Number and the Student ID generated from Grade and Grade 10 Roll no match different existing records. Correct the PEN Number, Grade, or Grade 10 Roll no."
              ]
+
+      assert Enum.at(response["results"], 2)["duplicate_identifiers"] == ["PEN Number"]
+      assert Enum.at(response["results"], 3)["duplicate_identifiers"] == ["PEN Number"]
     end
 
     test "rejects a new PEN when the generated Student ID belongs to another PEN", %{conn: conn} do
@@ -546,7 +562,42 @@ defmodule DbserviceWeb.LmsStudentIngestionControllerTest do
                %{
                  "status" => "rejected",
                  "row_errors" => [
-                   "PEN Number conflicts with the existing generated Student ID"
+                   "The Grade 10 Roll no already exists for a student with a different PEN Number. Correct or remove the Grade 10 Roll no to proceed using the PEN Number."
+                 ]
+               }
+             ] = response["results"]
+    end
+
+    test "rejects an existing PEN when Grade and roll generate another Student ID", %{conn: conn} do
+      school = insert_school!(%{program_ids: []})
+      ensure_nvs_program!()
+      insert_auth_group!("EnableStudents")
+      insert_grade!(11)
+      insert_nvs_batch!(11, "nda")
+
+      Dbservice.UsersFixtures.student_fixture(%{
+        student_id: "202811111111",
+        pen_number: "12345678909"
+      })
+
+      response =
+        conn
+        |> post(
+          "/api/lms/students/bulk-create-with-enrollments",
+          payload(school, [
+            valid_pen_row("12345678909", %{
+              "g10_board" => "CBSE",
+              "g10_roll_no" => "12345678"
+            })
+          ])
+        )
+        |> json_response(200)
+
+      assert [
+               %{
+                 "status" => "rejected",
+                 "row_errors" => [
+                   "The PEN Number already exists with a different Student ID. Correct or remove the PEN Number to proceed using the Grade 10 Roll no."
                  ]
                }
              ] = response["results"]
@@ -759,10 +810,74 @@ defmodule DbserviceWeb.LmsStudentIngestionControllerTest do
 
       response = json_response(conn, 200)
 
-      assert response["totals"]["created"] == 1
-      assert response["totals"]["duplicate_in_file"] == 1
-      assert Enum.map(response["results"], & &1["status"]) == ["created", "duplicate_in_file"]
-      assert Repo.aggregate(Student, :count, :id) == before_students + 1
+      assert response["totals"]["created"] == 0
+      assert response["totals"]["duplicate_in_file"] == 2
+
+      assert Enum.map(response["results"], & &1["status"]) == [
+               "duplicate_in_file",
+               "duplicate_in_file"
+             ]
+
+      assert Enum.map(response["results"], & &1["duplicate_identifiers"]) == [
+               ["PEN Number", "Grade 10 Roll no", "Generated Student ID"],
+               ["PEN Number", "Grade 10 Roll no", "Generated Student ID"]
+             ]
+
+      assert Repo.aggregate(Student, :count, :id) == before_students
+    end
+
+    test "rejects every row sharing only a PEN Number", %{conn: conn} do
+      school = insert_eligible_school!()
+      insert_auth_group!("EnableStudents")
+      insert_grade!(11)
+      insert_nvs_batch!(11, "engineering")
+      before_students = Repo.aggregate(Student, :count, :id)
+
+      response =
+        conn
+        |> post(
+          "/api/lms/students/bulk-create-with-enrollments",
+          payload(school, [
+            valid_row(%{"g10_roll_no" => "12345678"}),
+            valid_row(%{"g10_roll_no" => "87654321"})
+          ])
+        )
+        |> json_response(200)
+
+      assert Enum.map(response["results"], & &1["duplicate_identifiers"]) == [
+               ["PEN Number"],
+               ["PEN Number"]
+             ]
+
+      assert Repo.aggregate(Student, :count, :id) == before_students
+    end
+
+    test "rejects every row sharing only a Grade 10 Roll no", %{conn: conn} do
+      school = insert_eligible_school!()
+      insert_auth_group!("EnableStudents")
+      insert_grade!(11)
+      insert_grade!(12)
+      insert_nvs_batch!(11, "engineering")
+      insert_nvs_batch!(12, "engineering")
+      before_students = Repo.aggregate(Student, :count, :id)
+
+      response =
+        conn
+        |> post(
+          "/api/lms/students/bulk-create-with-enrollments",
+          payload(school, [
+            valid_row(%{"grade" => 11, "pen_number" => "12345678901"}),
+            valid_row(%{"grade" => 12, "pen_number" => "12345678902"})
+          ])
+        )
+        |> json_response(200)
+
+      assert Enum.map(response["results"], & &1["duplicate_identifiers"]) == [
+               ["Grade 10 Roll no"],
+               ["Grade 10 Roll no"]
+             ]
+
+      assert Repo.aggregate(Student, :count, :id) == before_students
     end
 
     test "returns already_exists for existing identifiers without updating records", %{conn: conn} do
