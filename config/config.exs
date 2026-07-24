@@ -48,6 +48,7 @@ config :logger, :request_log,
 
 # Use Jason for JSON parsing in Phoenix
 config :phoenix, :json_library, Jason
+config :phoenix, :filter_parameters, ["password", "template_text"]
 
 config :dbservice, :phoenix_swagger,
   swagger_files: %{

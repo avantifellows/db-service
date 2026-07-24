@@ -316,8 +316,6 @@ defmodule DbserviceWeb.StudentController do
   end
 
   def enrolled(conn, params) do
-    # student_id is unique only within an auth group; scope to it when supplied. A nil match
-    # (e.g. no current ownership record) returns 404 rather than crashing on student.user_id.
     case Users.get_student_by_student_id(params["student_id"], params) do
       nil ->
         conn
@@ -325,11 +323,19 @@ defmodule DbserviceWeb.StudentController do
         |> json(%{errors: "Student not found with the provided identifier"})
 
       student ->
-        do_enrolled(conn, student, params)
+        case Repo.transaction(fn -> enroll_student(student, params) end) do
+          {:ok, updated_student} ->
+            render(conn, :show, student: updated_student)
+
+          {:error, reason} ->
+            conn
+            |> put_status(:bad_request)
+            |> json(%{errors: inspect(reason)})
+        end
     end
   end
 
-  defp do_enrolled(conn, student, params) do
+  defp enroll_student(student, params) do
     user_id = student.user_id
 
     # Retrieve the group user information based on the user ID
@@ -393,10 +399,10 @@ defmodule DbserviceWeb.StudentController do
     # Always update the batch group user
     BatchEnrollmentService.update_batch_user(user_id, batch_group_id, group_users)
 
-    # Update the student's status to "enrolled" and render the response
-    with {:ok, %Student{} = updated_student} <-
-           Users.update_student(student, %{"status" => "enrolled"}) do
-      render(conn, :show, student: updated_student)
+    # Update the student's status to "enrolled"
+    case Users.update_student(student, %{"status" => "enrolled"}) do
+      {:ok, %Student{} = updated_student} -> updated_student
+      {:error, reason} -> Repo.rollback(reason)
     end
   end
 
@@ -730,6 +736,20 @@ defmodule DbserviceWeb.StudentController do
   This function removes the dropout status from both the enrollment records and the student table.
   """
   def remove_dropout_status(conn, %{"student_id" => student_id}) do
+    case Repo.transaction(fn -> remove_dropout_status_transaction(student_id) end) do
+      {:ok, :ok} ->
+        conn
+        |> put_status(:ok)
+        |> json(%{message: "Student status updated successfully"})
+
+      {:error, reason} ->
+        conn
+        |> put_status(:unprocessable_entity)
+        |> json(%{error: reason})
+    end
+  end
+
+  defp remove_dropout_status_transaction(student_id) do
     with {:ok, student} <- get_student(student_id),
          enrollment_records <-
            EnrollmentRecords.get_enrollment_records_by_user_id(student.user_id),
@@ -737,14 +757,9 @@ defmodule DbserviceWeb.StudentController do
          {:ok, _} <- handle_status_record(status_record),
          {:ok, _} <- update_current_status(enrollment_records),
          {:ok, _} <- set_student_status_to_null(student) do
-      conn
-      |> put_status(:ok)
-      |> json(%{message: "Student status updated successfully"})
+      :ok
     else
-      {:error, reason} ->
-        conn
-        |> put_status(:unprocessable_entity)
-        |> json(%{error: reason})
+      {:error, reason} -> Repo.rollback(reason)
     end
   end
 
@@ -884,8 +899,8 @@ defmodule DbserviceWeb.StudentController do
          student when not is_nil(student) <-
            Users.get_student_by_student_id(params["student_id"], params),
          :ok <- check_existing_status(student, status.title),
-         {:ok, %Student{} = updated_student} <- update_student_status_field(student, status),
-         {:ok, _enrollment_record} <- create_status_enrollment_record(student, status, params) do
+         {:ok, %Student{} = updated_student} <-
+           update_student_status_transaction(student, status, params) do
       conn
       |> put_status(:ok)
       |> render(:show, student: updated_student)
@@ -910,6 +925,18 @@ defmodule DbserviceWeb.StudentController do
         |> put_status(:bad_request)
         |> json(%{error: "Failed to update status", details: changeset.errors})
     end
+  end
+
+  defp update_student_status_transaction(student, status, params) do
+    Repo.transaction(fn ->
+      with {:ok, %Student{} = updated_student} <- update_student_status_field(student, status),
+           {:ok, _enrollment_record} <-
+             create_status_enrollment_record(student, status, params) do
+        updated_student
+      else
+        {:error, reason} -> Repo.rollback(reason)
+      end
+    end)
   end
 
   # Helper function to check if student already has the status

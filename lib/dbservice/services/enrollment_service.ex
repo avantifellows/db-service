@@ -129,24 +129,26 @@ defmodule Dbservice.Services.EnrollmentService do
   Creates a new group user with associated enrollment record.
   """
   def create_new_group_user(params) do
-    group = Groups.get_group!(params["group_id"])
-    academic_year = resolve_academic_year(group.type, params)
+    Repo.transaction(fn ->
+      group = Groups.get_group!(params["group_id"])
+      academic_year = resolve_academic_year(group.type, params)
 
-    enrollment_record = %{
-      "group_id" => group.child_id,
-      "group_type" => group.type,
-      "user_id" => params["user_id"],
-      "academic_year" => academic_year,
-      "start_date" => params["start_date"]
-    }
+      enrollment_record = %{
+        "group_id" => group.child_id,
+        "group_type" => group.type,
+        "user_id" => params["user_id"],
+        "academic_year" => academic_year,
+        "start_date" => params["start_date"]
+      }
 
-    with {:ok, %EnrollmentRecord{} = _} <-
-           EnrollmentRecords.create_enrollment_record(enrollment_record),
-         {:ok, %GroupUser{} = group_user} <- GroupUsers.create_group_user(params) do
-      {:ok, group_user}
-    else
-      {:error, _changeset} -> {:error, "Failed to create group user"}
-    end
+      with {:ok, %EnrollmentRecord{}} <-
+             EnrollmentRecords.create_enrollment_record(enrollment_record),
+           {:ok, %GroupUser{} = group_user} <- GroupUsers.create_group_user(params) do
+        group_user
+      else
+        {:error, _changeset} -> Repo.rollback("Failed to create group user")
+      end
+    end)
   end
 
   @doc """
