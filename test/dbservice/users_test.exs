@@ -254,20 +254,20 @@ defmodule Dbservice.UsersTest do
       assert student.pen_number == nil
     end
 
-    test "create_student/1 trims a non-blank PEN" do
-      assert {:ok, %Student{pen_number: "12345678901"}} =
-               Users.create_student(%{user_id: user_fixture().id, pen_number: " 12345678901 "})
+    test "create_student/1 trims a non-blank PEN and allows a leading zero" do
+      assert {:ok, %Student{pen_number: "01234567890"}} =
+               Users.create_student(%{user_id: user_fixture().id, pen_number: " 01234567890 "})
     end
 
     test "create_student/1 rejects invalid PEN formats" do
-      for pen_number <- ["abc", "01234567890", "1234567890", "123456789012"] do
+      for pen_number <- ["abc", "1234567890", "123456789012"] do
         assert {:error, changeset} =
                  Users.create_student(%{
                    user_id: user_fixture().id,
                    pen_number: pen_number
                  })
 
-        assert {"must be exactly 11 digits and cannot start with zero", _} =
+        assert {"must be exactly 11 digits", _} =
                  changeset.errors[:pen_number]
       end
     end
