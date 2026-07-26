@@ -12,6 +12,7 @@ defmodule Dbservice.Services.BatchEnrollmentService do
   alias Dbservice.EnrollmentRecords.EnrollmentRecord
   alias Dbservice.Batches.Batch
   alias Dbservice.Groups.Group
+  alias Dbservice.Groups.GroupUser
   alias Dbservice.Statuses.Status
   alias Dbservice.Grades.Grade
   alias Dbservice.Users
@@ -136,35 +137,102 @@ defmodule Dbservice.Services.BatchEnrollmentService do
   end
 
   @doc """
-  Updates or creates a group user record for the batch
-  """
-  def update_batch_user(user_id, group_id, group_users) do
-    batch_group_user = Enum.find(group_users, &group_user_by_type?(&1, "batch"))
+  Reconciles the batch group_user memberships for a user after a batch move.
 
-    if batch_group_user do
-      # Update existing group user with the new group ID
-      GroupUsers.update_group_user(batch_group_user, %{group_id: group_id})
-    else
-      # Create a new group user record
-      GroupUsers.create_group_user(%{user_id: user_id, group_id: group_id})
+  Scoped to the *target batch's program*, so a student legitimately enrolled in
+  batches of other programs keeps those memberships. Within the program it
+  collapses the batch memberships to exactly one row pointing at `group_id`,
+  deleting any stale/duplicate batch group_user rows. This is the fix for the
+  duplicate-batch-membership bug: the previous `Enum.find` repointed only the
+  first matching row and left the rest behind.
+
+  The passed-in `group_users` list is ignored on purpose — scoping is re-queried
+  with the program/type joins the caller's list does not carry.
+  """
+  def update_batch_user(user_id, group_id, _group_users) do
+    case batch_for_group_id(group_id) do
+      nil ->
+        GroupUsers.create_group_user(%{user_id: user_id, group_id: group_id})
+
+      new_batch ->
+        user_id
+        |> batch_group_users_in_program(new_batch.program_id)
+        |> reconcile_group_user(user_id, group_id)
     end
   end
 
   @doc """
-  Updates grade in group_user table
-  """
-  def update_grade_user(user_id, grade_group_id, group_users) do
-    grade_group_user = Enum.find(group_users, &group_user_by_type?(&1, "grade"))
+  Reconciles the grade group_user membership for a user.
 
-    if grade_group_user do
-      # Update existing grade group user with the new group ID
-      GroupUsers.update_group_user(grade_group_user, %{group_id: grade_group_id})
-    else
-      # Create a new grade group user if one doesn't exist
-      GroupUsers.create_group_user(%{
-        user_id: user_id,
-        group_id: grade_group_id
-      })
+  Grade is an exclusive membership type, so this collapses *all* of the user's
+  grade group_user rows to exactly one pointing at `grade_group_id`.
+  """
+  def update_grade_user(user_id, grade_group_id, _group_users) do
+    user_id
+    |> grade_group_users()
+    |> reconcile_group_user(user_id, grade_group_id)
+  end
+
+  # Resolves the batch behind a "batch"-type group id (returns %Batch{} or nil).
+  defp batch_for_group_id(group_id) do
+    from(g in Group,
+      join: b in Batch,
+      on: b.id == g.child_id,
+      where: g.id == ^group_id and g.type == "batch",
+      select: b
+    )
+    |> Repo.one()
+  end
+
+  defp batch_group_users_in_program(user_id, nil) do
+    from(gu in GroupUser,
+      join: g in Group,
+      on: g.id == gu.group_id and g.type == "batch",
+      join: b in Batch,
+      on: b.id == g.child_id,
+      where: gu.user_id == ^user_id and is_nil(b.program_id),
+      order_by: [asc: gu.inserted_at, asc: gu.id]
+    )
+    |> Repo.all()
+  end
+
+  defp batch_group_users_in_program(user_id, program_id) do
+    from(gu in GroupUser,
+      join: g in Group,
+      on: g.id == gu.group_id and g.type == "batch",
+      join: b in Batch,
+      on: b.id == g.child_id,
+      where: gu.user_id == ^user_id and b.program_id == ^program_id,
+      order_by: [asc: gu.inserted_at, asc: gu.id]
+    )
+    |> Repo.all()
+  end
+
+  defp grade_group_users(user_id) do
+    from(gu in GroupUser,
+      join: g in Group,
+      on: g.id == gu.group_id and g.type == "grade",
+      where: gu.user_id == ^user_id,
+      order_by: [asc: gu.inserted_at, asc: gu.id]
+    )
+    |> Repo.all()
+  end
+
+  # Collapses the (already scoped) `existing` group_user rows to exactly one row
+  # pointing at `target_group_id`, deleting the rest. Prefers reusing a row that
+  # already points at the target.
+  defp reconcile_group_user(existing, user_id, target_group_id) do
+    case Enum.split_with(existing, &(&1.group_id == target_group_id)) do
+      {[keep | dup_matches], others} ->
+        Enum.each(dup_matches ++ others, &GroupUsers.delete_group_user/1)
+        {:ok, keep}
+
+      {[], [keep | drop]} ->
+        Enum.each(drop, &GroupUsers.delete_group_user/1)
+        GroupUsers.update_group_user(keep, %{group_id: target_group_id})
+
+      {[], []} ->
+        GroupUsers.create_group_user(%{user_id: user_id, group_id: target_group_id})
     end
   end
 
@@ -181,16 +249,5 @@ defmodule Dbservice.Services.BatchEnrollmentService do
   def grade_changed?(user_id, new_grade_id) do
     current_grade = EnrollmentRecords.get_current_grade_id(user_id)
     current_grade != new_grade_id
-  end
-
-  @doc """
-  Checks if a group user is associated with a specific type
-  """
-  def group_user_by_type?(group_user, type) do
-    from(g in Group,
-      where: g.id == ^group_user.group_id and g.type == ^type,
-      select: g.id
-    )
-    |> Repo.exists?()
   end
 end

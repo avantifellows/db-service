@@ -120,46 +120,6 @@ defmodule Dbservice.Services.BatchEnrollmentServiceTest do
     end
   end
 
-  describe "group_user_by_type?/2" do
-    test "returns true when group user is associated with type" do
-      user = user_fixture()
-      school = school_fixture()
-
-      # Get the group that was automatically created for the school
-      group = Dbservice.Groups.get_group_by_child_id_and_type(school.id, "school")
-
-      # Create group user
-      {:ok, group_user} =
-        Dbservice.GroupUsers.create_group_user(%{
-          user_id: user.id,
-          group_id: group.id
-        })
-
-      result = BatchEnrollmentService.group_user_by_type?(group_user, "school")
-
-      assert result == true
-    end
-
-    test "returns false when group user is not associated with type" do
-      user = user_fixture()
-      school = school_fixture()
-
-      # Get the group that was automatically created for the school
-      group = Dbservice.Groups.get_group_by_child_id_and_type(school.id, "school")
-
-      # Create group user
-      {:ok, group_user} =
-        Dbservice.GroupUsers.create_group_user(%{
-          user_id: user.id,
-          group_id: group.id
-        })
-
-      result = BatchEnrollmentService.group_user_by_type?(group_user, "batch")
-
-      assert result == false
-    end
-  end
-
   describe "get_grade_info/1" do
     test "returns grade info when grade exists" do
       grade = grade_fixture(%{number: 10})
@@ -281,6 +241,41 @@ defmodule Dbservice.Services.BatchEnrollmentServiceTest do
       assert {:ok, new_group_user} = result
       assert new_group_user.group_id == group.id
       assert new_group_user.user_id == user.id
+    end
+
+    test "collapses duplicate batch group users to the target, deleting the stale ones" do
+      user = user_fixture()
+      old_batch = batch_fixture()
+      stale_batch = batch_fixture()
+      new_batch = batch_fixture()
+
+      old_group = Dbservice.Groups.get_group_by_child_id_and_type(old_batch.id, "batch")
+      stale_group = Dbservice.Groups.get_group_by_child_id_and_type(stale_batch.id, "batch")
+      new_group = Dbservice.Groups.get_group_by_child_id_and_type(new_batch.id, "batch")
+
+      {:ok, _} =
+        Dbservice.GroupUsers.create_group_user(%{user_id: user.id, group_id: old_group.id})
+
+      {:ok, _} =
+        Dbservice.GroupUsers.create_group_user(%{user_id: user.id, group_id: stale_group.id})
+
+      # group_users arg is intentionally ignored by the implementation
+      result = BatchEnrollmentService.update_batch_user(user.id, new_group.id, [])
+
+      assert {:ok, kept} = result
+      assert kept.group_id == new_group.id
+
+      remaining =
+        Dbservice.Repo.all(
+          from(gu in Dbservice.Groups.GroupUser,
+            join: g in Dbservice.Groups.Group,
+            on: g.id == gu.group_id and g.type == "batch",
+            where: gu.user_id == ^user.id,
+            select: gu.group_id
+          )
+        )
+
+      assert remaining == [new_group.id]
     end
 
     test "creates new batch group user when existing group user is not of batch type" do
