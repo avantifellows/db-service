@@ -48,7 +48,7 @@ _Avoid_: phase template, static eight-phase list
 
 **Phase**:
 A stable item in a Phase Plan with a Grade, title, order, Locked/Open state,
-Markdown Guidance, and one to four ordered Post-Session Questions.
+Markdown Guidance, and one or more ordered Post-Session Questions.
 _Avoid_: storing the displayed Phase number as identity
 
 **Active Phase**:
