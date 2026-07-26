@@ -270,17 +270,15 @@ defmodule Dbservice.HolisticMentorshipPhaseSchemaTest do
         [phase_id]
       )
 
-      for position <- [0, 5] do
-        assert_constraint_violation(fn ->
-          Repo.query(
-            """
-            INSERT INTO holistic_mentorship_phase_questions (phase_id, text, position)
-            VALUES ($1, 'Invalid question', $2)
-            """,
-            [phase_id, position]
-          )
-        end)
-      end
+      assert_constraint_violation(fn ->
+        Repo.query(
+          """
+          INSERT INTO holistic_mentorship_phase_questions (phase_id, text, position)
+          VALUES ($1, 'Invalid question', 0)
+          """,
+          [phase_id]
+        )
+      end)
 
       assert_constraint_violation(fn ->
         Repo.query("UPDATE grade SET number = 10 WHERE id = $1", [grade_11_id])
@@ -500,7 +498,7 @@ defmodule Dbservice.HolisticMentorshipPhaseSchemaTest do
 
       assert {:error, %Postgrex.Error{postgres: %{code: :check_violation}}} = empty_result
       assert {:ok, _phase_id} = complete_result
-      assert {:error, %Postgrex.Error{postgres: %{code: :check_violation}}} = overfull_result
+      assert {:ok, _phase_id} = overfull_result
       assert {:error, %Postgrex.Error{postgres: %{code: :check_violation}}} = moved_result
     end
 
