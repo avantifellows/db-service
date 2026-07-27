@@ -132,6 +132,110 @@ defmodule Dbservice.Services.EnrollmentServiceTest do
     end
   end
 
+  describe "validate_row_memberships_absent/2" do
+    test "returns :ok when the student has none of the row's memberships" do
+      user = user_fixture()
+      _auth_group = auth_group_fixture(%{name: "VRMA_AUTH"})
+      _school = school_fixture(%{code: "VRMA_SCH"})
+      _batch = batch_fixture(%{batch_id: "VRMA_BATCH"})
+      grade = grade_fixture(%{number: 9})
+
+      row = %{
+        "auth_group" => "VRMA_AUTH",
+        "school_code" => "VRMA_SCH",
+        "batch_id" => "VRMA_BATCH",
+        "grade_id" => grade.id
+      }
+
+      assert :ok = EnrollmentService.validate_row_memberships_absent(user.id, row)
+    end
+
+    test "errors when a current enrollment record exists for the row's school" do
+      user = user_fixture()
+      school = school_fixture(%{code: "VRMA_SCH"})
+
+      {:ok, _} =
+        Dbservice.EnrollmentRecords.create_enrollment_record(%{
+          "user_id" => user.id,
+          "group_id" => school.id,
+          "group_type" => "school",
+          "academic_year" => "2024-25",
+          "start_date" => ~D[2024-01-01],
+          "is_current" => true
+        })
+
+      row = %{"school_code" => "VRMA_SCH"}
+
+      assert {:error, message} = EnrollmentService.validate_row_memberships_absent(user.id, row)
+      assert message =~ "already enrolled in a school"
+    end
+
+    test "errors when a group_user row exists for the row's grade (even without an ER)" do
+      user = user_fixture()
+      grade = grade_fixture(%{number: 9})
+      group_id = EnrollmentService.get_grade_group_id(grade.id)
+
+      {:ok, _} =
+        Dbservice.GroupUsers.create_group_user(%{
+          "user_id" => user.id,
+          "group_id" => group_id
+        })
+
+      row = %{"grade_id" => grade.id}
+
+      assert {:error, message} = EnrollmentService.validate_row_memberships_absent(user.id, row)
+      assert message =~ "already enrolled in a grade"
+    end
+
+    test "ignores a closed (non-current) enrollment record" do
+      user = user_fixture()
+      school = school_fixture(%{code: "VRMA_SCH"})
+
+      {:ok, _} =
+        Dbservice.EnrollmentRecords.create_enrollment_record(%{
+          "user_id" => user.id,
+          "group_id" => school.id,
+          "group_type" => "school",
+          "academic_year" => "2023-24",
+          "start_date" => ~D[2023-06-01],
+          "end_date" => ~D[2024-05-31],
+          "is_current" => false
+        })
+
+      row = %{"school_code" => "VRMA_SCH"}
+
+      assert :ok = EnrollmentService.validate_row_memberships_absent(user.id, row)
+    end
+
+    test "skips memberships whose identifier is blank or absent" do
+      user = user_fixture()
+
+      # No identifiers present at all -> nothing to check -> :ok
+      assert :ok = EnrollmentService.validate_row_memberships_absent(user.id, %{})
+
+      # Blank string identifiers are treated as absent
+      row = %{"school_code" => "", "auth_group" => nil}
+      assert :ok = EnrollmentService.validate_row_memberships_absent(user.id, row)
+    end
+
+    test "errors when a batch group_user already maps the student" do
+      user = user_fixture()
+      _batch = batch_fixture(%{batch_id: "VRMA_BATCH"})
+      group_id = EnrollmentService.get_batch_group_id("VRMA_BATCH")
+
+      {:ok, _} =
+        Dbservice.GroupUsers.create_group_user(%{
+          "user_id" => user.id,
+          "group_id" => group_id
+        })
+
+      row = %{"batch_id" => "VRMA_BATCH"}
+
+      assert {:error, message} = EnrollmentService.validate_row_memberships_absent(user.id, row)
+      assert message =~ "already enrolled in a batch"
+    end
+  end
+
   describe "resolve_academic_year/2" do
     test "returns nil for auth_group type" do
       params = %{"academic_year" => "2024-25"}
