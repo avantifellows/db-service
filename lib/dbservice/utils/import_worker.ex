@@ -23,6 +23,7 @@ defmodule Dbservice.DataImport.ImportWorker do
   alias Dbservice.Services.StudentUpdateService
   alias Dbservice.Services.DropoutService
   alias Dbservice.Services.ReEnrollmentService
+  alias Dbservice.Services.EnrollmentService
   alias Dbservice.Utils.ChangesetFormatter
   alias Dbservice.Utils.Util
   alias Dbservice.Colleges
@@ -853,6 +854,11 @@ defmodule Dbservice.DataImport.ImportWorker do
   # has no enrollments (historical data). Reuses the same enrollment logic as the
   # new-student branch of process_student_record/1; unlike that path it never creates
   # a student — a missing student is a hard error.
+  #
+  # Unlike the idempotent create path, this import is strict: if the student is
+  # already mapped to any of the auth_group / school / batch / grade in the row
+  # (via a group_user row or a current enrollment record), it is a hard error so
+  # already-enrolled students are surfaced rather than silently no-oped.
   defp process_student_enrollment_record(record) do
     student_id = record["student_id"]
     apaar_id = record["apaar_id"]
@@ -868,8 +874,10 @@ defmodule Dbservice.DataImport.ImportWorker do
         student ->
           student = Dbservice.Repo.preload(student, [:user])
 
-          case DataImport.StudentEnrollment.create_enrollments(student.user, record) do
-            {:ok, _} -> {:ok, student}
+          with :ok <- EnrollmentService.validate_row_memberships_absent(student.user.id, record),
+               {:ok, _} <- DataImport.StudentEnrollment.create_enrollments(student.user, record) do
+            {:ok, student}
+          else
             {:error, reason} -> {:error, reason}
           end
       end
