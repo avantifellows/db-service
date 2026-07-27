@@ -3,6 +3,7 @@ defmodule DbserviceWeb.HolisticMentorshipProfilePreflightControllerTest do
 
   alias Dbservice.Repo
 
+  import Dbservice.BatchesFixtures
   import Dbservice.GradesFixtures
   import Dbservice.SchoolsFixtures
   import Dbservice.UsersFixtures
@@ -307,24 +308,13 @@ defmodule DbserviceWeb.HolisticMentorshipProfilePreflightControllerTest do
     {mismatched_grade_user, _student} = eligible_student(11, "GRADE-MISMATCH")
     {dropout_user, _student} = eligible_student(11, "DROPOUT")
 
-    Repo.query!(
-      """
-      UPDATE school SET program_ids = '{}'
-      FROM enrollment_record
-      WHERE enrollment_record.user_id = $1
-        AND enrollment_record.group_type = 'school'
-        AND school.id = enrollment_record.group_id
-      """,
-      [school_program_user.id]
-    )
+    remove_group_membership(school_program_user.id, "batch")
 
-    Repo.query!(
-      "DELETE FROM enrollment_record WHERE user_id = $1 AND group_type = 'school'",
-      [school_user.id]
-    )
+    remove_group_membership(school_user.id, "school")
 
-    second_school = school_fixture(%{program_ids: [1], code: "second-school"})
+    second_school = school_fixture(%{program_ids: [], code: "second-school"})
     enroll(duplicate_school_user.id, "school", second_school.id)
+    add_group_membership(duplicate_school_user.id, "school", second_school.id)
 
     Repo.query!("DELETE FROM enrollment_record WHERE user_id = $1 AND group_type = 'grade'", [
       missing_grade_user.id
@@ -409,12 +399,58 @@ defmodule DbserviceWeb.HolisticMentorshipProfilePreflightControllerTest do
         student_id: business_student_id
       })
 
-    school = school_fixture(%{program_ids: [1], code: "school-#{user.id}"})
+    school = school_fixture(%{program_ids: [], code: "school-#{user.id}"})
 
     enroll(user.id, "school", school.id)
     enroll(user.id, "grade", grade.id)
+    add_program_roster(user.id, school.id, business_student_id)
 
     {user, student}
+  end
+
+  defp add_program_roster(user_id, school_id, suffix) do
+    ensure_program_one()
+    batch = batch_fixture(%{name: "Program 1 #{suffix}", batch_id: "P1-#{suffix}", program_id: 1})
+    add_group_membership(user_id, "school", school_id)
+    add_group_membership(user_id, "batch", batch.id)
+
+    Repo.query!(
+      """
+      INSERT INTO centres (name, school_id, program_id, is_active)
+      VALUES ($1, $2, 1, true)
+      """,
+      ["Program 1 #{suffix}", school_id]
+    )
+  end
+
+  defp ensure_program_one do
+    Repo.get(Dbservice.Programs.Program, 1) ||
+      Repo.insert!(%Dbservice.Programs.Program{
+        id: 1,
+        name: "JNV CoE",
+        product_id: Dbservice.ProductsFixtures.product_fixture().id
+      })
+  end
+
+  defp add_group_membership(user_id, type, child_id) do
+    group =
+      Repo.get_by(Dbservice.Groups.Group, type: type, child_id: child_id) ||
+        Repo.insert!(%Dbservice.Groups.Group{type: type, child_id: child_id})
+
+    Repo.insert!(%Dbservice.Groups.GroupUser{user_id: user_id, group_id: group.id})
+  end
+
+  defp remove_group_membership(user_id, type) do
+    Repo.query!(
+      """
+      DELETE FROM group_user
+      USING "group"
+      WHERE group_user.group_id = "group".id
+        AND group_user.user_id = $1
+        AND "group".type = $2
+      """,
+      [user_id, type]
+    )
   end
 
   defp enroll(user_id, group_type, group_id) do

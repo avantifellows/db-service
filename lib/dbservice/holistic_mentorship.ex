@@ -1168,8 +1168,8 @@ defmodule Dbservice.HolisticMentorship do
 
     with :ok <- not_dropout(status),
          :ok <- eligible_grade_number(grade_number),
-         :ok <- eligible_school(user_id) do
-      consistent_grade(user_id, grade_id)
+         :ok <- consistent_grade(user_id, grade_id) do
+      eligible_school(user_id)
     end
   end
 
@@ -1180,20 +1180,36 @@ defmodule Dbservice.HolisticMentorship do
   defp eligible_grade_number(_grade_number), do: {:error, :grade_ineligible}
 
   defp eligible_school(user_id) do
-    case Repo.query!(
-           """
-           SELECT school.program_ids
-           FROM enrollment_record
-           LEFT JOIN school ON school.id = enrollment_record.group_id
-           WHERE enrollment_record.user_id = $1
-             AND enrollment_record.is_current
-             AND enrollment_record.group_type = 'school'
-           """,
-           [user_id],
-           log: false
-         ).rows do
-      [[program_ids]] when is_list(program_ids) ->
-        if 1 in program_ids, do: :ok, else: {:error, :program_ineligible}
+    school_ids =
+      Repo.query!(
+        """
+        SELECT DISTINCT school_group.child_id
+        FROM group_user
+        JOIN "group" school_group
+          ON school_group.id = group_user.group_id
+         AND school_group.type = 'school'
+        WHERE group_user.user_id = $1
+        """,
+        [user_id],
+        log: false
+      ).rows
+
+    case school_ids do
+      [[_school_id]] ->
+        case Repo.query!(
+               """
+               SELECT 1
+               FROM centre_students
+               WHERE centre_students.user_id = $1
+                 AND centre_students.program_id = 1
+               LIMIT 1
+               """,
+               [user_id],
+               log: false
+             ).rows do
+          [[1]] -> :ok
+          [] -> {:error, :program_ineligible}
+        end
 
       _ ->
         {:error, :school_missing_or_ambiguous}
