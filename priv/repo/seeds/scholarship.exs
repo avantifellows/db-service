@@ -115,7 +115,10 @@ end
 
 # ── 3. Reviewer accounts (idempotent by email) ──────────────────────────────
 emails =
-  System.get_env("SEED_REVIEWER_EMAILS", "aman@avantifellows.org")
+  System.get_env(
+    "SEED_REVIEWER_EMAILS",
+    "aman.bahuguna@avantifellows.org,poojita@avantifellows.org"
+  )
   |> String.split(",")
   |> Enum.map(&String.trim/1)
   |> Enum.reject(&(&1 == ""))
