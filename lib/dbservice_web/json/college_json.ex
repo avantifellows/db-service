@@ -29,7 +29,8 @@ defmodule DbserviceWeb.CollegeJSON do
       placement_rate: college.placement_rate,
       median_salary: college.median_salary,
       entrance_test: college.entrance_test,
-      tuition_fees_annual: college.tuition_fees_annual
+      tuition_fees_annual: college.tuition_fees_annual,
+      is_scholarship_approved: college.is_scholarship_approved
     }
   end
 end

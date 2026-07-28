@@ -26,6 +26,7 @@ defmodule Dbservice.Colleges.College do
     field :median_salary, :float
     field :entrance_test, {:array, :integer}
     field :tuition_fees_annual, :float
+    field :is_scholarship_approved, :boolean, default: false
 
     has_many :cutoffs, Dbservice.Cutoffs.Cutoff
 
@@ -56,7 +57,8 @@ defmodule Dbservice.Colleges.College do
       :placement_rate,
       :median_salary,
       :entrance_test,
-      :tuition_fees_annual
+      :tuition_fees_annual,
+      :is_scholarship_approved
     ])
     |> validate_required([:college_id, :name])
   end

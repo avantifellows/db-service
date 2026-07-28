@@ -32,6 +32,7 @@ defmodule DbserviceWeb.SwaggerSchema.College do
             median_salary(:number, "Median salary", format: :float)
             entrance_test(:array, "Entrance test IDs", items: %{type: :integer})
             tuition_fees_annual(:number, "Annual tuition fees", format: :float)
+            is_scholarship_approved(:boolean, "Approved for the scholarship college dropdown")
           end
 
           example(%{
@@ -55,7 +56,8 @@ defmodule DbserviceWeb.SwaggerSchema.College do
             placement_rate: 95.5,
             median_salary: 1_500_000.00,
             entrance_test: [1, 2, 3],
-            tuition_fees_annual: 200_000.00
+            tuition_fees_annual: 200_000.00,
+            is_scholarship_approved: true
           })
         end
     }
