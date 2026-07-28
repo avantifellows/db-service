@@ -40,6 +40,7 @@ defmodule DbserviceWeb.Router do
 
     post("/imports/dropout", ImportController, :create_dropout_import)
     post("/imports/re_enrollment", ImportController, :create_re_enrollment_import)
+    post("/imports/student_enrollment", ImportController, :create_student_enrollment_import)
     post("/imports/auth_group", ImportController, :create_auth_group_import)
     post("/imports/product", ImportController, :create_product_import)
     post("/imports/program", ImportController, :create_program_import)
