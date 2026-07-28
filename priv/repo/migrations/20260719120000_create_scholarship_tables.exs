@@ -63,16 +63,9 @@ defmodule Dbservice.Repo.Migrations.CreateScholarshipTables do
 
     create unique_index(:scholarship_eligibility_rules, [:cycle_id])
 
-    # ── Approved colleges (cycle-scoped; college_id is the string business key) ─
-    create table(:scholarship_approved_colleges) do
-      add :cycle_id, references(:scholarship_cycles, on_delete: :delete_all), null: false
-
-      add :college_id, :string, null: false
-
-      timestamps()
-    end
-
-    create unique_index(:scholarship_approved_colleges, [:cycle_id, :college_id])
+    # Approved colleges are a GLOBAL flag on the core `college` table
+    # (`is_scholarship_approved`, added in a separate PR), not a per-cycle
+    # scholarship-owned table — so no scholarship_approved_colleges here.
 
     # ── Gate attempts (EVERY attempt persisted, incl. rejections — ADR 0001) ──
     create table(:scholarship_gate_attempts) do
