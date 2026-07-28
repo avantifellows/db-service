@@ -107,7 +107,11 @@ seed_files = [
   "priv/repo/seeds/topic_curriculums.exs",
 
   # Enrollment system (depends on students, schools, batches, auth_groups, grades)
-  "priv/repo/seeds/enrollments.exs"
+  "priv/repo/seeds/enrollments.exs",
+
+  # Scholarship service tables (cycle, option sets, reviewers). Independent of the
+  # above; can also be run standalone via `mix run priv/repo/seeds/scholarship.exs`.
+  "priv/repo/seeds/scholarship.exs"
 ]
 
 # Run seed files in order
