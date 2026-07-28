@@ -14,6 +14,7 @@ defmodule Dbservice.DataImport do
   """
   def format_type_name("student"), do: "Student Addition"
   def format_type_name("student_update"), do: "Update Student Details"
+  def format_type_name("student_enrollment"), do: "Enroll Existing Students"
   def format_type_name("batch_movement"), do: "Student Batch Movement"
   def format_type_name("teacher_batch_assignment"), do: "Teacher Batch Assignment"
   def format_type_name("teacher_addition"), do: "Teacher Addition"

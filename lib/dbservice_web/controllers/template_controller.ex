@@ -10,6 +10,7 @@ defmodule DbserviceWeb.TemplateController do
     if import_type in [
          "student",
          "student_update",
+         "student_enrollment",
          "teacher_addition",
          "chapter_addition",
          "subject_addition",
