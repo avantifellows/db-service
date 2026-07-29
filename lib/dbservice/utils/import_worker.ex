@@ -1381,9 +1381,12 @@ defmodule Dbservice.DataImport.ImportWorker do
   defp create_or_update_batch(attrs) do
     existing = find_existing_batch(attrs["batch_id"])
 
-    if existing,
-      do: Batches.update_batch(existing, attrs),
-      else: Batches.create_batch_from_import(attrs)
+    if existing do
+      metadata = Map.merge(existing.metadata || %{}, attrs["metadata"] || %{})
+      Batches.update_batch(existing, Map.put(attrs, "metadata", metadata))
+    else
+      Batches.create_batch_from_import(attrs)
+    end
   end
 
   defp find_existing_batch(nil), do: nil
