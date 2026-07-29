@@ -18,6 +18,7 @@ defmodule Dbservice.DataImport.ImportWorkerTest do
     on_exit(fn ->
       cleanup_test_csv("test_student_import.csv")
       cleanup_test_csv("invalid_student_import.csv")
+      cleanup_test_csv("batch_metadata_import.csv")
     end)
 
     # Store IDs for use in CSV content
@@ -89,6 +90,43 @@ defmodule Dbservice.DataImport.ImportWorkerTest do
       assert user2.first_name == "Jane"
       assert user2.last_name == "Smith"
       assert user2.email == "jane.smith@email.com"
+    end
+
+    test "preserves existing batch metadata during batch import", %{batch_id: batch_id} do
+      batch = Dbservice.Batches.get_batch!(batch_id)
+
+      assert {:ok, _batch} =
+               Dbservice.Batches.update_batch(batch, %{
+                 metadata: %{
+                   "grade" => 12,
+                   "stream" => "engineering",
+                   "is_parent_batch" => false
+                 }
+               })
+
+      filename =
+        create_test_csv(
+          "batch_metadata_import.csv",
+          "Batch ID,Name,Is Parent Batch\nTEST_BATCH_001,Updated Batch,TRUE\n"
+        )
+
+      import_record =
+        import_fixture(%{
+          filename: filename,
+          type: "batch_addition",
+          status: "pending"
+        })
+
+      assert :ok = perform_job(ImportWorker, %{"id" => import_record.id})
+
+      updated_batch = Dbservice.Batches.get_batch!(batch_id)
+      assert updated_batch.name == "Updated Batch"
+
+      assert updated_batch.metadata == %{
+               "grade" => 12,
+               "stream" => "engineering",
+               "is_parent_batch" => true
+             }
     end
 
     test "handles import with invalid data gracefully" do
