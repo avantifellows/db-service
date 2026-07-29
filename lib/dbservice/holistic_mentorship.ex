@@ -6,6 +6,7 @@ defmodule Dbservice.HolisticMentorship do
   alias Dbservice.Repo
 
   @mapping_table "holistic_mentorship_mentor_mentee_mappings"
+  @profile_program_ids [1, 78]
   @eligibility_end_reasons ~w(student_dropout student_program_changed student_school_changed student_grade_changed)a
   @approved_profile_sources %{
     {"6a44a83d1184e717b920c499", "EnableStudents_6a44a83d1184e717b920c499", 11} => true,
@@ -1201,10 +1202,10 @@ defmodule Dbservice.HolisticMentorship do
                SELECT 1
                FROM centre_students
                WHERE centre_students.user_id = $1
-                 AND centre_students.program_id = 1
+                 AND centre_students.program_id = ANY($2::bigint[])
                LIMIT 1
                """,
-               [user_id],
+               [user_id, @profile_program_ids],
                log: false
              ).rows do
           [[1]] -> :ok

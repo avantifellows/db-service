@@ -63,6 +63,29 @@ defmodule DbserviceWeb.HolisticMentorshipProfilePreflightControllerTest do
     refute response |> inspect() =~ "BUSINESS-G"
   end
 
+  test "accepts an EMRS CoE Student from Program 78", %{conn: conn} do
+    prompt_configuration_id = prompt_configuration_id(conn)
+    {user, student} = eligible_student(11, "EMRS-G11", 78)
+
+    assert conn
+           |> post("/api/holistic-mentorship/profile-preflight", %{
+             "records" => [
+               record("emrs", user.id, prompt_configuration_id, @grade_11_source)
+             ]
+           })
+           |> json_response(200) == %{
+             "results" => [
+               %{
+                 "record_ref" => "emrs",
+                 "student_id" => student.id,
+                 "prompt_configuration_id" => prompt_configuration_id,
+                 "profile_state" => "missing",
+                 "profile_revision" => nil
+               }
+             ]
+           }
+  end
+
   test "keeps a Grade 11 journey after progression and rejects a conflicting Grade 12 source", %{
     conn: conn
   } do
@@ -389,7 +412,7 @@ defmodule DbserviceWeb.HolisticMentorshipProfilePreflightControllerTest do
     refute log =~ sensitive_answer
   end
 
-  defp eligible_student(grade_number, business_student_id) do
+  defp eligible_student(grade_number, business_student_id, program_id \\ 1) do
     grade = grade_fixture(%{number: grade_number})
 
     {user, student} =
@@ -403,31 +426,38 @@ defmodule DbserviceWeb.HolisticMentorshipProfilePreflightControllerTest do
 
     enroll(user.id, "school", school.id)
     enroll(user.id, "grade", grade.id)
-    add_program_roster(user.id, school.id, business_student_id)
+    add_program_roster(user.id, school.id, business_student_id, program_id)
 
     {user, student}
   end
 
-  defp add_program_roster(user_id, school_id, suffix) do
-    ensure_program_one()
-    batch = batch_fixture(%{name: "Program 1 #{suffix}", batch_id: "P1-#{suffix}", program_id: 1})
+  defp add_program_roster(user_id, school_id, suffix, program_id) do
+    ensure_program(program_id)
+
+    batch =
+      batch_fixture(%{
+        name: "Program #{program_id} #{suffix}",
+        batch_id: "P#{program_id}-#{suffix}",
+        program_id: program_id
+      })
+
     add_group_membership(user_id, "school", school_id)
     add_group_membership(user_id, "batch", batch.id)
 
     Repo.query!(
       """
       INSERT INTO centres (name, school_id, program_id, is_active)
-      VALUES ($1, $2, 1, true)
+      VALUES ($1, $2, $3, true)
       """,
-      ["Program 1 #{suffix}", school_id]
+      ["Program #{program_id} #{suffix}", school_id, program_id]
     )
   end
 
-  defp ensure_program_one do
-    Repo.get(Dbservice.Programs.Program, 1) ||
+  defp ensure_program(program_id) do
+    Repo.get(Dbservice.Programs.Program, program_id) ||
       Repo.insert!(%Dbservice.Programs.Program{
-        id: 1,
-        name: "JNV CoE",
+        id: program_id,
+        name: "Program #{program_id}",
         product_id: Dbservice.ProductsFixtures.product_fixture().id
       })
   end
