@@ -14,6 +14,33 @@ defmodule Dbservice.Repo.Migrations.SeedScholarshipReferenceData do
 
   @cycle_name "AY 2026 (test cycle)"
 
+  # Cycle eligibility rule (af-scholarship's gate reads target_states from here; an
+  # empty list means "state unrestricted", so the eval only enforces once seeded).
+  # Categories/states mirror the app's gate constants (ELIGIBLE_HOME_STATES and the
+  # eligible-category set). Program team's final states (Poojita, 2026-07-30).
+  @eligible_categories ~w(Gen-EWS SC ST PWD-Gen PWD-EWS PWD-OBC PWD-SC PWD-ST)
+
+  @eligible_states [
+    "Arunachal Pradesh",
+    "Assam",
+    "Bihar",
+    "Chhattisgarh",
+    "Jammu and Kashmir",
+    "Jharkhand",
+    "Ladakh",
+    "Madhya Pradesh",
+    "Maharashtra",
+    "Manipur",
+    "Meghalaya",
+    "Mizoram",
+    "Nagaland",
+    "Odisha",
+    "Punjab",
+    "Sikkim",
+    "Tripura",
+    "Uttar Pradesh"
+  ]
+
   @option_sets [
     {"occupation", "Occupation", 0,
      [
@@ -77,6 +104,23 @@ defmodule Dbservice.Repo.Migrations.SeedScholarshipReferenceData do
           [@cycle_name]
         )
     end
+
+    # ── Cycle eligibility rule (idempotent by cycle_id) ───────────────────────
+    %{rows: [[cycle_id]]} =
+      repo().query!("SELECT id FROM scholarship_cycles WHERE name = $1", [@cycle_name])
+
+    repo().query!(
+      """
+      INSERT INTO scholarship_eligibility_rules
+        (cycle_id, eligible_categories, target_states, inserted_at, updated_at)
+      VALUES ($1, $2, $3, NOW(), NOW())
+      ON CONFLICT (cycle_id) DO UPDATE
+        SET eligible_categories = EXCLUDED.eligible_categories,
+            target_states = EXCLUDED.target_states,
+            updated_at = NOW()
+      """,
+      [cycle_id, @eligible_categories, @eligible_states]
+    )
 
     # ── Dropdown option sets + options (normalized two-table shape) ───────────
     for {code, label, sort_order, values} <- @option_sets do
