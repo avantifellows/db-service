@@ -898,7 +898,7 @@ defmodule DbserviceWeb.ResourceController do
       |> apply_pagination(params)
 
     resources = Repo.all(query)
-    render(conn, "index.json", resource: resources)
+    render(conn, "curriculum_index.json", resource: resources)
   end
 
   defp topic_scoped_curriculum_request?(params),
