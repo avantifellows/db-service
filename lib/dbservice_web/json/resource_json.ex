@@ -33,7 +33,17 @@ defmodule DbserviceWeb.ResourceJSON do
     render(resource)
   end
 
-  defp render(resource) do
+  # Lightweight listing for GET /api/resources/curriculum. Identical to index/1
+  # for plain Resource structs, except it omits the per-problem lang_versions
+  # payload (full options + solution HTML). That payload can push a single
+  # chapter's response past the host's serverless response cap (~4.5 MB) -> 413,
+  # and the content library never renders problems anyway. Also avoids the
+  # N+1 lang_versions lookup (one per problem).
+  def curriculum_index(%{resource: resources}) do
+    Enum.map(resources, fn resource -> render(resource, include_lang_versions: false) end)
+  end
+
+  defp render(resource, opts \\ []) do
     topic_id =
       Repo.one(
         from(rt in ResourceTopic,
@@ -120,8 +130,10 @@ defmodule DbserviceWeb.ResourceJSON do
 
     # Problems always expose their language versions (create/show responses),
     # so the frontend gets lang_versions back on a successful create. Other
-    # resource types don't have this concept.
-    if resource.type == "problem" do
+    # resource types don't have this concept. Listing endpoints that don't need
+    # solutions (e.g. the curriculum library) pass include_lang_versions: false
+    # to keep the response small.
+    if resource.type == "problem" and Keyword.get(opts, :include_lang_versions, true) do
       Map.put(
         base_map,
         :lang_versions,
