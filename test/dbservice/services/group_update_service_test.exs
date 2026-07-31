@@ -2,9 +2,12 @@ defmodule Dbservice.Services.GroupUpdateServiceTest do
   use Dbservice.DataCase
 
   alias Dbservice.Services.GroupUpdateService
+  alias Dbservice.EnrollmentRecords.EnrollmentRecord
+  import Ecto.Query
   import Dbservice.UsersFixtures
   import Dbservice.BatchesFixtures
   import Dbservice.SchoolsFixtures
+  import Dbservice.AuthGroupsFixtures
 
   describe "update_user_group_by_type/1" do
     test "successfully updates school group membership" do
@@ -147,6 +150,174 @@ defmodule Dbservice.Services.GroupUpdateServiceTest do
       result = GroupUpdateService.update_user_group_by_type(params)
 
       assert {:error, :not_found} = result
+    end
+  end
+
+  describe "update_user_group_by_type/1 with recreate_enrollment (correction import flow)" do
+    test "retires the current school ER and creates a new one with the derived AY" do
+      user = user_fixture()
+      old_school = school_fixture()
+      new_school = school_fixture()
+
+      old_group = Dbservice.Groups.get_group_by_child_id_and_type(old_school.id, "school")
+      new_group = Dbservice.Groups.get_group_by_child_id_and_type(new_school.id, "school")
+
+      {:ok, _group_user} =
+        Dbservice.GroupUsers.create_group_user(%{user_id: user.id, group_id: old_group.id})
+
+      {:ok, old_er} =
+        Dbservice.EnrollmentRecords.create_enrollment_record(%{
+          user_id: user.id,
+          group_id: old_school.id,
+          group_type: "school",
+          academic_year: "2024-25",
+          start_date: ~D[2024-01-01],
+          is_current: true
+        })
+
+      # These are exactly the extra params GroupUpdateProcessor now injects.
+      params = %{
+        "user_id" => user.id,
+        "group_id" => new_group.id,
+        "type" => "school",
+        "recreate_enrollment" => true,
+        "academic_year" => "2026-2027",
+        "start_date" => ~D[2026-07-29],
+        "end_date" => ~D[2026-07-29]
+      }
+
+      assert {:ok, updated_group_user} = GroupUpdateService.update_user_group_by_type(params)
+      assert updated_group_user.group_id == new_group.id
+
+      # Old ER is retired, not repointed.
+      retired = Dbservice.Repo.get!(EnrollmentRecord, old_er.id)
+      assert retired.is_current == false
+      assert retired.end_date == ~D[2026-07-29]
+      assert retired.group_id == old_school.id
+
+      # A brand-new current ER exists for the new school with the derived AY.
+      current =
+        Dbservice.Repo.one(
+          from er in EnrollmentRecord,
+            where: er.user_id == ^user.id and er.group_type == "school" and er.is_current == true
+        )
+
+      assert current.id != old_er.id
+      assert current.group_id == new_school.id
+      assert current.academic_year == "2026-2027"
+      assert current.start_date == ~D[2026-07-29]
+
+      # Exactly two ERs now: the retired one and the new one.
+      count =
+        Dbservice.Repo.aggregate(
+          from(er in EnrollmentRecord, where: er.user_id == ^user.id),
+          :count
+        )
+
+      assert count == 2
+    end
+
+    test "auth_group correction creates a new ER with a nil academic year" do
+      user = user_fixture()
+      old_ag = auth_group_fixture(%{name: "OLD_AG"})
+      new_ag = auth_group_fixture(%{name: "NEW_AG"})
+
+      old_group = Dbservice.Groups.get_group_by_child_id_and_type(old_ag.id, "auth_group")
+      new_group = Dbservice.Groups.get_group_by_child_id_and_type(new_ag.id, "auth_group")
+
+      {:ok, _group_user} =
+        Dbservice.GroupUsers.create_group_user(%{user_id: user.id, group_id: old_group.id})
+
+      # String keys so the changeset detects auth_group and allows a nil AY
+      # (it reads group_type via Map.get(attrs, "group_type")).
+      {:ok, _old_er} =
+        Dbservice.EnrollmentRecords.create_enrollment_record(%{
+          "user_id" => user.id,
+          "group_id" => old_ag.id,
+          "group_type" => "auth_group",
+          "academic_year" => nil,
+          "start_date" => ~D[2024-01-01],
+          "is_current" => true
+        })
+
+      params = %{
+        "user_id" => user.id,
+        "group_id" => new_group.id,
+        "type" => "auth_group",
+        "recreate_enrollment" => true,
+        # processor injects nil AY for auth_group
+        "academic_year" => nil,
+        "start_date" => ~D[2026-07-29],
+        "end_date" => ~D[2026-07-29]
+      }
+
+      assert {:ok, _} = GroupUpdateService.update_user_group_by_type(params)
+
+      current =
+        Dbservice.Repo.one(
+          from er in EnrollmentRecord,
+            where:
+              er.user_id == ^user.id and er.group_type == "auth_group" and er.is_current == true
+        )
+
+      assert current.group_id == new_ag.id
+      assert is_nil(current.academic_year)
+    end
+  end
+
+  describe "update_group_user_and_enrollment/4 guard" do
+    test "leaves a historical (non-current) ER untouched even under the recreate flag" do
+      user = user_fixture()
+      old_school = school_fixture()
+      new_school = school_fixture()
+
+      old_group = Dbservice.Groups.get_group_by_child_id_and_type(old_school.id, "school")
+      new_group = Dbservice.Groups.get_group_by_child_id_and_type(new_school.id, "school")
+
+      {:ok, group_user} =
+        Dbservice.GroupUsers.create_group_user(%{user_id: user.id, group_id: old_group.id})
+
+      {:ok, closed_er} =
+        Dbservice.EnrollmentRecords.create_enrollment_record(%{
+          user_id: user.id,
+          group_id: old_school.id,
+          group_type: "school",
+          academic_year: "2023-2024",
+          start_date: ~D[2023-06-01],
+          end_date: ~D[2024-03-31],
+          is_current: false
+        })
+
+      params = %{
+        "group_id" => new_group.id,
+        "recreate_enrollment" => true,
+        "academic_year" => "2026-2027",
+        "start_date" => ~D[2026-07-29],
+        "end_date" => ~D[2026-07-29]
+      }
+
+      assert {:ok, _updated_group_user} =
+               GroupUpdateService.update_group_user_and_enrollment(
+                 group_user,
+                 closed_er,
+                 params,
+                 new_school.id
+               )
+
+      # The closed ER is completely unchanged...
+      unchanged = Dbservice.Repo.get!(EnrollmentRecord, closed_er.id)
+      assert unchanged.is_current == false
+      assert unchanged.group_id == old_school.id
+      assert unchanged.academic_year == "2023-2024"
+
+      # ...and NO new ER was created.
+      count =
+        Dbservice.Repo.aggregate(
+          from(er in EnrollmentRecord, where: er.user_id == ^user.id),
+          :count
+        )
+
+      assert count == 1
     end
   end
 

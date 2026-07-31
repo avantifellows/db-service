@@ -15,6 +15,7 @@ defmodule Dbservice.Services.ReEnrollmentService do
   alias Dbservice.Users
   alias Dbservice.Services.EnrollmentService
   alias Dbservice.Services.DropoutService
+  alias Dbservice.Utils.AcademicYear
   alias Dbservice.GroupUsers
   alias Dbservice.Groups.GroupUser
   alias Dbservice.AuthGroups
@@ -123,7 +124,9 @@ defmodule Dbservice.Services.ReEnrollmentService do
   defp create_re_enrollment_records(student, params) do
     user_id = student.user_id
     start_date = params["start_date"]
-    academic_year = params["academic_year"]
+    # Current-student flow: re-enrollment always happens "now", so derive the AY
+    # from the calendar rather than trusting the sheet/request value.
+    academic_year = AcademicYear.current_academic_year()
 
     # Mark dropout enrollment as not current
     mark_dropout_enrollment_inactive(user_id, start_date)
