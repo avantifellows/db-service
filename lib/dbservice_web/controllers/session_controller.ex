@@ -11,6 +11,12 @@ defmodule DbserviceWeb.SessionController do
 
   action_fallback DbserviceWeb.FallbackController
 
+  # meta_data keys holding a comma-separated list of batch_ids rather than a single value:
+  # a quiz session can target several quiz (parent) batches and several class batches.
+  # Filtering these with `=` would miss every multi-batch session, so match against the
+  # list instead (same treatment as Dbservice.GroupSessions.add_batch_filter/2).
+  @comma_separated_meta_data_keys ~w(parent_id batch_id)
+
   use PhoenixSwagger
 
   alias DbserviceWeb.SwaggerSchema.Session, as: SwaggerSchemaSession
@@ -104,11 +110,18 @@ defmodule DbserviceWeb.SessionController do
   end
 
   defp apply_filter_based_on_schema(atom, key, value, acc) do
-    if atom in Session.__schema__(:fields) do
-      from(u in acc, where: field(u, ^atom) == ^value)
-    else
-      from u in acc,
-        where: fragment("?->>? = ?", u.meta_data, ^key, ^value)
+    cond do
+      atom in Session.__schema__(:fields) ->
+        from(u in acc, where: field(u, ^atom) == ^value)
+
+      key in @comma_separated_meta_data_keys ->
+        from u in acc,
+          where:
+            fragment("? = ANY(string_to_array(trim(?->>?), ','))", ^value, u.meta_data, ^key)
+
+      true ->
+        from u in acc,
+          where: fragment("?->>? = ?", u.meta_data, ^key, ^value)
     end
   end
 
