@@ -8,6 +8,7 @@ defmodule DbserviceWeb.ProblemAllLanguagesTest do
 
   alias Dbservice.Curriculums
   alias Dbservice.Languages
+  alias Dbservice.Paragraphs
   alias Dbservice.ProblemLanguages
   alias Dbservice.ResourceCurriculums
   alias Dbservice.ResourceTopics
@@ -39,15 +40,32 @@ defmodule DbserviceWeb.ProblemAllLanguagesTest do
     resource
   end
 
-  defp problem_language_fixture(resource, language, meta_data) do
+  defp problem_language_fixture(resource, language, meta_data, opts \\ []) do
     {:ok, problem_lang} =
       ProblemLanguages.create_problem_language(%{
         res_id: resource.id,
         lang_id: language.id,
-        meta_data: meta_data
+        meta_data: meta_data,
+        paragraph_id: Keyword.get(opts, :paragraph_id)
       })
 
     problem_lang
+  end
+
+  defp comprehension_problem_fixture do
+    {:ok, resource} =
+      Resources.create_resource(%{
+        "type" => "problem",
+        "subtype" => "comprehension",
+        "type_params" => %{}
+      })
+
+    resource
+  end
+
+  defp paragraph_fixture(body) do
+    {:ok, paragraph} = Paragraphs.create_paragraph(%{"body" => body})
+    paragraph
   end
 
   defp curriculum_fixture do
@@ -103,6 +121,26 @@ defmodule DbserviceWeb.ProblemAllLanguagesTest do
                %{"lang_code" => "aae", "meta_data" => en_meta},
                %{"lang_code" => "aah", "meta_data" => hi_meta}
              ]
+    end
+
+    test "includes the paragraph for a comprehension problem (issue #664)", %{conn: conn} do
+      en = language_fixture("afe", "AF EN")
+      hi = language_fixture("afh", "AF HI")
+      curriculum = curriculum_fixture()
+      problem = comprehension_problem_fixture()
+      resource_curriculum_fixture(problem, curriculum)
+
+      paragraph = paragraph_fixture("A gas that follows Boyle's law...")
+      problem_language_fixture(problem, en, %{"text" => "EN"}, paragraph_id: paragraph.id)
+      problem_language_fixture(problem, hi, %{"text" => "HI"}, paragraph_id: paragraph.id)
+
+      conn = get(conn, ~p"/api/resource/problem/#{problem.id}/#{curriculum.id}")
+      body = json_response(conn, 200)
+
+      assert body["paragraph"] == %{
+               "id" => paragraph.id,
+               "body" => "A gas that follows Boyle's law..."
+             }
     end
 
     test "404 when the curriculum is not linked to the problem", %{conn: conn} do
