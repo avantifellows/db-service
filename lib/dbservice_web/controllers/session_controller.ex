@@ -116,8 +116,7 @@ defmodule DbserviceWeb.SessionController do
 
       key in @comma_separated_meta_data_keys ->
         from u in acc,
-          where:
-            fragment("? = ANY(string_to_array(trim(?->>?), ','))", ^value, u.meta_data, ^key)
+          where: fragment("? = ANY(string_to_array(trim(?->>?), ','))", ^value, u.meta_data, ^key)
 
       true ->
         from u in acc,
