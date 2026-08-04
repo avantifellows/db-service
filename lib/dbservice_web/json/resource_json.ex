@@ -1,5 +1,6 @@
 defmodule DbserviceWeb.ResourceJSON do
   alias DbserviceWeb.ConceptJSON
+  alias Dbservice.Resources.Paragraph
   alias Dbservice.Resources.ResourceTopic
   alias Dbservice.Resources.ResourceChapter
   alias Dbservice.Concepts
@@ -11,18 +12,22 @@ defmodule DbserviceWeb.ResourceJSON do
   import Ecto.Query
 
   def index(%{resource: resources}) do
-    # Batch-fetch lang_versions for the problem-structure entries to avoid an
-    # N+1 query inside render_problem/2.
-    lang_versions_by_res_id =
+    # Batch-fetch lang_versions and paragraphs for the problem-structure entries
+    # to avoid N+1 queries inside render_problem/3.
+    problem_res_ids =
       resources
       |> Enum.filter(&Map.has_key?(&1, :resource))
       |> Enum.map(& &1.resource.id)
-      |> ProblemLanguages.list_lang_versions_by_resource_ids()
+
+    lang_versions_by_res_id =
+      ProblemLanguages.list_lang_versions_by_resource_ids(problem_res_ids)
+
+    paragraphs_by_res_id = ProblemLanguages.list_paragraphs_by_resource_ids(problem_res_ids)
 
     Enum.map(resources, fn resource ->
       # If resource is a map with :resource key, it's the new structure
       if Map.has_key?(resource, :resource) do
-        render_problem(resource, lang_versions_by_res_id)
+        render_problem(resource, lang_versions_by_res_id, paragraphs_by_res_id)
       else
         render(resource)
       end
@@ -145,17 +150,18 @@ defmodule DbserviceWeb.ResourceJSON do
   end
 
   def problems(%{problems: problems}) do
-    # Batch-fetch lang_versions for every problem up front to avoid an N+1
-    # query (one lookup per problem inside render_problem/2).
-    lang_versions_by_res_id =
-      problems
-      |> Enum.map(& &1.resource.id)
-      |> ProblemLanguages.list_lang_versions_by_resource_ids()
+    # Batch-fetch lang_versions and paragraphs for every problem up front to
+    # avoid N+1 queries (one lookup per problem inside render_problem/3).
+    res_ids = Enum.map(problems, & &1.resource.id)
+    lang_versions_by_res_id = ProblemLanguages.list_lang_versions_by_resource_ids(res_ids)
+    paragraphs_by_res_id = ProblemLanguages.list_paragraphs_by_resource_ids(res_ids)
 
-    Enum.map(problems, fn problem -> render_problem(problem, lang_versions_by_res_id) end)
+    Enum.map(problems, fn problem ->
+      render_problem(problem, lang_versions_by_res_id, paragraphs_by_res_id)
+    end)
   end
 
-  defp render_problem(problem, lang_versions_by_res_id) do
+  defp render_problem(problem, lang_versions_by_res_id, paragraphs_by_res_id) do
     # First get the base resource
     resource = problem.resource
     resource_topic = Map.get(problem, :resource_topic, %{})
@@ -261,7 +267,20 @@ defmodule DbserviceWeb.ResourceJSON do
 
     problem_map
     |> Map.put(:concepts, concepts)
-    |> Paragraphs.maybe_put_paragraph(resource, Map.get(problem_lang, :paragraph))
+    |> Paragraphs.maybe_put_paragraph(
+      resource,
+      resolve_paragraph(problem_lang, paragraphs_by_res_id, resource.id)
+    )
+  end
+
+  # The single-language path preloads the paragraph onto problem_lang; the
+  # all-languages listings carry no problem_lang row, so fall back to the
+  # batched paragraph map keyed by resource id (issue #664).
+  defp resolve_paragraph(problem_lang, paragraphs_by_res_id, res_id) do
+    case Map.get(problem_lang, :paragraph) do
+      %Paragraph{} = paragraph -> paragraph
+      _ -> Map.get(paragraphs_by_res_id, res_id)
+    end
   end
 
   def problem_lang(
