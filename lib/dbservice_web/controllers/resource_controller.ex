@@ -11,6 +11,7 @@ defmodule DbserviceWeb.ResourceController do
   alias Dbservice.Repo
   alias Dbservice.ResourceCurriculums
   alias Dbservice.Resources
+  alias Dbservice.Resources.Paragraph
   alias Dbservice.Resources.ProblemLanguage
   alias Dbservice.Resources.Resource
   alias Dbservice.Resources.ResourceChapter
@@ -1445,7 +1446,7 @@ defmodule DbserviceWeb.ResourceController do
     query =
       from(r in Resource,
         where: r.id == ^res_id and r.type == "problem",
-        preload: [:resource_curriculum]
+        preload: [:resource_curriculum, problem_language: :paragraph]
       )
 
     case Repo.one(query) do
@@ -1471,11 +1472,25 @@ defmodule DbserviceWeb.ResourceController do
               resource: resource,
               meta_data: nil,
               lang_code: nil,
-              resource_curriculum: rc
+              resource_curriculum: rc,
+              paragraph: paragraph_for_all_languages(resource)
             )
         end
     end
   end
+
+  # For the all-languages variant we still surface the comprehension paragraph
+  # even though no single language is requested. The passage is shared across a
+  # comprehension problem's language versions, so any loaded problem_lang row's
+  # paragraph works — pick the first one that has one.
+  defp paragraph_for_all_languages(%Resource{problem_language: problem_languages})
+       when is_list(problem_languages) do
+    problem_languages
+    |> Enum.map(& &1.paragraph)
+    |> Enum.find(&match?(%Paragraph{}, &1))
+  end
+
+  defp paragraph_for_all_languages(_resource), do: nil
 
   swagger_path :search_problems do
     get("/api/problems/search")
