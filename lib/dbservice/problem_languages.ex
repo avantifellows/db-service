@@ -7,6 +7,7 @@ defmodule Dbservice.ProblemLanguages do
   alias Dbservice.Repo
 
   alias Dbservice.Languages.Language
+  alias Dbservice.Resources.Paragraph
   alias Dbservice.Resources.ProblemLanguage
 
   @doc """
@@ -83,6 +84,35 @@ defmodule Dbservice.ProblemLanguages do
     )
     |> Repo.all()
     |> Enum.group_by(& &1.res_id, &Map.take(&1, [:lang_code, :meta_data]))
+  end
+
+  @doc """
+  Batch-fetches the comprehension paragraph for many problems in a single query
+  and returns a map of `resource_id => %Paragraph{}`. A comprehension problem
+  shares one paragraph across all its language versions, so the first (lowest
+  `problem_lang.id`) paragraph per resource is kept. Resources without a linked
+  paragraph are absent from the map.
+
+  Use this to attach the paragraph on the all-languages listing responses, which
+  carry no single `problem_lang` row to preload it from.
+  ## Examples
+      iex> list_paragraphs_by_resource_ids([1, 2])
+      %{1 => %Paragraph{}, 2 => %Paragraph{}}
+  """
+  def list_paragraphs_by_resource_ids([]), do: %{}
+
+  def list_paragraphs_by_resource_ids(resource_ids) do
+    from(pl in ProblemLanguage,
+      join: p in Paragraph,
+      on: p.id == pl.paragraph_id,
+      where: pl.res_id in ^resource_ids,
+      order_by: [asc: pl.id],
+      select: {pl.res_id, p}
+    )
+    |> Repo.all()
+    |> Enum.reduce(%{}, fn {res_id, paragraph}, acc ->
+      Map.put_new(acc, res_id, paragraph)
+    end)
   end
 
   @doc """
