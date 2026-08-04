@@ -13,20 +13,28 @@ defmodule Dbservice.Repo.Migrations.CreateLmsTeacherFeedbackTable do
   # A "cycle" = rows sharing setup_run_id (all of one setup); they also share
   # (school_code, cycle_label). The quiz id and portal/admin links are resolved by
   # joining session_pk to the session table, not stored here. Feedback responses
-  # land in BigQuery, keyed by source_id (= the session's cms_test_id).
+  # land in BigQuery, keyed by the session's cms_test_id
+  # ("teacher-feedback:v2:<school>:<cycle>"), which the LMS derives from
+  # (school_code, cycle_label) — so it is not duplicated as a column here.
   def change do
     create table(:lms_teacher_feedback) do
       # Grouping / identity
       add :setup_run_id, :uuid, null: false
       add :cycle_label, :string, size: 50, null: false
-      add :source_id, :string, size: 255, null: false
 
-      # Scope. Teachers map to a CENTRE (not a school): a school can have both a
-      # CoE and a Nodal centre, so the PM picks a centre and we record it here.
-      # No FK — this stays operational/decoupled like the rest of the table.
+      # Scope. A round is defined by a CENTRE and its PROGRAMME, not by a school:
+      # a school can host both a CoE and a Nodal centre, each with its own cohort,
+      # and the LMS selects a round's batches by (school, centre programme). Both
+      # ids are recorded so a historical row stays self-describing even if a centre
+      # is renamed or re-pointed — resolve display names by joining `centres`.
+      #
+      # No FKs, matching lms_pm_school_visits: these rows are operational LMS data
+      # written directly by the app, deliberately decoupled from db-service's
+      # referential graph. Types still match their referents (both bigint) so the
+      # joins need no casts.
       add :school_code, :string, size: 20, null: false
-      add :centre_id, :integer
-      add :centre_name, :string, size: 255
+      add :centre_id, :bigint
+      add :program_id, :bigint
       add :batch_class_ids, {:array, :string}, default: [], null: false
 
       # Teacher (id nullable: free-text fallback when no roster id is available)
@@ -38,7 +46,8 @@ defmodule Dbservice.Repo.Migrations.CreateLmsTeacherFeedbackTable do
       # sessionCreator Lambda fills the quiz_id (session.platform_id) + portal /
       # admin links onto the SESSION row asynchronously; we resolve them by
       # joining on session_pk at read time, so they are not duplicated here.
-      add :session_pk, :integer
+      # bigint to match session.id.
+      add :session_pk, :bigint
 
       # Lifecycle: each teacher's setup can succeed or fail independently
       add :status, :string, size: 20, default: "pending", null: false
@@ -65,6 +74,7 @@ defmodule Dbservice.Repo.Migrations.CreateLmsTeacherFeedbackTable do
 
     create index(:lms_teacher_feedback, [:school_code])
     create index(:lms_teacher_feedback, [:centre_id])
+    create index(:lms_teacher_feedback, [:program_id])
     create index(:lms_teacher_feedback, [:setup_run_id])
     create index(:lms_teacher_feedback, [:session_pk])
     create index(:lms_teacher_feedback, [:school_code, :cycle_label])
@@ -73,6 +83,16 @@ defmodule Dbservice.Repo.Migrations.CreateLmsTeacherFeedbackTable do
     create index(:lms_teacher_feedback, [:school_code, :cycle_label],
              where: "deleted_at IS NULL",
              name: :lms_teacher_feedback_active_idx
+           )
+
+    # One row per teacher per setup. Setup writes a row per teacher in a loop, so
+    # without this a double-submit creates a second full set of rows AND a second
+    # set of sessions: the cycles list shows every teacher twice and the report's
+    # per-parameter denominator doubles. teacher_order is the per-setup teacher
+    # key (teacher_id is nullable for the free-text fallback, so it cannot be).
+    create unique_index(:lms_teacher_feedback, [:setup_run_id, :teacher_order],
+             where: "deleted_at IS NULL",
+             name: :lms_teacher_feedback_run_teacher_unique
            )
   end
 end
