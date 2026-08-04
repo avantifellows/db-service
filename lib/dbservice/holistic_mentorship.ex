@@ -1018,7 +1018,7 @@ defmodule Dbservice.HolisticMentorship do
     with :ok <- production_record(record),
          {:ok, user_id} <- source_user_id(record),
          :ok <- user_exists(user_id),
-         {:ok, student_id} <- student_id(user_id),
+         {:ok, student_id, mentor_mapped} <- student_id(user_id),
          :ok <- approved_profile_source(record),
          :ok <- privacy_not_deleted(student_id),
          {:ok, journey_id} <- matching_profile_journey(student_id, record),
@@ -1035,6 +1035,7 @@ defmodule Dbservice.HolisticMentorship do
         record_ref: record_ref,
         student_id: student_id,
         prompt_configuration_id: record["prompt_configuration_id"],
+        mentor_mapped: mentor_mapped,
         profile_state: profile_state,
         profile_revision: profile_revision
       }
@@ -1063,9 +1064,22 @@ defmodule Dbservice.HolisticMentorship do
   end
 
   defp student_id(user_id) do
-    case Repo.query!("SELECT id FROM student WHERE user_id = $1", [user_id], log: false).rows do
+    case Repo.query!(
+           """
+           SELECT student.id,
+                  EXISTS(
+                    SELECT 1
+                    FROM holistic_mentorship_mentor_mentee_mappings AS mapping
+                    WHERE mapping.student_id = student.id AND mapping.ended_at IS NULL
+                  )
+           FROM student
+           WHERE student.user_id = $1
+           """,
+           [user_id],
+           log: false
+         ).rows do
       [] -> {:error, :student_not_found}
-      [[student_id]] -> {:ok, student_id}
+      [[student_id, mentor_mapped]] -> {:ok, student_id, mentor_mapped}
       _ -> {:error, :ambiguous_student}
     end
   end
