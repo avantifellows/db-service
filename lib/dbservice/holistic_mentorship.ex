@@ -1018,7 +1018,7 @@ defmodule Dbservice.HolisticMentorship do
     with :ok <- production_record(record),
          {:ok, user_id} <- source_user_id(record),
          :ok <- user_exists(user_id),
-         {:ok, student_id, mentor_mapped} <- student_id(user_id),
+         {:ok, student_id, mentor_mapped} <- student_with_mentor_mapping(user_id),
          :ok <- approved_profile_source(record),
          :ok <- privacy_not_deleted(student_id),
          {:ok, journey_id} <- matching_profile_journey(student_id, record),
@@ -1064,6 +1064,13 @@ defmodule Dbservice.HolisticMentorship do
   end
 
   defp student_id(user_id) do
+    case student_with_mentor_mapping(user_id) do
+      {:ok, student_id, _mentor_mapped} -> {:ok, student_id}
+      error -> error
+    end
+  end
+
+  defp student_with_mentor_mapping(user_id) do
     case Repo.query!(
            """
            SELECT student.id,
