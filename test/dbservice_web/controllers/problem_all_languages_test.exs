@@ -200,6 +200,85 @@ defmodule DbserviceWeb.ProblemAllLanguagesTest do
     end
   end
 
+  describe "GET /api/resource/test/:id/problems (curriculum_id optional, issue #651)" do
+    test "returns problems when curriculum_id is omitted (all languages)", %{conn: conn} do
+      en = language_fixture("cae", "CA EN")
+      hi = language_fixture("cah", "CA HI")
+      curriculum = curriculum_fixture()
+      problem = problem_fixture()
+      resource_curriculum_fixture(problem, curriculum)
+
+      en_meta = %{"text" => "no curr EN"}
+      hi_meta = %{"text" => "no curr HI"}
+      problem_language_fixture(problem, en, en_meta)
+      problem_language_fixture(problem, hi, hi_meta)
+
+      test = test_fixture([problem.id])
+
+      # No curriculum_id query param at all.
+      conn = get(conn, ~p"/api/resource/test/#{test.id}/problems")
+      body = json_response(conn, 200)
+
+      assert [entry] = body
+      assert entry["id"] == problem.id
+      # Top-level curriculum fields resolve from the single resource_curriculum row.
+      assert entry["curriculum_id"] == curriculum.id
+      assert entry["difficulty_level"] == "medium"
+
+      assert entry["lang_versions"] == [
+               %{"lang_code" => "cae", "meta_data" => en_meta},
+               %{"lang_code" => "cah", "meta_data" => hi_meta}
+             ]
+    end
+
+    test "returns problems when curriculum_id is omitted (single language)", %{conn: conn} do
+      en = language_fixture("cbe", "CB EN")
+      curriculum = curriculum_fixture()
+      problem = problem_fixture()
+      resource_curriculum_fixture(problem, curriculum)
+
+      en_meta = %{"text" => "single no curr"}
+      problem_language_fixture(problem, en, en_meta)
+
+      test = test_fixture([problem.id])
+
+      conn = get(conn, ~p"/api/resource/test/#{test.id}/problems?lang_code=cbe")
+      body = json_response(conn, 200)
+
+      assert [entry] = body
+      assert entry["id"] == problem.id
+      # Backward-compatible flat meta_data for the requested language.
+      assert entry["meta_data"] == en_meta
+      assert entry["curriculum_id"] == curriculum.id
+      assert entry["difficulty_level"] == "medium"
+    end
+
+    test "still accepts curriculum_id for backward compatibility", %{conn: conn} do
+      en = language_fixture("cce", "CC EN")
+      curriculum = curriculum_fixture()
+      problem = problem_fixture()
+      resource_curriculum_fixture(problem, curriculum)
+
+      en_meta = %{"text" => "with curr"}
+      problem_language_fixture(problem, en, en_meta)
+
+      test = test_fixture([problem.id])
+
+      conn =
+        get(
+          conn,
+          ~p"/api/resource/test/#{test.id}/problems?lang_code=cce&curriculum_id=#{curriculum.id}"
+        )
+
+      body = json_response(conn, 200)
+
+      assert [entry] = body
+      assert entry["id"] == problem.id
+      assert entry["meta_data"] == en_meta
+      assert entry["curriculum_id"] == curriculum.id
+    end
+  end
+
   describe "GET /api/problems (no lang_code)" do
     test "returns each problem once (deduped) with all languages", %{conn: conn} do
       en = language_fixture("ace", "AC EN")

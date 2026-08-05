@@ -1050,15 +1050,18 @@ defmodule DbserviceWeb.ResourceController do
       langCode(
         :query,
         :string,
-        "The code of the language to fetch problems in (e.g., 'en', 'hi')",
-        required: true
+        "The code of the language to fetch problems in (e.g., 'en', 'hi'). " <>
+          "Omit to get every problem once with all languages in lang_versions.",
+        required: false
       )
 
       curriculumId(
         :query,
         :integer,
-        "The ID of the curriculum to get difficulty level",
-        required: true
+        "Deprecated and optional. Each problem has exactly one resource_curriculum " <>
+          "row, so no curriculum filtering is needed. Accepted for backward " <>
+          "compatibility and ignored otherwise.",
+        required: false
       )
     end
 
@@ -1066,52 +1069,42 @@ defmodule DbserviceWeb.ResourceController do
   end
 
   @doc """
-  Returns all problems for a specific test in a specific language.
+  Returns all problems for a specific test.
 
-  GET /api/resource/test/:id/problems?lang_code=en&curriculum_id=1
+  GET /api/resource/test/:id/problems
+
+  - `lang_code` (optional): when given, returns problems in that single language
+    (top-level meta_data is that language); when omitted, every problem is
+    returned once with all languages in `lang_versions`.
+  - `curriculum_id` (optional, deprecated): each problem has exactly one
+    resource_curriculum row, so no curriculum filtering is needed. Accepted for
+    backward compatibility and ignored when absent (issue #651).
   """
-  def test_problems(conn, %{
-        "id" => test_id,
-        "lang_code" => lang_code,
-        "curriculum_id" => curriculum_id
-      }) do
-    # Parse test ID and curriculum ID to integer
+  def test_problems(conn, %{"id" => test_id} = params) do
     test_id = String.to_integer(test_id)
-    curriculum_id = String.to_integer(curriculum_id)
+    lang_code = params["lang_code"]
+    curriculum_id = param_as_integer(params, "curriculum_id")
 
-    result = Resources.get_problems_by_test_and_language(test_id, lang_code, curriculum_id)
+    conn
+    |> render_test_problems(fetch_test_problems(test_id, lang_code, curriculum_id), lang_code)
+  end
 
+  defp fetch_test_problems(test_id, lang_code, curriculum_id)
+       when is_binary(lang_code) and lang_code != "" do
+    Resources.get_problems_by_test_and_language(test_id, lang_code, curriculum_id)
+  end
+
+  defp fetch_test_problems(test_id, _lang_code, curriculum_id) do
+    Resources.get_problems_by_test(test_id, curriculum_id)
+  end
+
+  defp render_test_problems(conn, result, lang_code) do
     case result do
       {:error, :language_not_found} ->
         conn
         |> put_status(:not_found)
         |> json(%{error: "Language with code '#{lang_code}' not found"})
 
-      {:error, :test_not_found} ->
-        conn
-        |> put_status(:not_found)
-        |> json(%{error: "Test resource not found"})
-
-      {:error, :resource_not_test_type} ->
-        conn
-        |> put_status(:bad_request)
-        |> json(%{error: "The specified resource is not a test"})
-
-      problems ->
-        conn
-        |> put_status(:ok)
-        |> render("index.json", resource: problems)
-    end
-  end
-
-  # All-languages variant of test_problems/2: no lang_code, so every problem in
-  # the test is returned once with all its languages in lang_versions.
-  # GET /api/resource/test/:id/problems?curriculum_id=1
-  def test_problems(conn, %{"id" => test_id, "curriculum_id" => curriculum_id}) do
-    test_id = String.to_integer(test_id)
-    curriculum_id = String.to_integer(curriculum_id)
-
-    case Resources.get_problems_by_test(test_id, curriculum_id) do
       {:error, :test_not_found} ->
         conn
         |> put_status(:not_found)
