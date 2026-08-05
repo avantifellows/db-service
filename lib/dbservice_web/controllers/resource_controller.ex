@@ -1127,15 +1127,23 @@ defmodule DbserviceWeb.ResourceController do
     summary("Fetch problems by topic and curriculum (optionally a language)")
 
     description(
-      "Returns problems filtered by topic_id and curriculum_id. When lang_code is " <>
-        "given, results are limited to that language (top-level meta_data is that " <>
-        "language). When lang_code is omitted, every problem is returned once with all " <>
-        "languages in lang_versions for client-side filtering."
+      "Returns problems filtered by topic_id. When lang_code is given, results are " <>
+        "limited to that language (top-level meta_data is that language). When lang_code " <>
+        "is omitted, every problem is returned once with all languages in lang_versions " <>
+        "for client-side filtering."
     )
 
     parameters do
       topic_id(:query, :integer, "Topic ID", required: true)
-      curriculum_id(:query, :integer, "Curriculum ID", required: true)
+
+      curriculum_id(
+        :query,
+        :integer,
+        "Deprecated and optional. Each problem/topic belongs to a single curriculum, so " <>
+          "no curriculum filtering is needed. Accepted for backward compatibility.",
+        required: false
+      )
+
       lang_code(:query, :string, "Language code (omit for all languages)", required: false)
 
       include_paragraph_siblings(
@@ -1151,33 +1159,35 @@ defmodule DbserviceWeb.ResourceController do
     response(200, "OK", Schema.ref(:ProblemResource))
   end
 
-  def fetch_problems(
-        conn,
-        %{
-          "topic_id" => topic_id,
-          "curriculum_id" => curriculum_id,
-          "lang_code" => lang_code
-        } = params
-      ) do
-    language = Repo.get_by(Language, code: lang_code)
+  # curriculum_id is optional and deprecated (issue #651): each problem/topic
+  # belongs to a single curriculum, so no curriculum filtering is needed. It is
+  # still accepted (and applied) for backward compatibility.
+  def fetch_problems(conn, %{"topic_id" => topic_id} = params) do
+    curriculum_id = param_as_integer(params, "curriculum_id")
+    fetch_problems_for_language(conn, topic_id, curriculum_id, params["lang_code"], params)
+  end
 
-    if is_nil(language) do
-      conn
-      |> put_status(:not_found)
-      |> json(%{error: "Language not found"})
-    else
-      problems =
-        topic_id
-        |> problems_query(curriculum_id, lang_code)
-        |> Repo.all()
-        |> preload_paragraphs()
-        |> maybe_add_paragraph_siblings(params, curriculum_id, lang_code)
+  defp fetch_problems_for_language(conn, topic_id, curriculum_id, lang_code, params)
+       when is_binary(lang_code) and lang_code != "" do
+    case Repo.get_by(Language, code: lang_code) do
+      nil ->
+        conn
+        |> put_status(:not_found)
+        |> json(%{error: "Language not found"})
 
-      render(conn, "problems.json", problems: problems)
+      _language ->
+        problems =
+          topic_id
+          |> problems_query(curriculum_id, lang_code)
+          |> Repo.all()
+          |> preload_paragraphs()
+          |> maybe_add_paragraph_siblings(params, curriculum_id, lang_code)
+
+        render(conn, "problems.json", problems: problems)
     end
   end
 
-  def fetch_problems(conn, %{"topic_id" => topic_id, "curriculum_id" => curriculum_id} = params) do
+  defp fetch_problems_for_language(conn, topic_id, curriculum_id, _lang_code, params) do
     problems =
       topic_id
       |> problems_query_all_langs(curriculum_id)
@@ -1197,13 +1207,13 @@ defmodule DbserviceWeb.ResourceController do
       join: t in Topic,
       on: t.id == rt.topic_id,
       join: rc in ResourceCurriculum,
+      as: :resource_curriculum,
       on: rc.resource_id == r.id,
       join: pl in ProblemLanguage,
       as: :problem_lang,
       on: pl.res_id == r.id,
       join: l in Language,
       on: l.id == pl.lang_id,
-      where: rc.curriculum_id == ^curriculum_id,
       where: l.code == ^lang_code,
       where: r.type == "problem",
       order_by: [asc: r.code],
@@ -1212,10 +1222,20 @@ defmodule DbserviceWeb.ResourceController do
         resource_topic: rt,
         chapter_id: t.chapter_id,
         resource_curriculums: [rc],
-        requested_curriculum_id: ^curriculum_id,
+        requested_curriculum_id: rc.curriculum_id,
         problem_lang: pl
       }
     )
+    |> maybe_filter_by_curriculum(curriculum_id)
+  end
+
+  # curriculum_id is optional (issue #651). Each problem belongs to a single
+  # curriculum, so when it is omitted the ResourceCurriculum join already yields
+  # that one row; when provided, restrict to it for backward compatibility.
+  defp maybe_filter_by_curriculum(query, nil), do: query
+
+  defp maybe_filter_by_curriculum(query, curriculum_id) do
+    from([resource_curriculum: rc] in query, where: rc.curriculum_id == ^curriculum_id)
   end
 
   defp problems_query(topic_id, curriculum_id, lang_code) do
@@ -1278,8 +1298,8 @@ defmodule DbserviceWeb.ResourceController do
       join: t in Topic,
       on: t.id == rt.topic_id,
       join: rc in ResourceCurriculum,
+      as: :resource_curriculum,
       on: rc.resource_id == r.id,
-      where: rc.curriculum_id == ^curriculum_id,
       where: r.type == "problem",
       order_by: [asc: r.code],
       select: %{
@@ -1287,9 +1307,10 @@ defmodule DbserviceWeb.ResourceController do
         resource_topic: rt,
         chapter_id: t.chapter_id,
         resource_curriculums: [rc],
-        requested_curriculum_id: ^curriculum_id
+        requested_curriculum_id: rc.curriculum_id
       }
     )
+    |> maybe_filter_by_curriculum(curriculum_id)
   end
 
   defp problems_query_all_langs(topic_id, curriculum_id) do
@@ -1410,15 +1431,20 @@ defmodule DbserviceWeb.ResourceController do
     summary("Fetch a problem in all languages")
 
     description(
-      "All-languages variant of the problem endpoint. Returns the problem for the " <>
-        "given curriculum_id with every available language in `lang_versions`, so the " <>
-        "frontend can filter by language client-side. Top-level `meta_data`/`lang_code` " <>
-        "are null since no single language is requested."
+      "All-languages variant of the problem endpoint. Returns the problem with every " <>
+        "available language in `lang_versions`, so the frontend can filter by language " <>
+        "client-side. Top-level `meta_data`/`lang_code` are null since no single language " <>
+        "is requested. `curriculum_id` is optional and deprecated (issue #651): each " <>
+        "problem belongs to a single curriculum, so `/api/resource/problem/{problem_id}` " <>
+        "returns the same result. The path segment is kept for backward compatibility."
     )
 
     parameters do
       problem_id(:path, :integer, "The id of the problem resource", required: true)
-      curriculum_id(:path, :integer, "The curriculum ID", required: true)
+
+      curriculum_id(:path, :integer, "Deprecated and optional. The curriculum ID.",
+        required: false
+      )
     end
 
     response(200, "OK", Schema.ref(:ProblemResource))
@@ -1426,16 +1452,25 @@ defmodule DbserviceWeb.ResourceController do
   end
 
   @doc """
-  Get a specific problem in all languages by resource ID and curriculum ID.
+  Get a specific problem in all languages by resource ID.
 
   Unlike `get_problem/2`, this does not take a lang_code: the response carries
   every language in `lang_versions` and leaves the top-level single-language
   fields (`meta_data`, `lang_code`, `paragraph`) empty.
+
+  `curriculum_id` is optional and deprecated (issue #651): each problem belongs
+  to a single curriculum, so it is only used to pick which curriculum's fields
+  to surface and falls back to the problem's single row when omitted.
   """
-  def get_problem_all_languages(conn, %{
-        "problem_id" => res_id,
-        "curriculum_id" => curriculum_id
-      }) do
+  def get_problem_all_languages(conn, %{"problem_id" => res_id, "curriculum_id" => curriculum_id}) do
+    render_problem_all_languages(conn, res_id, curriculum_id)
+  end
+
+  def get_problem_all_languages(conn, %{"problem_id" => res_id}) do
+    render_problem_all_languages(conn, res_id, nil)
+  end
+
+  defp render_problem_all_languages(conn, res_id, curriculum_id) do
     query =
       from(r in Resource,
         where: r.id == ^res_id and r.type == "problem",
@@ -1449,16 +1484,11 @@ defmodule DbserviceWeb.ResourceController do
         |> json(%{error: "Problem not found for given inputs"})
 
       resource ->
-        resource_curriculum =
-          Enum.find(resource.resource_curriculum, fn rc ->
-            rc.curriculum_id == String.to_integer(curriculum_id)
-          end)
-
-        case resource_curriculum do
+        case select_resource_curriculum(resource.resource_curriculum, curriculum_id) do
           nil ->
             conn
             |> put_status(:not_found)
-            |> json(%{error: "No resource found for given curriculum_id"})
+            |> json(%{error: curriculum_not_found_message(curriculum_id)})
 
           rc ->
             render(conn, "problem_lang.json",
@@ -1471,6 +1501,19 @@ defmodule DbserviceWeb.ResourceController do
         end
     end
   end
+
+  # With no curriculum_id, fall back to the problem's single resource_curriculum
+  # row (issue #651); with one, restrict to the matching row as before.
+  defp select_resource_curriculum(resource_curriculums, nil), do: List.first(resource_curriculums)
+
+  defp select_resource_curriculum(resource_curriculums, curriculum_id) do
+    Enum.find(resource_curriculums, fn rc ->
+      rc.curriculum_id == String.to_integer(curriculum_id)
+    end)
+  end
+
+  defp curriculum_not_found_message(nil), do: "No curriculum mapping found for this problem"
+  defp curriculum_not_found_message(_), do: "No resource found for given curriculum_id"
 
   # For the all-languages variant we still surface the comprehension paragraph
   # even though no single language is requested. The passage is shared across a
