@@ -10,10 +10,10 @@ defmodule Dbservice.Repo.Migrations.CreateLmsTeacherFeedbackTable do
       add :cycle_label, :string, size: 50, null: false
 
       # A round's cohort is (school, centre programme) — a school can host both a
-      # CoE and a Nodal centre. bigint matches the referents; no FKs (see above).
+      # CoE and a Nodal centre.
       add :school_code, :string, size: 20, null: false
-      add :centre_id, :bigint
-      add :program_id, :bigint
+      add :centre_id, references(:centres, on_delete: :nothing)
+      add :program_id, references(:program, on_delete: :nothing)
       add :batch_class_ids, {:array, :string}, default: [], null: false
 
       # teacher_id is null for the free-text fallback.
