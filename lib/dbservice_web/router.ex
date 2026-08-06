@@ -236,6 +236,15 @@ defmodule DbserviceWeb.Router do
       :get_problem_all_languages
     )
 
+    # Same all-languages variant without the curriculum_id path segment. Each
+    # problem belongs to a single curriculum, so it need not be specified
+    # (issue #651); kept alongside the /:curriculum_id route for backward compat.
+    get(
+      "/resource/problem/:problem_id",
+      ResourceController,
+      :get_problem_all_languages
+    )
+
     resources("/cms-status", CmsStatusController, except: [:new, :edit])
 
     def swagger_info do
