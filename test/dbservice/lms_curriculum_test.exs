@@ -16,6 +16,11 @@ defmodule Dbservice.LmsCurriculumTest do
   import Dbservice.ProgramsFixtures
 
   describe "chapter exam config schema" do
+    test "supports the five Curriculum Exam Tracks" do
+      assert ChapterExamConfig.exam_tracks() ==
+               ~w(jee_main jee_advanced neet cet math_foundation)
+    end
+
     test "validates configured counts and subject normalization" do
       assert ChapterExamConfigData.counts_by_subject() == %{
                "Physics" => 87,
@@ -128,6 +133,92 @@ defmodule Dbservice.LmsCurriculumTest do
 
       refute changeset.valid?
       assert "must be less than or equal to 720" in errors_on(changeset).duration_minutes
+    end
+
+    test "enforces the three LMS Curriculum Log shapes" do
+      %{program: program, grade: grade, subject: subject, chapter: chapter} = curriculum_scope()
+
+      base = %{
+        school_code: "SCH001",
+        program_id: program.id,
+        grade_id: grade.id,
+        subject_id: subject.id,
+        exam_track: "jee_main",
+        log_date: ~D[2026-08-07]
+      }
+
+      for attrs <- [
+            Map.put(base, :duration_minutes, nil),
+            Map.merge(base, %{log_type: "doubt_solving", chapter_id: chapter.id})
+          ] do
+        assert {:error, null_duration} =
+                 %CurriculumLog{}
+                 |> Ecto.Changeset.change(attrs)
+                 |> Ecto.Changeset.check_constraint(:duration_minutes,
+                   name: :lms_curriculum_logs_duration_minutes_check
+                 )
+                 |> Repo.insert()
+
+        assert %{duration_minutes: [_message]} = errors_on(null_duration)
+      end
+
+      cancelled_attrs =
+        Map.merge(base, %{
+          log_type: "class_cancelled",
+          chapter_id: chapter.id
+        })
+
+      assert {:ok, %CurriculumLog{duration_minutes: nil}} =
+               LmsCurriculum.create_curriculum_log(cancelled_attrs)
+
+      assert {:error, duplicate} = LmsCurriculum.create_curriculum_log(cancelled_attrs)
+      assert %{school_code: [_message]} = errors_on(duplicate)
+
+      assert {:ok, %CurriculumLog{duration_minutes: 30}} =
+               base
+               |> Map.merge(%{
+                 log_type: "doubt_solving",
+                 chapter_id: chapter.id,
+                 duration_minutes: 30
+               })
+               |> LmsCurriculum.create_curriculum_log()
+
+      refute CurriculumLog.changeset(
+               %CurriculumLog{},
+               Map.put(cancelled_attrs, :duration_minutes, 30)
+             ).valid?
+    end
+
+    test "persists the two new Exam Track codes across Curriculum tables" do
+      %{program: program, grade: grade, subject: subject, chapter: chapter} = curriculum_scope()
+
+      assert {:ok, %ChapterExamConfig{exam_track: "cet"}} =
+               LmsCurriculum.create_chapter_exam_config(%{
+                 chapter_id: chapter.id,
+                 exam_track: "cet",
+                 is_in_syllabus: true,
+                 prescribed_minutes: 0,
+                 coverage_sequence: 1
+               })
+
+      assert {:ok, %CurriculumLog{exam_track: "math_foundation"}} =
+               LmsCurriculum.create_curriculum_log(%{
+                 school_code: "SCH001",
+                 program_id: program.id,
+                 grade_id: grade.id,
+                 subject_id: subject.id,
+                 exam_track: "math_foundation",
+                 log_date: ~D[2026-08-07],
+                 duration_minutes: 45
+               })
+
+      assert {:ok, %ChapterCompletion{exam_track: "cet"}} =
+               LmsCurriculum.create_chapter_completion(%{
+                 school_code: "SCH001",
+                 program_id: program.id,
+                 chapter_id: chapter.id,
+                 exam_track: "cet"
+               })
     end
   end
 
