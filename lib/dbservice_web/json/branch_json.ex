@@ -7,6 +7,11 @@ defmodule DbserviceWeb.BranchJSON do
     render(branch)
   end
 
+  # Already-shaped %{id, branch_id, name} maps from Branches.list_branch_names/1
+  def names(%{branch_names: branch_names}) do
+    branch_names
+  end
+
   def render(branch) do
     %{
       id: branch.id,
