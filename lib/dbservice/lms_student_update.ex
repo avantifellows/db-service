@@ -699,11 +699,27 @@ defmodule Dbservice.LmsStudentUpdate do
     end
   end
 
-  defp replace_existing_group_user(old_group_users, user_id, new_group_id) do
-    case old_group_users do
-      [] -> GroupUsers.create_group_user(%{user_id: user_id, group_id: new_group_id})
-      [old_group_user] -> GroupUsers.update_group_user(old_group_user, %{group_id: new_group_id})
-      _ -> {:error, :multiple_group_users}
+  defp replace_existing_group_user([], user_id, new_group_id),
+    do: GroupUsers.create_group_user(%{user_id: user_id, group_id: new_group_id})
+
+  defp replace_existing_group_user(old_group_users, _user_id, new_group_id) do
+    # Self-heal legacy duplicates instead of erroring: keep one row (preferring one
+    # already pointing at the target), repoint it, and delete the rest. Callers scope
+    # `old_group_users` (batch by program, other types by type), so collapsing the
+    # list to a single row is safe and unblocks grade/stream edits for students who
+    # still carry duplicate batch memberships.
+    {keep, drop} =
+      case Enum.split_with(old_group_users, &(&1.group_id == new_group_id)) do
+        {[match | extra], others} -> {match, extra ++ others}
+        {[], [first | rest]} -> {first, rest}
+      end
+
+    Enum.each(drop, &GroupUsers.delete_group_user/1)
+
+    if keep.group_id == new_group_id do
+      {:ok, keep}
+    else
+      GroupUsers.update_group_user(keep, %{group_id: new_group_id})
     end
   end
 
