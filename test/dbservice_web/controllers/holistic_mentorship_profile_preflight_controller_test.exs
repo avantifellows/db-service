@@ -27,6 +27,7 @@ defmodule DbserviceWeb.HolisticMentorshipProfilePreflightControllerTest do
     prompt_configuration_id = prompt_configuration_id(conn)
     {grade_11_user, grade_11_student} = eligible_student(11, "BUSINESS-G11")
     {grade_12_user, grade_12_student} = eligible_student(12, "BUSINESS-G12")
+    assign_mentor!(grade_12_user.id, grade_12_student.id)
 
     assert Repo.query!("SELECT count(*) FROM enrollment_record WHERE group_type = 'program'").rows ==
              [[0]]
@@ -47,6 +48,7 @@ defmodule DbserviceWeb.HolisticMentorshipProfilePreflightControllerTest do
                  "record_ref" => "second",
                  "student_id" => grade_12_student.id,
                  "prompt_configuration_id" => prompt_configuration_id,
+                 "mentor_mapped" => true,
                  "profile_state" => "missing",
                  "profile_revision" => nil
                },
@@ -54,6 +56,7 @@ defmodule DbserviceWeb.HolisticMentorshipProfilePreflightControllerTest do
                  "record_ref" => "first",
                  "student_id" => grade_11_student.id,
                  "prompt_configuration_id" => prompt_configuration_id,
+                 "mentor_mapped" => false,
                  "profile_state" => "missing",
                  "profile_revision" => nil
                }
@@ -79,6 +82,7 @@ defmodule DbserviceWeb.HolisticMentorshipProfilePreflightControllerTest do
                  "record_ref" => "emrs",
                  "student_id" => student.id,
                  "prompt_configuration_id" => prompt_configuration_id,
+                 "mentor_mapped" => false,
                  "profile_state" => "missing",
                  "profile_revision" => nil
                }
@@ -117,6 +121,7 @@ defmodule DbserviceWeb.HolisticMentorshipProfilePreflightControllerTest do
                  "record_ref" => "original",
                  "student_id" => student.id,
                  "prompt_configuration_id" => prompt_configuration_id,
+                 "mentor_mapped" => false,
                  "profile_state" => "missing",
                  "profile_revision" => nil
                },
@@ -152,6 +157,7 @@ defmodule DbserviceWeb.HolisticMentorshipProfilePreflightControllerTest do
                  "record_ref" => "unchanged",
                  "student_id" => student.id,
                  "prompt_configuration_id" => first_configuration_id,
+                 "mentor_mapped" => false,
                  "profile_state" => "unchanged",
                  "profile_revision" => 7
                },
@@ -159,6 +165,7 @@ defmodule DbserviceWeb.HolisticMentorshipProfilePreflightControllerTest do
                  "record_ref" => "changed",
                  "student_id" => student.id,
                  "prompt_configuration_id" => first_configuration_id,
+                 "mentor_mapped" => false,
                  "profile_state" => "changed_answers",
                  "profile_revision" => 7
                },
@@ -166,6 +173,7 @@ defmodule DbserviceWeb.HolisticMentorshipProfilePreflightControllerTest do
                  "record_ref" => "other-configuration",
                  "student_id" => student.id,
                  "prompt_configuration_id" => second_configuration_id,
+                 "mentor_mapped" => false,
                  "profile_state" => "missing",
                  "profile_revision" => nil
                }
@@ -493,6 +501,30 @@ defmodule DbserviceWeb.HolisticMentorshipProfilePreflightControllerTest do
         start_date: ~D[2026-06-01],
         is_current: true
       })
+  end
+
+  defp assign_mentor!(student_user_id, student_id) do
+    mentor = user_fixture()
+
+    [[school_id]] =
+      Repo.query!(
+        """
+        SELECT group_id
+        FROM enrollment_record
+        WHERE user_id = $1 AND group_type = 'school' AND is_current = true
+        """,
+        [student_user_id]
+      ).rows
+
+    Repo.query!(
+      """
+      INSERT INTO holistic_mentorship_mentor_mentee_mappings
+        (student_id, mentor_user_id, school_id, program_id, academic_year,
+         started_at, assigned_by_user_id, assignment_source)
+      VALUES ($1, $2, $3, 1, '2026-2027', now(), $2, 'test')
+      """,
+      [student_id, mentor.id, school_id]
+    )
   end
 
   defp prompt_configuration_id(conn, model_id \\ "openai/gpt-5-mini") do
