@@ -10,6 +10,11 @@ defmodule Dbservice.DataImport.GroupUpdateProcessor do
   alias Dbservice.Batches
   alias Dbservice.AuthGroups
   alias Dbservice.Services.GroupUpdateService
+  alias Dbservice.Utils.AcademicYear
+
+  # IST is UTC+5:30; correction CSVs carry no date column, so the retired ER's
+  # end_date and the new ER's start_date default to today in IST.
+  @ist_offset_seconds 5 * 60 * 60 + 30 * 60
 
   @doc """
   Processes batch ID correction (old_batch_id -> new batch_id)
@@ -18,12 +23,14 @@ defmodule Dbservice.DataImport.GroupUpdateProcessor do
     with {:ok, student} <- get_student(record),
          {:ok, old_batch} <- get_batch_by_id(record["old_batch_id"]),
          {:ok, new_batch_group_id} <- get_batch_group_id(record["batch_id"]) do
-      params = %{
-        "user_id" => student.user_id,
-        "group_id" => new_batch_group_id,
-        "type" => "batch",
-        "current_batch_pk" => old_batch.id
-      }
+      params =
+        %{
+          "user_id" => student.user_id,
+          "group_id" => new_batch_group_id,
+          "type" => "batch",
+          "current_batch_pk" => old_batch.id
+        }
+        |> Map.merge(recreate_enrollment_params("batch"))
 
       process_group_update(params, "Batch ID update")
     else
@@ -69,15 +76,42 @@ defmodule Dbservice.DataImport.GroupUpdateProcessor do
 
   # Private helper functions
 
+  # Signals GroupUpdateService to RETIRE the current enrollment record and CREATE a
+  # fresh one, rather than repointing it in place. This is what makes a correction
+  # import read as a current-academic-year move (Priyanka: "should have directly
+  # created an entry for 2026-2027"). The academic year is derived from the calendar
+  # for school/grade/batch and left nil for auth_group (whose ERs carry no AY).
+  defp recreate_enrollment_params(type) do
+    today = current_date_ist()
+
+    %{
+      "recreate_enrollment" => true,
+      "academic_year" => academic_year_for(type),
+      "start_date" => today,
+      "end_date" => today
+    }
+  end
+
+  defp academic_year_for("auth_group"), do: nil
+  defp academic_year_for(_type), do: AcademicYear.current_academic_year()
+
+  defp current_date_ist do
+    DateTime.utc_now()
+    |> DateTime.add(@ist_offset_seconds, :second)
+    |> DateTime.to_date()
+  end
+
   # Generic processor function that handles the common pattern
   defp process_generic_update(record, group_id_getter_fn, type, success_message_prefix) do
     with {:ok, student} <- get_student(record),
          {:ok, group_id} <- group_id_getter_fn.() do
-      params = %{
-        "user_id" => student.user_id,
-        "group_id" => group_id,
-        "type" => type
-      }
+      params =
+        %{
+          "user_id" => student.user_id,
+          "group_id" => group_id,
+          "type" => type
+        }
+        |> Map.merge(recreate_enrollment_params(type))
 
       process_group_update(params, success_message_prefix)
     else

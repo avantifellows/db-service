@@ -15,6 +15,7 @@ defmodule Dbservice.DataImport.BatchMovement do
   alias Dbservice.Users
   alias Dbservice.GroupUsers
   alias Dbservice.Services.BatchEnrollmentService
+  alias Dbservice.Utils.AcademicYear
 
   def process_batch_movement(record) do
     case Users.get_student_by_id_or_apaar_id(record) do
@@ -57,7 +58,9 @@ defmodule Dbservice.DataImport.BatchMovement do
   defp handle_batch_movement(student, {batch_group_id, batch_id, batch_group_type}, record) do
     user_id = student.user_id
     start_date = record["start_date"]
-    academic_year = record["academic_year"]
+    # Current-student flow: derive the AY from the calendar, not the sheet, so the
+    # new batch/grade/status enrollment records read as the current academic year.
+    academic_year = AcademicYear.current_academic_year()
 
     # Get group users for the student
     group_users = GroupUsers.get_group_user_by_user_id(user_id)
