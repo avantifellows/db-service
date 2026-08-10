@@ -10,6 +10,8 @@ defmodule Dbservice.Chapters do
   alias Dbservice.ChapterCurriculums.ChapterCurriculum
   alias Dbservice.ChapterCurriculums
   alias Dbservice.CmsStatuses
+  alias Dbservice.Topics.Topic
+  alias Dbservice.TopicCurriculums.TopicCurriculum
 
   @doc """
   Returns the list of chapter.
@@ -31,6 +33,41 @@ defmodule Dbservice.Chapters do
       ** (Ecto.NoResultsError)
   """
   def get_chapter!(id), do: Repo.get!(Chapter, id)
+
+  @doc """
+  Counts the topics belonging to each of the given chapters in a single query,
+  returning a map of `chapter_id => topic_count`. Chapters with no topics are
+  absent from the map (callers should default to 0).
+
+  When `curriculum_id` is given, only topics mapped to that curriculum (via
+  `topic_curriculum`) are counted — the count for the same chapter can differ
+  per curriculum (see issue #633). When it is nil, every topic under the chapter
+  is counted. `count(:distinct)` guards against a topic having more than one
+  `topic_curriculum` row for the same curriculum.
+
+  ## Examples
+      iex> topic_count_by_chapter_ids([49, 50], 9)
+      %{49 => 12, 50 => 7}
+  """
+  def topic_count_by_chapter_ids([], _curriculum_id), do: %{}
+
+  def topic_count_by_chapter_ids(chapter_ids, curriculum_id) do
+    from(t in Topic, as: :topic, where: t.chapter_id in ^chapter_ids)
+    |> scope_topic_count_to_curriculum(curriculum_id)
+    |> group_by([topic: t], t.chapter_id)
+    |> select([topic: t], {t.chapter_id, count(t.id, :distinct)})
+    |> Repo.all()
+    |> Map.new()
+  end
+
+  defp scope_topic_count_to_curriculum(query, nil), do: query
+
+  defp scope_topic_count_to_curriculum(query, curriculum_id) do
+    from([topic: t] in query,
+      join: tc in TopicCurriculum,
+      on: tc.topic_id == t.id and tc.curriculum_id == ^curriculum_id
+    )
+  end
 
   @doc """
   Gets a chapter by code.
