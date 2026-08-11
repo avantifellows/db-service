@@ -8,6 +8,7 @@ defmodule DbserviceWeb.ChapterTopicCountTest do
 
   alias Dbservice.ChapterCurriculums
   alias Dbservice.Chapters
+  alias Dbservice.CmsStatuses
   alias Dbservice.Curriculums
   alias Dbservice.TopicCurriculums
   alias Dbservice.Topics
@@ -46,6 +47,22 @@ defmodule DbserviceWeb.ChapterTopicCountTest do
         topic_id: topic.id,
         curriculum_id: curriculum.id
       })
+  end
+
+  defp archived_status_fixture do
+    {:ok, status} = CmsStatuses.create_cms_status(%{"name" => "archived"})
+    status
+  end
+
+  defp archived_topic_fixture(chapter, archived_status) do
+    {:ok, topic} =
+      Topics.create_topic(%{
+        "code" => "TOP-#{System.unique_integer([:positive])}",
+        "chapter_id" => chapter.id,
+        "cms_status_id" => archived_status.id
+      })
+
+    topic
   end
 
   describe "GET /api/chapter topic_count (issue #633)" do
@@ -113,6 +130,36 @@ defmodule DbserviceWeb.ChapterTopicCountTest do
       conn = get(conn, ~p"/api/chapter?curriculum_id=#{curriculum.id}&code=#{chapter.code}")
       assert [entry] = json_response(conn, 200)
       assert entry["topic_count"] == 1
+    end
+
+    test "excludes archived topics from the count (scoped to curriculum)", %{conn: conn} do
+      archived = archived_status_fixture()
+      curriculum = curriculum_fixture("CURR-#{System.unique_integer([:positive])}")
+      chapter = chapter_fixture("CH-#{System.unique_integer([:positive])}")
+      link_chapter_to_curriculum(chapter, curriculum)
+
+      active = topic_fixture(chapter)
+      archived_topic = archived_topic_fixture(chapter, archived)
+      map_topic_to_curriculum(active, curriculum)
+      map_topic_to_curriculum(archived_topic, curriculum)
+
+      conn = get(conn, ~p"/api/chapter?curriculum_id=#{curriculum.id}&code=#{chapter.code}")
+      assert [entry] = json_response(conn, 200)
+      # Only the active topic is counted; the archived one is skipped.
+      assert entry["topic_count"] == 1
+    end
+
+    test "excludes archived topics when curriculum_id is omitted", %{conn: conn} do
+      archived = archived_status_fixture()
+      chapter = chapter_fixture("CH-#{System.unique_integer([:positive])}")
+
+      _active1 = topic_fixture(chapter)
+      _active2 = topic_fixture(chapter)
+      _archived = archived_topic_fixture(chapter, archived)
+
+      conn = get(conn, ~p"/api/chapter?code=#{chapter.code}")
+      assert [entry] = json_response(conn, 200)
+      assert entry["topic_count"] == 2
     end
   end
 end
