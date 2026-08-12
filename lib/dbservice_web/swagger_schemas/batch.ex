@@ -16,6 +16,7 @@ defmodule DbserviceWeb.SwaggerSchema.Batch do
             batch_id(:string, "The id of a batch")
             parent_id(:string, "The id of a parent batch")
             af_medium(:stream, "AF medium")
+            system(:string, "The system of a batch")
             metadata(:map, "Metadata of a batch")
           end
 
@@ -25,6 +26,7 @@ defmodule DbserviceWeb.SwaggerSchema.Batch do
             batch_id: "DelhiStudents_11_Photon_Eng_23_001",
             parent_id: 1,
             af_medium: "medical",
+            system: "some-system",
             metadata: %{"key" => "value"}
           })
         end
