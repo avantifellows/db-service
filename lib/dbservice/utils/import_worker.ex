@@ -26,6 +26,7 @@ defmodule Dbservice.DataImport.ImportWorker do
   alias Dbservice.Services.EnrollmentService
   alias Dbservice.Utils.ChangesetFormatter
   alias Dbservice.Utils.Util
+  alias Dbservice.Utils.AcademicYear
   alias Dbservice.Colleges
   alias Dbservice.Branches
   alias Dbservice.Chapters
@@ -753,6 +754,12 @@ defmodule Dbservice.DataImport.ImportWorker do
 
   # Record processor functions for each import type
   defp process_student_record(record) do
+    # `student` is a CURRENT-student flow: the academic year is derived from the
+    # calendar rather than taken from the sheet, so a stale AY typed into the CSV
+    # can't land on the new enrollment records. (Historical backfills go through
+    # the separate `student_enrollment` import type, which keeps the manual AY.)
+    record = Map.put(record, "academic_year", AcademicYear.current_academic_year())
+
     # For student imports, if the student already exists, return an error (updates must go
     # through the student_update import type). `student_id` is only unique within an auth
     # group, so the "already exists" check is scoped to the incoming auth group - a matching
@@ -918,7 +925,8 @@ defmodule Dbservice.DataImport.ImportWorker do
 
       student ->
         start_date = record["start_date"]
-        academic_year = record["academic_year"]
+        # Current-student flow: derive the AY from the calendar, not the sheet.
+        academic_year = AcademicYear.current_academic_year()
         DropoutService.process_dropout(student, start_date, academic_year)
     end
   end

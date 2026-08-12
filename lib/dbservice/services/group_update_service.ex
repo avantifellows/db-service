@@ -122,21 +122,70 @@ defmodule Dbservice.Services.GroupUpdateService do
 
   @doc """
   Updates both the group user and enrollment record in a transaction.
+
+  The group_user always repoints to the new group. The enrollment record is
+  handled one of two ways:
+
+    * when `params["recreate_enrollment"]` is true (the correction-import flow),
+      the current ER is RETIRED (`is_current: false`, `end_date` set) and a NEW ER
+      is created for the new group, stamped with the derived `academic_year` — so
+      the change reads as a current-academic-year move. Historical/closed ERs are
+      left untouched (guard);
+    * otherwise (e.g. the group-user API), the existing ER is repointed in place,
+      preserving the prior behavior.
   """
   def update_group_user_and_enrollment(group_user, enrollment_record, params, new_group_id) do
     Repo.transaction(fn ->
       with {:ok, updated_group_user} <-
              GroupUsers.update_group_user(group_user, %{group_id: params["group_id"]}),
-           {:ok, _updated_enrollment_record} <-
-             EnrollmentRecords.update_enrollment_record(enrollment_record, %{
-               "group_id" => new_group_id
-             }) do
+           {:ok, _enrollment_record} <-
+             apply_enrollment_change(enrollment_record, params, new_group_id) do
         updated_group_user
       else
         {:error, failed_operation} ->
           Repo.rollback(failed_operation)
       end
     end)
+  end
+
+  # Correction-import flow: retire + recreate, but only for a current ER.
+  defp apply_enrollment_change(
+         %EnrollmentRecord{is_current: true} = enrollment_record,
+         %{"recreate_enrollment" => true} = params,
+         new_group_id
+       ) do
+    retire_and_recreate_enrollment(enrollment_record, params, new_group_id)
+  end
+
+  # Guard: never move a historical/closed ER, even under the recreate flag.
+  defp apply_enrollment_change(
+         %EnrollmentRecord{} = enrollment_record,
+         %{"recreate_enrollment" => true},
+         _new_group_id
+       ) do
+    {:ok, enrollment_record}
+  end
+
+  # Default (API) path: repoint the existing ER in place.
+  defp apply_enrollment_change(enrollment_record, _params, new_group_id) do
+    EnrollmentRecords.update_enrollment_record(enrollment_record, %{"group_id" => new_group_id})
+  end
+
+  defp retire_and_recreate_enrollment(enrollment_record, params, new_group_id) do
+    with {:ok, _retired} <-
+           EnrollmentRecords.update_enrollment_record(enrollment_record, %{
+             "is_current" => false,
+             "end_date" => params["end_date"]
+           }) do
+      EnrollmentRecords.create_enrollment_record(%{
+        "user_id" => enrollment_record.user_id,
+        "group_id" => new_group_id,
+        "group_type" => enrollment_record.group_type,
+        "academic_year" => params["academic_year"],
+        "start_date" => params["start_date"],
+        "is_current" => true
+      })
+    end
   end
 
   defp maybe_update_student_grade(_user_id, type, _new_group_child_id) when type != "grade",
