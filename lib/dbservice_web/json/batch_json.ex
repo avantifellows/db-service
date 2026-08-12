@@ -19,6 +19,7 @@ defmodule DbserviceWeb.BatchJSON do
       program_id: batch.program_id,
       auth_group_id: batch.auth_group_id,
       af_medium: batch.af_medium,
+      system: batch.system,
       metadata: batch.metadata
     }
   end

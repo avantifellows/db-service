@@ -777,6 +777,12 @@ defmodule Dbservice.Constants.Mappings do
       optional: ["batch_addition"],
       type: :string
     },
+    "System" => %{
+      db_field: "system",
+      required: [],
+      optional: ["batch_addition"],
+      type: :string
+    },
     "district_code" => %{
       db_field: "district_code",
       required: ["teacher_addition", "school_addition"],
