@@ -1375,6 +1375,7 @@ defmodule Dbservice.DataImport.ImportWorker do
     |> maybe_put_batch("end_date", parse_date(record["end_date"]))
     |> maybe_put_batch("program_id", record["program_id"])
     |> maybe_put_batch("auth_group_id", record["auth_group_id"])
+    |> maybe_put_batch("system", record["system"] |> trim_str())
     |> maybe_put_batch("metadata", metadata_value)
   end
 

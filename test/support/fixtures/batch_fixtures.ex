@@ -19,7 +19,8 @@ defmodule Dbservice.BatchesFixtures do
         end_date: ~D[2024-06-01],
         program_id: nil,
         auth_group_id: nil,
-        af_medium: "online"
+        af_medium: "online",
+        system: "some system"
       })
       |> Dbservice.Batches.create_batch()
 

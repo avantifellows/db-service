@@ -25,6 +25,12 @@ defmodule DbserviceWeb.SwaggerSchema.Chapter do
             subject_id(:integer, "Subject id associated with the chapter")
             cms_status(:string, "Status name from cms_status table. Also accepts cms_status_id.")
             cms_status_id(:integer, "cms_status.id value to set status directly")
+
+            topic_count(
+              :integer,
+              "Number of topics in this chapter, scoped to the curriculum_id query param " <>
+                "when present. Only returned by the list endpoint (GET /api/chapter)."
+            )
           end
 
           example(%{

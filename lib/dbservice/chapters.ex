@@ -10,6 +10,9 @@ defmodule Dbservice.Chapters do
   alias Dbservice.ChapterCurriculums.ChapterCurriculum
   alias Dbservice.ChapterCurriculums
   alias Dbservice.CmsStatuses
+  alias Dbservice.CmsStatuses.CmsStatus
+  alias Dbservice.Topics.Topic
+  alias Dbservice.TopicCurriculums.TopicCurriculum
 
   @doc """
   Returns the list of chapter.
@@ -31,6 +34,61 @@ defmodule Dbservice.Chapters do
       ** (Ecto.NoResultsError)
   """
   def get_chapter!(id), do: Repo.get!(Chapter, id)
+
+  @doc """
+  Counts the topics belonging to each of the given chapters in a single query,
+  returning a map of `chapter_id => topic_count`. Chapters with no topics are
+  absent from the map (callers should default to 0).
+
+  Archived topics (cms_status "archived") are excluded from the count; topics
+  with no cms_status are counted.
+
+  When `curriculum_id` is given, only topics mapped to that curriculum (via
+  `topic_curriculum`) are counted — the count for the same chapter can differ
+  per curriculum (see issue #633). When it is nil, every non-archived topic
+  under the chapter is counted. `count(:distinct)` guards against a topic having
+  more than one `topic_curriculum` row for the same curriculum.
+
+  ## Examples
+      iex> topic_count_by_chapter_ids([49, 50], 9)
+      %{49 => 12, 50 => 7}
+  """
+  def topic_count_by_chapter_ids([], _curriculum_id), do: %{}
+
+  def topic_count_by_chapter_ids(chapter_ids, curriculum_id) do
+    from(t in Topic, as: :topic, where: t.chapter_id in ^chapter_ids)
+    |> exclude_archived_topics()
+    |> scope_topic_count_to_curriculum(curriculum_id)
+    |> group_by([topic: t], t.chapter_id)
+    |> select([topic: t], {t.chapter_id, count(t.id, :distinct)})
+    |> Repo.all()
+    |> Map.new()
+  end
+
+  # Archived topics must not be counted (issue #633 review). Topics with no
+  # cms_status are kept — only the "archived" status is excluded. When the
+  # archived status row does not exist, nothing is archived and the query is
+  # left untouched.
+  defp exclude_archived_topics(query) do
+    case CmsStatuses.get_cms_status_by_name("archived") do
+      %CmsStatus{id: archived_id} ->
+        from([topic: t] in query,
+          where: is_nil(t.cms_status_id) or t.cms_status_id != ^archived_id
+        )
+
+      _ ->
+        query
+    end
+  end
+
+  defp scope_topic_count_to_curriculum(query, nil), do: query
+
+  defp scope_topic_count_to_curriculum(query, curriculum_id) do
+    from([topic: t] in query,
+      join: tc in TopicCurriculum,
+      on: tc.topic_id == t.id and tc.curriculum_id == ^curriculum_id
+    )
+  end
 
   @doc """
   Gets a chapter by code.
