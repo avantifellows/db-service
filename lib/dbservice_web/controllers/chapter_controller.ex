@@ -166,7 +166,12 @@ defmodule DbserviceWeb.ChapterController do
   def update(conn, params) do
     chapter = Chapters.get_chapter!(params["id"])
 
-    with {:ok, %Chapter{} = chapter} <- Chapters.update_chapter(chapter, params) do
+    # Use update_chapter_with_curriculum/2 (not update_chapter/2) so curriculum-
+    # scoped fields (priority/priority_text/weightage) on chapter_curriculum are
+    # updated for the given curriculum_id — matching the POST upsert path. Plain
+    # update_chapter/2 only touches the chapter table and silently ignored them
+    # (issue #688).
+    with {:ok, %Chapter{} = chapter} <- Chapters.update_chapter_with_curriculum(chapter, params) do
       render(conn, :show, chapter: chapter)
     end
   end
