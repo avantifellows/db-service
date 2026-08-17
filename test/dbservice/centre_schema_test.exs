@@ -33,7 +33,6 @@ defmodule Dbservice.CentreSchemaTest do
                "name",
                "program_id",
                "school_id",
-               "stream_codes",
                "sub_category_code",
                "type_code",
                "updated_at"
@@ -72,7 +71,6 @@ defmodule Dbservice.CentreSchemaTest do
       assert_required_columns("centres", [
         "id",
         "name",
-        "stream_codes",
         "is_physical",
         "is_active",
         "inserted_at",
@@ -93,14 +91,14 @@ defmodule Dbservice.CentreSchemaTest do
       assert columns("centres")["type_code"].nullable?
       assert columns("centres")["category_code"].nullable?
       assert columns("centres")["sub_category_code"].nullable?
-      assert columns("centres")["stream_codes"].type == "ARRAY"
-      assert columns("centres")["stream_codes"].udt_name == "_text"
+      # The legacy Centre Stream column is gone; grade-specific Exam Track
+      # mappings in centre_exam_tracks replaced it.
+      refute Map.has_key?(columns("centres"), "stream_codes")
 
       assert default_for("centre_option_sets", "allow_multi") =~ "false"
       assert default_for("centre_option_sets", "sort_order") =~ "0"
       assert default_for("centre_options", "sort_order") =~ "0"
       assert default_for("centre_options", "is_active") =~ "true"
-      assert default_for("centres", "stream_codes") =~ "'{}'::text[]"
       assert default_for("centres", "is_physical") =~ "false"
       assert default_for("centres", "is_active") =~ "true"
 
@@ -122,7 +120,7 @@ defmodule Dbservice.CentreSchemaTest do
       assert indexes("centres") |> Enum.any?(&(&1 == ["type_code"]))
       assert indexes("centres") |> Enum.any?(&(&1 == ["category_code"]))
       assert indexes("centres") |> Enum.any?(&(&1 == ["sub_category_code"]))
-      assert gin_indexes("centres") |> Enum.any?(&(&1 == ["stream_codes"]))
+      assert gin_indexes("centres") == []
       assert indexes("centre_exam_tracks") |> Enum.any?(&(&1 == ["grade_id"]))
 
       assert foreign_keys("centre_options") == [
