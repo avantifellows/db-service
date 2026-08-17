@@ -67,6 +67,7 @@ defmodule Dbservice.DataImport.GroupUpdateProcessor do
       case SchoolMovementService.move_student_school(params) do
         {:ok, _} -> {:ok, "School movement processed successfully"}
         {:error, %Ecto.Changeset{} = changeset} -> {:error, format_changeset(changeset)}
+        {:error, reason} when is_binary(reason) -> {:error, "School movement failed: #{reason}"}
         {:error, reason} -> {:error, "School movement failed: #{inspect(reason)}"}
       end
     else

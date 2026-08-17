@@ -16,8 +16,12 @@ defmodule Dbservice.Services.SchoolMovementService do
     * swaps the single `group_user` membership row for the "school" group type
       (that table has no history concept and always reflects the current school).
 
-  Enrollment records for other academic years (already `is_current: false`) are
-  left untouched. The whole operation runs in a transaction.
+  Historical enrollments (already `is_current: false`) are never touched. Note
+  the close-out closes ALL currently-active school enrollments for the student —
+  in normal data that is the single current school being moved away from. If a
+  student can legitimately hold more than one active school enrollment at once
+  (e.g. a future academic year registered in advance), that scoping needs
+  revisiting. The whole operation runs in a transaction.
 
   Note the two `group_id` conventions: `enrollment_record.group_id` stores the
   child entity id (`school.id`, i.e. `group.child_id`), while `group_user.group_id`
@@ -125,10 +129,8 @@ defmodule Dbservice.Services.SchoolMovementService do
   # history, so all school-type memberships for the user are removed and a single
   # fresh one is created for the new school group.
   defp swap_school_group_user(user_id, group_id) do
-    group = Groups.get_group!(group_id)
-
     group_ids_subquery =
-      from(g in Group, where: g.type == ^group.type, select: g.id)
+      from(g in Group, where: g.type == ^@school_group_type, select: g.id)
 
     from(gu in GroupUser,
       where: gu.user_id == ^user_id and gu.group_id in subquery(group_ids_subquery)
