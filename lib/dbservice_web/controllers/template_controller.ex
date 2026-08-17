@@ -30,6 +30,7 @@ defmodule DbserviceWeb.TemplateController do
          "batch_id_correction",
          "update_incorrect_batch_id_to_correct_batch_id",
          "update_incorrect_school_to_correct_school",
+         "student_school_movement",
          "update_incorrect_grade_to_correct_grade",
          "update_incorrect_auth_group_to_correct_auth_group"
        ] do
