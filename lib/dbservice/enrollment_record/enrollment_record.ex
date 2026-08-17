@@ -49,6 +49,14 @@ defmodule Dbservice.EnrollmentRecords.EnrollmentRecord do
     ])
     |> validate_required(required_fields)
     |> validate_dates_of_enrollment
+    # Surfaces the partial unique index (migration 20260725120002) as a changeset
+    # error instead of an unhandled Ecto.ConstraintError: at most one current
+    # enrollment per (user_id, group_type) for the exclusive types
+    # (auth_group/school/grade). batch is intentionally not covered.
+    |> unique_constraint([:user_id, :group_type],
+      name: :enrollment_record_current_exclusive_type_unique,
+      message: "already has a current enrollment for this exclusive group type"
+    )
   end
 
   defp validate_dates_of_enrollment(changeset) do

@@ -475,6 +475,9 @@ defmodule Dbservice.Services.DropoutService do
          :ok <- restore_batch_group_user(student.user_id, batch.id) do
       restore_student_status(student, audit, global_ids)
     else
+      # Preserve a specific reason (e.g. an exclusive-enrollment conflict) so the
+      # caller's transaction rolls back with a clear message instead of a 500.
+      {:error, reason} -> {:error, reason}
       _ -> {:error, "Failed to restore the previous NVS enrollment"}
     end
   end
@@ -483,6 +486,46 @@ defmodule Dbservice.Services.DropoutService do
 
   defp restore_global_enrollments(student, enrollment_ids, dropout_status_id)
        when is_list(enrollment_ids) and is_integer(dropout_status_id) do
+    with :ok <- ensure_no_exclusive_conflict(student.user_id, enrollment_ids) do
+      do_restore_global_enrollments(student, enrollment_ids, dropout_status_id)
+    end
+  end
+
+  defp restore_global_enrollments(_student, _ids, _status_id),
+    do: {:error, "This dropout cannot be safely undone"}
+
+  # Rejects an undo that would create a second current enrollment for an exclusive
+  # group type (auth_group/school/grade) — e.g. the student was re-enrolled since
+  # the dropout. Restoring those ids would otherwise trip the exclusive unique
+  # index and raise inside the transaction. batch is non-exclusive, so ignored.
+  defp ensure_no_exclusive_conflict(user_id, enrollment_ids) do
+    exclusive_types = ~w(auth_group school grade)
+
+    types_being_restored =
+      from(e in EnrollmentRecord,
+        where: e.id in ^enrollment_ids and e.group_type in ^exclusive_types,
+        distinct: true,
+        select: e.group_type
+      )
+      |> Repo.all()
+
+    conflict? =
+      types_being_restored != [] and
+        Repo.exists?(
+          from(e in EnrollmentRecord,
+            where:
+              e.user_id == ^user_id and e.is_current == true and
+                e.group_type in ^types_being_restored and e.id not in ^enrollment_ids
+          )
+        )
+
+    if conflict?,
+      do:
+        {:error, "Cannot undo dropout: a newer current enrollment exists for an exclusive type"},
+      else: :ok
+  end
+
+  defp do_restore_global_enrollments(student, enrollment_ids, dropout_status_id) do
     {restored, nil} =
       from(e in EnrollmentRecord,
         where: e.user_id == ^student.user_id and e.id in ^enrollment_ids and e.is_current == false
@@ -500,9 +543,6 @@ defmodule Dbservice.Services.DropoutService do
       do: :ok,
       else: {:error, "Failed to restore the student's previous enrollments"}
   end
-
-  defp restore_global_enrollments(_student, _ids, _status_id),
-    do: {:error, "This dropout cannot be safely undone"}
 
   defp restore_batch_group_user(user_id, batch_id) do
     case Repo.get_by(Group, type: "batch", child_id: batch_id) do

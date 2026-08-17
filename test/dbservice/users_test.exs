@@ -599,6 +599,47 @@ defmodule Dbservice.UsersTest do
       assert current_auth_group_enrollment(s2.user_id).group_id == auth_a.id
     end
 
+    test "reactivation leaves exactly one current auth_group ER, ending any stray other" do
+      auth_a = setup_auth_group("AuthA")
+      auth_b = setup_auth_group("AuthB")
+
+      assert {:ok, %Student{} = s1} =
+               Users.create_or_update_student(student_params("S1", "AuthA"))
+
+      # Deactivate the AuthA ownership (as a dropout would), then plant a stray
+      # current auth_group ER pointing at a different auth group for the same user.
+      Dbservice.Services.DropoutService.update_current_enrollments(s1.user_id, ~D[2025-06-01])
+
+      {:ok, _stray} =
+        Dbservice.EnrollmentRecords.create_enrollment_record(%{
+          "user_id" => s1.user_id,
+          "group_id" => auth_b.id,
+          "group_type" => "auth_group",
+          "start_date" => ~D[2025-06-02],
+          "is_current" => true
+        })
+
+      # Re-POST under AuthA: reactivation must end the stray AuthB current ER and
+      # revive AuthA, leaving exactly one current auth_group ER (exclusive index).
+      assert {:ok, %Student{} = s2} =
+               Users.create_or_update_student(student_params("S1", "AuthA"))
+
+      assert s2.id == s1.id
+      assert current_auth_group_enrollment(s2.user_id).group_id == auth_a.id
+
+      current_count =
+        Repo.aggregate(
+          from(er in EnrollmentRecord,
+            where:
+              er.user_id == ^s1.user_id and er.group_type == "auth_group" and
+                er.is_current == true
+          ),
+          :count
+        )
+
+      assert current_count == 1
+    end
+
     test "scoped update does not silently overwrite a differing apaar_id" do
       auth_a = setup_auth_group("AuthA")
 

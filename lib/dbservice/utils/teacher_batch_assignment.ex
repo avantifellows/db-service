@@ -10,7 +10,6 @@ defmodule Dbservice.DataImport.TeacherBatchAssignment do
   """
 
   alias Dbservice.Users
-  alias Dbservice.GroupUsers
   alias Dbservice.Services.BatchEnrollmentService
 
   def process_teacher_batch_assignment(record) do
@@ -48,9 +47,6 @@ defmodule Dbservice.DataImport.TeacherBatchAssignment do
     start_date = record["start_date"]
     academic_year = record["academic_year"]
 
-    # Get group users for the teacher
-    group_users = GroupUsers.get_group_user_by_user_id(user_id)
-
     # Handle batch enrollment (no status for teachers)
     handle_batch_enrollment(
       user_id,
@@ -61,7 +57,7 @@ defmodule Dbservice.DataImport.TeacherBatchAssignment do
     )
 
     # Always update the batch group user
-    BatchEnrollmentService.update_batch_user(user_id, batch_group_id, group_users)
+    BatchEnrollmentService.update_batch_user(user_id, batch_group_id)
 
     {:ok, "Teacher batch assignment completed"}
   end

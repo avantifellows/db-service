@@ -70,9 +70,43 @@ defmodule Dbservice.Services.BatchEnrollmentService do
       academic_year: academic_year
     }
 
-    # Update existing enrollments to mark them as not current
-    update_existing_enrollments(user_id, "batch", start_date)
+    # End only the current batch enrollments in the SAME program as the target
+    # batch, so a student enrolled in batches of other programs keeps those ERs.
+    # This mirrors the program-scoped group_user reconcile in update_batch_user/2
+    # — ending batch ERs globally here while leaving other-program memberships
+    # intact would recreate the ER/group_user mismatch this PR fixes (issue #656
+    # review; see the "other programs ... must remain unchanged" rule in CLAUDE.md).
+    end_current_batch_enrollments_in_program(user_id, batch_id, start_date)
     EnrollmentRecords.create_enrollment_record(new_enrollment_attrs)
+  end
+
+  # Ends the user's current "batch" enrollment records whose batch shares the
+  # target batch's program (nil program is its own scope), leaving current batch
+  # enrollments in other programs untouched. enrollment_record.group_id for a
+  # batch is the batch id (group.child_id).
+  defp end_current_batch_enrollments_in_program(user_id, target_batch_id, start_date) do
+    same_program_batch_ids = batch_ids_in_same_program(target_batch_id)
+
+    from(e in EnrollmentRecord,
+      where:
+        e.user_id == ^user_id and e.group_type == "batch" and e.is_current == true and
+          e.group_id in ^same_program_batch_ids,
+      update: [set: [is_current: false, end_date: ^start_date]]
+    )
+    |> Repo.update_all([])
+  end
+
+  defp batch_ids_in_same_program(target_batch_id) do
+    program_id = Repo.one(from(b in Batch, where: b.id == ^target_batch_id, select: b.program_id))
+    batch_ids_for_program(program_id)
+  end
+
+  defp batch_ids_for_program(nil) do
+    Repo.all(from(b in Batch, where: is_nil(b.program_id), select: b.id))
+  end
+
+  defp batch_ids_for_program(program_id) do
+    Repo.all(from(b in Batch, where: b.program_id == ^program_id, select: b.id))
   end
 
   @doc """
@@ -146,10 +180,10 @@ defmodule Dbservice.Services.BatchEnrollmentService do
   duplicate-batch-membership bug: the previous `Enum.find` repointed only the
   first matching row and left the rest behind.
 
-  The passed-in `group_users` list is ignored on purpose — scoping is re-queried
-  with the program/type joins the caller's list does not carry.
+  Scoping is queried directly from the batch/type joins, so no caller-supplied
+  membership list is needed.
   """
-  def update_batch_user(user_id, group_id, _group_users) do
+  def update_batch_user(user_id, group_id) do
     case batch_for_group_id(group_id) do
       nil ->
         GroupUsers.create_group_user(%{user_id: user_id, group_id: group_id})
@@ -167,7 +201,7 @@ defmodule Dbservice.Services.BatchEnrollmentService do
   Grade is an exclusive membership type, so this collapses *all* of the user's
   grade group_user rows to exactly one pointing at `grade_group_id`.
   """
-  def update_grade_user(user_id, grade_group_id, _group_users) do
+  def update_grade_user(user_id, grade_group_id) do
     user_id
     |> grade_group_users()
     |> reconcile_group_user(user_id, grade_group_id)
