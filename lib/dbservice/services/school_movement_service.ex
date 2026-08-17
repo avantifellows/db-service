@@ -13,8 +13,9 @@ defmodule Dbservice.Services.SchoolMovementService do
     * inserts a new `is_current: true` school enrollment for the target academic
       year (reactivating an existing row for the same school/year if one already
       exists, so re-running an import is idempotent);
-    * swaps the single `group_user` membership row for the "school" group type
-      (that table has no history concept and always reflects the current school).
+    * re-points the student's `group_user` membership row for the "school" group
+      type to the new school in place (that table has no history concept and
+      always reflects the current school), creating one only if none exists.
 
   Historical enrollments (already `is_current: false`) are never touched. Note
   the close-out closes ALL currently-active school enrollments for the student —
@@ -125,19 +126,28 @@ defmodule Dbservice.Services.SchoolMovementService do
     )
   end
 
-  # Mirrors the group_user handling in ReEnrollmentService: group_user carries no
-  # history, so all school-type memberships for the user are removed and a single
-  # fresh one is created for the new school group.
+  # group_user carries no history (just user_id + group_id), so the student's
+  # existing school membership is re-pointed to the new school group in place; a
+  # fresh row is created only if the student has no school membership yet.
   defp swap_school_group_user(user_id, group_id) do
-    group_ids_subquery =
-      from(g in Group, where: g.type == ^@school_group_type, select: g.id)
+    case get_current_school_group_user(user_id) do
+      nil ->
+        GroupUsers.create_group_user(%{"user_id" => user_id, "group_id" => group_id})
 
-    from(gu in GroupUser,
-      where: gu.user_id == ^user_id and gu.group_id in subquery(group_ids_subquery)
+      %GroupUser{} = group_user ->
+        GroupUsers.update_group_user(group_user, %{"group_id" => group_id})
+    end
+  end
+
+  defp get_current_school_group_user(user_id) do
+    Repo.one(
+      from gu in GroupUser,
+        join: g in Group,
+        on: g.id == gu.group_id,
+        where: gu.user_id == ^user_id and g.type == ^@school_group_type,
+        order_by: [asc: gu.id],
+        limit: 1
     )
-    |> Repo.delete_all()
-
-    GroupUsers.create_group_user(%{"user_id" => user_id, "group_id" => group_id})
   end
 
   defp parse_effective_date(nil), do: {:ok, Date.utc_today()}
