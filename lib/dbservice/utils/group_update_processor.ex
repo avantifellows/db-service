@@ -10,6 +10,8 @@ defmodule Dbservice.DataImport.GroupUpdateProcessor do
   alias Dbservice.Batches
   alias Dbservice.AuthGroups
   alias Dbservice.Services.GroupUpdateService
+  alias Dbservice.Services.SchoolMovementService
+  alias Dbservice.Utils.ChangesetFormatter
 
   @doc """
   Processes batch ID correction (old_batch_id -> new batch_id)
@@ -41,6 +43,36 @@ defmodule Dbservice.DataImport.GroupUpdateProcessor do
       "school",
       "School update"
     )
+  end
+
+  @doc """
+  Processes a student school movement (student_id or apaar_id, school_code, academic_year).
+
+  Unlike `process_school_update/1`, which overwrites the current school enrollment
+  in place and loses history, this closes out the student's current school
+  enrollment (keeping it as history) and inserts a new active enrollment for the
+  target academic year, scoped to that year and leaving other years untouched.
+  """
+  def process_school_movement(record) do
+    with {:ok, student} <- get_student(record),
+         {:ok, academic_year} <- get_academic_year(record),
+         {:ok, school_group_id} <- get_school_group_id(record["school_code"]) do
+      params = %{
+        "user_id" => student.user_id,
+        "group_id" => school_group_id,
+        "academic_year" => academic_year,
+        "effective_date" => record["effective_date"]
+      }
+
+      case SchoolMovementService.move_student_school(params) do
+        {:ok, _} -> {:ok, "School movement processed successfully"}
+        {:error, %Ecto.Changeset{} = changeset} -> {:error, format_changeset(changeset)}
+        {:error, reason} when is_binary(reason) -> {:error, "School movement failed: #{reason}"}
+        {:error, reason} -> {:error, "School movement failed: #{inspect(reason)}"}
+      end
+    else
+      {:error, reason} -> {:error, reason}
+    end
   end
 
   @doc """
@@ -112,6 +144,19 @@ defmodule Dbservice.DataImport.GroupUpdateProcessor do
           {:ok, student}
       end
     end
+  end
+
+  # academic_year is a required header for school movement, but a given row may
+  # leave it blank; guard so we fail that row clearly instead of mis-scoping.
+  defp get_academic_year(record) do
+    case record["academic_year"] do
+      year when is_binary(year) and year != "" -> {:ok, year}
+      _ -> {:error, "academic_year is required"}
+    end
+  end
+
+  defp format_changeset(changeset) do
+    "School movement failed: #{ChangesetFormatter.format_errors(changeset)}"
   end
 
   defp get_batch_by_id(batch_id) do

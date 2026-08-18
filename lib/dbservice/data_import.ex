@@ -38,6 +38,8 @@ defmodule Dbservice.DataImport do
   def format_type_name("update_incorrect_school_to_correct_school"),
     do: "Update Incorrect School to Correct School"
 
+  def format_type_name("student_school_movement"), do: "Student School Movement"
+
   def format_type_name("update_incorrect_grade_to_correct_grade"),
     do: "Update Incorrect Grade to Correct Grade"
 
