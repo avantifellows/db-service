@@ -2,12 +2,15 @@ defmodule Dbservice.Services.BatchEnrollmentServiceTest do
   use Dbservice.DataCase
 
   alias Dbservice.Services.BatchEnrollmentService
+  alias Dbservice.EnrollmentRecords
+  alias Dbservice.EnrollmentRecords.EnrollmentRecord
   import Dbservice.BatchesFixtures
   import Dbservice.StatusesFixtures
   import Dbservice.UsersFixtures
   import Dbservice.EnrollmentRecordFixtures
   import Dbservice.GradesFixtures
   import Dbservice.SchoolsFixtures
+  import Dbservice.ProgramsFixtures
 
   describe "get_batch_info/1" do
     test "returns batch info when batch exists" do
@@ -120,46 +123,6 @@ defmodule Dbservice.Services.BatchEnrollmentServiceTest do
     end
   end
 
-  describe "group_user_by_type?/2" do
-    test "returns true when group user is associated with type" do
-      user = user_fixture()
-      school = school_fixture()
-
-      # Get the group that was automatically created for the school
-      group = Dbservice.Groups.get_group_by_child_id_and_type(school.id, "school")
-
-      # Create group user
-      {:ok, group_user} =
-        Dbservice.GroupUsers.create_group_user(%{
-          user_id: user.id,
-          group_id: group.id
-        })
-
-      result = BatchEnrollmentService.group_user_by_type?(group_user, "school")
-
-      assert result == true
-    end
-
-    test "returns false when group user is not associated with type" do
-      user = user_fixture()
-      school = school_fixture()
-
-      # Get the group that was automatically created for the school
-      group = Dbservice.Groups.get_group_by_child_id_and_type(school.id, "school")
-
-      # Create group user
-      {:ok, group_user} =
-        Dbservice.GroupUsers.create_group_user(%{
-          user_id: user.id,
-          group_id: group.id
-        })
-
-      result = BatchEnrollmentService.group_user_by_type?(group_user, "batch")
-
-      assert result == false
-    end
-  end
-
   describe "get_grade_info/1" do
     test "returns grade info when grade exists" do
       grade = grade_fixture(%{number: 10})
@@ -237,7 +200,7 @@ defmodule Dbservice.Services.BatchEnrollmentServiceTest do
     end
   end
 
-  describe "update_batch_user/3" do
+  describe "update_batch_user/2" do
     test "updates existing batch group user when one exists" do
       user = user_fixture()
       batch = batch_fixture()
@@ -256,9 +219,7 @@ defmodule Dbservice.Services.BatchEnrollmentServiceTest do
       new_batch = batch_fixture()
       new_batch_group = Dbservice.Groups.get_group_by_child_id_and_type(new_batch.id, "batch")
 
-      group_users = [existing_group_user]
-
-      result = BatchEnrollmentService.update_batch_user(user.id, new_batch_group.id, group_users)
+      result = BatchEnrollmentService.update_batch_user(user.id, new_batch_group.id)
 
       assert {:ok, updated_group_user} = result
       assert updated_group_user.id == existing_group_user.id
@@ -273,14 +234,45 @@ defmodule Dbservice.Services.BatchEnrollmentServiceTest do
       # Get the group that was automatically created for the batch
       group = Dbservice.Groups.get_group_by_child_id_and_type(batch.id, "batch")
 
-      # Empty group_users list (no existing batch group user)
-      group_users = []
-
-      result = BatchEnrollmentService.update_batch_user(user.id, group.id, group_users)
+      result = BatchEnrollmentService.update_batch_user(user.id, group.id)
 
       assert {:ok, new_group_user} = result
       assert new_group_user.group_id == group.id
       assert new_group_user.user_id == user.id
+    end
+
+    test "collapses duplicate batch group users to the target, deleting the stale ones" do
+      user = user_fixture()
+      old_batch = batch_fixture()
+      stale_batch = batch_fixture()
+      new_batch = batch_fixture()
+
+      old_group = Dbservice.Groups.get_group_by_child_id_and_type(old_batch.id, "batch")
+      stale_group = Dbservice.Groups.get_group_by_child_id_and_type(stale_batch.id, "batch")
+      new_group = Dbservice.Groups.get_group_by_child_id_and_type(new_batch.id, "batch")
+
+      {:ok, _} =
+        Dbservice.GroupUsers.create_group_user(%{user_id: user.id, group_id: old_group.id})
+
+      {:ok, _} =
+        Dbservice.GroupUsers.create_group_user(%{user_id: user.id, group_id: stale_group.id})
+
+      result = BatchEnrollmentService.update_batch_user(user.id, new_group.id)
+
+      assert {:ok, kept} = result
+      assert kept.group_id == new_group.id
+
+      remaining =
+        Dbservice.Repo.all(
+          from(gu in Dbservice.Groups.GroupUser,
+            join: g in Dbservice.Groups.Group,
+            on: g.id == gu.group_id and g.type == "batch",
+            where: gu.user_id == ^user.id,
+            select: gu.group_id
+          )
+        )
+
+      assert remaining == [new_group.id]
     end
 
     test "creates new batch group user when existing group user is not of batch type" do
@@ -300,9 +292,7 @@ defmodule Dbservice.Services.BatchEnrollmentServiceTest do
           group_id: school_group.id
         })
 
-      group_users = [existing_group_user]
-
-      result = BatchEnrollmentService.update_batch_user(user.id, group.id, group_users)
+      result = BatchEnrollmentService.update_batch_user(user.id, group.id)
 
       assert {:ok, new_group_user} = result
       assert new_group_user.group_id == group.id
@@ -312,7 +302,7 @@ defmodule Dbservice.Services.BatchEnrollmentServiceTest do
     end
   end
 
-  describe "update_grade_user/3" do
+  describe "update_grade_user/2" do
     test "updates existing grade group user when one exists" do
       user = user_fixture()
       grade = grade_fixture()
@@ -331,9 +321,7 @@ defmodule Dbservice.Services.BatchEnrollmentServiceTest do
       new_grade = grade_fixture()
       new_group = Dbservice.Groups.get_group_by_child_id_and_type(new_grade.id, "grade")
 
-      group_users = [existing_group_user]
-
-      result = BatchEnrollmentService.update_grade_user(user.id, new_group.id, group_users)
+      result = BatchEnrollmentService.update_grade_user(user.id, new_group.id)
 
       assert {:ok, updated_group_user} = result
       assert updated_group_user.id == existing_group_user.id
@@ -348,10 +336,7 @@ defmodule Dbservice.Services.BatchEnrollmentServiceTest do
       # Get the group that was automatically created for the grade
       group = Dbservice.Groups.get_group_by_child_id_and_type(grade.id, "grade")
 
-      # Empty group_users list (no existing grade group user)
-      group_users = []
-
-      result = BatchEnrollmentService.update_grade_user(user.id, group.id, group_users)
+      result = BatchEnrollmentService.update_grade_user(user.id, group.id)
 
       assert {:ok, new_group_user} = result
       assert new_group_user.group_id == group.id
@@ -375,9 +360,7 @@ defmodule Dbservice.Services.BatchEnrollmentServiceTest do
           group_id: school_group.id
         })
 
-      group_users = [existing_group_user]
-
-      result = BatchEnrollmentService.update_grade_user(user.id, group.id, group_users)
+      result = BatchEnrollmentService.update_grade_user(user.id, group.id)
 
       assert {:ok, new_group_user} = result
       assert new_group_user.group_id == group.id
@@ -385,5 +368,108 @@ defmodule Dbservice.Services.BatchEnrollmentServiceTest do
       # Should be a different record than the existing one
       assert new_group_user.id != existing_group_user.id
     end
+  end
+
+  describe "handle_batch_enrollment/5 program-scoped ER inactivation (issue #656)" do
+    test "moving batch within one program leaves other programs' current batch ER intact" do
+      user = user_fixture()
+      program_a = program_fixture()
+      program_b = program_fixture()
+
+      batch_a1 = batch_fixture(%{program_id: program_a.id, batch_id: "A1"})
+      batch_a2 = batch_fixture(%{program_id: program_a.id, batch_id: "A2"})
+      batch_b1 = batch_fixture(%{program_id: program_b.id, batch_id: "B1"})
+
+      # Student currently has one current batch enrollment in each program.
+      # enrollment_record.group_id for a batch is the batch id.
+      current_batch_er(user.id, batch_a1.id)
+      current_batch_er(user.id, batch_b1.id)
+
+      # Move within program A: enroll into batch_a2.
+      BatchEnrollmentService.handle_batch_enrollment(
+        user.id,
+        batch_a2.id,
+        "batch",
+        "2024-2025",
+        ~D[2024-02-01]
+      )
+
+      # Program A: old batch ER ended, new batch ER current.
+      refute batch_er_current?(user.id, batch_a1.id)
+      assert batch_er_current?(user.id, batch_a2.id)
+      # Program B: its batch ER is untouched (the bug this fixes ended it too).
+      assert batch_er_current?(user.id, batch_b1.id)
+    end
+  end
+
+  describe "exclusive-current unique index (issue #656)" do
+    test "a second current exclusive enrollment returns a changeset error, not a raise" do
+      user = user_fixture()
+
+      {:ok, _} =
+        EnrollmentRecords.create_enrollment_record(%{
+          "user_id" => user.id,
+          "group_id" => 1,
+          "group_type" => "auth_group",
+          "start_date" => ~D[2024-01-01],
+          "is_current" => true
+        })
+
+      assert {:error, %Ecto.Changeset{} = changeset} =
+               EnrollmentRecords.create_enrollment_record(%{
+                 "user_id" => user.id,
+                 "group_id" => 2,
+                 "group_type" => "auth_group",
+                 "start_date" => ~D[2024-01-01],
+                 "is_current" => true
+               })
+
+      refute changeset.valid?
+      assert changeset.errors != []
+    end
+
+    test "batch is not covered by the exclusive constraint (multi-program allowed)" do
+      user = user_fixture()
+
+      {:ok, _} =
+        EnrollmentRecords.create_enrollment_record(%{
+          user_id: user.id,
+          group_id: 1,
+          group_type: "batch",
+          academic_year: "2024-2025",
+          start_date: ~D[2024-01-01],
+          is_current: true
+        })
+
+      assert {:ok, %EnrollmentRecord{}} =
+               EnrollmentRecords.create_enrollment_record(%{
+                 user_id: user.id,
+                 group_id: 2,
+                 group_type: "batch",
+                 academic_year: "2024-2025",
+                 start_date: ~D[2024-01-01],
+                 is_current: true
+               })
+    end
+  end
+
+  defp current_batch_er(user_id, batch_id) do
+    enrollment_record_fixture(%{
+      user_id: user_id,
+      group_id: batch_id,
+      group_type: "batch",
+      is_current: true,
+      academic_year: "2024-2025"
+    })
+  end
+
+  defp batch_er_current?(user_id, batch_id) do
+    Dbservice.Repo.exists?(
+      from(e in EnrollmentRecord,
+        where:
+          e.user_id == ^user_id and e.group_type == "batch" and e.group_id == ^batch_id and
+            e.is_current == true
+      )
+    )
   end
 end
