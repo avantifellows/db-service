@@ -338,9 +338,6 @@ defmodule DbserviceWeb.StudentController do
   defp enroll_student(student, params) do
     user_id = student.user_id
 
-    # Retrieve the group user information based on the user ID
-    group_users = GroupUsers.get_group_user_by_user_id(user_id)
-
     # Get start_date from params instead of using current time
     start_date = params["start_date"]
 
@@ -389,7 +386,7 @@ defmodule DbserviceWeb.StudentController do
         )
 
         # Update grade in group_user
-        BatchEnrollmentService.update_grade_user(user_id, grade_group_id, group_users)
+        BatchEnrollmentService.update_grade_user(user_id, grade_group_id)
 
         # Update grade in student table
         BatchEnrollmentService.update_student_grade(student, grade_id)
@@ -397,7 +394,7 @@ defmodule DbserviceWeb.StudentController do
     end
 
     # Always update the batch group user
-    BatchEnrollmentService.update_batch_user(user_id, batch_group_id, group_users)
+    BatchEnrollmentService.update_batch_user(user_id, batch_group_id)
 
     # Update the student's status to "enrolled"
     case Users.update_student(student, %{"status" => "enrolled"}) do

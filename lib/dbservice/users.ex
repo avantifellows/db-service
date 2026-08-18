@@ -549,15 +549,50 @@ defmodule Dbservice.Users do
 
   # Revives a previously-deactivated auth_group ownership record (no-op if already current),
   # so a re-POSTed (e.g. dropped) student is owned by - and findable in - this auth group again.
+  #
+  # Runs inside the caller's transaction (create_or_update_student). To respect the
+  # exclusive-current unique index (one current auth_group ER per user), it first ends any
+  # OTHER current auth_group enrollment, then reactivates a single row for this auth group
+  # (leaving historical duplicates inactive) rather than bulk-flipping every match to current.
   defp reactivate_auth_group_enrollment(user_id, auth_group_id) do
+    # End any current auth_group ownership pointing at a different auth group.
     from(er in EnrollmentRecord,
       where:
         er.user_id == ^user_id and er.group_type == "auth_group" and
-          er.group_id == ^auth_group_id and er.is_current == false
+          er.group_id != ^auth_group_id and er.is_current == true
     )
-    |> Repo.update_all(set: [is_current: true, end_date: nil])
+    |> Repo.update_all(set: [is_current: false])
+
+    # If this auth group is already current, nothing to do; otherwise revive exactly one row.
+    already_current? =
+      Repo.exists?(
+        from(er in EnrollmentRecord,
+          where:
+            er.user_id == ^user_id and er.group_type == "auth_group" and
+              er.group_id == ^auth_group_id and er.is_current == true
+        )
+      )
+
+    unless already_current?, do: reactivate_single_auth_group_row(user_id, auth_group_id)
 
     :ok
+  end
+
+  defp reactivate_single_auth_group_row(user_id, auth_group_id) do
+    row =
+      from(er in EnrollmentRecord,
+        where:
+          er.user_id == ^user_id and er.group_type == "auth_group" and
+            er.group_id == ^auth_group_id and er.is_current == false,
+        order_by: [desc: er.id],
+        limit: 1
+      )
+      |> Repo.one()
+
+    if row do
+      from(er in EnrollmentRecord, where: er.id == ^row.id)
+      |> Repo.update_all(set: [is_current: true, end_date: nil])
+    end
   end
 
   # Ensures the auth-group ownership enrollment record + group_user mapping exist for the
