@@ -99,6 +99,7 @@ defmodule Dbservice.DataImport.ImportWorker do
       "batch_id_correction" => &process_batch_id_correction_record/1,
       "update_incorrect_batch_id_to_correct_batch_id" => &process_batch_id_update_record/1,
       "update_incorrect_school_to_correct_school" => &process_school_update_record/1,
+      "student_school_movement" => &process_school_movement_record/1,
       "update_incorrect_grade_to_correct_grade" => &process_grade_update_record/1,
       "update_incorrect_auth_group_to_correct_auth_group" => &process_auth_group_update_record/1,
       "dropout" => &process_dropout_record/1,
@@ -1740,6 +1741,10 @@ defmodule Dbservice.DataImport.ImportWorker do
 
   defp process_school_update_record(record) do
     DataImport.GroupUpdateProcessor.process_school_update(record)
+  end
+
+  defp process_school_movement_record(record) do
+    DataImport.GroupUpdateProcessor.process_school_movement(record)
   end
 
   defp process_grade_update_record(record) do

@@ -1,7 +1,12 @@
 defmodule Dbservice.DataImport.GroupUpdateProcessorTest do
   use Dbservice.DataCase
 
+  import Ecto.Query
+
   alias Dbservice.DataImport.GroupUpdateProcessor
+  alias Dbservice.EnrollmentRecords.EnrollmentRecord
+  alias Dbservice.Groups.Group
+  alias Dbservice.Groups.GroupUser
   import Dbservice.UsersFixtures
   import Dbservice.BatchesFixtures
   import Dbservice.SchoolsFixtures
@@ -188,6 +193,150 @@ defmodule Dbservice.DataImport.GroupUpdateProcessorTest do
       result = GroupUpdateProcessor.process_school_update(record)
 
       assert {:error, "Group user or enrollment record not found"} = result
+    end
+  end
+
+  describe "process_school_movement/1" do
+    test "closes out the current school enrollment and creates a new active one for the target year" do
+      {user, student} = student_fixture(%{student_id: "STUDENT001"})
+      old_school = school_fixture(%{code: "OLD_SCHOOL"})
+      new_school = school_fixture(%{code: "NEW_SCHOOL"})
+
+      old_school_group = Dbservice.Groups.get_group_by_child_id_and_type(old_school.id, "school")
+      new_school_group = Dbservice.Groups.get_group_by_child_id_and_type(new_school.id, "school")
+
+      # Existing (current) school membership + enrollment for the old school
+      {:ok, _group_user} =
+        Dbservice.GroupUsers.create_group_user(%{
+          user_id: user.id,
+          group_id: old_school_group.id
+        })
+
+      {:ok, old_enrollment} =
+        Dbservice.EnrollmentRecords.create_enrollment_record(%{
+          user_id: user.id,
+          group_id: old_school.id,
+          group_type: "school",
+          is_current: true,
+          start_date: ~D[2025-06-01],
+          academic_year: "2025-2026"
+        })
+
+      record = %{
+        "student_id" => student.student_id,
+        "school_code" => new_school.code,
+        "academic_year" => "2026-2027",
+        "effective_date" => "2026-06-01"
+      }
+
+      assert {:ok, "School movement processed successfully"} =
+               GroupUpdateProcessor.process_school_movement(record)
+
+      # Old enrollment is preserved as history: kept, but inactive with an end date
+      old = Repo.get!(EnrollmentRecord, old_enrollment.id)
+      refute old.is_current
+      assert old.end_date == ~D[2026-06-01]
+      assert old.academic_year == "2025-2026"
+
+      # A new active enrollment exists for the correct school and target year
+      new =
+        Repo.get_by(EnrollmentRecord,
+          user_id: user.id,
+          group_id: new_school.id,
+          group_type: "school",
+          academic_year: "2026-2027"
+        )
+
+      assert new
+      assert new.is_current
+      assert new.start_date == ~D[2026-06-01]
+
+      # The single school membership row now points to the new school group
+      school_group_ids = Repo.all(from(g in Group, where: g.type == "school", select: g.id))
+
+      group_users =
+        Repo.all(
+          from(gu in GroupUser,
+            where: gu.user_id == ^user.id and gu.group_id in ^school_group_ids
+          )
+        )
+
+      assert [%GroupUser{group_id: gid}] = group_users
+      assert gid == new_school_group.id
+    end
+
+    test "defaults effective_date to today when not provided" do
+      {user, student} = student_fixture(%{student_id: "STUDENT001"})
+      school = school_fixture(%{code: "NEW_SCHOOL"})
+
+      record = %{
+        "student_id" => student.student_id,
+        "school_code" => school.code,
+        "academic_year" => "2026-2027"
+      }
+
+      assert {:ok, "School movement processed successfully"} =
+               GroupUpdateProcessor.process_school_movement(record)
+
+      new =
+        Repo.get_by(EnrollmentRecord,
+          user_id: user.id,
+          group_id: school.id,
+          group_type: "school",
+          academic_year: "2026-2027"
+        )
+
+      assert new.is_current
+      assert new.start_date == Date.utc_today()
+    end
+
+    test "returns error when academic_year is missing" do
+      {_user, student} = student_fixture(%{student_id: "STUDENT001"})
+      school = school_fixture(%{code: "NEW_SCHOOL"})
+
+      record = %{"student_id" => student.student_id, "school_code" => school.code}
+
+      assert {:error, "academic_year is required"} =
+               GroupUpdateProcessor.process_school_movement(record)
+    end
+
+    test "returns error when student is not found" do
+      record = %{
+        "student_id" => "NONEXISTENT_STUDENT",
+        "school_code" => "NEW_SCHOOL",
+        "academic_year" => "2026-2027"
+      }
+
+      assert {:error, "Student not found. student_id: \"NONEXISTENT_STUDENT\", apaar_id: nil"} =
+               GroupUpdateProcessor.process_school_movement(record)
+    end
+
+    test "returns error when school is not found" do
+      {_user, student} = student_fixture(%{student_id: "STUDENT001"})
+
+      record = %{
+        "student_id" => student.student_id,
+        "school_code" => "NONEXISTENT_SCHOOL",
+        "academic_year" => "2026-2027"
+      }
+
+      assert {:error, "School not found with code: NONEXISTENT_SCHOOL"} =
+               GroupUpdateProcessor.process_school_movement(record)
+    end
+
+    test "returns error when effective_date is malformed" do
+      {_user, student} = student_fixture(%{student_id: "STUDENT001"})
+      school = school_fixture(%{code: "NEW_SCHOOL"})
+
+      record = %{
+        "student_id" => student.student_id,
+        "school_code" => school.code,
+        "academic_year" => "2026-2027",
+        "effective_date" => "not-a-date"
+      }
+
+      assert {:error, "School movement failed: " <> _} =
+               GroupUpdateProcessor.process_school_movement(record)
     end
   end
 
