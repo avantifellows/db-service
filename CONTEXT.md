@@ -72,13 +72,25 @@ _Avoid_: definition history, content snapshot
 
 **Mentor-Mentee Mapping**:
 A time-bounded assignment of one Student to one Mentor User at a School for a
-Program and Academic Year. Ended rows remain as history.
+Program and Academic Year. Ended rows remain as history. Assignment and end
+events retain the authenticated actor email snapshot and may optionally link to
+the canonical actor User; machine `assignment_source`, `end_source`, and
+`end_reason` remain separate from human-entered assignment/end audit reasons.
+ID-only system and reconciliation writers remain valid without email or human
+reason snapshots.
 _Avoid_: Academic Mentorship mapping, overwriting assignment history
 
 **Post-Session Notes**:
 The current official ordered answer set for one Mentee and stable Phase, with
 optimistic revision and content-free mutation audit metadata.
 _Avoid_: meeting record, answer revision archive
+
+**Post-Session Note Audit**:
+An immutable content-free event for a Notes mutation. Every event retains at
+least one usable actor identity: a canonical `actor_user_id`, a nonblank
+`actor_email` snapshot, or both. Email-only permission actors are valid, while
+ID-only system and legacy writers remain valid.
+_Avoid_: editable audit row, content snapshot
 
 **Historical Holistic Notes**:
 A provenance-bearing legacy answer set imported for a safely matched Student,
@@ -110,6 +122,11 @@ _Avoid_: best-effort identity matching
 - A Program has one Phase Plan per Academic Year; a Phase Plan has ordered Phases.
 - A Student has at most one active Mentor-Mentee Mapping per Academic Year.
 - Post-Session Notes belong to one Student, one stable Phase, and their author.
+- Mapping and Post-Session Note audit events retain immutable actor snapshots;
+  canonical User links are optional where authenticated access has no User row.
+- Mapping machine source/reason fields are never repurposed for human audit
+  reasons; email and reason snapshots are nullable for system-created/ended
+  rows and reject blank/whitespace values at the database boundary.
 - A Student Profile belongs to the canonical Student journey and one immutable
   Prompt Configuration; older configurations remain retained.
 - A Regeneration Request points to its human actor, Student, requested
@@ -128,6 +145,9 @@ _Avoid_: best-effort identity matching
   state can be reconstructed without storing an Active or progress snapshot.
 - Phase definition mutations retain content-free actor/time audit without storing
   prior Guidance or Question versions.
+- Post-Session Note audits are immutable, keep nullable canonical User references,
+  require a canonical User ID or nonblank actor email, and allow 500-character
+  human reasons for draft-erasure events.
 - Raw questionnaire answers and rendered per-Student prompts are not persisted.
 - Profile Program eligibility comes from the Student's one current School and
   that School's canonical Program IDs; it does not require a Program enrollment.

@@ -8,11 +8,15 @@ defmodule Dbservice.HolisticMentorshipMappingSchemaTest do
   test "defines the canonical Mapping contract and indexes" do
     assert column_types() == %{
              "academic_year" => "character varying",
+             "assigned_by_email" => "character varying",
+             "assignment_audit_reason" => "character varying",
              "assigned_by_user_id" => "bigint",
              "assignment_source" => "character varying",
+             "end_audit_reason" => "character varying",
              "end_reason" => "character varying",
              "end_source" => "character varying",
              "ended_at" => "timestamp without time zone",
+             "ended_by_email" => "character varying",
              "ended_by_user_id" => "bigint",
              "id" => "bigint",
              "inserted_at" => "timestamp without time zone",
@@ -25,12 +29,23 @@ defmodule Dbservice.HolisticMentorshipMappingSchemaTest do
            }
 
     assert nullable_columns() == [
+             "assigned_by_email",
              "assigned_by_user_id",
+             "assignment_audit_reason",
+             "end_audit_reason",
              "end_reason",
              "end_source",
              "ended_at",
+             "ended_by_email",
              "ended_by_user_id"
            ]
+
+    assert column_lengths() == %{
+             "assigned_by_email" => 255,
+             "assignment_audit_reason" => 500,
+             "end_audit_reason" => 500,
+             "ended_by_email" => 255
+           }
 
     assert foreign_keys() == [
              {"assigned_by_user_id", "user", "NO ACTION"},
@@ -41,7 +56,10 @@ defmodule Dbservice.HolisticMentorshipMappingSchemaTest do
              {"student_id", "student", "NO ACTION"}
            ]
 
-    assert check_names() == ["hm_mappings_lifecycle_check"]
+    assert check_names() == [
+             "hm_mappings_audit_fields_check",
+             "hm_mappings_lifecycle_check"
+           ]
 
     assert indexes() == [
              {"hm_mappings_active_mentor_year_idx", false,
@@ -105,15 +123,17 @@ defmodule Dbservice.HolisticMentorshipMappingSchemaTest do
              end)
 
     assert Repo.query!(
-             "SELECT id, ended_at IS NOT NULL, ended_by_user_id, end_source, end_reason FROM #{@table}",
+             "SELECT id, ended_at IS NOT NULL, ended_by_user_id, ended_by_email, end_source, end_reason, end_audit_reason FROM #{@table}",
              []
            ).rows == [
              [
                mapping_id,
                true,
                nil,
+               nil,
                "db_service_student_eligibility",
-               "student_dropout"
+               "student_dropout",
+               nil
              ]
            ]
 
@@ -123,6 +143,70 @@ defmodule Dbservice.HolisticMentorshipMappingSchemaTest do
              end)
 
     assert Repo.query!("SELECT count(*) FROM #{@table}").rows == [[1]]
+  end
+
+  test "stores audit snapshots and rejects blank or active end-event metadata" do
+    scope = insert_scope()
+    assert {:ok, %{rows: [[mapping_id]]}} = insert_mapping(scope, [nil, nil, nil, nil])
+
+    assignment_reason = String.duplicate("a", 256)
+
+    Repo.query!(
+      """
+      UPDATE #{@table}
+      SET assigned_by_email = $1, assignment_audit_reason = $2
+      WHERE id = $3
+      """,
+      [" admin@example.com ", assignment_reason, mapping_id]
+    )
+
+    assert Repo.query!(
+             "SELECT assigned_by_email, assignment_audit_reason FROM #{@table} WHERE id = $1",
+             [mapping_id]
+           ).rows == [[" admin@example.com ", assignment_reason]]
+
+    for {column, value} <- [
+          {"assigned_by_email", "   "},
+          {"assignment_audit_reason", "\t  "}
+        ] do
+      assert_check_violation(fn ->
+        Repo.query("UPDATE #{@table} SET #{column} = $1 WHERE id = $2", [value, mapping_id])
+      end)
+    end
+
+    assert_check_violation(fn ->
+      Repo.query(
+        "UPDATE #{@table} SET ended_by_email = $1 WHERE id = $2",
+        ["admin@example.com", mapping_id]
+      )
+    end)
+
+    end_reason = String.duplicate("e", 256)
+
+    Repo.query!(
+      """
+      UPDATE #{@table}
+      SET ended_at = '2026-01-02 10:00:00', ended_by_email = $1,
+          end_source = 'af_lms_admin_remove', end_reason = 'admin_removal',
+          end_audit_reason = $2
+      WHERE id = $3
+      """,
+      ["admin@example.com", end_reason, mapping_id]
+    )
+
+    assert Repo.query!(
+             "SELECT ended_by_email, end_audit_reason FROM #{@table} WHERE id = $1",
+             [mapping_id]
+           ).rows == [["admin@example.com", end_reason]]
+
+    for {column, value} <- [
+          {"ended_by_email", "  "},
+          {"end_audit_reason", "\n"}
+        ] do
+      assert_check_violation(fn ->
+        Repo.query("UPDATE #{@table} SET #{column} = $1 WHERE id = $2", [value, mapping_id])
+      end)
+    end
   end
 
   test "retains ended assignment history and restricts canonical deletion" do
@@ -226,6 +310,25 @@ defmodule Dbservice.HolisticMentorshipMappingSchemaTest do
       [@table]
     ).rows
     |> Enum.map(fn [name] -> name end)
+  end
+
+  defp column_lengths do
+    Repo.query!(
+      """
+      SELECT column_name, character_maximum_length
+      FROM information_schema.columns
+      WHERE table_schema = 'public' AND table_name = $1
+        AND character_maximum_length IS NOT NULL
+      """,
+      [@table]
+    ).rows
+    |> Map.new(fn [name, length] -> {name, length} end)
+    |> Map.take([
+      "assigned_by_email",
+      "assignment_audit_reason",
+      "end_audit_reason",
+      "ended_by_email"
+    ])
   end
 
   defp foreign_keys do

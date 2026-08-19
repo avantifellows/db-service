@@ -98,6 +98,7 @@ defmodule Dbservice.HolisticMentorshipNotesSchemaTest do
   test "defines a content-free Post-Session Notes mutation audit" do
     assert column_types("holistic_mentorship_post_session_note_audits") == %{
              "action" => "character varying",
+             "actor_email" => "character varying",
              "actor_user_id" => "bigint",
              "id" => "bigint",
              "inserted_at" => "timestamp without time zone",
@@ -106,6 +107,16 @@ defmodule Dbservice.HolisticMentorshipNotesSchemaTest do
              "reason" => "character varying",
              "updated_at" => "timestamp without time zone"
            }
+
+    assert column_lengths("holistic_mentorship_post_session_note_audits") == %{
+             "actor_email" => 255,
+             "reason" => 500
+           }
+
+    assert check_names("holistic_mentorship_post_session_note_audits") == [
+             "hm_post_session_note_audits_actor_email_check",
+             "hm_post_session_note_audits_actor_identity_check"
+           ]
   end
 
   test "defines the required namespaced Notes, Answer, and audit contract" do
@@ -138,7 +149,11 @@ defmodule Dbservice.HolisticMentorshipNotesSchemaTest do
 
     assert nullable_columns("holistic_mentorship_post_session_answers") == []
 
-    assert nullable_columns("holistic_mentorship_post_session_note_audits") == ["reason"]
+    assert nullable_columns("holistic_mentorship_post_session_note_audits") == [
+             "actor_email",
+             "actor_user_id",
+             "reason"
+           ]
 
     assert foreign_keys("holistic_mentorship_post_session_notes") == [
              {"author_user_id", "user", "NO ACTION"},
@@ -155,6 +170,122 @@ defmodule Dbservice.HolisticMentorshipNotesSchemaTest do
              {"actor_user_id", "user", "NO ACTION"},
              {"notes_id", "holistic_mentorship_post_session_notes", "NO ACTION"}
            ]
+
+    assert indexes("holistic_mentorship_post_session_note_audits") == [
+             {"hm_post_session_note_audits_actor_idx", false, ["actor_user_id"], nil},
+             {"hm_post_session_note_audits_notes_time_idx", false, ["notes_id", "occurred_at"],
+              nil},
+             {"holistic_mentorship_post_session_note_audits_pkey", true, ["id"], nil}
+           ]
+  end
+
+  test "supports ID-only, email-only, and dual-identity Note audits" do
+    scope = insert_scope()
+    {:ok, %{rows: [[notes_id]]}} = insert_note(scope, "draft", 1, nil)
+
+    assert {:ok, %{rows: [[id_only_id]]}} =
+             Repo.query(
+               """
+               INSERT INTO holistic_mentorship_post_session_note_audits
+                 (notes_id, actor_user_id, action, occurred_at)
+               VALUES ($1, $2, 'draft_saved', now())
+               RETURNING id
+               """,
+               [notes_id, scope.author_user_id]
+             )
+
+    assert {:ok, %{rows: [[email_only_id]]}} =
+             Repo.query(
+               """
+               INSERT INTO holistic_mentorship_post_session_note_audits
+                 (notes_id, actor_email, action, occurred_at)
+               VALUES ($1, 'permission-only@example.com', 'draft_erased_on_mapping_end', now())
+               RETURNING id
+               """,
+               [notes_id]
+             )
+
+    assert {:ok, %{rows: [[dual_identity_id]]}} =
+             Repo.query(
+               """
+               INSERT INTO holistic_mentorship_post_session_note_audits
+                 (notes_id, actor_user_id, actor_email, action, occurred_at)
+               VALUES ($1, $2, 'actor@example.com', 'draft_saved', now())
+               RETURNING id
+               """,
+               [notes_id, scope.author_user_id]
+             )
+
+    assert Repo.query!(
+             """
+             SELECT actor_user_id, actor_email
+             FROM holistic_mentorship_post_session_note_audits
+             WHERE id = ANY($1::bigint[])
+             ORDER BY id
+             """,
+             [[id_only_id, email_only_id, dual_identity_id]]
+           ).rows == [
+             [scope.author_user_id, nil],
+             [nil, "permission-only@example.com"],
+             [scope.author_user_id, "actor@example.com"]
+           ]
+
+    assert_constraint(:check_violation, fn ->
+      Repo.query(
+        """
+        INSERT INTO holistic_mentorship_post_session_note_audits
+          (notes_id, action, occurred_at)
+        VALUES ($1, 'draft_saved', now())
+        """,
+        [notes_id]
+      )
+    end)
+
+    for actor_email <- ["", "   ", "\t\n"] do
+      assert_constraint(:check_violation, fn ->
+        Repo.query(
+          """
+          INSERT INTO holistic_mentorship_post_session_note_audits
+            (notes_id, actor_user_id, actor_email, action, occurred_at)
+          VALUES ($1, $2, $3, 'draft_saved', now())
+          """,
+          [notes_id, scope.author_user_id, actor_email]
+        )
+      end)
+    end
+
+    assert_constraint(:check_violation, fn ->
+      Repo.query(
+        """
+        INSERT INTO holistic_mentorship_post_session_note_audits
+          (notes_id, actor_email, action, occurred_at)
+        VALUES ($1, ' \t ', 'draft_erased_on_mapping_end', now())
+        """,
+        [notes_id]
+      )
+    end)
+  end
+
+  test "accepts a 256-character draft-erasure audit reason" do
+    scope = insert_scope()
+    {:ok, %{rows: [[notes_id]]}} = insert_note(scope, "draft", 1, nil)
+    reason = String.duplicate("r", 256)
+
+    assert {:ok, %{rows: [[audit_id]]}} =
+             Repo.query(
+               """
+               INSERT INTO holistic_mentorship_post_session_note_audits
+                 (notes_id, actor_email, action, occurred_at, reason)
+               VALUES ($1, 'admin@example.com', 'draft_erased_on_mapping_end', now(), $2)
+               RETURNING id
+               """,
+               [notes_id, reason]
+             )
+
+    assert Repo.query!(
+             "SELECT actor_user_id, actor_email, reason FROM holistic_mentorship_post_session_note_audits WHERE id = $1",
+             [audit_id]
+           ).rows == [[nil, "admin@example.com", reason]]
   end
 
   test "retains used Notes records and mutation audits" do
@@ -321,6 +452,61 @@ defmodule Dbservice.HolisticMentorshipNotesSchemaTest do
       [table]
     ).rows
     |> Enum.map(fn [name] -> name end)
+  end
+
+  defp column_lengths(table) do
+    Repo.query!(
+      """
+      SELECT column_name, character_maximum_length
+      FROM information_schema.columns
+      WHERE table_schema = 'public' AND table_name = $1
+        AND character_maximum_length IS NOT NULL
+      """,
+      [table]
+    ).rows
+    |> Map.new(fn [name, length] -> {name, length} end)
+    |> Map.take(["actor_email", "reason"])
+  end
+
+  defp check_names(table) do
+    Repo.query!(
+      """
+      SELECT constraint_record.conname
+      FROM pg_constraint AS constraint_record
+      JOIN pg_class AS relation ON relation.oid = constraint_record.conrelid
+      JOIN pg_namespace AS namespace ON namespace.oid = relation.relnamespace
+      WHERE namespace.nspname = 'public'
+        AND relation.relname = $1
+        AND constraint_record.contype = 'c'
+      ORDER BY constraint_record.conname
+      """,
+      [table]
+    ).rows
+    |> Enum.map(fn [name] -> name end)
+  end
+
+  defp indexes(table) do
+    Repo.query!(
+      """
+      SELECT index_record.relname,
+             index.indisunique,
+             array_agg(attribute.attname ORDER BY key.ordinality),
+             pg_get_expr(index.indpred, index.indrelid)
+      FROM pg_index AS index
+      JOIN pg_class AS table_record ON table_record.oid = index.indrelid
+      JOIN pg_class AS index_record ON index_record.oid = index.indexrelid
+      JOIN LATERAL unnest(index.indkey) WITH ORDINALITY AS key(attnum, ordinality) ON true
+      JOIN pg_attribute AS attribute
+        ON attribute.attrelid = table_record.oid AND attribute.attnum = key.attnum
+      WHERE table_record.relname = $1
+      GROUP BY index_record.relname, index.indisunique, index.indpred, index.indrelid
+      ORDER BY index_record.relname
+      """,
+      [table]
+    ).rows
+    |> Enum.map(fn [name, unique, columns, predicate] ->
+      {name, unique, columns, predicate}
+    end)
   end
 
   defp foreign_keys(table) do
