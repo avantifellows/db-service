@@ -1594,7 +1594,7 @@ defmodule DbserviceWeb.ResourceController do
     description(
       "Given a problem's language texts (as stored in meta_data.text, HTML/LaTeX " <>
         "intact), returns existing problems whose question text is a near-duplicate " <>
-        "(trigram similarity >= 0.75), scoped per language, across all curricula. " <>
+        "(trigram similarity > 0.75), scoped per language, across all curricula. " <>
         "db-service normalizes the text internally, so the client sends it raw. " <>
         "Results are capped per language and sorted by match_score descending, each " <>
         "tagged with the lang_code it matched on."

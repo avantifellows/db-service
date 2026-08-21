@@ -566,7 +566,7 @@ defmodule DbserviceWeb.SwaggerSchema.Resource do
       SimilarSearchResponse:
         swagger_schema do
           title("SimilarSearchResponse")
-          description("Near-duplicate matches (>= 0.75), per language, sorted by score desc")
+          description("Near-duplicate matches (> 0.75), per language, sorted by score desc")
 
           properties do
             problems(Schema.array(:object), "Matches: {id, code, lang_code, match_score}")

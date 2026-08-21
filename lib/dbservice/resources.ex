@@ -1440,8 +1440,9 @@ defmodule Dbservice.Resources do
   per language of the problem being saved). Matching is scoped per language: each
   entry's text is normalized (see `ProblemText`) and trigram-compared only against
   `problem_lang` rows in the same language, across all curricula. Returns matches
-  with `similarity >= #{@similarity_threshold}`, at most #{@similarity_limit} per
-  language, each tagged with the `lang_code` it matched on, merged and sorted by
+  with `similarity > #{@similarity_threshold}` (the pg_trgm `%` operator is
+  strictly greater than the threshold), at most #{@similarity_limit} per language,
+  each tagged with the `lang_code` it matched on, merged and sorted by
   `match_score` descending:
 
       [%{id: 123, code: "P0001234", lang_code: "en", match_score: 0.83}, ...]
