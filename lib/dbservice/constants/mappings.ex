@@ -351,7 +351,9 @@ defmodule Dbservice.Constants.Mappings do
     "auth_group" => %{
       db_field: "auth_group",
       required: ["student", "teacher_addition", "re_enrollment", "student_enrollment"],
-      optional: [],
+      # Optional on student_update so a Student ID (which is only unique within an
+      # auth group) can be resolved to the right Student (issue #703).
+      optional: ["student_update"],
       type: :string
     },
     "academic_year" => %{
