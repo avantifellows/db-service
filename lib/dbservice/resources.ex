@@ -9,6 +9,7 @@ defmodule Dbservice.Resources do
   alias Dbservice.Resources.Resource
   alias Dbservice.Resources.ProblemLanguage
   alias Dbservice.Resources.Paragraph
+  alias Dbservice.Resources.ProblemText
   alias Dbservice.Languages.Language
   alias Dbservice.Resources.{ResourceTopic, ResourceChapter, ResourceConcept}
   alias Dbservice.Utils.Util
@@ -1426,6 +1427,87 @@ defmodule Dbservice.Resources do
     |> apply_problem_search_filters(params)
     |> select([pl], count(pl.res_id, :distinct))
     |> Repo.one()
+  end
+
+  @similarity_threshold 0.75
+  @similarity_limit 10
+
+  @doc """
+  Finds problems whose question text is a near-duplicate of the supplied text,
+  for duplicate-problem detection (issue #700).
+
+  `languages` is a list of `%{"lang_code" => code, "text" => html}` entries (one
+  per language of the problem being saved). Matching is scoped per language: each
+  entry's text is normalized (see `ProblemText`) and trigram-compared only against
+  `problem_lang` rows in the same language, across all curricula. Returns matches
+  with `similarity > #{@similarity_threshold}` (the pg_trgm `%` operator is
+  strictly greater than the threshold), at most #{@similarity_limit} per language,
+  each tagged with the `lang_code` it matched on, merged and sorted by
+  `match_score` descending:
+
+      [%{id: 123, code: "P0001234", lang_code: "en", match_score: 0.83}, ...]
+
+  Entries with blank text, an unknown `lang_code`, or no matches contribute
+  nothing.
+  """
+  def similar_problems(languages) when is_list(languages) do
+    languages
+    |> Enum.flat_map(&similar_problems_for_entry/1)
+    |> Enum.sort_by(& &1.match_score, :desc)
+  end
+
+  def similar_problems(_), do: []
+
+  defp similar_problems_for_entry(entry) when is_map(entry) do
+    lang_code = entry["lang_code"] || entry[:lang_code]
+    text = entry["text"] || entry[:text]
+    normalized = ProblemText.to_plain_text(text)
+
+    with true <- is_binary(lang_code) and normalized != "",
+         %Language{id: lang_id} <- Repo.get_by(Language, code: lang_code) do
+      query_similar_problems(lang_id, lang_code, normalized)
+    else
+      _ -> []
+    end
+  end
+
+  defp similar_problems_for_entry(_), do: []
+
+  # Uses the `%` operator (backed by the GIN trigram index) with a
+  # transaction-local similarity threshold, then orders by the exact similarity
+  # score. Runs inside a transaction so set_config's local scope applies to the
+  # query on the same connection.
+  defp query_similar_problems(lang_id, lang_code, normalized) do
+    {:ok, matches} =
+      Repo.transaction(fn ->
+        Repo.query!("SELECT set_config('pg_trgm.similarity_threshold', $1, true)", [
+          Float.to_string(@similarity_threshold)
+        ])
+
+        from(pl in ProblemLanguage,
+          join: r in Resource,
+          on: r.id == pl.res_id,
+          where:
+            pl.lang_id == ^lang_id and fragment("? % ?", pl.question_plain_text, ^normalized),
+          order_by: [desc: fragment("similarity(?, ?)", pl.question_plain_text, ^normalized)],
+          limit: @similarity_limit,
+          select: %{
+            id: r.id,
+            code: r.code,
+            match_score: fragment("similarity(?, ?)", pl.question_plain_text, ^normalized)
+          }
+        )
+        |> Repo.all()
+      end)
+
+    Enum.map(matches, fn m ->
+      %{
+        id: m.id,
+        code: m.code,
+        lang_code: lang_code,
+        match_score: Float.round(m.match_score * 1.0, 4)
+      }
+    end)
   end
 
   # Distinct problems (by res_id) for the current search filters, ordered for
