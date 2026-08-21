@@ -60,7 +60,11 @@ config :phoenix_swagger, :json_library, Jason
 config :dbservice, Dbservice.Repo,
   timeout: 120_000,
   queue_target: 15_000,
-  queue_interval: 100_000
+  queue_interval: 100_000,
+  # Use an advisory lock (not the default table lock) so migrations that build
+  # indexes CONCURRENTLY can still hold the migration lock without blocking the
+  # build — recommended by the Ecto docs for concurrent indexes.
+  migration_lock: :pg_advisory_lock
 
 # Oban configuration
 config :dbservice, Oban,
