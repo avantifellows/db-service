@@ -47,7 +47,7 @@ defmodule Dbservice.LmsStudentIngestion do
     results_with_audits =
       classified
       |> Task.async_stream(
-        &process_row(&1, params, school, program_id),
+        &process_row_safely(&1, params, school, program_id),
         max_concurrency: @row_concurrency,
         ordered: true,
         timeout: :infinity
@@ -110,6 +110,22 @@ defmodule Dbservice.LmsStudentIngestion do
       {:skip, result} -> {result, nil}
     end
   end
+
+  defp process_row_safely(classified, params, school, program_id) do
+    try do
+      process_row(classified, params, school, program_id)
+    rescue
+      _error -> row_processing_failed(classified)
+    catch
+      _kind, _reason -> row_processing_failed(classified)
+    end
+  end
+
+  defp row_processing_failed({:process, row}) do
+    {rejected(row, ["Student could not be created. Please contact the admin"]), nil}
+  end
+
+  defp row_processing_failed({:skip, result}), do: {result, nil}
 
   defp classify_row(row, nil, _program_id), do: {:skip, rejected(row, ["School not found"])}
 

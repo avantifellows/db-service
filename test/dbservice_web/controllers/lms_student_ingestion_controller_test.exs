@@ -17,6 +17,109 @@ defmodule DbserviceWeb.LmsStudentIngestionControllerTest do
   alias Dbservice.Users.Student
 
   describe "POST /api/lms/students/bulk-create-with-enrollments" do
+    test "rejects a row with a non-string phone while processing neighboring rows", %{conn: conn} do
+      school = insert_eligible_school!()
+      insert_auth_group!("EnableStudents")
+      insert_grade!(11)
+      insert_nvs_batch!(11, "engineering")
+
+      before_students = Repo.aggregate(Student, :count, :id)
+      before_audits = Repo.aggregate(Dbservice.LmsStudentWriteAudit, :count, :id)
+
+      rows = [
+        valid_row(%{
+          "row_number" => 2,
+          "pen_number" => "12345678901",
+          "g10_roll_no" => "12345678",
+          "phone" => 9_876_543_210
+        }),
+        valid_row(%{
+          "row_number" => 3,
+          "pen_number" => "12345678902",
+          "g10_roll_no" => "87654321",
+          "phone" => "9876543211"
+        }),
+        valid_row(%{
+          "row_number" => 4,
+          "pen_number" => "12345678903",
+          "g10_roll_no" => "23456789",
+          "phone" => "9876543212"
+        })
+      ]
+
+      response =
+        conn
+        |> post("/api/lms/students/bulk-create-with-enrollments", payload(school, rows))
+        |> json_response(200)
+
+      assert response["totals"] == %{
+               "total" => 3,
+               "created" => 2,
+               "duplicate_in_file" => 0,
+               "already_exists" => 0,
+               "rejected" => 1
+             }
+
+      assert Enum.map(response["results"], & &1["status"]) == [
+               "rejected",
+               "created",
+               "created"
+             ]
+
+      assert [error] = Enum.at(response["results"], 0)["row_errors"]
+      assert is_binary(error)
+      assert error != ""
+
+      assert Repo.aggregate(Student, :count, :id) == before_students + 2
+      assert Repo.aggregate(Dbservice.LmsStudentWriteAudit, :count, :id) == before_audits + 2
+      refute Repo.get_by(Student, pen_number: "12345678901")
+    end
+
+    test "rejects an enrollment rollback without leaving partial records", %{conn: conn} do
+      school = insert_eligible_school!()
+      insert_auth_group!("EnableStudents")
+      insert_grade!(11)
+      insert_nvs_batch!(11, "engineering")
+
+      before_users = Repo.aggregate(User, :count, :id)
+      before_students = Repo.aggregate(Student, :count, :id)
+      before_enrollments = Repo.aggregate(EnrollmentRecord, :count, :id)
+      before_group_users = Repo.aggregate(Dbservice.Groups.GroupUser, :count, :id)
+      before_audits = Repo.aggregate(Dbservice.LmsStudentWriteAudit, :count, :id)
+
+      request =
+        school
+        |> payload([valid_row(%{"pen_number" => "12345678904"})])
+        |> Map.put("start_date", "not-a-date")
+
+      response =
+        conn
+        |> post("/api/lms/students/bulk-create-with-enrollments", request)
+        |> json_response(200)
+
+      assert response["totals"] == %{
+               "total" => 1,
+               "created" => 0,
+               "duplicate_in_file" => 0,
+               "already_exists" => 0,
+               "rejected" => 1
+             }
+
+      assert [
+               %{
+                 "status" => "rejected",
+                 "row_errors" => ["Student could not be created. Please contact the admin"]
+               }
+             ] = response["results"]
+
+      assert Repo.aggregate(User, :count, :id) == before_users
+      assert Repo.aggregate(Student, :count, :id) == before_students
+      assert Repo.aggregate(EnrollmentRecord, :count, :id) == before_enrollments
+      assert Repo.aggregate(Dbservice.Groups.GroupUser, :count, :id) == before_group_users
+      assert Repo.aggregate(Dbservice.LmsStudentWriteAudit, :count, :id) == before_audits
+      refute Repo.get_by(Student, pen_number: "12345678904")
+    end
+
     test "accepts a legacy actor without a linked user id", %{conn: conn} do
       school = insert_school!(%{program_ids: []})
       ensure_nvs_program!()
