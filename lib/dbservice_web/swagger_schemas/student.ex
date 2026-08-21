@@ -325,7 +325,7 @@ defmodule DbserviceWeb.SwaggerSchema.Student do
           properties do
             registration_mode(
               :string,
-              "Active registration mode. Must be exactly approved in this release.",
+              "Active registration mode. Must be exactly phone in this release.",
               required: true
             )
 
@@ -345,7 +345,7 @@ defmodule DbserviceWeb.SwaggerSchema.Student do
           end
 
           example(%{
-            registration_mode: "approved",
+            registration_mode: "phone",
             registration_mode_version: "1",
             program_id: 64,
             academic_year: "2026-2027",
@@ -366,7 +366,7 @@ defmodule DbserviceWeb.SwaggerSchema.Student do
           properties do
             registration_mode(
               :string,
-              "Active registration mode. Must be exactly approved in this release.",
+              "Active registration mode. Must be exactly phone in this release.",
               required: true
             )
 
@@ -397,7 +397,7 @@ defmodule DbserviceWeb.SwaggerSchema.Student do
           end
 
           example(%{
-            registration_mode: "approved",
+            registration_mode: "phone",
             registration_mode_version: "1",
             school: %{code: "JNV001", udise_code: "12345678901"},
             program_id: 64,

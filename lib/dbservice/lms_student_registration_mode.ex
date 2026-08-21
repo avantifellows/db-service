@@ -6,7 +6,7 @@ defmodule Dbservice.LmsStudentRegistrationMode do
   @phone "phone"
   @approved "approved"
   @contract_version "1"
-  @production_active_mode @approved
+  @production_active_mode @phone
 
   @spec supported_modes() :: [mode()]
   def supported_modes, do: [@phone, @approved]
@@ -15,14 +15,14 @@ defmodule Dbservice.LmsStudentRegistrationMode do
   def contract_version, do: @contract_version
 
   @spec production_active_mode() :: mode()
-  def production_active_mode, do: @production_active_mode
+  def production_active_mode, do: production_mode()
 
   @spec active_mode() :: mode()
   if Mix.env() == :test do
     @test_override_key {__MODULE__, :active_mode_override}
 
     def active_mode do
-      Process.get(@test_override_key, @production_active_mode)
+      Process.get(@test_override_key, production_mode())
     end
 
     @doc false
@@ -37,7 +37,7 @@ defmodule Dbservice.LmsStudentRegistrationMode do
       :ok
     end
   else
-    def active_mode, do: @production_active_mode
+    def active_mode, do: production_mode()
   end
 
   @spec validate(map()) :: :ok | {:error, map()}
@@ -51,6 +51,8 @@ defmodule Dbservice.LmsStudentRegistrationMode do
   end
 
   def validate(_params), do: mismatch()
+
+  defp production_mode, do: :erlang.iolist_to_binary(@production_active_mode)
 
   defp mismatch do
     {:error,

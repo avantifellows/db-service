@@ -1846,7 +1846,7 @@ defmodule DbserviceWeb.LmsStudentUpdateControllerTest do
       response =
         conn
         |> patch("/api/lms/students/999999/update-with-enrollments", %{
-          "registration_mode" => "phone",
+          "registration_mode" => "approved",
           "registration_mode_version" => "1",
           "school" => %{"code" => "missing", "udise_code" => "invalid"}
         })
@@ -1899,7 +1899,32 @@ defmodule DbserviceWeb.LmsStudentUpdateControllerTest do
       assert Repo.aggregate(Dbservice.LmsStudentWriteAudit, :count, :id) == before_audits
     end
 
+    test "uses the shipped phone mode when the test override is unset", %{conn: conn} do
+      response =
+        conn
+        |> patch("/api/lms/students/999999/update-with-enrollments", %{
+          "registration_mode" => "phone",
+          "registration_mode_version" => "1"
+        })
+        |> json_response(404)
+
+      assert response["error"]["code"] == "not_found"
+
+      mismatch_response =
+        conn
+        |> recycle()
+        |> patch("/api/lms/students/999999/update-with-enrollments", %{
+          "registration_mode" => "approved",
+          "registration_mode_version" => "1"
+        })
+        |> json_response(409)
+
+      assert mismatch_response["error"]["code"] == "registration_mode_mismatch"
+    end
+
     test "updates an NVS student without a Centre or school program_ids", %{conn: conn} do
+      use_test_registration_mode!("approved")
+
       school = insert_school!()
       grade = insert_grade!(11)
       batch = insert_nvs_batch!(11, "engineering")
@@ -1924,6 +1949,8 @@ defmodule DbserviceWeb.LmsStudentUpdateControllerTest do
     end
 
     test "updates a student regardless of which program they are enrolled in", %{conn: conn} do
+      use_test_registration_mode!("approved")
+
       # The update guard is program-agnostic: it only checks that the student is
       # currently enrolled in the supplied program at the supplied school. Any
       # program id works — program eligibility policy belongs in the LMS layer,
@@ -1949,6 +1976,8 @@ defmodule DbserviceWeb.LmsStudentUpdateControllerTest do
     end
 
     test "rejects a school outside the student's current enrollment", %{conn: conn} do
+      use_test_registration_mode!("approved")
+
       school = insert_school!()
       other_school = insert_school!(%{code: "JNV002", udise_code: "22345678901"})
       grade = insert_grade!(11)
@@ -1973,6 +2002,8 @@ defmodule DbserviceWeb.LmsStudentUpdateControllerTest do
     end
 
     test "updates safe profile fields and audits old and new values", %{conn: conn} do
+      use_test_registration_mode!("approved")
+
       school = insert_school!()
       grade = insert_grade!(11)
       batch = insert_nvs_batch!(11, "engineering")
@@ -2034,6 +2065,8 @@ defmodule DbserviceWeb.LmsStudentUpdateControllerTest do
     end
 
     test "profile-only edits do not rederive identity or enrollments", %{conn: conn} do
+      use_test_registration_mode!("approved")
+
       school = insert_school!()
       grade = insert_grade!(11)
       batch = insert_nvs_batch!(11, "engineering")
@@ -2059,6 +2092,8 @@ defmodule DbserviceWeb.LmsStudentUpdateControllerTest do
     end
 
     test "rejects a student without a current NVS enrollment", %{conn: conn} do
+      use_test_registration_mode!("approved")
+
       school = insert_school!()
       grade = insert_grade!(11)
       batch = insert_nvs_batch!(11, "engineering")
@@ -2085,6 +2120,8 @@ defmodule DbserviceWeb.LmsStudentUpdateControllerTest do
     end
 
     test "allows a profile-only edit even with multiple current batches", %{conn: conn} do
+      use_test_registration_mode!("approved")
+
       # "One batch per program per student" is a business invariant owned by the
       # LMS, not the schema — so the update service must not block a harmless
       # profile-only edit just because the student has more than one current
@@ -2113,6 +2150,8 @@ defmodule DbserviceWeb.LmsStudentUpdateControllerTest do
 
     test "rejects a grade/stream reassignment when multiple current batches are ambiguous",
          %{conn: conn} do
+      use_test_registration_mode!("approved")
+
       # The single-batch requirement still applies where it is actually needed:
       # resolving which current batch to move the student off during a
       # grade/stream change.
@@ -2138,6 +2177,8 @@ defmodule DbserviceWeb.LmsStudentUpdateControllerTest do
     end
 
     test "returns 422 for invalid editable enum values", %{conn: conn} do
+      use_test_registration_mode!("approved")
+
       school = insert_school!()
       grade = insert_grade!(11)
       batch = insert_nvs_batch!(11, "engineering")
@@ -2172,6 +2213,8 @@ defmodule DbserviceWeb.LmsStudentUpdateControllerTest do
     end
 
     test "rejects invalid stream values without clearing the stored stream", %{conn: conn} do
+      use_test_registration_mode!("approved")
+
       school = insert_school!()
       grade = insert_grade!(11)
       batch = insert_nvs_batch!(11, "engineering")
@@ -2194,6 +2237,8 @@ defmodule DbserviceWeb.LmsStudentUpdateControllerTest do
     end
 
     test "rejects null canonical enum inputs", %{conn: conn} do
+      use_test_registration_mode!("approved")
+
       school = insert_school!()
       grade = insert_grade!(11)
       batch = insert_nvs_batch!(11, "engineering")
@@ -2224,6 +2269,8 @@ defmodule DbserviceWeb.LmsStudentUpdateControllerTest do
     end
 
     test "rejects a category that does not match the resulting CWSN status", %{conn: conn} do
+      use_test_registration_mode!("approved")
+
       school = insert_school!()
       grade = insert_grade!(11)
       batch = insert_nvs_batch!(11, "engineering")
@@ -2247,6 +2294,8 @@ defmodule DbserviceWeb.LmsStudentUpdateControllerTest do
     end
 
     test "rejects invalid phone and DOB values", %{conn: conn} do
+      use_test_registration_mode!("approved")
+
       school = insert_school!()
       grade = insert_grade!(11)
       batch = insert_nvs_batch!(11, "engineering")
@@ -2281,6 +2330,8 @@ defmodule DbserviceWeb.LmsStudentUpdateControllerTest do
     end
 
     test "normalizes day-first DOB edits", %{conn: conn} do
+      use_test_registration_mode!("approved")
+
       school = insert_school!()
       grade = insert_grade!(11)
       batch = insert_nvs_batch!(11, "engineering")
@@ -2301,6 +2352,8 @@ defmodule DbserviceWeb.LmsStudentUpdateControllerTest do
     end
 
     test "rejects every locked identity field even when PEN is currently null", %{conn: conn} do
+      use_test_registration_mode!("approved")
+
       school = insert_school!()
       grade = insert_grade!(11)
       batch = insert_nvs_batch!(11, "engineering")
@@ -2336,6 +2389,8 @@ defmodule DbserviceWeb.LmsStudentUpdateControllerTest do
     end
 
     test "rejects fields outside the PRD editable contract", %{conn: conn} do
+      use_test_registration_mode!("approved")
+
       school = insert_school!()
       grade = insert_grade!(11)
       batch = insert_nvs_batch!(11, "engineering")
@@ -2360,6 +2415,8 @@ defmodule DbserviceWeb.LmsStudentUpdateControllerTest do
     test "rejects G10 board edits when the locked G10 roll is invalid for the new board", %{
       conn: conn
     } do
+      use_test_registration_mode!("approved")
+
       school = insert_school!()
       grade = insert_grade!(11)
       batch = insert_nvs_batch!(11, "engineering")
@@ -2387,6 +2444,8 @@ defmodule DbserviceWeb.LmsStudentUpdateControllerTest do
     end
 
     test "stores canonical Others board as null", %{conn: conn} do
+      use_test_registration_mode!("approved")
+
       school = insert_school!()
       grade = insert_grade!(11)
       batch = insert_nvs_batch!(11, "engineering")
@@ -2412,6 +2471,8 @@ defmodule DbserviceWeb.LmsStudentUpdateControllerTest do
     end
 
     test "trims G10 board before validating an edit", %{conn: conn} do
+      use_test_registration_mode!("approved")
+
       school = insert_school!()
       grade = insert_grade!(11)
       batch = insert_nvs_batch!(11, "engineering")
@@ -2432,6 +2493,8 @@ defmodule DbserviceWeb.LmsStudentUpdateControllerTest do
     end
 
     test "rejects Others board when the locked roll is not already canonical", %{conn: conn} do
+      use_test_registration_mode!("approved")
+
       school = insert_school!()
       grade = insert_grade!(11)
       batch = insert_nvs_batch!(11, "engineering")
@@ -2458,6 +2521,8 @@ defmodule DbserviceWeb.LmsStudentUpdateControllerTest do
     end
 
     test "stores canonical CBSE, CWSN category, and Other gender values", %{conn: conn} do
+      use_test_registration_mode!("approved")
+
       school = insert_school!()
       grade = insert_grade!(11)
       batch = insert_nvs_batch!(11, "engineering")
@@ -2493,6 +2558,8 @@ defmodule DbserviceWeb.LmsStudentUpdateControllerTest do
     end
 
     test "rejects a board outside the canonical edit values", %{conn: conn} do
+      use_test_registration_mode!("approved")
+
       school = insert_school!()
       grade = insert_grade!(11)
       batch = insert_nvs_batch!(11, "engineering")
@@ -2515,6 +2582,8 @@ defmodule DbserviceWeb.LmsStudentUpdateControllerTest do
     test "grade edits atomically update derived identity, grade enrollment, and batch", %{
       conn: conn
     } do
+      use_test_registration_mode!("approved")
+
       school = insert_school!()
       grade11 = insert_grade!(11)
       grade12 = insert_grade!(12)
@@ -2568,6 +2637,8 @@ defmodule DbserviceWeb.LmsStudentUpdateControllerTest do
     end
 
     test "NDA stream edits atomically update stream and derived batch", %{conn: conn} do
+      use_test_registration_mode!("approved")
+
       school = insert_school!()
       grade = insert_grade!(11)
       old_batch = insert_nvs_batch!(11, "engineering")
@@ -2599,6 +2670,8 @@ defmodule DbserviceWeb.LmsStudentUpdateControllerTest do
     end
 
     test "stream edits leave another program's current batch untouched", %{conn: conn} do
+      use_test_registration_mode!("approved")
+
       school = insert_school!()
       grade = insert_grade!(11)
       old_batch = insert_nvs_batch!(11, "engineering")
@@ -2627,6 +2700,8 @@ defmodule DbserviceWeb.LmsStudentUpdateControllerTest do
     end
 
     test "grade edits derive graduating year from academic year", %{conn: conn} do
+      use_test_registration_mode!("approved")
+
       school = insert_school!()
       grade11 = insert_grade!(11)
       insert_grade!(12)
@@ -2651,6 +2726,8 @@ defmodule DbserviceWeb.LmsStudentUpdateControllerTest do
     end
 
     test "stream-only edit preserves legacy Student ID when G10 roll is absent", %{conn: conn} do
+      use_test_registration_mode!("approved")
+
       school = insert_school!()
       grade = insert_grade!(11)
       old_batch = insert_nvs_batch!(11, "engineering")
@@ -2679,6 +2756,8 @@ defmodule DbserviceWeb.LmsStudentUpdateControllerTest do
     end
 
     test "blank last name does not create a false changed field when already nil", %{conn: conn} do
+      use_test_registration_mode!("approved")
+
       school = insert_school!()
       grade = insert_grade!(11)
       batch = insert_nvs_batch!(11, "engineering")
@@ -2704,6 +2783,8 @@ defmodule DbserviceWeb.LmsStudentUpdateControllerTest do
          %{
            conn: conn
          } do
+      use_test_registration_mode!("approved")
+
       school = insert_school!()
       grade11 = insert_grade!(11)
       insert_grade!(12)
@@ -2733,6 +2814,8 @@ defmodule DbserviceWeb.LmsStudentUpdateControllerTest do
     end
 
     test "audit validation failure rolls back profile and NVS enrollment changes", %{conn: conn} do
+      use_test_registration_mode!("approved")
+
       school = insert_school!()
       grade = insert_grade!(11)
       old_batch = insert_nvs_batch!(11, "engineering")
@@ -2759,6 +2842,8 @@ defmodule DbserviceWeb.LmsStudentUpdateControllerTest do
     end
 
     test "missing actor metadata rolls back the update", %{conn: conn} do
+      use_test_registration_mode!("approved")
+
       school = insert_school!()
       grade = insert_grade!(11)
       batch = insert_nvs_batch!(11, "engineering")
@@ -2779,6 +2864,8 @@ defmodule DbserviceWeb.LmsStudentUpdateControllerTest do
     end
 
     test "rejects stream edits when batch lookup is not exactly one match", %{conn: conn} do
+      use_test_registration_mode!("approved")
+
       school = insert_school!()
       grade = insert_grade!(11)
       old_batch = insert_nvs_batch!(11, "engineering")
@@ -2821,6 +2908,8 @@ defmodule DbserviceWeb.LmsStudentUpdateControllerTest do
     test "rejects a target batch without a batch group and rolls back profile changes", %{
       conn: conn
     } do
+      use_test_registration_mode!("approved")
+
       school = insert_school!()
       grade = insert_grade!(11)
       old_batch = insert_nvs_batch!(11, "engineering")
@@ -2845,6 +2934,11 @@ defmodule DbserviceWeb.LmsStudentUpdateControllerTest do
       assert current_program_enrollment(user.id, 64).group_id == old_batch.id
       assert Repo.aggregate(Dbservice.LmsStudentWriteAudit, :count, :id) == 0
     end
+  end
+
+  defp use_test_registration_mode!(mode) do
+    :ok = LmsStudentRegistrationMode.put_test_active_mode(mode)
+    on_exit(fn -> LmsStudentRegistrationMode.put_test_active_mode(nil) end)
   end
 
   defp lms_update(conn, student_id, params) do

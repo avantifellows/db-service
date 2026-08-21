@@ -25,7 +25,7 @@ defmodule DbserviceWeb.LmsStudentIngestionControllerTest do
       response =
         conn
         |> post("/api/lms/students/bulk-create-with-enrollments", %{
-          "registration_mode" => "phone",
+          "registration_mode" => "approved",
           "registration_mode_version" => "1",
           "rows" => "not-a-list",
           "school" => %{"code" => "missing", "udise_code" => "invalid"}
@@ -81,15 +81,13 @@ defmodule DbserviceWeb.LmsStudentIngestionControllerTest do
       assert Repo.aggregate(Dbservice.LmsStudentWriteAudit, :count, :id) == before_audits
     end
 
-    test "uses the test-only active-mode override without changing production mode", %{conn: conn} do
-      assert LmsStudentRegistrationMode.production_active_mode() == "approved"
-      assert LmsStudentRegistrationMode.active_mode() == "approved"
-
-      on_exit(fn -> LmsStudentRegistrationMode.put_test_active_mode(nil) end)
-      :ok = LmsStudentRegistrationMode.put_test_active_mode("phone")
+    test "ships Phone Registration Mode as the default and keeps the override test-only", %{
+      conn: conn
+    } do
+      assert LmsStudentRegistrationMode.production_active_mode() == "phone"
       assert LmsStudentRegistrationMode.active_mode() == "phone"
 
-      response =
+      default_response =
         conn
         |> post("/api/lms/students/bulk-create-with-enrollments", %{
           "registration_mode" => "phone",
@@ -98,8 +96,36 @@ defmodule DbserviceWeb.LmsStudentIngestionControllerTest do
         })
         |> json_response(400)
 
+      assert default_response["error"] == "rows must be a list"
+
+      mismatch_response =
+        conn
+        |> recycle()
+        |> post("/api/lms/students/bulk-create-with-enrollments", %{
+          "registration_mode" => "approved",
+          "registration_mode_version" => "1",
+          "rows" => "not-a-list"
+        })
+        |> json_response(409)
+
+      assert mismatch_response["error"]["code"] == "registration_mode_mismatch"
+
+      on_exit(fn -> LmsStudentRegistrationMode.put_test_active_mode(nil) end)
+      :ok = LmsStudentRegistrationMode.put_test_active_mode("approved")
+      assert LmsStudentRegistrationMode.active_mode() == "approved"
+
+      response =
+        conn
+        |> recycle()
+        |> post("/api/lms/students/bulk-create-with-enrollments", %{
+          "registration_mode" => "approved",
+          "registration_mode_version" => "1",
+          "rows" => "not-a-list"
+        })
+        |> json_response(400)
+
       assert response["error"] == "rows must be a list"
-      assert LmsStudentRegistrationMode.production_active_mode() == "approved"
+      assert LmsStudentRegistrationMode.production_active_mode() == "phone"
     end
 
     test "creates a phone-mode row with a phone-based Student identity", %{conn: conn} do
@@ -481,6 +507,8 @@ defmodule DbserviceWeb.LmsStudentIngestionControllerTest do
     end
 
     test "keeps Approved-mode silent-ignore behavior for unknown row keys", %{conn: conn} do
+      use_test_registration_mode!("approved")
+
       school = insert_eligible_school!()
       insert_auth_group!("EnableStudents")
       insert_grade!(11)
@@ -614,6 +642,8 @@ defmodule DbserviceWeb.LmsStudentIngestionControllerTest do
     end
 
     test "rejects a row with a non-string phone while processing neighboring rows", %{conn: conn} do
+      use_test_registration_mode!("approved")
+
       school = insert_eligible_school!()
       insert_auth_group!("EnableStudents")
       insert_grade!(11)
@@ -672,6 +702,8 @@ defmodule DbserviceWeb.LmsStudentIngestionControllerTest do
     end
 
     test "rejects an enrollment rollback without leaving partial records", %{conn: conn} do
+      use_test_registration_mode!("approved")
+
       school = insert_eligible_school!()
       insert_auth_group!("EnableStudents")
       insert_grade!(11)
@@ -717,6 +749,8 @@ defmodule DbserviceWeb.LmsStudentIngestionControllerTest do
     end
 
     test "accepts a legacy actor without a linked user id", %{conn: conn} do
+      use_test_registration_mode!("approved")
+
       school = insert_school!(%{program_ids: []})
       ensure_nvs_program!()
       insert_auth_group!("EnableStudents")
@@ -740,6 +774,8 @@ defmodule DbserviceWeb.LmsStudentIngestionControllerTest do
     test "creates a PEN-only student for a current NVS program without Centre eligibility", %{
       conn: conn
     } do
+      use_test_registration_mode!("approved")
+
       school = insert_school!(%{program_ids: []})
       ensure_nvs_program!()
       insert_auth_group!("EnableStudents")
@@ -779,6 +815,8 @@ defmodule DbserviceWeb.LmsStudentIngestionControllerTest do
     end
 
     test "missing actor metadata rolls back student creation", %{conn: conn} do
+      use_test_registration_mode!("approved")
+
       school = insert_school!(%{program_ids: []})
       ensure_nvs_program!()
       insert_auth_group!("EnableStudents")
@@ -810,6 +848,8 @@ defmodule DbserviceWeb.LmsStudentIngestionControllerTest do
     test "requires a valid PEN or Grade 10 Roll Number and does not use APAAR as identity", %{
       conn: conn
     } do
+      use_test_registration_mode!("approved")
+
       school = insert_school!(%{program_ids: []})
       ensure_nvs_program!()
       insert_auth_group!("EnableStudents")
@@ -884,6 +924,8 @@ defmodule DbserviceWeb.LmsStudentIngestionControllerTest do
     end
 
     test "rejects leading-zero phone and CBSE roll numbers", %{conn: conn} do
+      use_test_registration_mode!("approved")
+
       school = insert_school!(%{program_ids: []})
       ensure_nvs_program!()
       insert_auth_group!("EnableStudents")
@@ -916,6 +958,8 @@ defmodule DbserviceWeb.LmsStudentIngestionControllerTest do
     test "normalizes canonical board rolls and derives Student ID from the academic year", %{
       conn: conn
     } do
+      use_test_registration_mode!("approved")
+
       school = insert_school!(%{program_ids: []})
       ensure_nvs_program!()
       insert_auth_group!("EnableStudents")
@@ -977,6 +1021,8 @@ defmodule DbserviceWeb.LmsStudentIngestionControllerTest do
     end
 
     test "rejects an invalid academic year without creating a student", %{conn: conn} do
+      use_test_registration_mode!("approved")
+
       school = insert_school!(%{program_ids: []})
       ensure_nvs_program!()
       insert_auth_group!("EnableStudents")
@@ -1000,6 +1046,8 @@ defmodule DbserviceWeb.LmsStudentIngestionControllerTest do
     end
 
     test "normalizes supported profile values and rejects invalid NVS combinations", %{conn: conn} do
+      use_test_registration_mode!("approved")
+
       school = insert_school!(%{program_ids: []})
       ensure_nvs_program!()
       insert_auth_group!("EnableStudents")
@@ -1064,6 +1112,8 @@ defmodule DbserviceWeb.LmsStudentIngestionControllerTest do
     end
 
     test "returns and audits all identifiers for a created student", %{conn: conn} do
+      use_test_registration_mode!("approved")
+
       school = insert_school!(%{program_ids: []})
       ensure_nvs_program!()
       insert_auth_group!("EnableStudents")
@@ -1132,6 +1182,8 @@ defmodule DbserviceWeb.LmsStudentIngestionControllerTest do
     end
 
     test "rolls back the whole row and returns a safe error when enrollment fails", %{conn: conn} do
+      use_test_registration_mode!("approved")
+
       school = insert_school!(%{program_ids: []})
       ensure_nvs_program!()
       insert_grade!(11)
@@ -1167,6 +1219,8 @@ defmodule DbserviceWeb.LmsStudentIngestionControllerTest do
     end
 
     test "classifies duplicate, existing, and conflicting PEN identifiers safely", %{conn: conn} do
+      use_test_registration_mode!("approved")
+
       school = insert_school!(%{program_ids: []})
       ensure_nvs_program!()
       insert_auth_group!("EnableStudents")
@@ -1233,6 +1287,8 @@ defmodule DbserviceWeb.LmsStudentIngestionControllerTest do
     end
 
     test "rejects a new PEN when the generated Student ID belongs to another PEN", %{conn: conn} do
+      use_test_registration_mode!("approved")
+
       school = insert_school!(%{program_ids: []})
       ensure_nvs_program!()
       insert_auth_group!("EnableStudents")
@@ -1268,6 +1324,8 @@ defmodule DbserviceWeb.LmsStudentIngestionControllerTest do
     end
 
     test "rejects an existing PEN when Grade and roll generate another Student ID", %{conn: conn} do
+      use_test_registration_mode!("approved")
+
       school = insert_school!(%{program_ids: []})
       ensure_nvs_program!()
       insert_auth_group!("EnableStudents")
@@ -1305,6 +1363,8 @@ defmodule DbserviceWeb.LmsStudentIngestionControllerTest do
     test "concurrent retries create one complete row and return already_exists for the loser", %{
       conn: conn
     } do
+      use_test_registration_mode!("approved")
+
       school = insert_school!(%{program_ids: []})
       ensure_nvs_program!()
       insert_auth_group!("EnableStudents")
@@ -1316,6 +1376,7 @@ defmodule DbserviceWeb.LmsStudentIngestionControllerTest do
       tasks =
         Enum.map(1..2, fn _ ->
           Task.async(fn ->
+            :ok = LmsStudentRegistrationMode.put_test_active_mode("approved")
             send(parent, {:ready, self()})
             receive do: (:go -> :ok)
 
@@ -1350,6 +1411,8 @@ defmodule DbserviceWeb.LmsStudentIngestionControllerTest do
     end
 
     test "creates one NVS student with derived identity, enrollments, and audit", %{conn: conn} do
+      use_test_registration_mode!("approved")
+
       school = insert_eligible_school!()
       insert_auth_group!("EnableStudents")
       grade = insert_grade!(11)
@@ -1472,6 +1535,8 @@ defmodule DbserviceWeb.LmsStudentIngestionControllerTest do
     end
 
     test "rejects a program that is not a current NVS program", %{conn: conn} do
+      use_test_registration_mode!("approved")
+
       school = insert_school!(%{program_ids: []})
       insert_auth_group!("EnableStudents")
       insert_grade!(11)
@@ -1493,6 +1558,8 @@ defmodule DbserviceWeb.LmsStudentIngestionControllerTest do
     end
 
     test "marks repeated identifiers in the same upload as duplicate_in_file", %{conn: conn} do
+      use_test_registration_mode!("approved")
+
       school = insert_eligible_school!()
       insert_auth_group!("EnableStudents")
       insert_grade!(11)
@@ -1528,6 +1595,8 @@ defmodule DbserviceWeb.LmsStudentIngestionControllerTest do
     end
 
     test "rejects every row sharing only a PEN Number", %{conn: conn} do
+      use_test_registration_mode!("approved")
+
       school = insert_eligible_school!()
       insert_auth_group!("EnableStudents")
       insert_grade!(11)
@@ -1554,6 +1623,8 @@ defmodule DbserviceWeb.LmsStudentIngestionControllerTest do
     end
 
     test "rejects every row sharing only a Grade 10 Roll no", %{conn: conn} do
+      use_test_registration_mode!("approved")
+
       school = insert_eligible_school!()
       insert_auth_group!("EnableStudents")
       insert_grade!(11)
@@ -1582,6 +1653,8 @@ defmodule DbserviceWeb.LmsStudentIngestionControllerTest do
     end
 
     test "returns already_exists for existing identifiers without updating records", %{conn: conn} do
+      use_test_registration_mode!("approved")
+
       school = insert_eligible_school!()
 
       existing_school =
@@ -1658,6 +1731,8 @@ defmodule DbserviceWeb.LmsStudentIngestionControllerTest do
     end
 
     test "rejects rows when batch lookup is not exactly one match", %{conn: conn} do
+      use_test_registration_mode!("approved")
+
       school = insert_eligible_school!()
       insert_auth_group!("EnableStudents")
       insert_grade!(11)
@@ -1681,6 +1756,8 @@ defmodule DbserviceWeb.LmsStudentIngestionControllerTest do
     end
 
     test "rejects a matching batch without a batch group", %{conn: conn} do
+      use_test_registration_mode!("approved")
+
       school = insert_eligible_school!()
       insert_auth_group!("EnableStudents")
       insert_grade!(11)
@@ -1702,6 +1779,8 @@ defmodule DbserviceWeb.LmsStudentIngestionControllerTest do
     end
 
     test "rejects invalid category rows and audits final upload totals", %{conn: conn} do
+      use_test_registration_mode!("approved")
+
       school = insert_eligible_school!()
       insert_auth_group!("EnableStudents")
       insert_grade!(11)
@@ -1741,6 +1820,8 @@ defmodule DbserviceWeb.LmsStudentIngestionControllerTest do
     end
 
     test "rejects non-CBSE Grade 10 rolls that are not 4 to 10 characters", %{conn: conn} do
+      use_test_registration_mode!("approved")
+
       school = insert_eligible_school!()
       insert_auth_group!("EnableStudents")
       insert_grade!(11)
@@ -1767,6 +1848,8 @@ defmodule DbserviceWeb.LmsStudentIngestionControllerTest do
     end
 
     test "trims accidental whitespace around CBSE and Others boards", %{conn: conn} do
+      use_test_registration_mode!("approved")
+
       school = insert_eligible_school!()
       insert_auth_group!("EnableStudents")
       insert_grade!(11)
@@ -1795,6 +1878,8 @@ defmodule DbserviceWeb.LmsStudentIngestionControllerTest do
     test "normalizes a blank Grade 10 board to null in storage, response, and audit", %{
       conn: conn
     } do
+      use_test_registration_mode!("approved")
+
       school = insert_eligible_school!()
       insert_auth_group!("EnableStudents")
       insert_grade!(11)
@@ -1824,6 +1909,8 @@ defmodule DbserviceWeb.LmsStudentIngestionControllerTest do
     end
 
     test "rejects a supplied Others roll that normalizes to empty", %{conn: conn} do
+      use_test_registration_mode!("approved")
+
       school = insert_eligible_school!()
       insert_auth_group!("EnableStudents")
       insert_grade!(11)
@@ -1846,6 +1933,8 @@ defmodule DbserviceWeb.LmsStudentIngestionControllerTest do
     end
 
     test "rejects whitespace-only PEN when no Grade 10 roll is present", %{conn: conn} do
+      use_test_registration_mode!("approved")
+
       school = insert_eligible_school!()
       insert_auth_group!("EnableStudents")
       insert_grade!(11)
@@ -1872,6 +1961,8 @@ defmodule DbserviceWeb.LmsStudentIngestionControllerTest do
     end
 
     test "rejects rows when multiple batches match grade and stream", %{conn: conn} do
+      use_test_registration_mode!("approved")
+
       school = insert_eligible_school!()
       insert_auth_group!("EnableStudents")
       insert_grade!(11)
@@ -1923,6 +2014,11 @@ defmodule DbserviceWeb.LmsStudentIngestionControllerTest do
 
       assert {"has already been taken", _} = changeset.errors[:apaar_id]
     end
+  end
+
+  defp use_test_registration_mode!(mode) do
+    :ok = LmsStudentRegistrationMode.put_test_active_mode(mode)
+    on_exit(fn -> LmsStudentRegistrationMode.put_test_active_mode(nil) end)
   end
 
   defp payload(school, rows) do
