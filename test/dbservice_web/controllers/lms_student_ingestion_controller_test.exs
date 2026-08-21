@@ -102,6 +102,517 @@ defmodule DbserviceWeb.LmsStudentIngestionControllerTest do
       assert LmsStudentRegistrationMode.production_active_mode() == "approved"
     end
 
+    test "creates a phone-mode row with a phone-based Student identity", %{conn: conn} do
+      school = insert_eligible_school!()
+      insert_auth_group!("EnableStudents")
+      insert_grade!(11)
+      insert_nvs_batch!(11, "engineering")
+
+      on_exit(fn -> LmsStudentRegistrationMode.put_test_active_mode(nil) end)
+      :ok = LmsStudentRegistrationMode.put_test_active_mode("phone")
+
+      row =
+        valid_row()
+        |> Map.drop(["pen_number", "g10_roll_no", "annual_family_income"])
+        |> Map.put("phone", " 9876543210 ")
+
+      response =
+        conn
+        |> post(
+          "/api/lms/students/bulk-create-with-enrollments",
+          payload(school, [row]) |> Map.put("registration_mode", "phone")
+        )
+        |> json_response(200)
+
+      assert response["totals"] == %{
+               "total" => 1,
+               "created" => 1,
+               "duplicate_in_file" => 0,
+               "already_exists" => 0,
+               "rejected" => 0
+             }
+
+      assert [%{"status" => "created", "normalized" => normalized}] = response["results"]
+      assert normalized["phone"] == "9876543210"
+      assert normalized["student_id"] == "9876543210"
+      assert normalized["g12_graduating_year"] == 2028
+
+      student = Repo.get_by!(Student, student_id: "9876543210")
+      assert student.g12_graduating_year == 2028
+      assert Repo.get!(User, student.user_id).phone == "9876543210"
+
+      enrollment_count =
+        Repo.aggregate(
+          from(e in EnrollmentRecord, where: e.user_id == ^student.user_id),
+          :count,
+          :id
+        )
+
+      group_user_count =
+        Repo.aggregate(
+          from(gu in Dbservice.Groups.GroupUser, where: gu.user_id == ^student.user_id),
+          :count,
+          :id
+        )
+
+      assert enrollment_count == 4
+      assert group_user_count == 4
+
+      audit =
+        Repo.one!(
+          from(a in Dbservice.LmsStudentWriteAudit,
+            where: a.row_number == 2,
+            select: a
+          )
+        )
+
+      assert audit.created_values["phone"] == "9876543210"
+      assert audit.created_values["student_id"] == "9876543210"
+    end
+
+    test "rolls back the phone-mode graph when its audit is invalid", %{conn: conn} do
+      school = insert_eligible_school!()
+      insert_auth_group!("EnableStudents")
+      insert_grade!(11)
+      insert_nvs_batch!(11, "engineering")
+
+      before_users = Repo.aggregate(User, :count, :id)
+      before_students = Repo.aggregate(Student, :count, :id)
+      before_enrollments = Repo.aggregate(EnrollmentRecord, :count, :id)
+      before_group_users = Repo.aggregate(Dbservice.Groups.GroupUser, :count, :id)
+      before_audits = Repo.aggregate(Dbservice.LmsStudentWriteAudit, :count, :id)
+
+      request =
+        payload(school, [phone_row("9876543210", %{})])
+        |> Map.put("registration_mode", "phone")
+        |> put_in(["actor", "email"], nil)
+
+      on_exit(fn -> LmsStudentRegistrationMode.put_test_active_mode(nil) end)
+      :ok = LmsStudentRegistrationMode.put_test_active_mode("phone")
+
+      response =
+        conn
+        |> post("/api/lms/students/bulk-create-with-enrollments", request)
+        |> json_response(200)
+
+      assert response["totals"]["rejected"] == 1
+      assert Repo.aggregate(User, :count, :id) == before_users
+      assert Repo.aggregate(Student, :count, :id) == before_students
+      assert Repo.aggregate(EnrollmentRecord, :count, :id) == before_enrollments
+      assert Repo.aggregate(Dbservice.Groups.GroupUser, :count, :id) == before_group_users
+      assert Repo.aggregate(Dbservice.LmsStudentWriteAudit, :count, :id) == before_audits
+      refute Repo.get_by(Student, student_id: "9876543210")
+    end
+
+    test "classifies phone matches by School and EnableStudents scope", %{conn: conn} do
+      school = insert_eligible_school!()
+
+      other_school =
+        insert_school!(%{
+          code: "JNV999",
+          name: "JNV Other",
+          udise_code: "99999999999",
+          district_code: "D999",
+          district: "Jaipur",
+          state_code: "RJ",
+          state: "Rajasthan"
+        })
+
+      enable_students = insert_auth_group!("EnableStudents")
+      other_auth_group = insert_auth_group!("OtherStudents")
+      grade = insert_grade!(11)
+      batch = insert_nvs_batch!(11, "engineering")
+
+      {same_school_user, same_school_student} =
+        Dbservice.UsersFixtures.student_fixture(%{
+          student_id: "9876543210",
+          grade_id: grade.id,
+          stream: "engineering"
+        })
+
+      {other_school_user, other_school_student} =
+        Dbservice.UsersFixtures.student_fixture(%{
+          student_id: "9876543211",
+          grade_id: grade.id,
+          stream: "engineering"
+        })
+
+      {different_group_user, _different_group_student} =
+        Dbservice.UsersFixtures.student_fixture(%{
+          student_id: "9876543212",
+          grade_id: grade.id,
+          stream: "engineering"
+        })
+
+      Repo.update!(Ecto.Changeset.change(same_school_user, phone: "9876543210"))
+      Repo.update!(Ecto.Changeset.change(other_school_user, phone: "9876543211"))
+      Repo.update!(Ecto.Changeset.change(different_group_user, phone: "9876543212"))
+
+      enroll_existing_student!(same_school_user, school, batch, grade, enable_students)
+      enroll_existing_student!(other_school_user, other_school, batch, grade, enable_students)
+      enroll_auth_group_only!(different_group_user, other_auth_group)
+
+      on_exit(fn -> LmsStudentRegistrationMode.put_test_active_mode(nil) end)
+      :ok = LmsStudentRegistrationMode.put_test_active_mode("phone")
+
+      response =
+        conn
+        |> post(
+          "/api/lms/students/bulk-create-with-enrollments",
+          payload(school, [
+            phone_row("9876543210", %{"row_number" => 2}),
+            phone_row("9876543211", %{"row_number" => 3}),
+            phone_row("9876543212", %{"row_number" => 4})
+          ])
+          |> Map.put("registration_mode", "phone")
+        )
+        |> json_response(200)
+
+      assert response["totals"] == %{
+               "total" => 3,
+               "created" => 1,
+               "duplicate_in_file" => 0,
+               "already_exists" => 1,
+               "rejected" => 1
+             }
+
+      assert Enum.map(response["results"], & &1["status"]) == [
+               "already_exists",
+               "rejected",
+               "created"
+             ]
+
+      same_match = Enum.at(response["results"], 0)["existing_match"]
+      other_match = Enum.at(response["results"], 1)["existing_match"]
+
+      assert Map.keys(same_match) |> Enum.sort() ==
+               ~w(district grade program school_code school_name state stream udise_code)
+
+      assert same_match == %{
+               "school_code" => school.code,
+               "school_name" => school.name,
+               "udise_code" => school.udise_code,
+               "district" => school.district,
+               "state" => school.state,
+               "grade" => 11,
+               "program" => "JNV NVS",
+               "stream" => "engineering"
+             }
+
+      assert other_match["school_code"] == other_school.code
+      refute Map.has_key?(other_match, "student_pk_id")
+      refute Map.has_key?(other_match, "user_id")
+      refute Map.has_key?(other_match, "student_id")
+      refute Map.has_key?(other_match, "phone")
+      refute Map.has_key?(other_match, "pen_number")
+      refute Map.has_key?(other_match, "g10_roll_no")
+
+      assert Repo.aggregate(
+               from(s in Student, where: s.student_id == "9876543212"),
+               :count,
+               :id
+             ) == 2
+
+      assert Repo.get!(Student, same_school_student.id).student_id == "9876543210"
+      assert Repo.get!(Student, other_school_student.id).student_id == "9876543211"
+    end
+
+    test "rejects every row sharing a normalized phone before any write", %{conn: conn} do
+      school = insert_eligible_school!()
+      insert_auth_group!("EnableStudents")
+      insert_grade!(11)
+      insert_nvs_batch!(11, "engineering")
+
+      before_students = Repo.aggregate(Student, :count, :id)
+      before_audits = Repo.aggregate(Dbservice.LmsStudentWriteAudit, :count, :id)
+
+      on_exit(fn -> LmsStudentRegistrationMode.put_test_active_mode(nil) end)
+      :ok = LmsStudentRegistrationMode.put_test_active_mode("phone")
+
+      response =
+        conn
+        |> post(
+          "/api/lms/students/bulk-create-with-enrollments",
+          payload(school, [
+            phone_row(" 9876543210 ", %{"row_number" => 2}),
+            phone_row("9876543210", %{"row_number" => 3})
+          ])
+          |> Map.put("registration_mode", "phone")
+        )
+        |> json_response(200)
+
+      assert response["totals"] == %{
+               "total" => 2,
+               "created" => 0,
+               "duplicate_in_file" => 2,
+               "already_exists" => 0,
+               "rejected" => 0
+             }
+
+      assert Enum.map(response["results"], & &1["status"]) == [
+               "duplicate_in_file",
+               "duplicate_in_file"
+             ]
+
+      assert Enum.map(response["results"], & &1["duplicate_identifiers"]) == [
+               ["Phone"],
+               ["Phone"]
+             ]
+
+      assert Repo.aggregate(Student, :count, :id) == before_students
+      assert Repo.aggregate(Dbservice.LmsStudentWriteAudit, :count, :id) == before_audits
+    end
+
+    test "finds historical EnableStudents ownership after program dropout", %{conn: conn} do
+      school = insert_eligible_school!()
+      enable_students = insert_auth_group!("EnableStudents")
+      grade = insert_grade!(11)
+      batch = insert_nvs_batch!(11, "engineering")
+
+      {user, student} =
+        Dbservice.UsersFixtures.student_fixture(%{
+          student_id: "9876543210",
+          grade_id: grade.id,
+          stream: "engineering",
+          status: "dropout"
+        })
+
+      Repo.update!(Ecto.Changeset.change(user, phone: "9876543210"))
+      enroll_existing_student!(user, school, batch, grade, enable_students)
+
+      from(e in EnrollmentRecord, where: e.user_id == ^user.id)
+      |> Repo.update_all(set: [is_current: false, end_date: ~D[2026-08-01]])
+
+      from(gu in Dbservice.Groups.GroupUser,
+        join: g in Group,
+        on: g.id == gu.group_id,
+        where: gu.user_id == ^user.id and g.type == "batch" and g.child_id == ^batch.id
+      )
+      |> Repo.delete_all()
+
+      on_exit(fn -> LmsStudentRegistrationMode.put_test_active_mode(nil) end)
+      :ok = LmsStudentRegistrationMode.put_test_active_mode("phone")
+
+      response =
+        conn
+        |> post(
+          "/api/lms/students/bulk-create-with-enrollments",
+          payload(school, [phone_row("9876543210", %{})])
+          |> Map.put("registration_mode", "phone")
+        )
+        |> json_response(200)
+
+      assert response["totals"]["already_exists"] == 1
+      assert hd(response["results"])["existing_match"]["school_code"] == school.code
+      assert Repo.aggregate(Student, :count, :id) == 1
+      assert Repo.get!(Student, student.id).status == "dropout"
+    end
+
+    test "enforces the phone-mode field and phone validation gates per row", %{conn: conn} do
+      school = insert_eligible_school!()
+      insert_auth_group!("EnableStudents")
+      insert_grade!(11)
+      insert_nvs_batch!(11, "engineering")
+
+      on_exit(fn -> LmsStudentRegistrationMode.put_test_active_mode(nil) end)
+      :ok = LmsStudentRegistrationMode.put_test_active_mode("phone")
+
+      restricted_row =
+        phone_row("9876543201", %{"row_number" => 2})
+        |> Map.put("pen_number", "")
+
+      unknown_row =
+        phone_row("9876543202", %{"row_number" => 3})
+        |> Map.put("legacy_key", "ignored in approved mode only")
+
+      response =
+        conn
+        |> post(
+          "/api/lms/students/bulk-create-with-enrollments",
+          payload(school, [
+            restricted_row,
+            unknown_row,
+            phone_row("5123456789", %{"row_number" => 4}),
+            phone_row("987-654-3205", %{"row_number" => 5}),
+            phone_row(9_876_543_206, %{"row_number" => 6}),
+            phone_row(" 9876543207 ", %{"row_number" => 7})
+          ])
+          |> Map.put("registration_mode", "phone")
+        )
+        |> json_response(200)
+
+      assert response["totals"] == %{
+               "total" => 6,
+               "created" => 1,
+               "duplicate_in_file" => 0,
+               "already_exists" => 0,
+               "rejected" => 5
+             }
+
+      assert Enum.map(response["results"], & &1["status"]) == [
+               "rejected",
+               "rejected",
+               "rejected",
+               "rejected",
+               "rejected",
+               "created"
+             ]
+
+      assert Enum.at(response["results"], 0)["row_errors"] == [
+               "Restricted fields are not allowed in phone mode: pen_number"
+             ]
+
+      assert Enum.at(response["results"], 1)["row_errors"] == [
+               "Unknown fields are not allowed in phone mode: legacy_key"
+             ]
+
+      created_values =
+        Repo.one!(
+          from(a in Dbservice.LmsStudentWriteAudit,
+            where: a.row_number == 7,
+            select: a.created_values
+          )
+        )
+
+      refute Map.has_key?(created_values, "pen_number")
+      refute Map.has_key?(created_values, "g10_roll_no")
+      refute Map.has_key?(created_values, "annual_family_income")
+      assert created_values["phone"] == "9876543207"
+    end
+
+    test "keeps Approved-mode silent-ignore behavior for unknown row keys", %{conn: conn} do
+      school = insert_eligible_school!()
+      insert_auth_group!("EnableStudents")
+      insert_grade!(11)
+      insert_nvs_batch!(11, "engineering")
+
+      response =
+        conn
+        |> post(
+          "/api/lms/students/bulk-create-with-enrollments",
+          payload(school, [Map.put(valid_row(), "legacy_key", "ignored")])
+        )
+        |> json_response(200)
+
+      assert response["totals"]["created"] == 1
+      assert Repo.get_by!(Student, student_id: "202812345678")
+      refute Map.has_key?(hd(response["results"])["normalized"], "legacy_key")
+    end
+
+    test "rejects a derived Student ID that does not match the canonical phone", %{conn: conn} do
+      school = insert_eligible_school!()
+      insert_auth_group!("EnableStudents")
+      insert_grade!(11)
+      insert_nvs_batch!(11, "engineering")
+
+      on_exit(fn -> LmsStudentRegistrationMode.put_test_active_mode(nil) end)
+      :ok = LmsStudentRegistrationMode.put_test_active_mode("phone")
+
+      response =
+        conn
+        |> post(
+          "/api/lms/students/bulk-create-with-enrollments",
+          payload(school, [
+            phone_row("9876543210", %{"student_id" => "9876543211"})
+          ])
+          |> Map.put("registration_mode", "phone")
+        )
+        |> json_response(200)
+
+      assert response["totals"]["rejected"] == 1
+
+      assert response["results"] |> hd() |> Map.get("row_errors") == [
+               "Student ID must match the normalized phone number"
+             ]
+
+      assert Repo.aggregate(Student, :count, :id) == 0
+      assert Repo.aggregate(Dbservice.LmsStudentWriteAudit, :count, :id) == 0
+    end
+
+    test "passes enrollment dates through and derives graduating years for both grades", %{
+      conn: conn
+    } do
+      school = insert_eligible_school!()
+      insert_auth_group!("EnableStudents")
+      grade_11 = insert_grade!(11)
+      grade_12 = insert_grade!(12)
+      batch_11 = insert_nvs_batch!(11, "engineering")
+
+      batch_12 =
+        insert_nvs_batch!(12, "engineering")
+        |> Ecto.Changeset.change(batch_id: "EnableStudents_TP_2028_engg_A002")
+        |> Repo.update!()
+
+      on_exit(fn -> LmsStudentRegistrationMode.put_test_active_mode(nil) end)
+      :ok = LmsStudentRegistrationMode.put_test_active_mode("phone")
+
+      first_response =
+        conn
+        |> post(
+          "/api/lms/students/bulk-create-with-enrollments",
+          payload(school, [phone_row("9876543210", %{"grade" => 11})])
+          |> Map.merge(%{
+            "registration_mode" => "phone",
+            "academic_year" => "2025-2026",
+            "start_date" => "2026-03-31"
+          })
+        )
+        |> json_response(200)
+
+      assert first_response["totals"]["created"] == 1
+      first_student = Repo.get_by!(Student, student_id: "9876543210")
+      assert first_student.g12_graduating_year == 2027
+
+      first_enrollments =
+        Repo.all(
+          from(e in EnrollmentRecord,
+            where:
+              e.user_id == ^first_student.user_id and e.group_type in ["school", "batch", "grade"],
+            select: {e.group_type, e.group_id, e.academic_year, e.start_date}
+          )
+        )
+
+      assert {"school", school.id, "2025-2026", ~D[2026-03-31]} in first_enrollments
+      assert {"batch", batch_11.id, "2025-2026", ~D[2026-03-31]} in first_enrollments
+      assert {"grade", grade_11.id, "2025-2026", ~D[2026-03-31]} in first_enrollments
+
+      second_response =
+        conn
+        |> recycle()
+        |> post(
+          "/api/lms/students/bulk-create-with-enrollments",
+          payload(school, [phone_row("9876543211", %{"grade" => 12})])
+          |> Map.merge(%{
+            "registration_mode" => "phone",
+            "academic_year" => "2026-2027",
+            "start_date" => "2026-04-01"
+          })
+        )
+        |> json_response(200)
+
+      assert second_response["totals"]["created"] == 1
+      second_student = Repo.get_by!(Student, student_id: "9876543211")
+      assert second_student.g12_graduating_year == 2027
+
+      assert Repo.one!(
+               from(e in EnrollmentRecord,
+                 where:
+                   e.user_id == ^second_student.user_id and e.group_type == "batch" and
+                     e.group_id == ^batch_12.id,
+                 select: {e.academic_year, e.start_date}
+               )
+             ) == {"2026-2027", ~D[2026-04-01]}
+
+      assert Repo.one!(
+               from(e in EnrollmentRecord,
+                 where:
+                   e.user_id == ^second_student.user_id and e.group_type == "grade" and
+                     e.group_id == ^grade_12.id,
+                 select: {e.academic_year, e.start_date}
+               )
+             ) == {"2026-2027", ~D[2026-04-01]}
+    end
+
     test "rejects a row with a non-string phone while processing neighboring rows", %{conn: conn} do
       school = insert_eligible_school!()
       insert_auth_group!("EnableStudents")
@@ -1456,6 +1967,13 @@ defmodule DbserviceWeb.LmsStudentIngestionControllerTest do
     )
   end
 
+  defp phone_row(phone, attrs) do
+    valid_row()
+    |> Map.drop(["pen_number", "g10_roll_no", "annual_family_income"])
+    |> Map.merge(%{"phone" => phone})
+    |> Map.merge(attrs)
+  end
+
   defp valid_pen_row(pen_number, attrs) do
     valid_row(
       Map.merge(
@@ -1561,6 +2079,35 @@ defmodule DbserviceWeb.LmsStudentIngestionControllerTest do
           fragment("?->>'stream' = ?", b.metadata, ^stream)
     )
     |> Repo.all()
+  end
+
+  defp enroll_existing_student!(user, school, batch, grade, auth_group) do
+    auth_group_group = Repo.get_by!(Group, type: "auth_group", child_id: auth_group.id)
+    school_group = Repo.get_by!(Group, type: "school", child_id: school.id)
+    batch_group = Repo.get_by!(Group, type: "batch", child_id: batch.id)
+    grade_group = Repo.get_by!(Group, type: "grade", child_id: grade.id)
+
+    for {group, group_type, academic_year} <- [
+          {auth_group_group, "auth_group", nil},
+          {school_group, "school", "2026-2027"},
+          {batch_group, "batch", "2026-2027"},
+          {grade_group, "grade", "2026-2027"}
+        ] do
+      Repo.insert!(%Dbservice.Groups.GroupUser{user_id: user.id, group_id: group.id})
+
+      Repo.insert!(%EnrollmentRecord{
+        user_id: user.id,
+        group_id: group.child_id,
+        group_type: group_type,
+        academic_year: academic_year,
+        start_date: ~D[2026-07-01]
+      })
+    end
+  end
+
+  defp enroll_auth_group_only!(user, auth_group) do
+    group = Repo.get_by!(Group, type: "auth_group", child_id: auth_group.id)
+    Repo.insert!(%Dbservice.Groups.GroupUser{user_id: user.id, group_id: group.id})
   end
 
   defp ensure_group!(type, child_id) do

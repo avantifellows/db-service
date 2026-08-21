@@ -10,6 +10,9 @@ defmodule Dbservice.LmsStudentIngestion do
   alias Dbservice.Grades.Grade
   alias Dbservice.Grades
   alias Dbservice.Groups
+  alias Dbservice.Groups.AuthGroup
+  alias Dbservice.Groups.Group
+  alias Dbservice.Groups.GroupUser
   alias Dbservice.LmsStudentRegistrationMode
   alias Dbservice.LmsStudentWriteAudit
   alias Dbservice.Programs.Program
@@ -29,6 +32,22 @@ defmodule Dbservice.LmsStudentIngestion do
     "g10_roll_no" => "Grade 10 Roll no",
     "student_id" => "Generated Student ID"
   }
+  @phone_allowed_row_keys ~w(
+    row_number
+    grade
+    student_name
+    date_of_birth
+    gender
+    category
+    physically_handicapped
+    g10_board
+    board_stream
+    stream
+    father_name
+    phone
+    student_id
+  )
+  @phone_restricted_row_keys ~w(pen_number g10_roll_no annual_family_income)
   @empty_totals %{
     "created" => 0,
     "duplicate_in_file" => 0,
@@ -43,7 +62,14 @@ defmodule Dbservice.LmsStudentIngestion do
     end
   end
 
-  defp do_bulk_create(%{"rows" => rows} = params) when is_list(rows) do
+  defp do_bulk_create(params) do
+    case LmsStudentRegistrationMode.active_mode() do
+      "phone" -> do_phone_bulk_create(params)
+      _approved -> do_approved_bulk_create(params)
+    end
+  end
+
+  defp do_approved_bulk_create(%{"rows" => rows} = params) when is_list(rows) do
     school = get_school(params)
     program_id = params["program_id"]
 
@@ -75,7 +101,43 @@ defmodule Dbservice.LmsStudentIngestion do
      }}
   end
 
-  defp do_bulk_create(_params), do: {:error, :bad_request, %{"error" => "rows must be a list"}}
+  defp do_approved_bulk_create(_params),
+    do: {:error, :bad_request, %{"error" => "rows must be a list"}}
+
+  defp do_phone_bulk_create(%{"rows" => rows} = params) when is_list(rows) do
+    classified =
+      rows
+      |> Enum.map(&normalize_phone_row(&1, params["academic_year"]))
+      |> classify_phone_rows()
+
+    school = get_school(params)
+    program_id = params["program_id"]
+
+    results_with_audits =
+      classified
+      |> Task.async_stream(
+        &process_phone_row_safely(&1, params, school, program_id),
+        max_concurrency: @row_concurrency,
+        ordered: true,
+        timeout: :infinity
+      )
+      |> Enum.map(fn {:ok, result} -> result end)
+
+    results = Enum.map(results_with_audits, &elem(&1, 0))
+    final_totals = totals(results)
+    audit_ids = results_with_audits |> Enum.map(&elem(&1, 1)) |> Enum.reject(&is_nil/1)
+    update_audit_counts(audit_ids, final_totals)
+
+    {:ok,
+     %{
+       "upload_id" => get_in(params, ["upload", "id"]),
+       "totals" => final_totals,
+       "results" => results
+     }}
+  end
+
+  defp do_phone_bulk_create(_params),
+    do: {:error, :bad_request, %{"error" => "rows must be a list"}}
 
   defp classify_rows(rows) do
     duplicate_keys =
@@ -108,6 +170,321 @@ defmodule Dbservice.LmsStudentIngestion do
           {:process, row}
       end
     end)
+  end
+
+  defp classify_phone_rows(rows) do
+    duplicate_phones =
+      rows
+      |> Enum.map(&get_in(&1, ["normalized", "phone"]))
+      |> Enum.filter(&valid_phone_mode_value?/1)
+      |> Enum.frequencies()
+      |> Enum.filter(fn {_phone, count} -> count > 1 end)
+      |> Enum.map(&elem(&1, 0))
+      |> MapSet.new()
+
+    Enum.map(rows, fn row ->
+      phone = get_in(row, ["normalized", "phone"])
+
+      cond do
+        phone_mode_restricted_keys(row) != [] ->
+          {:skip,
+           rejected(
+             row,
+             [
+               "Restricted fields are not allowed in phone mode: " <>
+                 Enum.join(phone_mode_restricted_keys(row), ", ")
+             ]
+           )}
+
+        phone_mode_unknown_keys(row) != [] ->
+          {:skip,
+           rejected(
+             row,
+             [
+               "Unknown fields are not allowed in phone mode: " <>
+                 Enum.join(phone_mode_unknown_keys(row), ", ")
+             ]
+           )}
+
+        MapSet.member?(duplicate_phones, phone) ->
+          {:skip, duplicate_in_file(row, ["Phone"])}
+
+        true ->
+          {:process, row}
+      end
+    end)
+  end
+
+  defp process_phone_row_safely(classified, params, school, program_id) do
+    try do
+      process_phone_row(classified, params, school, program_id)
+    rescue
+      _error -> phone_row_processing_failed(classified)
+    catch
+      _kind, _reason -> phone_row_processing_failed(classified)
+    end
+  end
+
+  defp process_phone_row({:skip, result}, _params, _school, _program_id), do: {result, nil}
+
+  defp process_phone_row({:process, row}, params, school, program_id) do
+    case classify_phone_row(row, school, program_id) do
+      {:create, row} -> create_row(params, school, row)
+      {:skip, result} -> {result, nil}
+    end
+  end
+
+  defp phone_row_processing_failed({:process, row}) do
+    {rejected(row, ["Student could not be created. Please contact the admin"]), nil}
+  end
+
+  defp phone_row_processing_failed({:skip, result}), do: {result, nil}
+
+  defp classify_phone_row(row, nil, _program_id), do: {:skip, rejected(row, ["School not found"])}
+
+  defp classify_phone_row(row, school, program_id) do
+    with :ok <- validate_phone_value(row),
+         :ok <- validate_phone_student_id_match(row),
+         :ok <- validate_school(row, school, program_id),
+         :ok <- validate_grade(row),
+         :ok <- validate_academic_year(row),
+         :ok <- validate_batch(row, program_id),
+         :ok <- validate_phone_g10_board(row),
+         :ok <- validate_phone_profile(row),
+         {:ok, _existing} <- validate_phone_identifier_match(row, school) do
+      {:create, row}
+    else
+      {:already_exists, existing} -> {:skip, already_exists_phone(row, existing)}
+      {:other_school, existing} -> {:skip, rejected_phone_match(row, existing)}
+      {:error, message} -> {:skip, rejected(row, [message])}
+    end
+  end
+
+  defp normalize_phone_row(row, academic_year) when is_map(row) do
+    grade = to_int(row["grade"])
+    phone = normalize_phone(row["phone"])
+    student_name = normalize_name(row["student_name"])
+    gender = normalize_gender(row["gender"])
+    date_of_birth = normalize_date_of_birth(row["date_of_birth"])
+    g10_board = normalize_g10_board(row["g10_board"])
+    stream = normalize_stream(row["stream"])
+    graduating_year = g12_graduating_year(grade, academic_year)
+
+    row
+    |> Map.take(@phone_allowed_row_keys)
+    |> Map.put("row_number", row["row_number"])
+    |> Map.put("phone_mode_restricted_keys", phone_mode_restricted_keys(row))
+    |> Map.put("phone_mode_unknown_keys", phone_mode_unknown_keys(row))
+    |> Map.put("phone_mode_submitted_student_id", row["student_id"])
+    |> Map.put("normalized", %{
+      "student_name" => student_name,
+      "date_of_birth" => date_of_birth,
+      "gender" => gender,
+      "category" => row["category"],
+      "physically_handicapped" => row["physically_handicapped"],
+      "g10_board" => g10_board,
+      "board_stream" => row["board_stream"],
+      "stream" => stream,
+      "father_name" => normalize_name(row["father_name"]),
+      "phone" => phone,
+      "student_id" => phone,
+      "g12_graduating_year" => graduating_year
+    })
+    |> Map.put("generated_student_id", phone)
+    |> Map.put("registration_mode", "phone")
+    |> Map.put("user", %{
+      "first_name" => student_name,
+      "date_of_birth" => date_of_birth,
+      "gender" => gender,
+      "phone" => phone,
+      "role" => "student"
+    })
+    |> Map.put("student", %{
+      "student_id" => phone,
+      "category" => row["category"],
+      "physically_handicapped" => row["physically_handicapped"],
+      "g10_board" => g10_board,
+      "board_stream" => row["board_stream"],
+      "stream" => stream,
+      "father_name" => normalize_name(row["father_name"]),
+      "g12_graduating_year" => graduating_year,
+      "status" => "enrolled"
+    })
+  end
+
+  defp normalize_phone_row(_row, _academic_year) do
+    %{
+      "row_number" => nil,
+      "normalized" => %{},
+      "generated_student_id" => nil,
+      "phone_mode_restricted_keys" => [],
+      "phone_mode_unknown_keys" => ["row"],
+      "phone_mode_submitted_student_id" => nil,
+      "registration_mode" => "phone",
+      "user" => %{},
+      "student" => %{}
+    }
+  end
+
+  defp phone_mode_restricted_keys(%{"phone_mode_restricted_keys" => keys}) when is_list(keys),
+    do: keys
+
+  defp phone_mode_restricted_keys(row) when is_map(row) do
+    row
+    |> Map.keys()
+    |> Enum.filter(&(&1 in @phone_restricted_row_keys))
+    |> Enum.sort()
+  end
+
+  defp phone_mode_restricted_keys(_row), do: []
+
+  defp phone_mode_unknown_keys(%{"phone_mode_unknown_keys" => keys}) when is_list(keys),
+    do: keys
+
+  defp phone_mode_unknown_keys(row) when is_map(row) do
+    row
+    |> Map.keys()
+    |> Enum.reject(&(&1 in @phone_allowed_row_keys or &1 in @phone_restricted_row_keys))
+    |> Enum.sort()
+  end
+
+  defp phone_mode_unknown_keys(_row), do: ["row"]
+
+  defp normalize_phone(value) when is_binary(value), do: String.trim(value)
+  defp normalize_phone(_value), do: nil
+
+  defp valid_phone_mode_value?(value) when is_binary(value),
+    do: Regex.match?(~r/^[6-9][0-9]{9}$/, value)
+
+  defp valid_phone_mode_value?(_value), do: false
+
+  defp validate_phone_value(row) do
+    if valid_phone_mode_value?(get_in(row, ["normalized", "phone"])),
+      do: :ok,
+      else: {:error, "Parents Phone Number must be exactly 10 digits and start with 6-9"}
+  end
+
+  defp validate_phone_student_id_match(row) do
+    submitted_student_id = row["phone_mode_submitted_student_id"]
+    phone = get_in(row, ["normalized", "phone"])
+
+    cond do
+      submitted_student_id in [nil, ""] -> :ok
+      submitted_student_id == phone -> :ok
+      true -> {:error, "Student ID must match the normalized phone number"}
+    end
+  end
+
+  defp validate_phone_g10_board(row) do
+    case row["g10_board"] do
+      board when is_binary(board) ->
+        if String.trim(board) in ["CBSE", "Others"],
+          do: :ok,
+          else: {:error, "Grade 10 Board must be CBSE or Others"}
+
+      _ ->
+        {:error, "Grade 10 Board must be CBSE or Others"}
+    end
+  end
+
+  defp validate_phone_profile(row) do
+    with :ok <- validate_category_pair(row),
+         :ok <- validate_gender(row),
+         :ok <- validate_phone_value(row) do
+      validate_date_of_birth(row)
+    end
+  end
+
+  defp validate_phone_identifier_match(row, school) do
+    phone = get_in(row, ["normalized", "phone"])
+
+    case find_phone_student(phone) do
+      nil ->
+        {:ok, nil}
+
+      existing ->
+        existing_match = phone_existing_match(existing, school.code)
+
+        if existing_match["school_code"] == school.code,
+          do: {:already_exists, existing_match},
+          else: {:other_school, existing_match}
+    end
+  end
+
+  defp find_phone_student(phone) do
+    from(s in Student,
+      join: gu in GroupUser,
+      on: gu.user_id == s.user_id,
+      join: g in Group,
+      on: g.id == gu.group_id and g.type == "auth_group",
+      join: ag in AuthGroup,
+      on: ag.id == g.child_id and ag.name == ^@auth_group,
+      left_join: e in EnrollmentRecord,
+      on:
+        e.user_id == s.user_id and e.is_current == true and
+          e.group_type in ["school", "batch"],
+      where: s.student_id == ^phone,
+      group_by: s.id,
+      order_by: [desc: count(e.id), desc: s.id],
+      select: s.id
+    )
+    |> Repo.all()
+    |> List.first()
+    |> case do
+      nil -> nil
+      student_id -> Repo.get!(Student, student_id)
+    end
+  end
+
+  defp phone_existing_match(existing, requested_school_code) do
+    school = existing_school(existing.user_id, requested_school_code)
+    grade = optional_get(Grade, existing.grade_id)
+    batch = phone_existing_batch(existing.user_id)
+
+    %{
+      "school_code" => optional_field(school, :code),
+      "school_name" => optional_field(school, :name),
+      "udise_code" => optional_field(school, :udise_code),
+      "district" => optional_field(school, :district),
+      "state" => optional_field(school, :state),
+      "grade" => optional_field(grade, :number),
+      "program" => optional_field(batch, :program),
+      "stream" => optional_field(batch, :stream) || existing.stream
+    }
+  end
+
+  defp phone_existing_batch(user_id) do
+    from(e in EnrollmentRecord,
+      join: b in Batch,
+      on: b.id == e.group_id,
+      join: p in Program,
+      on: p.id == b.program_id,
+      where: e.user_id == ^user_id and e.group_type == "batch",
+      order_by: [
+        desc: e.is_current,
+        desc: fragment("? = ?", p.id, ^@nvs_program_id),
+        desc: e.inserted_at,
+        desc: e.id
+      ],
+      select: %{
+        program: p.name,
+        stream: fragment("?->>'stream'", b.metadata)
+      },
+      limit: 1
+    )
+    |> Repo.one()
+  end
+
+  defp already_exists_phone(row, existing_match) do
+    row
+    |> result("already_exists")
+    |> Map.put("existing_match", existing_match)
+  end
+
+  defp rejected_phone_match(row, existing_match) do
+    row
+    |> rejected(["Phone is already registered in another school"])
+    |> Map.put("existing_match", existing_match)
   end
 
   defp process_row({:skip, result}, _params, _school, _program_id), do: {result, nil}
@@ -192,11 +569,11 @@ defmodule Dbservice.LmsStudentIngestion do
           upload_filename: get_in(params, ["upload", "filename"]),
           row_number: row["row_number"],
           row_counts: @empty_totals,
-          affected_identifiers: audit_identifiers(row, user, student),
+          affected_identifiers: audit_identifiers_for_row(row, user, student),
           created_values:
             row["user"]
             |> Map.merge(row["student"])
-            |> Map.merge(audit_identifiers(row, user, student))
+            |> Map.merge(audit_identifiers_for_row(row, user, student))
             |> Map.merge(%{
               "school_id" => school.id,
               "grade_id" => grade.id,
@@ -606,6 +983,17 @@ defmodule Dbservice.LmsStudentIngestion do
       "g10_roll_no" => get_in(row, ["student", "g10_roll_no"])
     }
   end
+
+  defp audit_identifiers_for_row(%{"registration_mode" => "phone"}, user, student) do
+    %{
+      "student_pk_id" => student.id,
+      "user_id" => user.id,
+      "student_id" => student.student_id
+    }
+  end
+
+  defp audit_identifiers_for_row(row, user, student),
+    do: audit_identifiers(row, user, student)
 
   defp already_exists(row, existing, requested_school_code) do
     user = Repo.get(User, existing.user_id)
