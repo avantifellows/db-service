@@ -15,6 +15,7 @@ defmodule Dbservice.LmsStudentUpdate do
   alias Dbservice.Groups
   alias Dbservice.Groups.GroupUser
   alias Dbservice.LmsStudentIngestion
+  alias Dbservice.LmsStudentRegistrationMode
   alias Dbservice.LmsStudentWriteAudit
   alias Dbservice.Repo
   alias Dbservice.Schools
@@ -48,10 +49,24 @@ defmodule Dbservice.LmsStudentUpdate do
     "udise_code",
     "user_id"
   ]
-  @metadata_fields ["actor", "school", "program_id", "academic_year", "start_date"]
+  @metadata_fields [
+    "actor",
+    "school",
+    "program_id",
+    "academic_year",
+    "start_date",
+    "registration_mode",
+    "registration_mode_version"
+  ]
   @editable_fields @user_fields ++ @student_fields ++ ["grade"]
 
   def update(student_pk_id, params) do
+    with :ok <- LmsStudentRegistrationMode.validate(params) do
+      do_update(student_pk_id, params)
+    end
+  end
+
+  defp do_update(student_pk_id, params) do
     Repo.transaction(fn ->
       with :ok <- reject_locked_fields(params),
            :ok <- reject_unsupported_fields(params),

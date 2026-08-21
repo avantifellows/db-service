@@ -48,7 +48,10 @@ defmodule DbserviceWeb.StudentController do
         |> Map.merge(SwaggerSchemaStudent.verify_student_request())
         |> Map.merge(SwaggerSchemaStudent.verification_result())
         |> Map.merge(SwaggerSchemaStudent.verification_params())
-        |> Map.merge(SwaggerSchemaStudent.student_with_enrollments()),
+        |> Map.merge(SwaggerSchemaStudent.student_with_enrollments())
+        |> Map.merge(SwaggerSchemaStudent.lms_student_bulk_create_request())
+        |> Map.merge(SwaggerSchemaStudent.lms_student_update_request())
+        |> Map.merge(SwaggerSchemaStudent.registration_mode_mismatch_response()),
         %{}
       )
     )
@@ -1073,7 +1076,60 @@ defmodule DbserviceWeb.StudentController do
         conn
         |> put_status(:bad_request)
         |> json(response)
+
+      {:error, :registration_mode_mismatch, %{"status" => status} = error} ->
+        conn
+        |> put_status(status)
+        |> json(%{"error" => Map.delete(error, "status")})
     end
+  end
+
+  swagger_path :lms_bulk_create_with_enrollments do
+    post("/api/lms/students/bulk-create-with-enrollments")
+    summary("Bulk-create LMS students with enrollments")
+    description("Requires the registration-mode handshake before any row processing.")
+
+    parameters do
+      body(
+        :body,
+        Schema.ref(:LmsStudentBulkCreateRequest),
+        "LMS student bulk-create request",
+        required: true
+      )
+    end
+
+    response(200, "OK")
+
+    response(
+      409,
+      "Registration-mode mismatch (error.code = registration_mode_mismatch)",
+      Schema.ref(:RegistrationModeMismatchResponse)
+    )
+  end
+
+  swagger_path :lms_update_with_enrollments do
+    patch("/api/lms/students/{student_id}/update-with-enrollments")
+    summary("Update an LMS student with enrollments")
+    description("Requires the registration-mode handshake before any student processing.")
+
+    parameters do
+      student_id(:path, :integer, "Student database primary key", required: true)
+
+      body(
+        :body,
+        Schema.ref(:LmsStudentUpdateRequest),
+        "LMS student update request",
+        required: true
+      )
+    end
+
+    response(200, "Updated")
+
+    response(
+      409,
+      "Registration-mode mismatch (error.code = registration_mode_mismatch)",
+      Schema.ref(:RegistrationModeMismatchResponse)
+    )
   end
 
   # Validates that required enrollment fields are present

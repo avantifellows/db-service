@@ -605,6 +605,66 @@ defmodule DbserviceWeb.LmsStudentUpdateControllerTest do
   end
 
   describe "PATCH /api/lms/students/:student_id/update-with-enrollments" do
+    test "rejects a registration-mode mismatch before looking up the student", %{conn: conn} do
+      before_students = Repo.aggregate(Student, :count, :id)
+      before_audits = Repo.aggregate(Dbservice.LmsStudentWriteAudit, :count, :id)
+
+      response =
+        conn
+        |> patch("/api/lms/students/999999/update-with-enrollments", %{
+          "registration_mode" => "phone",
+          "registration_mode_version" => "1",
+          "school" => %{"code" => "missing", "udise_code" => "invalid"}
+        })
+        |> json_response(409)
+
+      assert response["error"]["code"] == "registration_mode_mismatch"
+      assert is_binary(response["error"]["message"])
+      assert Map.keys(response) == ["error"]
+      assert Enum.sort(Map.keys(response["error"])) == ["code", "message"]
+      assert Repo.aggregate(Student, :count, :id) == before_students
+      assert Repo.aggregate(Dbservice.LmsStudentWriteAudit, :count, :id) == before_audits
+    end
+
+    test "rejects missing and non-string registration handshake values before any write", %{
+      conn: conn
+    } do
+      before_users = Repo.aggregate(Dbservice.Users.User, :count, :id)
+      before_students = Repo.aggregate(Student, :count, :id)
+      before_audits = Repo.aggregate(Dbservice.LmsStudentWriteAudit, :count, :id)
+
+      malformed_handshakes = [
+        %{"registration_mode_version" => "1"},
+        %{"registration_mode" => "approved"},
+        %{"registration_mode" => "future", "registration_mode_version" => "1"},
+        %{"registration_mode" => "approved", "registration_mode_version" => "2"},
+        %{"registration_mode" => 123, "registration_mode_version" => "1"},
+        %{"registration_mode" => "approved", "registration_mode_version" => 1}
+      ]
+
+      Enum.each(malformed_handshakes, fn handshake ->
+        response =
+          conn
+          |> recycle()
+          |> patch(
+            "/api/lms/students/999999/update-with-enrollments",
+            Map.merge(handshake, %{
+              "school" => %{"code" => "missing", "udise_code" => "invalid"}
+            })
+          )
+          |> json_response(409)
+
+        assert response["error"]["code"] == "registration_mode_mismatch"
+        assert is_binary(response["error"]["message"])
+        assert Enum.sort(Map.keys(response["error"])) == ["code", "message"]
+        refute Map.has_key?(response, "results")
+      end)
+
+      assert Repo.aggregate(Dbservice.Users.User, :count, :id) == before_users
+      assert Repo.aggregate(Student, :count, :id) == before_students
+      assert Repo.aggregate(Dbservice.LmsStudentWriteAudit, :count, :id) == before_audits
+    end
+
     test "updates an NVS student without a Centre or school program_ids", %{conn: conn} do
       school = insert_school!()
       grade = insert_grade!(11)
@@ -616,7 +676,7 @@ defmodule DbserviceWeb.LmsStudentUpdateControllerTest do
       Ecto.Adapters.SQL.query!(Repo, "DELETE FROM centres")
 
       conn =
-        patch(conn, "/api/lms/students/#{student.id}/update-with-enrollments", %{
+        lms_update(conn, student.id, %{
           "actor" => actor(),
           "school" => %{"code" => school.code, "udise_code" => school.udise_code},
           "program_id" => 64,
@@ -641,7 +701,7 @@ defmodule DbserviceWeb.LmsStudentUpdateControllerTest do
       {user, student} = insert_enrolled_student!(school, grade, batch)
 
       conn =
-        patch(conn, "/api/lms/students/#{student.id}/update-with-enrollments", %{
+        lms_update(conn, student.id, %{
           "actor" => actor(),
           "school" => %{"code" => school.code, "udise_code" => school.udise_code},
           "program_id" => arbitrary_program_id,
@@ -662,7 +722,7 @@ defmodule DbserviceWeb.LmsStudentUpdateControllerTest do
       {user, student} = insert_enrolled_student!(school, grade, batch)
 
       conn =
-        patch(conn, "/api/lms/students/#{student.id}/update-with-enrollments", %{
+        lms_update(conn, student.id, %{
           "actor" => actor(),
           "school" => %{
             "code" => other_school.code,
@@ -687,7 +747,7 @@ defmodule DbserviceWeb.LmsStudentUpdateControllerTest do
         insert_enrolled_student!(school, grade, batch, %{pen_number: "12345678901"})
 
       conn =
-        patch(conn, "/api/lms/students/#{student.id}/update-with-enrollments", %{
+        lms_update(conn, student.id, %{
           "actor" => actor(),
           "school" => %{"code" => school.code, "udise_code" => school.udise_code},
           "program_id" => 64,
@@ -748,7 +808,7 @@ defmodule DbserviceWeb.LmsStudentUpdateControllerTest do
         insert_enrolled_student!(school, grade, batch, %{student_id: "LEGACY-ID"})
 
       conn =
-        patch(conn, "/api/lms/students/#{student.id}/update-with-enrollments", %{
+        lms_update(conn, student.id, %{
           "actor" => actor(),
           "school" => %{"code" => school.code, "udise_code" => school.udise_code},
           "program_id" => 64,
@@ -777,7 +837,7 @@ defmodule DbserviceWeb.LmsStudentUpdateControllerTest do
       |> Repo.update_all([])
 
       conn =
-        patch(conn, "/api/lms/students/#{student.id}/update-with-enrollments", %{
+        lms_update(conn, student.id, %{
           "actor" => actor(),
           "school" => %{"code" => school.code, "udise_code" => school.udise_code},
           "program_id" => 64,
@@ -804,7 +864,7 @@ defmodule DbserviceWeb.LmsStudentUpdateControllerTest do
       insert_enrollment!(user.id, extra_batch.id, "batch")
 
       conn =
-        patch(conn, "/api/lms/students/#{student.id}/update-with-enrollments", %{
+        lms_update(conn, student.id, %{
           "actor" => actor(),
           "school" => %{"code" => school.code, "udise_code" => school.udise_code},
           "program_id" => 64,
@@ -830,7 +890,7 @@ defmodule DbserviceWeb.LmsStudentUpdateControllerTest do
       insert_enrollment!(user.id, extra_batch.id, "batch")
 
       conn =
-        patch(conn, "/api/lms/students/#{student.id}/update-with-enrollments", %{
+        lms_update(conn, student.id, %{
           "actor" => actor(),
           "school" => %{"code" => school.code, "udise_code" => school.udise_code},
           "program_id" => 64,
@@ -850,7 +910,7 @@ defmodule DbserviceWeb.LmsStudentUpdateControllerTest do
       {_user, student} = insert_enrolled_student!(school, grade, batch)
 
       conn =
-        patch(conn, "/api/lms/students/#{student.id}/update-with-enrollments", %{
+        lms_update(conn, student.id, %{
           "actor" => actor(),
           "school" => %{"code" => school.code, "udise_code" => school.udise_code},
           "program_id" => 64,
@@ -863,7 +923,7 @@ defmodule DbserviceWeb.LmsStudentUpdateControllerTest do
       assert response["error"]["code"] == "invalid_user_fields"
 
       conn =
-        patch(recycle(conn), "/api/lms/students/#{student.id}/update-with-enrollments", %{
+        lms_update(recycle(conn), student.id, %{
           "actor" => actor(),
           "school" => %{"code" => school.code, "udise_code" => school.udise_code},
           "program_id" => 64,
@@ -884,7 +944,7 @@ defmodule DbserviceWeb.LmsStudentUpdateControllerTest do
       {_user, student} = insert_enrolled_student!(school, grade, batch)
 
       conn =
-        patch(conn, "/api/lms/students/#{student.id}/update-with-enrollments", %{
+        lms_update(conn, student.id, %{
           "actor" => actor(),
           "school" => %{"code" => school.code, "udise_code" => school.udise_code},
           "program_id" => 64,
@@ -915,9 +975,9 @@ defmodule DbserviceWeb.LmsStudentUpdateControllerTest do
 
       for field <- ~w(g10_board gender stream) do
         conn =
-          patch(
+          lms_update(
             recycle(conn),
-            "/api/lms/students/#{student.id}/update-with-enrollments",
+            student.id,
             Map.put(metadata, field, nil)
           )
 
@@ -938,7 +998,7 @@ defmodule DbserviceWeb.LmsStudentUpdateControllerTest do
         insert_enrolled_student!(school, grade, batch, %{physically_handicapped: false})
 
       conn =
-        patch(conn, "/api/lms/students/#{student.id}/update-with-enrollments", %{
+        lms_update(conn, student.id, %{
           "actor" => actor(),
           "school" => %{"code" => school.code, "udise_code" => school.udise_code},
           "program_id" => 64,
@@ -967,18 +1027,18 @@ defmodule DbserviceWeb.LmsStudentUpdateControllerTest do
       }
 
       conn =
-        patch(
+        lms_update(
           conn,
-          "/api/lms/students/#{student.id}/update-with-enrollments",
+          student.id,
           Map.put(metadata, "phone", "0123456789")
         )
 
       assert json_response(conn, 422)["error"]["code"] == "invalid_phone"
 
       conn =
-        patch(
+        lms_update(
           recycle(conn),
-          "/api/lms/students/#{student.id}/update-with-enrollments",
+          student.id,
           Map.put(metadata, "date_of_birth", "2016-01-01")
         )
 
@@ -993,7 +1053,7 @@ defmodule DbserviceWeb.LmsStudentUpdateControllerTest do
       {user, student} = insert_enrolled_student!(school, grade, batch)
 
       conn =
-        patch(conn, "/api/lms/students/#{student.id}/update-with-enrollments", %{
+        lms_update(conn, student.id, %{
           "actor" => actor(),
           "school" => %{"code" => school.code, "udise_code" => school.udise_code},
           "program_id" => 64,
@@ -1013,7 +1073,7 @@ defmodule DbserviceWeb.LmsStudentUpdateControllerTest do
       {user, student} = insert_enrolled_student!(school, grade, batch)
 
       conn =
-        patch(conn, "/api/lms/students/#{student.id}/update-with-enrollments", %{
+        lms_update(conn, student.id, %{
           "actor" => actor(),
           "school" => %{"code" => school.code, "udise_code" => school.udise_code},
           "program_id" => 64,
@@ -1048,7 +1108,7 @@ defmodule DbserviceWeb.LmsStudentUpdateControllerTest do
       {_user, student} = insert_enrolled_student!(school, grade, batch)
 
       conn =
-        patch(conn, "/api/lms/students/#{student.id}/update-with-enrollments", %{
+        lms_update(conn, student.id, %{
           "actor" => actor(),
           "school" => %{"code" => school.code, "udise_code" => school.udise_code},
           "program_id" => 64,
@@ -1077,7 +1137,7 @@ defmodule DbserviceWeb.LmsStudentUpdateControllerTest do
         })
 
       conn =
-        patch(conn, "/api/lms/students/#{student.id}/update-with-enrollments", %{
+        lms_update(conn, student.id, %{
           "actor" => actor(),
           "school" => %{"code" => school.code, "udise_code" => school.udise_code},
           "program_id" => 64,
@@ -1099,7 +1159,7 @@ defmodule DbserviceWeb.LmsStudentUpdateControllerTest do
       {_user, student} = insert_enrolled_student!(school, grade, batch)
 
       conn =
-        patch(conn, "/api/lms/students/#{student.id}/update-with-enrollments", %{
+        lms_update(conn, student.id, %{
           "actor" => actor(),
           "school" => %{"code" => school.code, "udise_code" => school.udise_code},
           "program_id" => 64,
@@ -1124,7 +1184,7 @@ defmodule DbserviceWeb.LmsStudentUpdateControllerTest do
       {_user, student} = insert_enrolled_student!(school, grade, batch)
 
       conn =
-        patch(conn, "/api/lms/students/#{student.id}/update-with-enrollments", %{
+        lms_update(conn, student.id, %{
           "actor" => actor(),
           "school" => %{"code" => school.code, "udise_code" => school.udise_code},
           "program_id" => 64,
@@ -1149,7 +1209,7 @@ defmodule DbserviceWeb.LmsStudentUpdateControllerTest do
         })
 
       conn =
-        patch(conn, "/api/lms/students/#{student.id}/update-with-enrollments", %{
+        lms_update(conn, student.id, %{
           "actor" => actor(),
           "school" => %{"code" => school.code, "udise_code" => school.udise_code},
           "program_id" => 64,
@@ -1172,7 +1232,7 @@ defmodule DbserviceWeb.LmsStudentUpdateControllerTest do
         insert_enrolled_student!(school, grade, batch, %{physically_handicapped: false})
 
       conn =
-        patch(conn, "/api/lms/students/#{student.id}/update-with-enrollments", %{
+        lms_update(conn, student.id, %{
           "actor" => actor(),
           "school" => %{"code" => school.code, "udise_code" => school.udise_code},
           "program_id" => 64,
@@ -1205,7 +1265,7 @@ defmodule DbserviceWeb.LmsStudentUpdateControllerTest do
       {_user, student} = insert_enrolled_student!(school, grade, batch)
 
       conn =
-        patch(conn, "/api/lms/students/#{student.id}/update-with-enrollments", %{
+        lms_update(conn, student.id, %{
           "actor" => actor(),
           "school" => %{"code" => school.code, "udise_code" => school.udise_code},
           "program_id" => 64,
@@ -1229,7 +1289,7 @@ defmodule DbserviceWeb.LmsStudentUpdateControllerTest do
       {_user, student} = insert_enrolled_student!(school, grade11, old_batch)
 
       conn =
-        patch(conn, "/api/lms/students/#{student.id}/update-with-enrollments", %{
+        lms_update(conn, student.id, %{
           "actor" => actor(),
           "school" => %{"code" => school.code, "udise_code" => school.udise_code},
           "program_id" => 64,
@@ -1281,7 +1341,7 @@ defmodule DbserviceWeb.LmsStudentUpdateControllerTest do
       {_user, student} = insert_enrolled_student!(school, grade, old_batch)
 
       conn =
-        patch(conn, "/api/lms/students/#{student.id}/update-with-enrollments", %{
+        lms_update(conn, student.id, %{
           "actor" => actor(),
           "school" => %{"code" => school.code, "udise_code" => school.udise_code},
           "program_id" => 64,
@@ -1315,7 +1375,7 @@ defmodule DbserviceWeb.LmsStudentUpdateControllerTest do
       ensure_group_user!(user.id, "batch", coe_batch.id)
 
       conn =
-        patch(conn, "/api/lms/students/#{student.id}/update-with-enrollments", %{
+        lms_update(conn, student.id, %{
           "actor" => actor(),
           "school" => %{"code" => school.code, "udise_code" => school.udise_code},
           "program_id" => 64,
@@ -1341,7 +1401,7 @@ defmodule DbserviceWeb.LmsStudentUpdateControllerTest do
       {_user, student} = insert_enrolled_student!(school, grade11, old_batch)
 
       conn =
-        patch(conn, "/api/lms/students/#{student.id}/update-with-enrollments", %{
+        lms_update(conn, student.id, %{
           "actor" => actor(),
           "school" => %{"code" => school.code, "udise_code" => school.udise_code},
           "program_id" => 64,
@@ -1369,7 +1429,7 @@ defmodule DbserviceWeb.LmsStudentUpdateControllerTest do
         })
 
       conn =
-        patch(conn, "/api/lms/students/#{student.id}/update-with-enrollments", %{
+        lms_update(conn, student.id, %{
           "actor" => actor(),
           "school" => %{"code" => school.code, "udise_code" => school.udise_code},
           "program_id" => 64,
@@ -1392,7 +1452,7 @@ defmodule DbserviceWeb.LmsStudentUpdateControllerTest do
       {:ok, _user} = Users.update_user(user, %{last_name: nil})
 
       conn =
-        patch(conn, "/api/lms/students/#{student.id}/update-with-enrollments", %{
+        lms_update(conn, student.id, %{
           "actor" => actor(),
           "school" => %{"code" => school.code, "udise_code" => school.udise_code},
           "program_id" => 64,
@@ -1419,7 +1479,7 @@ defmodule DbserviceWeb.LmsStudentUpdateControllerTest do
       Dbservice.UsersFixtures.student_fixture(%{student_id: "202712345678"})
 
       conn =
-        patch(conn, "/api/lms/students/#{student.id}/update-with-enrollments", %{
+        lms_update(conn, student.id, %{
           "actor" => actor(),
           "school" => %{"code" => school.code, "udise_code" => school.udise_code},
           "program_id" => 64,
@@ -1446,7 +1506,7 @@ defmodule DbserviceWeb.LmsStudentUpdateControllerTest do
       {user, student} = insert_enrolled_student!(school, grade, old_batch)
 
       conn =
-        patch(conn, "/api/lms/students/#{student.id}/update-with-enrollments", %{
+        lms_update(conn, student.id, %{
           "actor" => Map.put(actor(), "user_id", "invalid"),
           "school" => %{"code" => school.code, "udise_code" => school.udise_code},
           "program_id" => 64,
@@ -1471,7 +1531,7 @@ defmodule DbserviceWeb.LmsStudentUpdateControllerTest do
       {user, student} = insert_enrolled_student!(school, grade, batch)
 
       conn =
-        patch(conn, "/api/lms/students/#{student.id}/update-with-enrollments", %{
+        lms_update(conn, student.id, %{
           "school" => %{"code" => school.code, "udise_code" => school.udise_code},
           "program_id" => 64,
           "academic_year" => "2026-2027",
@@ -1491,7 +1551,7 @@ defmodule DbserviceWeb.LmsStudentUpdateControllerTest do
       {_user, student} = insert_enrolled_student!(school, grade, old_batch)
 
       conn =
-        patch(conn, "/api/lms/students/#{student.id}/update-with-enrollments", %{
+        lms_update(conn, student.id, %{
           "actor" => actor(),
           "school" => %{"code" => school.code, "udise_code" => school.udise_code},
           "program_id" => 64,
@@ -1509,7 +1569,7 @@ defmodule DbserviceWeb.LmsStudentUpdateControllerTest do
       insert_nvs_batch!(11, "medical")
 
       conn =
-        patch(recycle(conn), "/api/lms/students/#{student.id}/update-with-enrollments", %{
+        lms_update(recycle(conn), student.id, %{
           "actor" => actor(),
           "school" => %{"code" => school.code, "udise_code" => school.udise_code},
           "program_id" => 64,
@@ -1535,7 +1595,7 @@ defmodule DbserviceWeb.LmsStudentUpdateControllerTest do
       {user, student} = insert_enrolled_student!(school, grade, old_batch)
 
       conn =
-        patch(conn, "/api/lms/students/#{student.id}/update-with-enrollments", %{
+        lms_update(conn, student.id, %{
           "actor" => actor(),
           "school" => %{"code" => school.code, "udise_code" => school.udise_code},
           "program_id" => 64,
@@ -1551,6 +1611,20 @@ defmodule DbserviceWeb.LmsStudentUpdateControllerTest do
       assert current_program_enrollment(user.id, 64).group_id == old_batch.id
       assert Repo.aggregate(Dbservice.LmsStudentWriteAudit, :count, :id) == 0
     end
+  end
+
+  defp lms_update(conn, student_id, params) do
+    patch(
+      conn,
+      "/api/lms/students/#{student_id}/update-with-enrollments",
+      Map.merge(
+        %{
+          "registration_mode" => "approved",
+          "registration_mode_version" => "1"
+        },
+        params
+      )
+    )
   end
 
   defp actor do

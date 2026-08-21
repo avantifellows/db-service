@@ -10,6 +10,7 @@ defmodule Dbservice.LmsStudentIngestion do
   alias Dbservice.Grades.Grade
   alias Dbservice.Grades
   alias Dbservice.Groups
+  alias Dbservice.LmsStudentRegistrationMode
   alias Dbservice.LmsStudentWriteAudit
   alias Dbservice.Programs.Program
   alias Dbservice.Repo
@@ -35,7 +36,14 @@ defmodule Dbservice.LmsStudentIngestion do
     "rejected" => 0
   }
 
-  def bulk_create(%{"rows" => rows} = params) when is_list(rows) do
+  def bulk_create(params) do
+    case LmsStudentRegistrationMode.validate(params) do
+      :ok -> do_bulk_create(params)
+      {:error, error} -> {:error, :registration_mode_mismatch, error}
+    end
+  end
+
+  defp do_bulk_create(%{"rows" => rows} = params) when is_list(rows) do
     school = get_school(params)
     program_id = params["program_id"]
 
@@ -67,7 +75,7 @@ defmodule Dbservice.LmsStudentIngestion do
      }}
   end
 
-  def bulk_create(_params), do: {:error, :bad_request, %{"error" => "rows must be a list"}}
+  defp do_bulk_create(_params), do: {:error, :bad_request, %{"error" => "rows must be a list"}}
 
   defp classify_rows(rows) do
     duplicate_keys =

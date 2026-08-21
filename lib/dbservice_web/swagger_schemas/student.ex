@@ -314,4 +314,128 @@ defmodule DbserviceWeb.SwaggerSchema.Student do
         end
     }
   end
+
+  def lms_student_bulk_create_request do
+    %{
+      LmsStudentBulkCreateRequest:
+        swagger_schema do
+          title("LMS student bulk-create request")
+          description("Bulk NVS student writes, including the registration-mode handshake")
+
+          properties do
+            registration_mode(
+              :string,
+              "Active registration mode. Must be exactly approved in this release.",
+              required: true
+            )
+
+            registration_mode_version(
+              :string,
+              "Registration contract version. Must be exactly 1.",
+              required: true
+            )
+
+            actor(:object, "Trusted LMS audit actor metadata")
+            school(:object, "School code and UDISE code")
+            program_id(:integer, "Program ID")
+            upload(:object, "Upload metadata")
+            academic_year(:string, "Academic year")
+            start_date(:string, "Enrollment start date", format: :date)
+            rows(Schema.array(:object), "Rows to classify and write", required: true)
+          end
+
+          example(%{
+            registration_mode: "approved",
+            registration_mode_version: "1",
+            program_id: 64,
+            academic_year: "2026-2027",
+            start_date: "2026-07-01",
+            rows: [%{row_number: 2, student_name: "Asha Kumar"}]
+          })
+        end
+    }
+  end
+
+  def lms_student_update_request do
+    %{
+      LmsStudentUpdateRequest:
+        swagger_schema do
+          title("LMS student update request")
+          description("LMS student update fields, including the registration-mode handshake")
+
+          properties do
+            registration_mode(
+              :string,
+              "Active registration mode. Must be exactly approved in this release.",
+              required: true
+            )
+
+            registration_mode_version(
+              :string,
+              "Registration contract version. Must be exactly 1.",
+              required: true
+            )
+
+            actor(:object, "Trusted LMS audit actor metadata")
+            school(:object, "School code and UDISE code")
+            program_id(:integer, "Program ID")
+            academic_year(:string, "Academic year")
+            start_date(:string, "Enrollment start date", format: :date)
+            first_name(:string, "Student first name")
+            last_name(:string, "Student last name")
+            phone(:string, "Student phone")
+            date_of_birth(:string, "Date of birth", format: :date)
+            gender(:string, "Gender")
+            category(:string, "Student category")
+            physically_handicapped(:boolean, "CWSN status")
+            board_stream(:string, "Board stream")
+            stream(:string, "Canonical stream")
+            father_name(:string, "Father's name")
+            annual_family_income(:string, "Annual family income")
+            g10_board(:string, "Grade 10 board")
+            grade(:integer, "Grade number")
+          end
+
+          example(%{
+            registration_mode: "approved",
+            registration_mode_version: "1",
+            school: %{code: "JNV001", udise_code: "12345678901"},
+            program_id: 64,
+            first_name: "Asha"
+          })
+        end
+    }
+  end
+
+  def registration_mode_mismatch_response do
+    %{
+      RegistrationModeMismatchResponse:
+        swagger_schema do
+          title("Registration-mode mismatch response")
+          description("Returned before any LMS write processing when the handshake mismatches")
+
+          properties do
+            error(Schema.ref(:RegistrationModeMismatch), "Registration-mode mismatch details",
+              required: true
+            )
+          end
+
+          example(%{
+            error: %{
+              code: "registration_mode_mismatch",
+              message: "Registration mode does not match the active LMS contract"
+            }
+          })
+        end,
+      RegistrationModeMismatch:
+        swagger_schema do
+          title("Registration-mode mismatch details")
+
+          properties do
+            code(:string, "Stable machine-readable error code", required: true)
+            message(:string, "Human-readable mismatch explanation", required: true)
+          end
+        end
+    }
+  end
 end

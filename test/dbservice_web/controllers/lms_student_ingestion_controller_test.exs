@@ -9,6 +9,7 @@ defmodule DbserviceWeb.LmsStudentIngestionControllerTest do
   alias Dbservice.Grades.Grade
   alias Dbservice.Groups.Group
   alias Dbservice.Groups.AuthGroup
+  alias Dbservice.LmsStudentRegistrationMode
   alias Dbservice.Products.Product
   alias Dbservice.Repo
   alias Dbservice.Schools.School
@@ -17,6 +18,90 @@ defmodule DbserviceWeb.LmsStudentIngestionControllerTest do
   alias Dbservice.Users.Student
 
   describe "POST /api/lms/students/bulk-create-with-enrollments" do
+    test "rejects a registration-mode mismatch before validating the bulk payload", %{conn: conn} do
+      before_students = Repo.aggregate(Student, :count, :id)
+      before_audits = Repo.aggregate(Dbservice.LmsStudentWriteAudit, :count, :id)
+
+      response =
+        conn
+        |> post("/api/lms/students/bulk-create-with-enrollments", %{
+          "registration_mode" => "phone",
+          "registration_mode_version" => "1",
+          "rows" => "not-a-list",
+          "school" => %{"code" => "missing", "udise_code" => "invalid"}
+        })
+        |> json_response(409)
+
+      assert response["error"]["code"] == "registration_mode_mismatch"
+      assert is_binary(response["error"]["message"])
+      assert Map.keys(response) == ["error"]
+      assert Enum.sort(Map.keys(response["error"])) == ["code", "message"]
+      refute Map.has_key?(response, "results")
+      assert Repo.aggregate(Student, :count, :id) == before_students
+      assert Repo.aggregate(Dbservice.LmsStudentWriteAudit, :count, :id) == before_audits
+    end
+
+    test "rejects missing and non-string registration handshake values before any write", %{
+      conn: conn
+    } do
+      before_users = Repo.aggregate(User, :count, :id)
+      before_students = Repo.aggregate(Student, :count, :id)
+      before_audits = Repo.aggregate(Dbservice.LmsStudentWriteAudit, :count, :id)
+
+      malformed_handshakes = [
+        %{"registration_mode_version" => "1"},
+        %{"registration_mode" => "approved"},
+        %{"registration_mode" => "future", "registration_mode_version" => "1"},
+        %{"registration_mode" => "approved", "registration_mode_version" => "2"},
+        %{"registration_mode" => 123, "registration_mode_version" => "1"},
+        %{"registration_mode" => "approved", "registration_mode_version" => 1}
+      ]
+
+      Enum.each(malformed_handshakes, fn handshake ->
+        response =
+          conn
+          |> recycle()
+          |> post(
+            "/api/lms/students/bulk-create-with-enrollments",
+            Map.merge(handshake, %{
+              "rows" => "not-a-list",
+              "school" => %{"code" => "missing", "udise_code" => "invalid"}
+            })
+          )
+          |> json_response(409)
+
+        assert response["error"]["code"] == "registration_mode_mismatch"
+        assert is_binary(response["error"]["message"])
+        assert Enum.sort(Map.keys(response["error"])) == ["code", "message"]
+        refute Map.has_key?(response, "results")
+      end)
+
+      assert Repo.aggregate(User, :count, :id) == before_users
+      assert Repo.aggregate(Student, :count, :id) == before_students
+      assert Repo.aggregate(Dbservice.LmsStudentWriteAudit, :count, :id) == before_audits
+    end
+
+    test "uses the test-only active-mode override without changing production mode", %{conn: conn} do
+      assert LmsStudentRegistrationMode.production_active_mode() == "approved"
+      assert LmsStudentRegistrationMode.active_mode() == "approved"
+
+      on_exit(fn -> LmsStudentRegistrationMode.put_test_active_mode(nil) end)
+      :ok = LmsStudentRegistrationMode.put_test_active_mode("phone")
+      assert LmsStudentRegistrationMode.active_mode() == "phone"
+
+      response =
+        conn
+        |> post("/api/lms/students/bulk-create-with-enrollments", %{
+          "registration_mode" => "phone",
+          "registration_mode_version" => "1",
+          "rows" => "not-a-list"
+        })
+        |> json_response(400)
+
+      assert response["error"] == "rows must be a list"
+      assert LmsStudentRegistrationMode.production_active_mode() == "approved"
+    end
+
     test "rejects a row with a non-string phone while processing neighboring rows", %{conn: conn} do
       school = insert_eligible_school!()
       insert_auth_group!("EnableStudents")
@@ -761,6 +846,8 @@ defmodule DbserviceWeb.LmsStudentIngestionControllerTest do
 
       conn =
         post(conn, "/api/lms/students/bulk-create-with-enrollments", %{
+          "registration_mode" => "approved",
+          "registration_mode_version" => "1",
           "actor" => %{
             "user_id" => 501,
             "email" => "pm@example.org",
@@ -1329,6 +1416,8 @@ defmodule DbserviceWeb.LmsStudentIngestionControllerTest do
 
   defp payload(school, rows) do
     %{
+      "registration_mode" => "approved",
+      "registration_mode_version" => "1",
       "actor" => %{
         "user_id" => 501,
         "email" => "pm@example.org",
