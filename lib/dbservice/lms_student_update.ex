@@ -81,12 +81,14 @@ defmodule Dbservice.LmsStudentUpdate do
            :ok <- validate_school_scope(student, school, params["program_id"]),
            {:ok, user} <- fetch_user(student),
            cohort? = phone_cohort?(student, user, school),
-           :ok <- validate_profile_fields(student, params),
+           params = normalize_phone_for_cohort(params, cohort?),
+           :ok <- validate_profile_fields(student, params, cohort?),
+           :ok <- validate_phone_correction(student, school, params, cohort?),
            :ok <- validate_g10_board(student, params),
            {:ok, plan} <- enrollment_plan(student, params, cohort?),
-           {:ok, changed_values} <- changed_values(user, student, params, plan),
+           {:ok, changed_values} <- changed_values(user, student, params, plan, cohort?),
            {:ok, user} <- update_user(user, params),
-           {:ok, student} <- update_student(student, params, plan),
+           {:ok, student} <- update_student(student, params, plan, cohort?),
            {:ok, _enrollments} <- replace_enrollments(student.user_id, plan, params),
            {:ok, audit} <- insert_audit(user, student, school, params, changed_values) do
         %{
@@ -273,9 +275,9 @@ defmodule Dbservice.LmsStudentUpdate do
     Ecto.NoResultsError -> {:error, error("user_not_found", "Student user not found", 404)}
   end
 
-  defp validate_profile_fields(student, params) do
+  defp validate_profile_fields(student, params, cohort?) do
     with :ok <- validate_category_pair(student, params),
-         :ok <- validate_phone(params),
+         :ok <- validate_phone(params, cohort?),
          do: validate_date_of_birth(params)
   end
 
@@ -302,9 +304,22 @@ defmodule Dbservice.LmsStudentUpdate do
          ])}
   end
 
-  defp validate_phone(params) when not is_map_key(params, "phone"), do: :ok
+  defp validate_phone(params, _cohort?) when not is_map_key(params, "phone"), do: :ok
 
-  defp validate_phone(%{"phone" => phone}) when is_binary(phone) do
+  defp validate_phone(%{"phone" => phone}, true) when is_binary(phone) do
+    if LmsStudentIngestion.valid_phone_mode_value?(String.trim(phone)),
+      do: :ok,
+      else:
+        {:error,
+         error(
+           "invalid_phone",
+           "Parents Phone Number must be exactly 10 digits and start with 6-9",
+           422,
+           ["phone"]
+         )}
+  end
+
+  defp validate_phone(%{"phone" => phone}, false) when is_binary(phone) do
     if Regex.match?(~r/^[1-9]\d{9}$/, phone),
       do: :ok,
       else:
@@ -317,7 +332,7 @@ defmodule Dbservice.LmsStudentUpdate do
          )}
   end
 
-  defp validate_phone(_params),
+  defp validate_phone(_params, false),
     do:
       {:error,
        error(
@@ -326,6 +341,42 @@ defmodule Dbservice.LmsStudentUpdate do
          422,
          ["phone"]
        )}
+
+  defp validate_phone(_params, true),
+    do:
+      {:error,
+       error(
+         "invalid_phone",
+         "Parents Phone Number must be exactly 10 digits and start with 6-9",
+         422,
+         ["phone"]
+       )}
+
+  defp normalize_phone_for_cohort(%{"phone" => phone} = params, true) when is_binary(phone),
+    do: Map.put(params, "phone", String.trim(phone))
+
+  defp normalize_phone_for_cohort(params, _cohort?), do: params
+
+  defp validate_phone_correction(_student, _school, _params, false), do: :ok
+
+  defp validate_phone_correction(student, school, %{"phone" => phone}, true) do
+    case LmsStudentIngestion.phone_student_match(phone, school.code, student.id) do
+      :none ->
+        :ok
+
+      {:match, existing_match} ->
+        {:error,
+         error(
+           "phone_student_id_conflict",
+           "Phone is already registered to another EnableStudents Student",
+           409,
+           ["phone"]
+         )
+         |> Map.put("existing_match", existing_match)}
+    end
+  end
+
+  defp validate_phone_correction(_student, _school, _params, true), do: :ok
 
   defp validate_date_of_birth(params) when not is_map_key(params, "date_of_birth"), do: :ok
 
@@ -598,7 +649,7 @@ defmodule Dbservice.LmsStudentUpdate do
     |> Map.new()
   end
 
-  defp changed_values(user, student, params, plan) do
+  defp changed_values(user, student, params, plan, cohort?) do
     values =
       params
       |> Map.take(@user_fields)
@@ -617,9 +668,20 @@ defmodule Dbservice.LmsStudentUpdate do
       |> Enum.reject(fn {_field, %{"old" => old, "new" => new}} -> old == new end)
       |> Map.new()
       |> Map.merge(plan.changed_values)
+      |> maybe_add_phone_student_id_change(student, params, cohort?)
 
     {:ok, values}
   end
+
+  defp maybe_add_phone_student_id_change(values, _student, _params, false), do: values
+
+  defp maybe_add_phone_student_id_change(values, student, %{"phone" => phone}, true) do
+    if student.student_id == phone,
+      do: values,
+      else: Map.put(values, "student_id", old_new(student.student_id, phone))
+  end
+
+  defp maybe_add_phone_student_id_change(values, _student, _params, true), do: values
 
   defp old_new(old, new), do: %{"old" => old, "new" => new}
 
@@ -642,11 +704,12 @@ defmodule Dbservice.LmsStudentUpdate do
     end
   end
 
-  defp update_student(student, params, plan) do
+  defp update_student(student, params, plan, cohort?) do
     attrs =
       params
       |> Map.take(@student_fields)
       |> Map.merge(plan.student_attrs)
+      |> Map.merge(phone_student_attrs(params, cohort?))
 
     case attrs |> empty_to_ok(student, &Users.update_student/2) do
       {:ok, student} ->
@@ -656,6 +719,9 @@ defmodule Dbservice.LmsStudentUpdate do
         {:error, error("invalid_student_fields", "Student fields are invalid", 422)}
     end
   end
+
+  defp phone_student_attrs(%{"phone" => phone}, true), do: %{"student_id" => phone}
+  defp phone_student_attrs(_params, _cohort?), do: %{}
 
   defp empty_to_ok(attrs, schema, update) do
     if attrs == %{}, do: {:ok, schema}, else: update.(schema, attrs)

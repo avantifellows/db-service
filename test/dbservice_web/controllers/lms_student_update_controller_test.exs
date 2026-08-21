@@ -758,6 +758,348 @@ defmodule DbserviceWeb.LmsStudentUpdateControllerTest do
              ).is_current
     end
 
+    test "corrects a phone-cohort phone and Student ID together in phone mode", %{conn: conn} do
+      :ok = LmsStudentRegistrationMode.put_test_active_mode("phone")
+      on_exit(fn -> LmsStudentRegistrationMode.put_test_active_mode(nil) end)
+
+      school = insert_school!()
+      grade = insert_grade!(11)
+      batch = insert_nvs_batch!(11, "engineering")
+
+      {user, student} =
+        insert_enrolled_student!(school, grade, batch, %{
+          student_id: "9456591269",
+          g10_roll_no: nil
+        })
+
+      enable_students = insert_auth_group!("EnableStudents")
+      ensure_group_user!(user.id, "auth_group", enable_students.id)
+      insert_enrollment!(user.id, enable_students.id, "auth_group")
+
+      conn =
+        lms_update(conn, student.id, %{
+          "registration_mode" => "phone",
+          "actor" => actor(),
+          "school" => %{"code" => school.code, "udise_code" => school.udise_code},
+          "program_id" => 64,
+          "academic_year" => "2026-2027",
+          "start_date" => "2026-07-01",
+          "phone" => " 9876543210 "
+        })
+
+      assert json_response(conn, 200)["changed_fields"] == ["phone", "student_id"]
+      assert Users.get_user!(user.id).phone == "9876543210"
+      assert Repo.get!(Student, student.id).student_id == "9876543210"
+      assert current_enrollment(user.id, "school").group_id == school.id
+      assert current_enrollment(user.id, "batch").group_id == batch.id
+      assert current_enrollment(user.id, "auth_group").group_id == enable_students.id
+      assert has_group_user?(user.id, "school", school.id)
+      assert has_group_user?(user.id, "batch", batch.id)
+      assert has_group_user?(user.id, "auth_group", enable_students.id)
+
+      assert only_audit_changed_values() == %{
+               "phone" => %{"old" => "9456591269", "new" => "9876543210"},
+               "student_id" => %{"old" => "9456591269", "new" => "9876543210"}
+             }
+    end
+
+    test "keeps the phone-based Student ID during a combined phone and grade correction", %{
+      conn: conn
+    } do
+      :ok = LmsStudentRegistrationMode.put_test_active_mode("phone")
+      on_exit(fn -> LmsStudentRegistrationMode.put_test_active_mode(nil) end)
+
+      school = insert_school!()
+      grade11 = insert_grade!(11)
+      grade12 = insert_grade!(12)
+      old_batch = insert_nvs_batch!(11, "engineering")
+      new_batch = insert_nvs_batch!(12, "engineering")
+
+      {user, student} =
+        insert_enrolled_student!(school, grade11, old_batch, %{
+          student_id: "9456591269",
+          g10_roll_no: nil
+        })
+
+      enable_students = insert_auth_group!("EnableStudents")
+      ensure_group_user!(user.id, "auth_group", enable_students.id)
+      insert_enrollment!(user.id, enable_students.id, "auth_group")
+
+      conn =
+        lms_update(conn, student.id, %{
+          "registration_mode" => "phone",
+          "actor" => actor(),
+          "school" => %{"code" => school.code, "udise_code" => school.udise_code},
+          "program_id" => 64,
+          "academic_year" => "2026-2027",
+          "start_date" => "2026-07-01",
+          "phone" => "9876543216",
+          "grade" => 12
+        })
+
+      assert json_response(conn, 200)["changed_fields"] == [
+               "batch_id",
+               "g12_graduating_year",
+               "grade",
+               "phone",
+               "student_id"
+             ]
+
+      updated_user = Users.get_user!(user.id)
+      updated_student = Repo.get!(Student, student.id)
+      assert updated_user.phone == "9876543216"
+      assert updated_student.grade_id == grade12.id
+      assert updated_student.g12_graduating_year == 2027
+      assert updated_student.student_id == "9876543216"
+      assert current_enrollment(user.id, "grade").group_id == grade12.id
+      assert current_enrollment(user.id, "batch").group_id == new_batch.id
+      assert current_enrollment(user.id, "school").group_id == school.id
+      assert current_enrollment(user.id, "auth_group").group_id == enable_students.id
+      assert has_group_user?(user.id, "auth_group", enable_students.id)
+      refute has_group_user?(user.id, "batch", old_batch.id)
+
+      changed_values = only_audit_changed_values()
+      assert changed_values["phone"] == %{"old" => "9456591269", "new" => "9876543216"}
+
+      assert changed_values["student_id"] == %{
+               "old" => "9456591269",
+               "new" => "9876543216"
+             }
+    end
+
+    test "rejects a phone correction that belongs to another EnableStudents Student", %{
+      conn: conn
+    } do
+      :ok = LmsStudentRegistrationMode.put_test_active_mode("phone")
+      on_exit(fn -> LmsStudentRegistrationMode.put_test_active_mode(nil) end)
+
+      school = insert_school!()
+      other_school = insert_school!(%{code: "JNV002", udise_code: "22345678901"})
+      grade = insert_grade!(11)
+      batch = insert_nvs_batch!(11, "engineering")
+
+      {user, student} =
+        insert_enrolled_student!(school, grade, batch, %{
+          student_id: "9456591269",
+          g10_roll_no: nil
+        })
+
+      {other_user, other_student} =
+        insert_enrolled_student!(other_school, grade, batch, %{
+          student_id: "9876543211",
+          apaar_id: "123456789013",
+          g10_roll_no: nil
+        })
+
+      Repo.update!(Ecto.Changeset.change(other_user, phone: "9876543211"))
+      enable_students = insert_auth_group!("EnableStudents")
+
+      for enrolled_user <- [user, other_user] do
+        ensure_group_user!(enrolled_user.id, "auth_group", enable_students.id)
+        insert_enrollment!(enrolled_user.id, enable_students.id, "auth_group")
+      end
+
+      conn =
+        lms_update(conn, student.id, %{
+          "registration_mode" => "phone",
+          "actor" => actor(),
+          "school" => %{"code" => school.code, "udise_code" => school.udise_code},
+          "program_id" => 64,
+          "academic_year" => "2026-2027",
+          "start_date" => "2026-07-01",
+          "phone" => "9876543211"
+        })
+
+      response = json_response(conn, 409)
+      assert response["error"]["code"] == "phone_student_id_conflict"
+      assert response["error"]["fields"] == ["phone"]
+      assert is_binary(response["error"]["message"])
+
+      assert response["error"]["existing_match"] == %{
+               "school_code" => other_school.code,
+               "school_name" => other_school.name,
+               "udise_code" => other_school.udise_code,
+               "district" => other_school.district,
+               "state" => other_school.state,
+               "grade" => 11,
+               "program" => "JNV NVS",
+               "stream" => "engineering"
+             }
+
+      refute Map.has_key?(response["error"]["existing_match"], "student_pk_id")
+      refute Map.has_key?(response["error"]["existing_match"], "user_id")
+      refute Map.has_key?(response["error"]["existing_match"], "student_id")
+      refute Map.has_key?(response["error"]["existing_match"], "phone")
+
+      assert Users.get_user!(user.id).phone == "9456591269"
+      assert Repo.get!(Student, student.id).student_id == "9456591269"
+      assert Users.get_user!(other_user.id).phone == "9876543211"
+      assert Repo.get!(Student, other_student.id).student_id == "9876543211"
+      assert Repo.aggregate(Dbservice.LmsStudentWriteAudit, :count, :id) == 0
+    end
+
+    test "rejects a cohort phone correction outside the 6-9 rule without writes", %{
+      conn: conn
+    } do
+      :ok = LmsStudentRegistrationMode.put_test_active_mode("phone")
+      on_exit(fn -> LmsStudentRegistrationMode.put_test_active_mode(nil) end)
+
+      school = insert_school!()
+      grade = insert_grade!(11)
+      batch = insert_nvs_batch!(11, "engineering")
+
+      {user, student} =
+        insert_enrolled_student!(school, grade, batch, %{
+          student_id: "9456591269",
+          g10_roll_no: nil
+        })
+
+      enable_students = insert_auth_group!("EnableStudents")
+      ensure_group_user!(user.id, "auth_group", enable_students.id)
+      insert_enrollment!(user.id, enable_students.id, "auth_group")
+
+      conn =
+        lms_update(conn, student.id, %{
+          "registration_mode" => "phone",
+          "actor" => actor(),
+          "school" => %{"code" => school.code, "udise_code" => school.udise_code},
+          "program_id" => 64,
+          "academic_year" => "2026-2027",
+          "start_date" => "2026-07-01",
+          "phone" => " 5123456789 "
+        })
+
+      response = json_response(conn, 422)
+      assert response["error"]["code"] == "invalid_phone"
+      assert response["error"]["fields"] == ["phone"]
+      assert Users.get_user!(user.id).phone == "9456591269"
+      assert Repo.get!(Student, student.id).student_id == "9456591269"
+      assert Repo.aggregate(Dbservice.LmsStudentWriteAudit, :count, :id) == 0
+    end
+
+    test "corrects a phone-cohort phone and Student ID in approved mode", %{conn: conn} do
+      :ok = LmsStudentRegistrationMode.put_test_active_mode("approved")
+      on_exit(fn -> LmsStudentRegistrationMode.put_test_active_mode(nil) end)
+
+      school = insert_school!()
+      grade = insert_grade!(11)
+      batch = insert_nvs_batch!(11, "engineering")
+
+      {user, student} =
+        insert_enrolled_student!(school, grade, batch, %{
+          student_id: "9456591269",
+          g10_roll_no: nil
+        })
+
+      enable_students = insert_auth_group!("EnableStudents")
+      ensure_group_user!(user.id, "auth_group", enable_students.id)
+      insert_enrollment!(user.id, enable_students.id, "auth_group")
+
+      conn =
+        lms_update(conn, student.id, %{
+          "actor" => actor(),
+          "school" => %{"code" => school.code, "udise_code" => school.udise_code},
+          "program_id" => 64,
+          "academic_year" => "2026-2027",
+          "start_date" => "2026-07-01",
+          "phone" => " 9876543213 "
+        })
+
+      assert json_response(conn, 200)["changed_fields"] == ["phone", "student_id"]
+      assert Users.get_user!(user.id).phone == "9876543213"
+      assert Repo.get!(Student, student.id).student_id == "9876543213"
+
+      assert only_audit_changed_values() == %{
+               "phone" => %{"old" => "9456591269", "new" => "9876543213"},
+               "student_id" => %{"old" => "9456591269", "new" => "9876543213"}
+             }
+    end
+
+    test "allows a correction when the new phone belongs only to another auth group", %{
+      conn: conn
+    } do
+      :ok = LmsStudentRegistrationMode.put_test_active_mode("phone")
+      on_exit(fn -> LmsStudentRegistrationMode.put_test_active_mode(nil) end)
+
+      school = insert_school!()
+      other_school = insert_school!(%{code: "JNV002", udise_code: "22345678901"})
+      grade = insert_grade!(11)
+      batch = insert_nvs_batch!(11, "engineering")
+
+      {user, student} =
+        insert_enrolled_student!(school, grade, batch, %{
+          student_id: "9456591269",
+          g10_roll_no: nil
+        })
+
+      {other_user, other_student} =
+        insert_enrolled_student!(other_school, grade, batch, %{
+          student_id: "9876543214",
+          apaar_id: "123456789013",
+          g10_roll_no: nil
+        })
+
+      Repo.update!(Ecto.Changeset.change(other_user, phone: "9876543214"))
+      enable_students = insert_auth_group!("EnableStudents")
+      other_auth_group = insert_auth_group!("OtherStudents")
+      ensure_group_user!(user.id, "auth_group", enable_students.id)
+      insert_enrollment!(user.id, enable_students.id, "auth_group")
+      ensure_group_user!(other_user.id, "auth_group", other_auth_group.id)
+      insert_enrollment!(other_user.id, other_auth_group.id, "auth_group")
+
+      conn =
+        lms_update(conn, student.id, %{
+          "registration_mode" => "phone",
+          "actor" => actor(),
+          "school" => %{"code" => school.code, "udise_code" => school.udise_code},
+          "program_id" => 64,
+          "academic_year" => "2026-2027",
+          "start_date" => "2026-07-01",
+          "phone" => "9876543214"
+        })
+
+      assert json_response(conn, 200)["changed_fields"] == ["phone", "student_id"]
+      assert Users.get_user!(user.id).phone == "9876543214"
+      assert Repo.get!(Student, student.id).student_id == "9876543214"
+      assert Users.get_user!(other_user.id).phone == "9876543214"
+      assert Repo.get!(Student, other_student.id).student_id == "9876543214"
+    end
+
+    test "rolls back both phone identities when the correction audit fails", %{conn: conn} do
+      :ok = LmsStudentRegistrationMode.put_test_active_mode("phone")
+      on_exit(fn -> LmsStudentRegistrationMode.put_test_active_mode(nil) end)
+
+      school = insert_school!()
+      grade = insert_grade!(11)
+      batch = insert_nvs_batch!(11, "engineering")
+
+      {user, student} =
+        insert_enrolled_student!(school, grade, batch, %{
+          student_id: "9456591269",
+          g10_roll_no: nil
+        })
+
+      enable_students = insert_auth_group!("EnableStudents")
+      ensure_group_user!(user.id, "auth_group", enable_students.id)
+      insert_enrollment!(user.id, enable_students.id, "auth_group")
+
+      conn =
+        lms_update(conn, student.id, %{
+          "registration_mode" => "phone",
+          "actor" => Map.put(actor(), "user_id", "invalid"),
+          "school" => %{"code" => school.code, "udise_code" => school.udise_code},
+          "program_id" => 64,
+          "academic_year" => "2026-2027",
+          "start_date" => "2026-07-01",
+          "phone" => "9876543215"
+        })
+
+      assert json_response(conn, 422)["error"]["code"] == "audit_update_failed"
+      assert Users.get_user!(user.id).phone == "9456591269"
+      assert Repo.get!(Student, student.id).student_id == "9456591269"
+      assert Repo.aggregate(Dbservice.LmsStudentWriteAudit, :count, :id) == 0
+    end
+
     test "keeps legacy Student ID re-derivation without current EnableStudents membership", %{
       conn: conn
     } do

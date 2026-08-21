@@ -435,6 +435,44 @@ defmodule DbserviceWeb.SwaggerSchema.Student do
             code(:string, "Stable machine-readable error code", required: true)
             message(:string, "Human-readable mismatch explanation", required: true)
           end
+        end,
+      LmsStudentUpdateErrorResponse:
+        swagger_schema do
+          title("LMS student update error response")
+          description("An update error, including phone Student ID conflicts")
+
+          properties do
+            error(Schema.ref(:LmsStudentUpdateError), "Update error details", required: true)
+          end
+
+          example(%{
+            error: %{
+              code: "phone_student_id_conflict",
+              message: "Phone is already registered to another EnableStudents Student",
+              fields: ["phone"],
+              existing_match: %{
+                school_code: "JNV002",
+                school_name: "JNV Other",
+                udise_code: "22345678901",
+                district: "Hyderabad",
+                state: "Telangana",
+                grade: 11,
+                program: "JNV NVS",
+                stream: "engineering"
+              }
+            }
+          })
+        end,
+      LmsStudentUpdateError:
+        swagger_schema do
+          title("LMS student update error details")
+
+          properties do
+            code(:string, "Stable machine-readable error code", required: true)
+            message(:string, "Human-readable error explanation", required: true)
+            fields(:array, "Input fields associated with the error", items: %{type: :string})
+            existing_match(:map, "Redacted existing Student match for phone conflicts")
+          end
         end
     }
   end

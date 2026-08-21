@@ -358,6 +358,17 @@ defmodule Dbservice.LmsStudentIngestion do
 
   def valid_phone_mode_value?(_value), do: false
 
+  @doc false
+  def phone_student_match(phone, requested_school_code, excluded_student_id \\ nil) do
+    case find_phone_student(phone, excluded_student_id) do
+      nil ->
+        :none
+
+      existing ->
+        {:match, phone_existing_match(existing, requested_school_code)}
+    end
+  end
+
   defp validate_phone_value(row) do
     if valid_phone_mode_value?(get_in(row, ["normalized", "phone"])),
       do: :ok,
@@ -398,20 +409,18 @@ defmodule Dbservice.LmsStudentIngestion do
   defp validate_phone_identifier_match(row, school) do
     phone = get_in(row, ["normalized", "phone"])
 
-    case find_phone_student(phone) do
-      nil ->
+    case phone_student_match(phone, school.code) do
+      :none ->
         {:ok, nil}
 
-      existing ->
-        existing_match = phone_existing_match(existing, school.code)
-
+      {:match, existing_match} ->
         if existing_match["school_code"] == school.code,
           do: {:already_exists, existing_match},
           else: {:other_school, existing_match}
     end
   end
 
-  defp find_phone_student(phone) do
+  defp find_phone_student(phone, excluded_student_id) do
     from(s in Student,
       join: gu in GroupUser,
       on: gu.user_id == s.user_id,
@@ -429,6 +438,7 @@ defmodule Dbservice.LmsStudentIngestion do
       select: s.id
     )
     |> Repo.all()
+    |> Enum.reject(&(&1 == excluded_student_id))
     |> List.first()
     |> case do
       nil -> nil

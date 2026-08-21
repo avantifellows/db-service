@@ -1127,8 +1127,8 @@ defmodule DbserviceWeb.StudentController do
 
     response(
       409,
-      "Registration-mode mismatch (error.code = registration_mode_mismatch)",
-      Schema.ref(:RegistrationModeMismatchResponse)
+      "Registration-mode mismatch (error.code = registration_mode_mismatch) or phone conflict (error.code = phone_student_id_conflict)",
+      Schema.ref(:LmsStudentUpdateErrorResponse)
     )
   end
 
