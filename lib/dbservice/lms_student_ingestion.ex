@@ -350,13 +350,13 @@ defmodule Dbservice.LmsStudentIngestion do
 
   defp phone_mode_unknown_keys(_row), do: ["row"]
 
-  defp normalize_phone(value) when is_binary(value), do: String.trim(value)
-  defp normalize_phone(_value), do: nil
+  def normalize_phone(value) when is_binary(value), do: String.trim(value)
+  def normalize_phone(_value), do: nil
 
-  defp valid_phone_mode_value?(value) when is_binary(value),
+  def valid_phone_mode_value?(value) when is_binary(value),
     do: Regex.match?(~r/^[6-9][0-9]{9}$/, value)
 
-  defp valid_phone_mode_value?(_value), do: false
+  def valid_phone_mode_value?(_value), do: false
 
   defp validate_phone_value(row) do
     if valid_phone_mode_value?(get_in(row, ["normalized", "phone"])),

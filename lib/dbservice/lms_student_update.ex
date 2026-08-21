@@ -13,6 +13,7 @@ defmodule Dbservice.LmsStudentUpdate do
   alias Dbservice.Grades
   alias Dbservice.GroupUsers
   alias Dbservice.Groups
+  alias Dbservice.Groups.AuthGroup
   alias Dbservice.Groups.GroupUser
   alias Dbservice.LmsStudentIngestion
   alias Dbservice.LmsStudentRegistrationMode
@@ -25,6 +26,8 @@ defmodule Dbservice.LmsStudentUpdate do
 
   @action "student_update"
   @cbse_board "CBSE"
+  @enable_students_auth_group "EnableStudents"
+  @nvs_program_id 64
   @user_fields ["first_name", "last_name", "gender", "date_of_birth", "phone"]
   @student_fields [
     "category",
@@ -77,9 +80,10 @@ defmodule Dbservice.LmsStudentUpdate do
            {:ok, school} <- fetch_school(params),
            :ok <- validate_school_scope(student, school, params["program_id"]),
            {:ok, user} <- fetch_user(student),
+           cohort? = phone_cohort?(student, user, school),
            :ok <- validate_profile_fields(student, params),
            :ok <- validate_g10_board(student, params),
-           {:ok, plan} <- enrollment_plan(student, params),
+           {:ok, plan} <- enrollment_plan(student, params, cohort?),
            {:ok, changed_values} <- changed_values(user, student, params, plan),
            {:ok, user} <- update_user(user, params),
            {:ok, student} <- update_student(student, params, plan),
@@ -220,6 +224,49 @@ defmodule Dbservice.LmsStudentUpdate do
     |> Repo.exists?()
   end
 
+  defp phone_cohort?(student, user, school) do
+    current_nvs_membership?(user.id, school) and
+      current_enable_students_membership?(user.id) and
+      phone_identity_matches?(student, user)
+  end
+
+  defp current_nvs_membership?(user_id, school) do
+    nvs_program_id = @nvs_program_id
+
+    LmsStudentIngestion.current_nvs_program?(nvs_program_id) and
+      enrolled?(user_id, school.id, "school") and
+      Repo.exists?(
+        from(e in EnrollmentRecord,
+          join: b in Batch,
+          on: b.id == e.group_id,
+          where:
+            e.user_id == ^user_id and e.group_type == "batch" and e.is_current == true and
+              b.program_id == ^nvs_program_id
+        )
+      )
+  end
+
+  defp current_enable_students_membership?(user_id) do
+    auth_group_name = @enable_students_auth_group
+
+    Repo.exists?(
+      from(e in EnrollmentRecord,
+        join: auth_group in AuthGroup,
+        on: auth_group.id == e.group_id,
+        where:
+          e.user_id == ^user_id and e.group_type == "auth_group" and e.is_current == true and
+            auth_group.name == ^auth_group_name
+      )
+    )
+  end
+
+  defp phone_identity_matches?(student, user) do
+    normalized_phone = LmsStudentIngestion.normalize_phone(user.phone)
+
+    student.student_id == user.phone and
+      LmsStudentIngestion.valid_phone_mode_value?(normalized_phone)
+  end
+
   defp fetch_user(student) do
     {:ok, Users.get_user!(student.user_id)}
   rescue
@@ -341,7 +388,7 @@ defmodule Dbservice.LmsStudentUpdate do
          "g10_board"
        ])}
 
-  defp enrollment_plan(student, params) do
+  defp enrollment_plan(student, params, cohort?) do
     current_grade = current_grade_number(student)
 
     submitted_grade =
@@ -363,7 +410,7 @@ defmodule Dbservice.LmsStudentUpdate do
            {:ok, current_batch} <- current_program_batch(student.user_id, params["program_id"]),
            {:ok, graduating_year} <- maybe_graduating_year(grade.number, params, grade_changed?),
            {:ok, student_id} <-
-             maybe_generated_student_id(student, graduating_year, grade_changed?) do
+             maybe_generated_student_id(student, graduating_year, grade_changed?, cohort?) do
         {:ok,
          %{
            grade: grade,
@@ -504,10 +551,13 @@ defmodule Dbservice.LmsStudentUpdate do
       {:error,
        error("invalid_academic_year", "Academic year must be YYYY-YYYY", 422, ["academic_year"])}
 
-  defp maybe_generated_student_id(student, graduating_year, true),
+  defp maybe_generated_student_id(student, _graduating_year, true, true),
+    do: {:ok, student.student_id}
+
+  defp maybe_generated_student_id(student, graduating_year, true, false),
     do: generated_student_id(student, graduating_year)
 
-  defp maybe_generated_student_id(student, _graduating_year, false),
+  defp maybe_generated_student_id(student, _graduating_year, false, _cohort?),
     do: {:ok, student.student_id}
 
   defp student_attrs_for_plan(grade, graduating_year, student_id, true) do
