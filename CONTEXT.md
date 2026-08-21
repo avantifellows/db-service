@@ -176,4 +176,3 @@ _Avoid_: best-effort identity matching
   invariants above are fixed.
 - The live staging deployment path may change, so release work must verify the
   currently active path rather than encode one historical workflow name.
-- PEN currently requires 11 digits with a non-zero first digit. Product/Ops confirmation is required before allowing a leading zero.

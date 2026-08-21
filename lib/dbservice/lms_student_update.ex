@@ -36,17 +36,17 @@ defmodule Dbservice.LmsStudentUpdate do
     "stream",
     "father_name",
     "annual_family_income",
-    "g10_board"
+    "g10_board",
+    "pen_number",
+    "g10_roll_no"
   ]
   @locked_fields [
     "apaar_id",
     "auth_group",
     "batch_group_id",
     "batch_id",
-    "g10_roll_no",
     "grade_id",
     "group_id",
-    "pen_number",
     "school_code",
     "student_id",
     "udise_code",
@@ -62,6 +62,8 @@ defmodule Dbservice.LmsStudentUpdate do
     "registration_mode_version"
   ]
   @editable_fields @user_fields ++ @student_fields ++ ["grade"]
+  @backfill_fields ["pen_number", "g10_roll_no"]
+  @deferred_identifier_fields @backfill_fields ++ ["annual_family_income"]
 
   def update(student_pk_id, params) do
     with :ok <- LmsStudentRegistrationMode.validate(params) do
@@ -71,8 +73,9 @@ defmodule Dbservice.LmsStudentUpdate do
 
   defp do_update(student_pk_id, params) do
     Repo.transaction(fn ->
-      with :ok <- reject_locked_fields(params),
-           :ok <- reject_unsupported_fields(params),
+      active_mode = LmsStudentRegistrationMode.active_mode()
+
+      with :ok <- reject_unsupported_fields(params),
            params = trim_g10_board(params),
            :ok <- validate_canonical_inputs(params),
            params = normalize_params(params),
@@ -81,10 +84,12 @@ defmodule Dbservice.LmsStudentUpdate do
            :ok <- validate_school_scope(student, school, params["program_id"]),
            {:ok, user} <- fetch_user(student),
            cohort? = phone_cohort?(student, user, school),
+           :ok <- reject_locked_fields(params, active_mode, cohort?),
+           {:ok, params} <- prepare_backfill(student, params, active_mode, cohort?),
            params = normalize_phone_for_cohort(params, cohort?),
            :ok <- validate_profile_fields(student, params, cohort?),
            :ok <- validate_phone_correction(student, school, params, cohort?),
-           :ok <- validate_g10_board(student, params),
+           :ok <- validate_g10_board(student, params, active_mode, cohort?),
            {:ok, plan} <- enrollment_plan(student, params, cohort?),
            {:ok, changed_values} <- changed_values(user, student, params, plan, cohort?),
            {:ok, user} <- update_user(user, params),
@@ -107,15 +112,28 @@ defmodule Dbservice.LmsStudentUpdate do
     end
   end
 
-  defp reject_locked_fields(params) do
-    case params |> Map.keys() |> Enum.filter(&(&1 in @locked_fields)) |> Enum.sort() do
+  defp reject_locked_fields(params, mode, cohort?) do
+    deferred_locked_fields =
+      case {cohort?, mode} do
+        {false, _mode} -> @backfill_fields
+        {true, "phone"} -> @deferred_identifier_fields
+        _ -> []
+      end
+
+    fields =
+      params
+      |> present_fields(@locked_fields ++ deferred_locked_fields)
+      |> Enum.uniq()
+      |> Enum.sort()
+
+    case fields do
       [] -> :ok
       fields -> {:error, error("locked_fields", "Locked fields cannot be updated", 422, fields)}
     end
   end
 
   defp reject_unsupported_fields(params) do
-    allowed = @metadata_fields ++ @editable_fields
+    allowed = @metadata_fields ++ @editable_fields ++ @locked_fields
 
     case params |> Map.keys() |> Enum.reject(&(&1 in allowed)) |> Enum.sort() do
       [] ->
@@ -275,6 +293,169 @@ defmodule Dbservice.LmsStudentUpdate do
     Ecto.NoResultsError -> {:error, error("user_not_found", "Student user not found", 404)}
   end
 
+  defp prepare_backfill(_student, params, _mode, false), do: {:ok, params}
+
+  defp prepare_backfill(_student, params, "phone", true), do: {:ok, params}
+
+  defp prepare_backfill(student, params, "approved", true) do
+    backfill_requested? = Enum.any?(@deferred_identifier_fields, &Map.has_key?(params, &1))
+    params = normalize_backfill_params(student, params)
+
+    with :ok <- validate_backfill_presence(student, params, backfill_requested?),
+         :ok <- validate_backfill_locks(student, params),
+         :ok <- validate_pen_backfill(params),
+         :ok <- validate_g10_roll_backfill(student, params) do
+      {:ok, params}
+    end
+  end
+
+  defp present_fields(params, fields),
+    do: Enum.filter(fields, &Map.has_key?(params, &1))
+
+  defp normalize_backfill_params(student, params) do
+    params
+    |> normalize_optional_identifier("pen_number")
+    |> normalize_optional_g10_roll(student)
+  end
+
+  defp normalize_optional_identifier(params, field) do
+    case Map.fetch(params, field) do
+      :error ->
+        params
+
+      {:ok, value} when is_binary(value) ->
+        case String.trim(value) do
+          "" -> Map.delete(params, field)
+          value -> Map.put(params, field, value)
+        end
+
+      {:ok, nil} ->
+        Map.delete(params, field)
+
+      {:ok, _value} ->
+        params
+    end
+  end
+
+  defp normalize_optional_g10_roll(params, student) do
+    case Map.fetch(params, "g10_roll_no") do
+      :error ->
+        params
+
+      {:ok, value} when is_binary(value) ->
+        case String.trim(value) do
+          "" ->
+            Map.delete(params, "g10_roll_no")
+
+          value ->
+            board = effective_g10_board(student, params)
+            Map.put(params, "g10_roll_no", LmsStudentIngestion.normalize_g10_roll(value, board))
+        end
+
+      {:ok, nil} ->
+        Map.delete(params, "g10_roll_no")
+
+      {:ok, _value} ->
+        params
+    end
+  end
+
+  defp validate_backfill_presence(_student, _params, false), do: :ok
+
+  defp validate_backfill_presence(student, params, true) do
+    if blank_identifier?(student.pen_number) and blank_identifier?(student.g10_roll_no) and
+         not (Map.has_key?(params, "pen_number") or Map.has_key?(params, "g10_roll_no")) do
+      {:error,
+       error(
+         "backfill_identifier_required",
+         "PEN Number or Grade 10 Roll no is required",
+         422,
+         @backfill_fields
+       )}
+    else
+      :ok
+    end
+  end
+
+  defp validate_backfill_locks(student, params) do
+    locked =
+      @backfill_fields
+      |> Enum.filter(fn field ->
+        Map.has_key?(params, field) and
+          not blank_identifier?(Map.get(student, String.to_existing_atom(field)))
+      end)
+
+    if locked == [], do: :ok, else: {:error, locked_fields_error(locked)}
+  end
+
+  defp validate_pen_backfill(params) when not is_map_key(params, "pen_number"), do: :ok
+
+  defp validate_pen_backfill(%{"pen_number" => value}) do
+    if is_binary(value) and Regex.match?(~r/^[0-9]{11}$/, value) do
+      :ok
+    else
+      {:error,
+       error("invalid_pen_number", "PEN Number must be exactly 11 digits", 422, ["pen_number"])}
+    end
+  end
+
+  defp validate_g10_roll_backfill(_student, params)
+       when not is_map_key(params, "g10_roll_no"),
+       do: :ok
+
+  defp validate_g10_roll_backfill(student, %{"g10_roll_no" => value} = params) do
+    board = effective_g10_board(student, params)
+
+    cond do
+      board == @cbse_board and is_binary(value) and Regex.match?(~r/^[1-9]\d{7}$/, value) ->
+        :ok
+
+      board == @cbse_board ->
+        {:error,
+         error(
+           "invalid_g10_roll_for_board",
+           "CBSE Grade 10 Roll no must be exactly 8 digits and cannot start with zero",
+           422,
+           ["g10_roll_no"]
+         )}
+
+      is_binary(value) and Regex.match?(~r/^[A-Z0-9]{4,10}$/, value) ->
+        :ok
+
+      true ->
+        {:error,
+         error(
+           "invalid_g10_roll_for_board",
+           "Grade 10 Roll no must be 4 to 10 characters",
+           422,
+           ["g10_roll_no"]
+         )}
+    end
+  end
+
+  defp blank_identifier?(nil), do: true
+  defp blank_identifier?(value) when is_binary(value), do: String.trim(value) == ""
+  defp blank_identifier?(_value), do: false
+
+  defp effective_g10_board(student, params) do
+    if Map.has_key?(params, "g10_board"),
+      do: params["g10_board"],
+      else: stored_g10_board(student.g10_board)
+  end
+
+  defp stored_g10_board(value) when is_binary(value) do
+    case String.trim(value) |> String.upcase() do
+      "CBSE" -> @cbse_board
+      "CENTRAL BOARD OF SECONDARY EDUCATION" -> @cbse_board
+      _ -> nil
+    end
+  end
+
+  defp stored_g10_board(_value), do: nil
+
+  defp locked_fields_error(fields),
+    do: error("locked_fields", "Locked fields cannot be updated", 422, Enum.sort(fields))
+
   defp validate_profile_fields(student, params, cohort?) do
     with :ok <- validate_category_pair(student, params),
          :ok <- validate_phone(params, cohort?),
@@ -397,6 +578,13 @@ defmodule Dbservice.LmsStudentUpdate do
        error("invalid_date_of_birth", "Date of Birth must be between 2000 and 2015", 422, [
          "date_of_birth"
        ])}
+
+  defp validate_g10_board(_student, params, "approved", true)
+       when is_map_key(params, "g10_roll_no"),
+       do: :ok
+
+  defp validate_g10_board(student, params, _mode, _cohort?),
+    do: validate_g10_board(student, params)
 
   defp validate_g10_board(_student, params) when not is_map_key(params, "g10_board"), do: :ok
 
