@@ -78,27 +78,7 @@ defmodule Dbservice.LmsStudentIngestion do
       |> Enum.map(&normalize_row(&1, params["academic_year"]))
       |> classify_rows()
 
-    results_with_audits =
-      classified
-      |> Task.async_stream(
-        &process_row_safely(&1, params, school, program_id),
-        max_concurrency: @row_concurrency,
-        ordered: true,
-        timeout: :infinity
-      )
-      |> Enum.map(fn {:ok, result} -> result end)
-
-    results = Enum.map(results_with_audits, &elem(&1, 0))
-    final_totals = totals(results)
-    audit_ids = results_with_audits |> Enum.map(&elem(&1, 1)) |> Enum.reject(&is_nil/1)
-    update_audit_counts(audit_ids, final_totals)
-
-    {:ok,
-     %{
-       "upload_id" => get_in(params, ["upload", "id"]),
-       "totals" => final_totals,
-       "results" => results
-     }}
+    run_bulk_tasks(classified, params, school, program_id, &process_row/4)
   end
 
   defp do_approved_bulk_create(_params),
@@ -113,10 +93,17 @@ defmodule Dbservice.LmsStudentIngestion do
     school = get_school(params)
     program_id = params["program_id"]
 
+    run_bulk_tasks(classified, params, school, program_id, &process_phone_row/4)
+  end
+
+  defp do_phone_bulk_create(_params),
+    do: {:error, :bad_request, %{"error" => "rows must be a list"}}
+
+  defp run_bulk_tasks(classified, params, school, program_id, processor) do
     results_with_audits =
       classified
       |> Task.async_stream(
-        &process_phone_row_safely(&1, params, school, program_id),
+        &process_safely(&1, params, school, program_id, processor),
         max_concurrency: @row_concurrency,
         ordered: true,
         timeout: :infinity
@@ -135,9 +122,6 @@ defmodule Dbservice.LmsStudentIngestion do
        "results" => results
      }}
   end
-
-  defp do_phone_bulk_create(_params),
-    do: {:error, :bad_request, %{"error" => "rows must be a list"}}
 
   defp classify_rows(rows) do
     duplicate_keys =
@@ -215,13 +199,13 @@ defmodule Dbservice.LmsStudentIngestion do
     end)
   end
 
-  defp process_phone_row_safely(classified, params, school, program_id) do
+  defp process_safely(classified, params, school, program_id, processor) do
     try do
-      process_phone_row(classified, params, school, program_id)
+      processor.(classified, params, school, program_id)
     rescue
-      _error -> phone_row_processing_failed(classified)
+      _error -> row_processing_failed(classified)
     catch
-      _kind, _reason -> phone_row_processing_failed(classified)
+      _kind, _reason -> row_processing_failed(classified)
     end
   end
 
@@ -233,12 +217,6 @@ defmodule Dbservice.LmsStudentIngestion do
       {:skip, result} -> {result, nil}
     end
   end
-
-  defp phone_row_processing_failed({:process, row}) do
-    {rejected(row, ["Student could not be created. Please contact the admin"]), nil}
-  end
-
-  defp phone_row_processing_failed({:skip, result}), do: {result, nil}
 
   defp classify_phone_row(row, nil, _program_id), do: {:skip, rejected(row, ["School not found"])}
 
@@ -400,8 +378,7 @@ defmodule Dbservice.LmsStudentIngestion do
 
   defp validate_phone_profile(row) do
     with :ok <- validate_category_pair(row),
-         :ok <- validate_gender(row),
-         :ok <- validate_phone_value(row) do
+         :ok <- validate_gender(row) do
       validate_date_of_birth(row)
     end
   end
@@ -503,16 +480,6 @@ defmodule Dbservice.LmsStudentIngestion do
     case classify_row(row, school, program_id) do
       {:create, row} -> create_row(params, school, row)
       {:skip, result} -> {result, nil}
-    end
-  end
-
-  defp process_row_safely(classified, params, school, program_id) do
-    try do
-      process_row(classified, params, school, program_id)
-    rescue
-      _error -> row_processing_failed(classified)
-    catch
-      _kind, _reason -> row_processing_failed(classified)
     end
   end
 

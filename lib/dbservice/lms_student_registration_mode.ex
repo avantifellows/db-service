@@ -4,12 +4,8 @@ defmodule Dbservice.LmsStudentRegistrationMode do
   @type mode :: String.t()
 
   @phone "phone"
-  @approved "approved"
   @contract_version "1"
   @production_active_mode @phone
-
-  @spec supported_modes() :: [mode()]
-  def supported_modes, do: [@phone, @approved]
 
   @spec contract_version() :: String.t()
   def contract_version, do: @contract_version
@@ -27,7 +23,7 @@ defmodule Dbservice.LmsStudentRegistrationMode do
 
     @doc false
     @spec put_test_active_mode(mode() | nil) :: :ok
-    def put_test_active_mode(mode) when mode in [@phone, @approved] do
+    def put_test_active_mode(mode) when mode in [@phone, "approved"] do
       Process.put(@test_override_key, mode)
       :ok
     end
