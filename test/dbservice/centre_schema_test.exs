@@ -39,6 +39,15 @@ defmodule Dbservice.CentreSchemaTest do
                "updated_at"
              ]
 
+      assert Map.keys(columns("centre_exam_tracks")) |> Enum.sort() == [
+               "centre_id",
+               "exam_track_code",
+               "grade_id",
+               "id",
+               "inserted_at",
+               "updated_at"
+             ]
+
       assert_required_columns("centre_option_sets", [
         "id",
         "code",
@@ -70,6 +79,15 @@ defmodule Dbservice.CentreSchemaTest do
         "updated_at"
       ])
 
+      assert_required_columns("centre_exam_tracks", [
+        "id",
+        "centre_id",
+        "grade_id",
+        "exam_track_code",
+        "inserted_at",
+        "updated_at"
+      ])
+
       assert columns("centres")["school_id"].nullable?
       assert columns("centres")["program_id"].nullable?
       assert columns("centres")["type_code"].nullable?
@@ -91,6 +109,7 @@ defmodule Dbservice.CentreSchemaTest do
       # PK plus the active-centre guard: at most one ACTIVE centre per
       # (school, program), the pair centre_students attributes students by.
       assert ["school_id", "program_id"] in unique_indexes("centres")
+      assert ["centre_id", "grade_id", "exam_track_code"] in unique_indexes("centre_exam_tracks")
 
       refute Enum.any?(
                unique_indexes("centres"),
@@ -104,6 +123,7 @@ defmodule Dbservice.CentreSchemaTest do
       assert indexes("centres") |> Enum.any?(&(&1 == ["category_code"]))
       assert indexes("centres") |> Enum.any?(&(&1 == ["sub_category_code"]))
       assert gin_indexes("centres") |> Enum.any?(&(&1 == ["stream_codes"]))
+      assert indexes("centre_exam_tracks") |> Enum.any?(&(&1 == ["grade_id"]))
 
       assert foreign_keys("centre_options") == [
                {"option_set_id", "centre_option_sets", "id"}
@@ -112,6 +132,11 @@ defmodule Dbservice.CentreSchemaTest do
       assert foreign_keys("centres") == [
                {"program_id", "program", "id"},
                {"school_id", "school", "id"}
+             ]
+
+      assert foreign_keys("centre_exam_tracks") == [
+               {"centre_id", "centres", "id"},
+               {"grade_id", "grade", "id"}
              ]
     end
 
