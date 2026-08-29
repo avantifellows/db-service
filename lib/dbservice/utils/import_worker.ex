@@ -843,21 +843,73 @@ defmodule Dbservice.DataImport.ImportWorker do
   defp nil_or_empty?(value), do: is_nil(value) or value == ""
 
   defp process_student_update_record(record) do
-    # Accept either student_id or apaar_id (like addition and batch movement)
+    case resolve_student_for_update(record) do
+      {:ok, student} -> StudentUpdateService.update_student_with_user_data(student, record)
+      {:error, _reason} = error -> error
+    end
+  end
+
+  # Resolves the target Student for a student_update row.
+  #
+  # student_id is only unique WITHIN an auth group (see PR #558), so a student_id
+  # update must resolve an auth group and look up within it — never a global
+  # student_id match that could hit a same-id Student in a different auth group
+  # (issue #703). apaar_id is globally unique, so it keeps the global lookup.
+  defp resolve_student_for_update(record) do
     student_id = record["student_id"]
     apaar_id = record["apaar_id"]
 
-    if (is_nil(student_id) or student_id == "") and (is_nil(apaar_id) or apaar_id == "") do
-      {:error, "Either student_id or apaar_id is required for student updates"}
-    else
-      case Users.get_student_by_id_or_apaar_id(record) do
-        nil ->
-          {:error,
-           "Student not found. student_id: #{record["student_id"]}, apaar_id: #{record["apaar_id"]}"}
+    cond do
+      not nil_or_empty?(student_id) ->
+        resolve_student_by_id_and_auth_group(record, student_id)
 
-        student ->
-          StudentUpdateService.update_student_with_user_data(student, record)
-      end
+      not nil_or_empty?(apaar_id) ->
+        case Users.get_student_by_id_or_apaar_id(record) do
+          nil -> {:error, "Student not found. apaar_id: #{apaar_id}"}
+          student -> {:ok, student}
+        end
+
+      true ->
+        {:error, "Either student_id or apaar_id is required for student updates"}
+    end
+  end
+
+  defp resolve_student_by_id_and_auth_group(record, student_id) do
+    case Users.resolve_auth_group_id(record) do
+      nil ->
+        {:error, auth_group_required_error(record)}
+
+      auth_group_id ->
+        case Users.get_student_by_student_id_and_auth_group(student_id, auth_group_id) do
+          nil ->
+            {:error,
+             "Student not found for student_id: #{student_id} in auth_group: #{auth_group_input(record)}"}
+
+          student ->
+            {:ok, student}
+        end
+    end
+  end
+
+  # Distinguishes a missing auth group from one that was supplied but did not
+  # resolve, so the failure is clear rather than silently updating an arbitrary
+  # Student (issue #703).
+  defp auth_group_required_error(record) do
+    case auth_group_input(record) do
+      nil ->
+        "auth_group is required to update a student by student_id, " <>
+          "since the same student_id can exist in multiple auth groups"
+
+      value ->
+        "auth_group '#{value}' was not found"
+    end
+  end
+
+  defp auth_group_input(record) do
+    cond do
+      not nil_or_empty?(record["auth_group"]) -> record["auth_group"]
+      not nil_or_empty?(record["auth_group_id"]) -> record["auth_group_id"]
+      true -> nil
     end
   end
 
