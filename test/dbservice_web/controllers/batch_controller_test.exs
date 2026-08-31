@@ -14,7 +14,8 @@ defmodule DbserviceWeb.BatchControllerTest do
     end_date: "2024-06-01",
     program_id: nil,
     auth_group_id: nil,
-    af_medium: "online"
+    af_medium: "online",
+    system: "some system"
   }
   @update_attrs %{
     name: "some updated batch name",
@@ -25,7 +26,8 @@ defmodule DbserviceWeb.BatchControllerTest do
     end_date: "2024-07-01",
     program_id: nil,
     auth_group_id: nil,
-    af_medium: "offline"
+    af_medium: "offline",
+    system: "some updated system"
   }
   @invalid_attrs %{
     name: nil,
@@ -77,7 +79,8 @@ defmodule DbserviceWeb.BatchControllerTest do
                "end_date" => "2024-06-01",
                "program_id" => nil,
                "auth_group_id" => nil,
-               "af_medium" => "online"
+               "af_medium" => "online",
+               "system" => "some system"
              } = response
     end
 
@@ -105,7 +108,8 @@ defmodule DbserviceWeb.BatchControllerTest do
                "end_date" => "2024-06-01",
                "program_id" => nil,
                "auth_group_id" => nil,
-               "af_medium" => "online"
+               "af_medium" => "online",
+               "system" => "some system"
              } = response
     end
   end
@@ -131,7 +135,8 @@ defmodule DbserviceWeb.BatchControllerTest do
                "end_date" => "2024-07-01",
                "program_id" => nil,
                "auth_group_id" => nil,
-               "af_medium" => "offline"
+               "af_medium" => "offline",
+               "system" => "some updated system"
              } = response
     end
 

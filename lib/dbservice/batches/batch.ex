@@ -17,6 +17,7 @@ defmodule Dbservice.Batches.Batch do
     field :start_date, :date
     field :end_date, :date
     field :af_medium, :string
+    field :system, :string
     field :metadata, :map, default: %{}
 
     belongs_to :program, Program
@@ -43,6 +44,7 @@ defmodule Dbservice.Batches.Batch do
       :program_id,
       :auth_group_id,
       :af_medium,
+      :system,
       :metadata
     ])
     |> validate_required([:name])

@@ -348,9 +348,12 @@ defmodule Dbservice.Users do
 
   """
   def update_student(%Student{} = student, attrs) do
-    student
-    |> Student.changeset(attrs)
-    |> Repo.update()
+    Repo.transaction(fn ->
+      case update_student_in_transaction(student, attrs) do
+        {:ok, updated_student} -> updated_student
+        {:error, reason} -> Repo.rollback(reason)
+      end
+    end)
   end
 
   @doc """
@@ -408,16 +411,45 @@ defmodule Dbservice.Users do
 
   """
   def update_student_with_user(student, user, attrs \\ %{}) do
-    alias Dbservice.Users
+    Repo.transaction(fn ->
+      with {:ok, %User{} = user} <- update_user(user, attrs),
+           {:ok, %Student{} = student} <-
+             update_student_in_transaction(
+               student,
+               Map.merge(stringify_keys(attrs), %{"user_id" => user.id})
+             ) do
+        student
+      else
+        {:error, reason} -> Repo.rollback(reason)
+      end
+    end)
+  end
 
-    with {:ok, %User{} = user} <- Users.update_user(user, attrs),
-         {:ok, %Student{} = student} <-
-           Users.update_student(
-             student,
-             Map.merge(stringify_keys(attrs), %{"user_id" => user.id})
-           ) do
-      {:ok, student}
+  defp update_student_in_transaction(student, attrs) do
+    student = Repo.get!(Student, student.id, lock: "FOR UPDATE")
+
+    with {:ok, updated_student} <- Repo.update(Student.changeset(student, attrs)),
+         {:ok, _count} <- cleanup_holistic_mappings(student, updated_student) do
+      {:ok, updated_student}
     end
+  end
+
+  defp cleanup_holistic_mappings(student, updated_student) do
+    reason =
+      cond do
+        student.status != updated_student.status and updated_student.status == "dropout" ->
+          :student_dropout
+
+        student.grade_id != updated_student.grade_id ->
+          :student_grade_changed
+
+        true ->
+          nil
+      end
+
+    if reason,
+      do: Dbservice.HolisticMentorship.end_active_mappings(student.id, reason),
+      else: {:ok, 0}
   end
 
   @doc """
@@ -517,15 +549,50 @@ defmodule Dbservice.Users do
 
   # Revives a previously-deactivated auth_group ownership record (no-op if already current),
   # so a re-POSTed (e.g. dropped) student is owned by - and findable in - this auth group again.
+  #
+  # Runs inside the caller's transaction (create_or_update_student). To respect the
+  # exclusive-current unique index (one current auth_group ER per user), it first ends any
+  # OTHER current auth_group enrollment, then reactivates a single row for this auth group
+  # (leaving historical duplicates inactive) rather than bulk-flipping every match to current.
   defp reactivate_auth_group_enrollment(user_id, auth_group_id) do
+    # End any current auth_group ownership pointing at a different auth group.
     from(er in EnrollmentRecord,
       where:
         er.user_id == ^user_id and er.group_type == "auth_group" and
-          er.group_id == ^auth_group_id and er.is_current == false
+          er.group_id != ^auth_group_id and er.is_current == true
     )
-    |> Repo.update_all(set: [is_current: true, end_date: nil])
+    |> Repo.update_all(set: [is_current: false])
+
+    # If this auth group is already current, nothing to do; otherwise revive exactly one row.
+    already_current? =
+      Repo.exists?(
+        from(er in EnrollmentRecord,
+          where:
+            er.user_id == ^user_id and er.group_type == "auth_group" and
+              er.group_id == ^auth_group_id and er.is_current == true
+        )
+      )
+
+    unless already_current?, do: reactivate_single_auth_group_row(user_id, auth_group_id)
 
     :ok
+  end
+
+  defp reactivate_single_auth_group_row(user_id, auth_group_id) do
+    row =
+      from(er in EnrollmentRecord,
+        where:
+          er.user_id == ^user_id and er.group_type == "auth_group" and
+            er.group_id == ^auth_group_id and er.is_current == false,
+        order_by: [desc: er.id],
+        limit: 1
+      )
+      |> Repo.one()
+
+    if row do
+      from(er in EnrollmentRecord, where: er.id == ^row.id)
+      |> Repo.update_all(set: [is_current: true, end_date: nil])
+    end
   end
 
   # Ensures the auth-group ownership enrollment record + group_user mapping exist for the

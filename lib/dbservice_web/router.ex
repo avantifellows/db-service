@@ -40,6 +40,7 @@ defmodule DbserviceWeb.Router do
 
     post("/imports/dropout", ImportController, :create_dropout_import)
     post("/imports/re_enrollment", ImportController, :create_re_enrollment_import)
+    post("/imports/student_enrollment", ImportController, :create_student_enrollment_import)
     post("/imports/auth_group", ImportController, :create_auth_group_import)
     post("/imports/product", ImportController, :create_product_import)
     post("/imports/program", ImportController, :create_program_import)
@@ -59,6 +60,55 @@ defmodule DbserviceWeb.Router do
 
     get("/health", HealthController, :index)
     get("/health/ready", HealthController, :ready)
+
+    post(
+      "/holistic-mentorship/prompt-configurations",
+      HolisticMentorshipPromptConfigurationController,
+      :create,
+      log: false
+    )
+
+    post(
+      "/holistic-mentorship/prompt-configurations/:id/activate",
+      HolisticMentorshipPromptConfigurationController,
+      :activate,
+      log: false
+    )
+
+    post(
+      "/holistic-mentorship/profile-preflight",
+      HolisticMentorshipProfilePreflightController,
+      :create,
+      log: false
+    )
+
+    post(
+      "/holistic-mentorship/profile-generation-statuses",
+      HolisticMentorshipProfileGenerationStatusController,
+      :create,
+      log: false
+    )
+
+    post(
+      "/holistic-mentorship/profiles/publish",
+      HolisticMentorshipProfilePublishController,
+      :create,
+      log: false
+    )
+
+    get(
+      "/holistic-mentorship/regeneration-requests/:request_key",
+      HolisticMentorshipRegenerationRequestController,
+      :show,
+      log: false
+    )
+
+    post(
+      "/holistic-mentorship/regeneration-requests/:request_key/status",
+      HolisticMentorshipRegenerationRequestController,
+      :update_status,
+      log: false
+    )
 
     resources("/auth-group", AuthGroupController, except: [:new, :edit])
     post("/group/:id/update-users", GroupController, :update_users)
@@ -182,6 +232,15 @@ defmodule DbserviceWeb.Router do
     # language in lang_versions so the frontend can filter client-side.
     get(
       "/resource/problem/:problem_id/:curriculum_id",
+      ResourceController,
+      :get_problem_all_languages
+    )
+
+    # Same all-languages variant without the curriculum_id path segment. Each
+    # problem belongs to a single curriculum, so it need not be specified
+    # (issue #651); kept alongside the /:curriculum_id route for backward compat.
+    get(
+      "/resource/problem/:problem_id",
       ResourceController,
       :get_problem_all_languages
     )

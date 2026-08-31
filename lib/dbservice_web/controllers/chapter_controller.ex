@@ -36,6 +36,21 @@ defmodule DbserviceWeb.ChapterController do
         required: false,
         name: "code"
       )
+
+      params(:query, :integer, "Filter by curriculum id; also scopes topic_count",
+        required: false,
+        name: "curriculum_id"
+      )
+
+      params(:query, :integer, "Filter by grade id",
+        required: false,
+        name: "grade_id"
+      )
+
+      params(:query, :integer, "Filter by subject id",
+        required: false,
+        name: "subject_id"
+      )
     end
 
     response(200, "OK", Schema.ref(:Chapters))
@@ -90,7 +105,13 @@ defmodule DbserviceWeb.ChapterController do
       Repo.all(query)
       |> Repo.preload(:chapter_curriculum)
 
-    render(conn, :index, chapter: chapter)
+    # topic_count is scoped to the requested curriculum_id (a chapter can hold a
+    # different number of topics per curriculum — see issue #633). Batched into a
+    # single query keyed by chapter_id to avoid an N+1 in the JSON layer.
+    topic_counts =
+      Chapters.topic_count_by_chapter_ids(Enum.map(chapter, & &1.id), params["curriculum_id"])
+
+    render(conn, :index, chapter: chapter, topic_counts: topic_counts)
   end
 
   swagger_path :create do
@@ -145,7 +166,12 @@ defmodule DbserviceWeb.ChapterController do
   def update(conn, params) do
     chapter = Chapters.get_chapter!(params["id"])
 
-    with {:ok, %Chapter{} = chapter} <- Chapters.update_chapter(chapter, params) do
+    # Use update_chapter_with_curriculum/2 (not update_chapter/2) so curriculum-
+    # scoped fields (priority/priority_text/weightage) on chapter_curriculum are
+    # updated for the given curriculum_id — matching the POST upsert path. Plain
+    # update_chapter/2 only touches the chapter table and silently ignored them
+    # (issue #688).
+    with {:ok, %Chapter{} = chapter} <- Chapters.update_chapter_with_curriculum(chapter, params) do
       render(conn, :show, chapter: chapter)
     end
   end

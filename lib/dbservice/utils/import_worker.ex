@@ -23,6 +23,7 @@ defmodule Dbservice.DataImport.ImportWorker do
   alias Dbservice.Services.StudentUpdateService
   alias Dbservice.Services.DropoutService
   alias Dbservice.Services.ReEnrollmentService
+  alias Dbservice.Services.EnrollmentService
   alias Dbservice.Utils.ChangesetFormatter
   alias Dbservice.Utils.Util
   alias Dbservice.Colleges
@@ -91,12 +92,14 @@ defmodule Dbservice.DataImport.ImportWorker do
       "school_deletion" => &process_school_deletion_record/1,
       "student" => &process_student_record/1,
       "student_update" => &process_student_update_record/1,
+      "student_enrollment" => &process_student_enrollment_record/1,
       "batch_movement" => &process_batch_movement_record/1,
       "alumni_addition" => &process_alumni_record/1,
       "teacher_batch_assignment" => &process_teacher_batch_assignment_record/1,
       "batch_id_correction" => &process_batch_id_correction_record/1,
       "update_incorrect_batch_id_to_correct_batch_id" => &process_batch_id_update_record/1,
       "update_incorrect_school_to_correct_school" => &process_school_update_record/1,
+      "student_school_movement" => &process_school_movement_record/1,
       "update_incorrect_grade_to_correct_grade" => &process_grade_update_record/1,
       "update_incorrect_auth_group_to_correct_auth_group" => &process_auth_group_update_record/1,
       "dropout" => &process_dropout_record/1,
@@ -858,6 +861,40 @@ defmodule Dbservice.DataImport.ImportWorker do
     end
   end
 
+  # Backfills group-user + enrollment records for a student that ALREADY exists but
+  # has no enrollments (historical data). Reuses the same enrollment logic as the
+  # new-student branch of process_student_record/1; unlike that path it never creates
+  # a student — a missing student is a hard error.
+  #
+  # Unlike the idempotent create path, this import is strict: if the student is
+  # already mapped to any of the auth_group / school / batch / grade in the row
+  # (via a group_user row or a current enrollment record), it is a hard error so
+  # already-enrolled students are surfaced rather than silently no-oped.
+  defp process_student_enrollment_record(record) do
+    student_id = record["student_id"]
+    apaar_id = record["apaar_id"]
+
+    if (is_nil(student_id) or student_id == "") and (is_nil(apaar_id) or apaar_id == "") do
+      {:error, "Either student_id or apaar_id is required for student enrollment"}
+    else
+      case Users.get_student_by_id_or_apaar_id(record) do
+        nil ->
+          {:error,
+           "Student not found. student_id: #{record["student_id"]}, apaar_id: #{record["apaar_id"]}"}
+
+        student ->
+          student = Dbservice.Repo.preload(student, [:user])
+
+          with :ok <- EnrollmentService.validate_row_memberships_absent(student.user.id, record),
+               {:ok, _} <- DataImport.StudentEnrollment.create_enrollments(student.user, record) do
+            {:ok, student}
+          else
+            {:error, reason} -> {:error, reason}
+          end
+      end
+    end
+  end
+
   defp process_batch_movement_record(record) do
     DataImport.BatchMovement.process_batch_movement(record)
   end
@@ -1339,15 +1376,19 @@ defmodule Dbservice.DataImport.ImportWorker do
     |> maybe_put_batch("end_date", parse_date(record["end_date"]))
     |> maybe_put_batch("program_id", record["program_id"])
     |> maybe_put_batch("auth_group_id", record["auth_group_id"])
+    |> maybe_put_batch("system", record["system"] |> trim_str())
     |> maybe_put_batch("metadata", metadata_value)
   end
 
   defp create_or_update_batch(attrs) do
     existing = find_existing_batch(attrs["batch_id"])
 
-    if existing,
-      do: Batches.update_batch(existing, attrs),
-      else: Batches.create_batch_from_import(attrs)
+    if existing do
+      metadata = Map.merge(existing.metadata || %{}, attrs["metadata"] || %{})
+      Batches.update_batch(existing, Map.put(attrs, "metadata", metadata))
+    else
+      Batches.create_batch_from_import(attrs)
+    end
   end
 
   defp find_existing_batch(nil), do: nil
@@ -1700,6 +1741,10 @@ defmodule Dbservice.DataImport.ImportWorker do
 
   defp process_school_update_record(record) do
     DataImport.GroupUpdateProcessor.process_school_update(record)
+  end
+
+  defp process_school_movement_record(record) do
+    DataImport.GroupUpdateProcessor.process_school_movement(record)
   end
 
   defp process_grade_update_record(record) do

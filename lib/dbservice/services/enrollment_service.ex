@@ -85,6 +85,97 @@ defmodule Dbservice.Services.EnrollmentService do
   end
 
   @doc """
+  Strict pre-check used by the `student_enrollment` (backfill) import.
+
+  For each membership named in the row (auth_group / school / batch / grade),
+  returns `{:error, reason}` if the student is ALREADY mapped to that exact group —
+  either via a `group_user` row or a *current* (`is_current: true`) enrollment
+  record. Returns `:ok` when none of the row's memberships already exist.
+
+  Unlike `handle_group_user_enrollment/1` (which is idempotent and silently
+  no-ops on an identical mapping), this makes any pre-existing membership a hard
+  error so already-enrolled students are surfaced instead of quietly skipped.
+  Memberships whose identifier is blank/absent in the row are skipped; an
+  unresolvable identifier (unknown school/batch/grade/auth_group) is returned as
+  an error.
+  """
+  def validate_row_memberships_absent(user_id, params) do
+    [
+      {"auth_group", resolve_row_group("auth_group", params)},
+      {"school", resolve_row_group("school", params)},
+      {"batch", resolve_row_group("batch", params)},
+      {"grade", resolve_row_group("grade", params)}
+    ]
+    |> Enum.reduce_while(:ok, fn {label, resolution}, :ok ->
+      case resolution do
+        :skip ->
+          {:cont, :ok}
+
+        {:error, reason} ->
+          {:halt, {:error, reason}}
+
+        {:ok, group_id} ->
+          if membership_exists?(user_id, group_id) do
+            {:halt, {:error, existing_membership_message(label)}}
+          else
+            {:cont, :ok}
+          end
+      end
+    end)
+  end
+
+  # Resolves the row identifier for a given membership type to a group id.
+  # Returns {:ok, group_id}, {:error, reason} when the identifier is present but
+  # unresolvable, or :skip when the identifier is absent/blank.
+  defp resolve_row_group("auth_group", %{"auth_group" => name}) when name not in [nil, ""],
+    do: normalize_group_id(get_auth_group_id(name))
+
+  defp resolve_row_group("school", %{"school_code" => code}) when code not in [nil, ""],
+    do: normalize_group_id(get_school_group_id(code))
+
+  defp resolve_row_group("batch", %{"batch_id" => batch_id}) when batch_id not in [nil, ""],
+    do: normalize_group_id(get_batch_group_id(batch_id))
+
+  defp resolve_row_group("grade", %{"grade_id" => grade_id}) when grade_id not in [nil, ""],
+    do: normalize_group_id(get_grade_group_id(grade_id))
+
+  defp resolve_row_group(_type, _params), do: :skip
+
+  defp normalize_group_id({:error, reason}), do: {:error, reason}
+  defp normalize_group_id(group_id) when is_integer(group_id), do: {:ok, group_id}
+
+  # True if the user already has a group_user row for this group OR a current
+  # enrollment record for the group's underlying child_id + type.
+  defp membership_exists?(user_id, group_id) do
+    group = Groups.get_group!(group_id)
+
+    group_user_exists?(user_id, group_id) or
+      current_enrollment_exists?(user_id, group.type, group.child_id)
+  end
+
+  defp group_user_exists?(user_id, group_id) do
+    not is_nil(GroupUsers.get_group_user_by_user_id_and_group_id(user_id, group_id))
+  end
+
+  defp current_enrollment_exists?(user_id, group_type, child_id) do
+    query =
+      from er in EnrollmentRecord,
+        where:
+          er.user_id == ^user_id and
+            er.group_type == ^group_type and
+            er.group_id == ^child_id and
+            er.is_current == true,
+        limit: 1
+
+    not is_nil(Repo.one(query))
+  end
+
+  defp existing_membership_message(label) do
+    "Student is already enrolled in a #{label}. This import only backfills students " <>
+      "with no existing #{label} membership; use the appropriate update import type to change it."
+  end
+
+  @doc """
   Validates that a user doesn't have any other active enrollments for the given group type.
   Returns {:error, reason} if an active enrollment exists, :ok otherwise.
   """
@@ -129,24 +220,26 @@ defmodule Dbservice.Services.EnrollmentService do
   Creates a new group user with associated enrollment record.
   """
   def create_new_group_user(params) do
-    group = Groups.get_group!(params["group_id"])
-    academic_year = resolve_academic_year(group.type, params)
+    Repo.transaction(fn ->
+      group = Groups.get_group!(params["group_id"])
+      academic_year = resolve_academic_year(group.type, params)
 
-    enrollment_record = %{
-      "group_id" => group.child_id,
-      "group_type" => group.type,
-      "user_id" => params["user_id"],
-      "academic_year" => academic_year,
-      "start_date" => params["start_date"]
-    }
+      enrollment_record = %{
+        "group_id" => group.child_id,
+        "group_type" => group.type,
+        "user_id" => params["user_id"],
+        "academic_year" => academic_year,
+        "start_date" => params["start_date"]
+      }
 
-    with {:ok, %EnrollmentRecord{} = _} <-
-           EnrollmentRecords.create_enrollment_record(enrollment_record),
-         {:ok, %GroupUser{} = group_user} <- GroupUsers.create_group_user(params) do
-      {:ok, group_user}
-    else
-      {:error, _changeset} -> {:error, "Failed to create group user"}
-    end
+      with {:ok, %EnrollmentRecord{}} <-
+             EnrollmentRecords.create_enrollment_record(enrollment_record),
+           {:ok, %GroupUser{} = group_user} <- GroupUsers.create_group_user(params) do
+        group_user
+      else
+        {:error, _changeset} -> Repo.rollback("Failed to create group user")
+      end
+    end)
   end
 
   @doc """

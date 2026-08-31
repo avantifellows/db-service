@@ -39,7 +39,9 @@ FETCH_ENVIRONMENT=production
 TARGET_ENVIRONMENT=staging
 ```
 
-Staging sync skips data for `session`, `session_occurrence`, `group_session`, and `user_session`.
+Staging sync skips data for `session`, `session_occurrence`, `group_session`,
+`user_session`, and every table matching `public.holistic_mentorship_*`.
+Production-to-local syncs do not apply these staging-only exclusions.
 
 ### Configuration
 

@@ -65,13 +65,35 @@ defmodule DbserviceWeb.CmsStatusController do
     response(201, "Created", Schema.ref(:CmsStatus))
   end
 
+  # Idempotent create: look up by the natural key (name) first so re-syncing an
+  # already-synced row (etl-data-flow re-POSTs every worksheet row) is a no-op
+  # success instead of an unhandled 500 on the unique index (issue #694). `name`
+  # is the only field, so there is nothing to update when it already exists.
   def create(conn, params) do
+    case existing_cms_status(params["name"]) do
+      %CmsStatus{} = cms_status -> render_existing_cms_status(conn, cms_status)
+      nil -> create_new_cms_status(conn, params)
+    end
+  end
+
+  defp existing_cms_status(name) when is_binary(name),
+    do: CmsStatuses.get_cms_status_by_name(name)
+
+  defp existing_cms_status(_name), do: nil
+
+  defp create_new_cms_status(conn, params) do
     with {:ok, %CmsStatus{} = cms_status} <- CmsStatuses.create_cms_status(params) do
       conn
       |> put_status(:created)
       |> put_resp_header("location", ~p"/api/cms-status/#{cms_status}")
       |> render(:show, cms_status: cms_status)
     end
+  end
+
+  defp render_existing_cms_status(conn, cms_status) do
+    conn
+    |> put_status(:ok)
+    |> render(:show, cms_status: cms_status)
   end
 
   swagger_path :show do

@@ -207,7 +207,9 @@ defmodule Dbservice.EnrollmentRecords do
   logging/metrics or conditional logic.
   """
   def delete_all_by_user_id(user_id) do
-    {count, _} = from(er in EnrollmentRecord, where: er.user_id == ^user_id) |> Repo.delete_all()
+    {count, _} =
+      from(er in EnrollmentRecord, where: er.user_id == ^user_id) |> Repo.delete_all()
+
     {:ok, count}
   end
 

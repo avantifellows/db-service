@@ -1,3 +1,4 @@
+# 20260701120000 is already deployed as AddLmsStudentIngestion.
 defmodule Dbservice.Repo.Migrations.AddUserSessionIndexes do
   use Ecto.Migration
 

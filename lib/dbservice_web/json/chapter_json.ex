@@ -1,6 +1,10 @@
 defmodule DbserviceWeb.ChapterJSON do
   alias Dbservice.Repo
 
+  def index(%{chapter: chapter, topic_counts: topic_counts}) do
+    for(c <- chapter, do: render(c, Map.get(topic_counts, c.id, 0)))
+  end
+
   def index(%{chapter: chapter}) do
     for(c <- chapter, do: render(c))
   end
@@ -9,7 +13,9 @@ defmodule DbserviceWeb.ChapterJSON do
     render(chapter)
   end
 
-  defp render(chapter) do
+  # topic_count is only attached on the list endpoint, where it is resolved for
+  # the requested curriculum_id (see issue #633); pass nil to omit it.
+  defp render(chapter, topic_count \\ nil) do
     # Preload chapter_curriculum
     chapter = Repo.preload(chapter, :chapter_curriculum)
 
@@ -24,8 +30,13 @@ defmodule DbserviceWeb.ChapterJSON do
       curriculums: render_curriculums(chapter.chapter_curriculum)
     }
 
-    chapter_json
+    maybe_put_topic_count(chapter_json, topic_count)
   end
+
+  defp maybe_put_topic_count(chapter_json, nil), do: chapter_json
+
+  defp maybe_put_topic_count(chapter_json, topic_count),
+    do: Map.put(chapter_json, :topic_count, topic_count)
 
   defp render_curriculums(chapter_curriculums) do
     cond do

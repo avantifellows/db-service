@@ -13,7 +13,6 @@ defmodule Dbservice.DataImport.BatchMovement do
   """
 
   alias Dbservice.Users
-  alias Dbservice.GroupUsers
   alias Dbservice.Services.BatchEnrollmentService
 
   def process_batch_movement(record) do
@@ -59,9 +58,6 @@ defmodule Dbservice.DataImport.BatchMovement do
     start_date = record["start_date"]
     academic_year = record["academic_year"]
 
-    # Get group users for the student
-    group_users = GroupUsers.get_group_user_by_user_id(user_id)
-
     # Handle batch and status enrollment
     handle_batch_and_status_enrollment(
       user_id,
@@ -72,10 +68,10 @@ defmodule Dbservice.DataImport.BatchMovement do
     )
 
     # Handle grade movement if provided
-    handle_grade_movement(student, record, user_id, academic_year, start_date, group_users)
+    handle_grade_movement(student, record, user_id, academic_year, start_date)
 
     # Always update the batch group user
-    BatchEnrollmentService.update_batch_user(user_id, batch_group_id, group_users)
+    BatchEnrollmentService.update_batch_user(user_id, batch_group_id)
 
     {:ok, "Batch movement completed"}
   end
@@ -115,7 +111,7 @@ defmodule Dbservice.DataImport.BatchMovement do
     end
   end
 
-  defp handle_grade_movement(student, record, user_id, academic_year, start_date, group_users) do
+  defp handle_grade_movement(student, record, user_id, academic_year, start_date) do
     has_grade = Map.has_key?(record, "grade") && record["grade"] != nil && record["grade"] != ""
 
     if has_grade do
@@ -124,15 +120,14 @@ defmodule Dbservice.DataImport.BatchMovement do
         record["grade"],
         user_id,
         academic_year,
-        start_date,
-        group_users
+        start_date
       )
     else
       :no_grade_change
     end
   end
 
-  defp process_grade_change(student, grade, user_id, academic_year, start_date, group_users) do
+  defp process_grade_change(student, grade, user_id, academic_year, start_date) do
     case BatchEnrollmentService.get_grade_info(grade) do
       nil ->
         :grade_not_found
@@ -145,8 +140,7 @@ defmodule Dbservice.DataImport.BatchMovement do
           grade_group_id,
           grade_group_type,
           academic_year,
-          start_date,
-          group_users
+          start_date
         )
     end
   end
@@ -158,8 +152,7 @@ defmodule Dbservice.DataImport.BatchMovement do
          grade_group_id,
          grade_group_type,
          academic_year,
-         start_date,
-         group_users
+         start_date
        ) do
     if BatchEnrollmentService.grade_changed?(user_id, grade_id) do
       # Handle grade enrollment
@@ -172,7 +165,7 @@ defmodule Dbservice.DataImport.BatchMovement do
       )
 
       # Update grade in group_user
-      BatchEnrollmentService.update_grade_user(user_id, grade_group_id, group_users)
+      BatchEnrollmentService.update_grade_user(user_id, grade_group_id)
 
       # Update grade in student table
       BatchEnrollmentService.update_student_grade(student, grade_id)
