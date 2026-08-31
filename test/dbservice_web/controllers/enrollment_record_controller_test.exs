@@ -9,7 +9,7 @@ defmodule DbserviceWeb.EnrollmentRecordControllerTest do
     start_date: ~D[2022-04-28],
     end_date: ~D[2022-04-28],
     is_current: true,
-    academic_year: "some academic_year",
+    academic_year: "2030-2031",
     group_id: 1,
     group_type: "some_group",
     user_id: 1,
@@ -19,7 +19,7 @@ defmodule DbserviceWeb.EnrollmentRecordControllerTest do
     start_date: ~D[2022-04-29],
     end_date: ~D[2022-04-29],
     is_current: false,
-    academic_year: "some updated academic_year",
+    academic_year: "2031-2032",
     group_id: 2,
     group_type: "some updated group",
     user_id: 2,
@@ -66,7 +66,7 @@ defmodule DbserviceWeb.EnrollmentRecordControllerTest do
 
       assert %{
                "id" => ^id,
-               "academic_year" => "some academic_year",
+               "academic_year" => "2030-2031",
                "start_date" => "2022-04-28",
                "end_date" => "2022-04-28",
                "is_current" => true,
@@ -109,7 +109,7 @@ defmodule DbserviceWeb.EnrollmentRecordControllerTest do
 
       assert %{
                "id" => ^id,
-               "academic_year" => "some updated academic_year",
+               "academic_year" => "2031-2032",
                "start_date" => "2022-04-29",
                "end_date" => "2022-04-29",
                "is_current" => false,

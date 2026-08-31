@@ -43,6 +43,16 @@ defmodule Dbservice.EnrollmentRecordsTest do
       end
     end
 
+    test "rejects a well-formed but non-consecutive year range (e.g. 2025-2027)" do
+      for bad <- ["2025-2027", "2027-2025", "2026-2026"] do
+        assert {:error, changeset} =
+                 EnrollmentRecords.create_enrollment_record(base_attrs(%{"academic_year" => bad})),
+               "expected #{inspect(bad)} to be rejected"
+
+        assert "must span consecutive years (e.g. 2026-2027)" in errors_on(changeset).academic_year
+      end
+    end
+
     test "allows a nil academic_year for auth_group enrollment records" do
       attrs =
         %{}
