@@ -1,7 +1,8 @@
 defmodule DbserviceWeb.ProblemSimilarSearchTest do
   @moduledoc """
   POST /api/problems/similar-search — fuzzy/similarity duplicate detection
-  (issue #700). Matching is scoped per language and filtered to >= 0.75.
+  (issue #700). Matching is scoped per language and filtered to > 0.75 (the
+  pg_trgm `%` operator is strictly greater than the threshold).
   """
   use DbserviceWeb.ConnCase
 
@@ -67,7 +68,7 @@ defmodule DbserviceWeb.ProblemSimilarSearchTest do
       assert match["match_score"] == 1.0
     end
 
-    test "returns a near-duplicate (>= 0.75, < 1.0) and excludes unrelated ones", %{conn: conn} do
+    test "returns a near-duplicate (> 0.75, < 1.0) and excludes unrelated ones", %{conn: conn} do
       en = language_fixture("q3e")
       near = problem_fixture()
       unrelated = problem_fixture()
@@ -82,7 +83,7 @@ defmodule DbserviceWeb.ProblemSimilarSearchTest do
       refute unrelated.id in ids
 
       match = Enum.find(body["problems"], &(&1["id"] == near.id))
-      assert match["match_score"] >= 0.75
+      assert match["match_score"] > 0.75
       assert match["match_score"] < 1.0
     end
 
