@@ -727,8 +727,21 @@ defmodule Dbservice.Users do
     end
   end
 
+  # Reads an identifier from string- or atom-keyed params and trims it, so the
+  # conflict check compares the same normalized value the changeset stores — a
+  # padded " 222… " must not slip past the duplicate check (issue #641 review).
+  # A whitespace-only value is treated as absent.
   defp identifier_param(params, key) do
-    Map.get(params, key) || Map.get(params, Atom.to_string(key))
+    case Map.get(params, key) || Map.get(params, Atom.to_string(key)) do
+      value when is_binary(value) ->
+        case String.trim(value) do
+          "" -> nil
+          trimmed -> trimmed
+        end
+
+      other ->
+        other
+    end
   end
 
   defp identifier_present?(value), do: not (is_nil(value) or value == "")

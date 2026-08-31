@@ -663,6 +663,19 @@ defmodule Dbservice.UsersTest do
     test "returns :ok when no globally-unique identifiers are present" do
       assert :ok = Users.validate_identifier_conflicts(%{"first_name" => "NoIdentifiers"})
     end
+
+    test "trims a padded apaar_id before checking so whitespace can't bypass the guard" do
+      {_u, _s} = student_fixture(%{apaar_id: "123456789012"})
+
+      assert {:error, message} =
+               Users.validate_identifier_conflicts(%{"apaar_id" => "  123456789012  "})
+
+      assert message =~ "APAAR ID '123456789012' already exists for another student"
+    end
+
+    test "treats a whitespace-only identifier as absent" do
+      assert :ok = Users.validate_identifier_conflicts(%{"apaar_id" => "   "})
+    end
   end
 
   describe "teacher" do

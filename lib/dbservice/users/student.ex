@@ -121,16 +121,11 @@ defmodule Dbservice.Users.Student do
       :g10_board,
       :g10_roll_no
     ])
-    |> update_change(:pen_number, fn
-      nil ->
-        nil
-
-      value ->
-        case String.trim(value) do
-          "" -> nil
-          value -> value
-        end
-    end)
+    # Trim the globally-unique identifiers so stray whitespace can't create a
+    # near-duplicate that bypasses the uniqueness checks (issue #641 review); a
+    # whitespace-only value becomes nil.
+    |> trim_identifier(:apaar_id)
+    |> trim_identifier(:pen_number)
     |> validate_format(:pen_number, ~r/^[1-9][0-9]{10}$/,
       message: "must be exactly 11 digits and cannot start with zero"
     )
@@ -140,5 +135,21 @@ defmodule Dbservice.Users.Student do
     |> validate_required([:user_id])
     |> validate_category(:category)
     |> validate_stream(:stream)
+  end
+
+  defp trim_identifier(changeset, field) do
+    update_change(changeset, field, fn
+      nil ->
+        nil
+
+      value when is_binary(value) ->
+        case String.trim(value) do
+          "" -> nil
+          trimmed -> trimmed
+        end
+
+      value ->
+        value
+    end)
   end
 end

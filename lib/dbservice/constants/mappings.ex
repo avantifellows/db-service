@@ -331,6 +331,15 @@ defmodule Dbservice.Constants.Mappings do
       ],
       type: :string
     },
+    # PEN is a globally-unique student identifier like apaar_id; expose it on the
+    # student create/update imports so the duplicate-identifier check (issue #641)
+    # covers a PEN supplied via CSV, not just direct service calls.
+    "student_pen_number" => %{
+      db_field: "pen_number",
+      required: [],
+      optional: ["student", "student_update"],
+      type: :string
+    },
 
     # System fields
     "addition_date" => %{
