@@ -287,7 +287,7 @@ defmodule DbserviceWeb.LmsStudentIngestionControllerTest do
       params =
         school
         |> payload([valid_pen_row("12345678901", %{})])
-        |> Map.put("academic_year", "2026-2027")
+        |> Map.put("academic_year", "2026-2028")
 
       response =
         conn
