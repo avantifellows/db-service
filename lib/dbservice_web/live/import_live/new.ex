@@ -61,10 +61,12 @@ defmodule DbserviceWeb.ImportLive.New do
   defp handle_save(%{"import" => import_params}, socket) do
     import_type = Map.get(import_params, "type", "")
 
-    # Protected import types require basic auth (dropout, re_enrollment, auth_group, product, program, batch)
+    # Protected import types require basic auth (dropout, re_enrollment,
+    # student_enrollment, auth_group, product, program, batch, school, ...)
     protected_import_config = %{
       "dropout" => "submit_dropout_import",
       "re_enrollment" => "submit_re_enrollment_import",
+      "student_enrollment" => "submit_student_enrollment_import",
       "auth_group_addition" => "submit_auth_group_import",
       "product_addition" => "submit_product_import",
       "program_addition" => "submit_program_import",
@@ -127,6 +129,7 @@ defmodule DbserviceWeb.ImportLive.New do
 
   defp get_protected_import_url("dropout"), do: ~p"/imports/dropout"
   defp get_protected_import_url("re_enrollment"), do: ~p"/imports/re_enrollment"
+  defp get_protected_import_url("student_enrollment"), do: ~p"/imports/student_enrollment"
   defp get_protected_import_url("auth_group_addition"), do: ~p"/imports/auth_group"
   defp get_protected_import_url("product_addition"), do: ~p"/imports/product"
   defp get_protected_import_url("program_addition"), do: ~p"/imports/program"
@@ -181,7 +184,9 @@ defmodule DbserviceWeb.ImportLive.New do
                   >
                     <option disabled value="">Select import type</option>
                     <option value="student" selected={@form[:type].value == "student"}>Student Addition</option>
-                    <option value="student_update" selected={@form[:type].value == "student_update"}>Update Student Details</option>                            <option value="teacher_addition" selected={@form[:type].value == "teacher_addition"}>Teacher Addition</option>
+                    <option value="student_update" selected={@form[:type].value == "student_update"}>Update Student Details</option>
+                    <option value="student_enrollment" selected={@form[:type].value == "student_enrollment"}>Enroll Existing Students</option>
+                    <option value="teacher_addition" selected={@form[:type].value == "teacher_addition"}>Teacher Addition</option>
                     <option value="chapter_addition" selected={@form[:type].value == "chapter_addition"}>Chapter Addition</option>
                     <option value="subject_addition" selected={@form[:type].value == "subject_addition"}>Subject Addition</option>
                     <option value="resource_addition" selected={@form[:type].value == "resource_addition"}>Resource Addition</option>
@@ -200,6 +205,7 @@ defmodule DbserviceWeb.ImportLive.New do
                     <option value="batch_id_correction" selected={@form[:type].value == "batch_id_correction"}>Batch ID Correction</option>
                     <option value="update_incorrect_batch_id_to_correct_batch_id" selected={@form[:type].value == "update_incorrect_batch_id_to_correct_batch_id"}>Update Incorrect Batch ID to Correct Batch ID</option>
                     <option value="update_incorrect_school_to_correct_school" selected={@form[:type].value == "update_incorrect_school_to_correct_school"}>Update Incorrect School to Correct School</option>
+                    <option value="student_school_movement" selected={@form[:type].value == "student_school_movement"}>Student School Movement</option>
                     <option value="update_incorrect_grade_to_correct_grade" selected={@form[:type].value == "update_incorrect_grade_to_correct_grade"}>Update Incorrect Grade to Correct Grade</option>
                     <option value="update_incorrect_auth_group_to_correct_auth_group" selected={@form[:type].value == "update_incorrect_auth_group_to_correct_auth_group"}>Update Incorrect Auth Group to Correct Auth Group</option>
 

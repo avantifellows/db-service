@@ -4,7 +4,7 @@ defmodule Dbservice.LmsCurriculum.ChapterExamConfig do
   use Ecto.Schema
   import Ecto.Changeset
 
-  @exam_tracks ~w(jee_main jee_advanced neet)
+  @exam_tracks ~w(jee_main jee_advanced neet cet math_foundation)
 
   schema "lms_chapter_exam_configs" do
     field :exam_track, :string

@@ -54,12 +54,14 @@ defmodule Dbservice.Resources do
   ## Parameters
     - test_id: ID of the test resource
     - lang_code: Code of the language to fetch problems in (e.g., "en", "hi")
-    - curriculum_id: ID of the curriculum to get difficulty level
+    - curriculum_id: optional; deprecated. Each problem has exactly one
+      resource_curriculum row, so no curriculum filtering is needed. Accepted
+      for backward compatibility and ignored when nil (issue #651).
 
   ## Returns
     - List of problem resources with their metadata from problem_lang table and difficulty_level from resource_curriculum
   """
-  def get_problems_by_test_and_language(test_id, lang_code, curriculum_id) do
+  def get_problems_by_test_and_language(test_id, lang_code, curriculum_id \\ nil) do
     language = from(l in Language, where: l.code == ^lang_code, select: l) |> Repo.one()
 
     case language do
@@ -72,8 +74,12 @@ defmodule Dbservice.Resources do
   All-languages counterpart of `get_problems_by_test_and_language/3`. Returns
   every problem in the test once (no language filter); each problem's languages
   are attached as `lang_versions` by the JSON layer.
+
+  `curriculum_id` is optional and deprecated (see issue #651): each problem has
+  exactly one resource_curriculum row, so it is only used to pick which
+  curriculum's fields to surface and falls back to that single row when nil.
   """
-  def get_problems_by_test(test_id, curriculum_id) do
+  def get_problems_by_test(test_id, curriculum_id \\ nil) do
     test_resource = Repo.get(Resource, test_id)
 
     cond do

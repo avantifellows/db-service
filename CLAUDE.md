@@ -69,6 +69,11 @@ Complex operations that span multiple domains:
 - `group_update_service` - Group synchronization
 - `student_update_service` - Bulk student operations
 
+Holistic Mentorship status/Grade/dropout cleanup remains transaction-coupled to
+canonical Student mutations through `Dbservice.Users.update_student/2`. Generic
+School/Program `Dbservice.EnrollmentRecords` CRUD must not query or mutate Holistic
+tables; AF LMS reconciles those eligibility changes before protected Holistic work.
+
 ### Revised NVS student writes
 
 - Reuse `Dbservice.LmsStudentIngestion` canonical normalization in the LMS create and update flows so identifiers, DOB, gender, board, and stream rules do not drift.

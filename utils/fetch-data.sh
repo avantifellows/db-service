@@ -54,7 +54,7 @@ check_required_var "FETCH_ENVIRONMENT" "$FETCH_ENVIRONMENT"
 LOCAL_DB_PORT=${LOCAL_DB_PORT:-5432}
 DUMP_FILE=${DUMP_FILE:-dump.sql}
 TARGET_ENVIRONMENT=${TARGET_ENVIRONMENT:-local}
-STAGING_EXCLUDED_TABLE_DATA=(public.session public.session_occurrence public.group_session public.user_session)
+STAGING_EXCLUDED_TABLE_DATA=(public.session public.session_occurrence public.group_session public.user_session 'public.holistic_mentorship_*')
 
 # Validate source environment and set database credentials
 if [ "$FETCH_ENVIRONMENT" == "production" ]; then

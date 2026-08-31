@@ -8,6 +8,7 @@ defmodule DbserviceWeb.ProblemAllLanguagesTest do
 
   alias Dbservice.Curriculums
   alias Dbservice.Languages
+  alias Dbservice.Paragraphs
   alias Dbservice.ProblemLanguages
   alias Dbservice.ResourceCurriculums
   alias Dbservice.ResourceTopics
@@ -39,15 +40,32 @@ defmodule DbserviceWeb.ProblemAllLanguagesTest do
     resource
   end
 
-  defp problem_language_fixture(resource, language, meta_data) do
+  defp problem_language_fixture(resource, language, meta_data, opts \\ []) do
     {:ok, problem_lang} =
       ProblemLanguages.create_problem_language(%{
         res_id: resource.id,
         lang_id: language.id,
-        meta_data: meta_data
+        meta_data: meta_data,
+        paragraph_id: Keyword.get(opts, :paragraph_id)
       })
 
     problem_lang
+  end
+
+  defp comprehension_problem_fixture do
+    {:ok, resource} =
+      Resources.create_resource(%{
+        "type" => "problem",
+        "subtype" => "comprehension",
+        "type_params" => %{}
+      })
+
+    resource
+  end
+
+  defp paragraph_fixture(body) do
+    {:ok, paragraph} = Paragraphs.create_paragraph(%{"body" => body})
+    paragraph
   end
 
   defp curriculum_fixture do
@@ -105,11 +123,88 @@ defmodule DbserviceWeb.ProblemAllLanguagesTest do
              ]
     end
 
+    test "includes the paragraph for a comprehension problem (issue #664)", %{conn: conn} do
+      en = language_fixture("afe", "AF EN")
+      hi = language_fixture("afh", "AF HI")
+      curriculum = curriculum_fixture()
+      problem = comprehension_problem_fixture()
+      resource_curriculum_fixture(problem, curriculum)
+
+      paragraph = paragraph_fixture("A gas that follows Boyle's law...")
+      problem_language_fixture(problem, en, %{"text" => "EN"}, paragraph_id: paragraph.id)
+      problem_language_fixture(problem, hi, %{"text" => "HI"}, paragraph_id: paragraph.id)
+
+      conn = get(conn, ~p"/api/resource/problem/#{problem.id}/#{curriculum.id}")
+      body = json_response(conn, 200)
+
+      assert body["paragraph"] == %{
+               "id" => paragraph.id,
+               "body" => "A gas that follows Boyle's law..."
+             }
+    end
+
     test "404 when the curriculum is not linked to the problem", %{conn: conn} do
       problem = problem_fixture()
       other_curriculum = curriculum_fixture()
 
       conn = get(conn, ~p"/api/resource/problem/#{problem.id}/#{other_curriculum.id}")
+      assert json_response(conn, 404)
+    end
+  end
+
+  describe "GET /api/resource/problem/:problem_id (curriculum_id optional, issue #651)" do
+    test "returns the problem with all languages when curriculum_id is omitted", %{conn: conn} do
+      en = language_fixture("dae", "DA EN")
+      hi = language_fixture("dah", "DA HI")
+      curriculum = curriculum_fixture()
+      problem = problem_fixture()
+      resource_curriculum_fixture(problem, curriculum)
+
+      en_meta = %{"text" => "no curr id EN"}
+      hi_meta = %{"text" => "no curr id HI"}
+      problem_language_fixture(problem, en, en_meta)
+      problem_language_fixture(problem, hi, hi_meta)
+
+      # No curriculum_id path segment.
+      conn = get(conn, ~p"/api/resource/problem/#{problem.id}")
+      body = json_response(conn, 200)
+
+      assert body["id"] == problem.id
+      assert body["meta_data"] == nil
+      assert body["lang_code"] == nil
+      # Top-level curriculum fields resolve from the single resource_curriculum row.
+      assert body["curriculum_id"] == curriculum.id
+      assert body["difficulty_level"] == "medium"
+
+      assert body["lang_versions"] == [
+               %{"lang_code" => "dae", "meta_data" => en_meta},
+               %{"lang_code" => "dah", "meta_data" => hi_meta}
+             ]
+    end
+
+    test "includes the paragraph for a comprehension problem without curriculum_id",
+         %{conn: conn} do
+      en = language_fixture("dbe", "DB EN")
+      curriculum = curriculum_fixture()
+      problem = comprehension_problem_fixture()
+      resource_curriculum_fixture(problem, curriculum)
+
+      paragraph = paragraph_fixture("Passage without curriculum_id")
+      problem_language_fixture(problem, en, %{"text" => "EN"}, paragraph_id: paragraph.id)
+
+      conn = get(conn, ~p"/api/resource/problem/#{problem.id}")
+      body = json_response(conn, 200)
+
+      assert body["paragraph"] == %{
+               "id" => paragraph.id,
+               "body" => "Passage without curriculum_id"
+             }
+    end
+
+    test "404 when the problem has no curriculum mapping", %{conn: conn} do
+      problem = problem_fixture()
+
+      conn = get(conn, ~p"/api/resource/problem/#{problem.id}")
       assert json_response(conn, 404)
     end
   end
@@ -139,6 +234,105 @@ defmodule DbserviceWeb.ProblemAllLanguagesTest do
                %{"lang_code" => "abe", "meta_data" => en_meta},
                %{"lang_code" => "abh", "meta_data" => hi_meta}
              ]
+    end
+
+    test "includes the paragraph for a comprehension problem (issue #664)", %{conn: conn} do
+      en = language_fixture("bbe", "BB EN")
+      hi = language_fixture("bbh", "BB HI")
+      curriculum = curriculum_fixture()
+      problem = comprehension_problem_fixture()
+      resource_curriculum_fixture(problem, curriculum)
+
+      paragraph = paragraph_fixture("Test passage body")
+      problem_language_fixture(problem, en, %{"text" => "EN"}, paragraph_id: paragraph.id)
+      problem_language_fixture(problem, hi, %{"text" => "HI"}, paragraph_id: paragraph.id)
+
+      test = test_fixture([problem.id])
+
+      conn = get(conn, ~p"/api/resource/test/#{test.id}/problems?curriculum_id=#{curriculum.id}")
+      body = json_response(conn, 200)
+
+      assert [entry] = body
+      assert entry["paragraph"] == %{"id" => paragraph.id, "body" => "Test passage body"}
+    end
+  end
+
+  describe "GET /api/resource/test/:id/problems (curriculum_id optional, issue #651)" do
+    test "returns problems when curriculum_id is omitted (all languages)", %{conn: conn} do
+      en = language_fixture("cae", "CA EN")
+      hi = language_fixture("cah", "CA HI")
+      curriculum = curriculum_fixture()
+      problem = problem_fixture()
+      resource_curriculum_fixture(problem, curriculum)
+
+      en_meta = %{"text" => "no curr EN"}
+      hi_meta = %{"text" => "no curr HI"}
+      problem_language_fixture(problem, en, en_meta)
+      problem_language_fixture(problem, hi, hi_meta)
+
+      test = test_fixture([problem.id])
+
+      # No curriculum_id query param at all.
+      conn = get(conn, ~p"/api/resource/test/#{test.id}/problems")
+      body = json_response(conn, 200)
+
+      assert [entry] = body
+      assert entry["id"] == problem.id
+      # Top-level curriculum fields resolve from the single resource_curriculum row.
+      assert entry["curriculum_id"] == curriculum.id
+      assert entry["difficulty_level"] == "medium"
+
+      assert entry["lang_versions"] == [
+               %{"lang_code" => "cae", "meta_data" => en_meta},
+               %{"lang_code" => "cah", "meta_data" => hi_meta}
+             ]
+    end
+
+    test "returns problems when curriculum_id is omitted (single language)", %{conn: conn} do
+      en = language_fixture("cbe", "CB EN")
+      curriculum = curriculum_fixture()
+      problem = problem_fixture()
+      resource_curriculum_fixture(problem, curriculum)
+
+      en_meta = %{"text" => "single no curr"}
+      problem_language_fixture(problem, en, en_meta)
+
+      test = test_fixture([problem.id])
+
+      conn = get(conn, ~p"/api/resource/test/#{test.id}/problems?lang_code=cbe")
+      body = json_response(conn, 200)
+
+      assert [entry] = body
+      assert entry["id"] == problem.id
+      # Backward-compatible flat meta_data for the requested language.
+      assert entry["meta_data"] == en_meta
+      assert entry["curriculum_id"] == curriculum.id
+      assert entry["difficulty_level"] == "medium"
+    end
+
+    test "still accepts curriculum_id for backward compatibility", %{conn: conn} do
+      en = language_fixture("cce", "CC EN")
+      curriculum = curriculum_fixture()
+      problem = problem_fixture()
+      resource_curriculum_fixture(problem, curriculum)
+
+      en_meta = %{"text" => "with curr"}
+      problem_language_fixture(problem, en, en_meta)
+
+      test = test_fixture([problem.id])
+
+      conn =
+        get(
+          conn,
+          ~p"/api/resource/test/#{test.id}/problems?lang_code=cce&curriculum_id=#{curriculum.id}"
+        )
+
+      body = json_response(conn, 200)
+
+      assert [entry] = body
+      assert entry["id"] == problem.id
+      assert entry["meta_data"] == en_meta
+      assert entry["curriculum_id"] == curriculum.id
     end
   end
 
@@ -194,6 +388,78 @@ defmodule DbserviceWeb.ProblemAllLanguagesTest do
       # Backward-compatible: flat meta_data is the requested language.
       assert entry["meta_data"] == en_meta
     end
+
+    test "includes the paragraph for a comprehension problem (issue #664)", %{conn: conn} do
+      en = language_fixture("bce", "BC EN")
+      hi = language_fixture("bch", "BC HI")
+      curriculum = curriculum_fixture()
+      topic = topic_fixture()
+      problem = comprehension_problem_fixture()
+      resource_curriculum_fixture(problem, curriculum)
+      resource_topic_fixture(problem, topic)
+
+      paragraph = paragraph_fixture("Topic passage body")
+      problem_language_fixture(problem, en, %{"text" => "EN"}, paragraph_id: paragraph.id)
+      problem_language_fixture(problem, hi, %{"text" => "HI"}, paragraph_id: paragraph.id)
+
+      conn = get(conn, ~p"/api/problems?topic_id=#{topic.id}&curriculum_id=#{curriculum.id}")
+      body = json_response(conn, 200)
+
+      assert [entry] = body
+      assert entry["paragraph"] == %{"id" => paragraph.id, "body" => "Topic passage body"}
+    end
+
+    test "returns problems when curriculum_id is omitted (all languages, issue #651)",
+         %{conn: conn} do
+      en = language_fixture("dce", "DC EN")
+      hi = language_fixture("dch", "DC HI")
+      curriculum = curriculum_fixture()
+      topic = topic_fixture()
+      problem = problem_fixture()
+      resource_curriculum_fixture(problem, curriculum)
+      resource_topic_fixture(problem, topic)
+
+      en_meta = %{"text" => "no curr topic EN"}
+      hi_meta = %{"text" => "no curr topic HI"}
+      problem_language_fixture(problem, en, en_meta)
+      problem_language_fixture(problem, hi, hi_meta)
+
+      # No curriculum_id query param.
+      conn = get(conn, ~p"/api/problems?topic_id=#{topic.id}")
+      body = json_response(conn, 200)
+
+      assert [entry] = body
+      assert entry["id"] == problem.id
+      assert entry["curriculum_id"] == curriculum.id
+      assert entry["difficulty_level"] == "medium"
+
+      assert entry["lang_versions"] == [
+               %{"lang_code" => "dce", "meta_data" => en_meta},
+               %{"lang_code" => "dch", "meta_data" => hi_meta}
+             ]
+    end
+
+    test "returns problems when curriculum_id is omitted (single language, issue #651)",
+         %{conn: conn} do
+      en = language_fixture("dde", "DD EN")
+      curriculum = curriculum_fixture()
+      topic = topic_fixture()
+      problem = problem_fixture()
+      resource_curriculum_fixture(problem, curriculum)
+      resource_topic_fixture(problem, topic)
+
+      en_meta = %{"text" => "single no curr topic"}
+      problem_language_fixture(problem, en, en_meta)
+
+      conn = get(conn, ~p"/api/problems?topic_id=#{topic.id}&lang_code=dde")
+      body = json_response(conn, 200)
+
+      assert [entry] = body
+      assert entry["id"] == problem.id
+      assert entry["meta_data"] == en_meta
+      assert entry["curriculum_id"] == curriculum.id
+      assert entry["difficulty_level"] == "medium"
+    end
   end
 
   describe "GET /api/problems/search (no lang_code)" do
@@ -222,6 +488,27 @@ defmodule DbserviceWeb.ProblemAllLanguagesTest do
                %{"lang_code" => "aee", "meta_data" => en_meta},
                %{"lang_code" => "aeh", "meta_data" => hi_meta}
              ]
+    end
+
+    test "includes the paragraph for a comprehension problem (issue #664)", %{conn: conn} do
+      en = language_fixture("bde", "BD EN")
+      curriculum = curriculum_fixture()
+      problem = comprehension_problem_fixture()
+      resource_curriculum_fixture(problem, curriculum)
+
+      term = "zzparagraphtoken"
+      paragraph = paragraph_fixture("Search passage body")
+
+      problem_language_fixture(problem, en, %{"text" => "english #{term}"},
+        paragraph_id: paragraph.id
+      )
+
+      conn = get(conn, ~p"/api/problems/search?search=#{term}")
+      body = json_response(conn, 200)
+
+      assert [entry] = body
+      assert entry["id"] == problem.id
+      assert entry["paragraph"] == %{"id" => paragraph.id, "body" => "Search passage body"}
     end
   end
 end

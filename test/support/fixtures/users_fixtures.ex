@@ -44,7 +44,7 @@ defmodule Dbservice.UsersFixtures do
     {:ok, student} =
       attrs
       |> Enum.into(%{
-        student_id: "some student id",
+        student_id: "some student id #{System.unique_integer([:positive])}",
         category: "Gen",
         father_name: "some father_name",
         father_phone: "some father_phone",
