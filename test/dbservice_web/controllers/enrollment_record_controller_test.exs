@@ -213,7 +213,7 @@ defmodule DbserviceWeb.EnrollmentRecordControllerTest do
         INSERT INTO holistic_mentorship_mentor_mentee_mappings
           (student_id, mentor_user_id, school_id, program_id, academic_year, started_at,
            assignment_source)
-        VALUES ($1, $2, $3, $4, '2026-27', timezone('UTC', now()), 'af_lms')
+        VALUES ($1, $2, $3, $4, '2026-2027', timezone('UTC', now()), 'af_lms')
         RETURNING id
         """,
         [student_id, mentor_user_id, school_id, program_id]
@@ -224,7 +224,7 @@ defmodule DbserviceWeb.EnrollmentRecordControllerTest do
         """
         INSERT INTO enrollment_record
           (user_id, group_id, group_type, academic_year, start_date, is_current, inserted_at, updated_at)
-        VALUES ($1, $2, 'program', '2026-27', '2026-04-01', true, now(), now())
+        VALUES ($1, $2, 'program', '2026-2027', '2026-04-01', true, now(), now())
         RETURNING id
         """,
         [student_user_id, program_id]
