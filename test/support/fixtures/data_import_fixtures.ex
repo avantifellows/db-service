@@ -122,6 +122,21 @@ defmodule Dbservice.DataImportFixtures do
   end
 
   @doc """
+  Generate `student_update` CSV content: one row per {student_id, apaar_id, first_name}
+  tuple. `apaar_id`/`first_name` may be "" to omit that column value for a row.
+  """
+  def student_update_csv_content(rows) do
+    header = "student_id,student_apaar_id,user_first_name"
+
+    body =
+      Enum.map_join(rows, "\n", fn {student_id, apaar_id, first_name} ->
+        "#{student_id},#{apaar_id},#{first_name}"
+      end)
+
+    header <> "\n" <> body <> "\n"
+  end
+
+  @doc """
   Generate student CSV with missing headers.
   """
   def incomplete_student_csv_content do
