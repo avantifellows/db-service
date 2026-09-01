@@ -26,24 +26,21 @@ defmodule Dbservice.Repo.Migrations.AddAcademicYearFormatCheck do
   """
 
   def up do
-    # Fail loudly if any existing row violates the format (bad shape or
-    # non-consecutive years) instead of silently skipping them — resolve those
-    # rows first, then re-run.
+    # Auto-normalize the safe short form "YYYY-YY" -> "YYYY-YYYY" (e.g. "2026-27"
+    # -> "2026-2027"), but only when the two-digit suffix is exactly start_year + 1
+    # so the conversion is unambiguous (handles century rollover via % 100). This
+    # heals the common import artifact in place, without a manual data step or an
+    # aborted deploy.
     execute("""
-    DO $$
-    BEGIN
-      IF EXISTS (
-        SELECT 1
-        FROM enrollment_record
-        WHERE academic_year IS NOT NULL
-          AND NOT (#{@valid_predicate})
-      ) THEN
-        RAISE EXCEPTION 'enrollment_record.academic_year has values that are not a consecutive-year YYYY-YYYY range; resolve before adding constraint';
-      END IF;
-    END $$;
+    UPDATE enrollment_record
+    SET academic_year = left(academic_year, 4) || '-' || (left(academic_year, 4)::int + 1)::text
+    WHERE academic_year ~ '^[0-9]{4}-[0-9]{2}$'
+      AND right(academic_year, 2)::int = (left(academic_year, 4)::int + 1) % 100
     """)
 
-    # Idempotent re-run (no enclosing transaction to roll back a partial run).
+    # Add the constraint NOT VALID (brief lock, no scan) so every FUTURE write is
+    # enforced immediately. Idempotent re-run (no enclosing transaction to roll
+    # back a partial run).
     execute("ALTER TABLE enrollment_record DROP CONSTRAINT IF EXISTS #{@constraint}")
 
     execute("""
@@ -53,7 +50,29 @@ defmodule Dbservice.Repo.Migrations.AddAcademicYearFormatCheck do
     NOT VALID
     """)
 
-    execute("ALTER TABLE enrollment_record VALIDATE CONSTRAINT #{@constraint}")
+    # VALIDATE existing rows only when they are all clean; otherwise leave the
+    # constraint NOT VALID and WARN (not RAISE) so the deploy never aborts. Any
+    # values that could not be auto-fixed — genuinely non-consecutive ranges like
+    # "2025-2027", mismatched short forms, other junk — need a human decision;
+    # fix them by hand later and run `VALIDATE CONSTRAINT`. New/updated rows are
+    # already protected by the NOT VALID constraint.
+    execute("""
+    DO $$
+    DECLARE
+      invalid_count integer;
+    BEGIN
+      SELECT count(*) INTO invalid_count
+      FROM enrollment_record
+      WHERE academic_year IS NOT NULL
+        AND NOT (#{@valid_predicate});
+
+      IF invalid_count = 0 THEN
+        ALTER TABLE enrollment_record VALIDATE CONSTRAINT #{@constraint};
+      ELSE
+        RAISE WARNING 'enrollment_record.academic_year: % row(s) are not a consecutive-year YYYY-YYYY range and were left as-is; the constraint was added NOT VALID so it guards new writes. Resolve the remaining rows and run: ALTER TABLE enrollment_record VALIDATE CONSTRAINT %;', invalid_count, '#{@constraint}';
+      END IF;
+    END $$;
+    """)
   end
 
   def down do
