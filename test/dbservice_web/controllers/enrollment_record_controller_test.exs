@@ -9,7 +9,7 @@ defmodule DbserviceWeb.EnrollmentRecordControllerTest do
     start_date: ~D[2022-04-28],
     end_date: ~D[2022-04-28],
     is_current: true,
-    academic_year: "some academic_year",
+    academic_year: "2030-2031",
     group_id: 1,
     group_type: "some_group",
     user_id: 1,
@@ -19,7 +19,7 @@ defmodule DbserviceWeb.EnrollmentRecordControllerTest do
     start_date: ~D[2022-04-29],
     end_date: ~D[2022-04-29],
     is_current: false,
-    academic_year: "some updated academic_year",
+    academic_year: "2031-2032",
     group_id: 2,
     group_type: "some updated group",
     user_id: 2,
@@ -66,7 +66,7 @@ defmodule DbserviceWeb.EnrollmentRecordControllerTest do
 
       assert %{
                "id" => ^id,
-               "academic_year" => "some academic_year",
+               "academic_year" => "2030-2031",
                "start_date" => "2022-04-28",
                "end_date" => "2022-04-28",
                "is_current" => true,
@@ -109,7 +109,7 @@ defmodule DbserviceWeb.EnrollmentRecordControllerTest do
 
       assert %{
                "id" => ^id,
-               "academic_year" => "some updated academic_year",
+               "academic_year" => "2031-2032",
                "start_date" => "2022-04-29",
                "end_date" => "2022-04-29",
                "is_current" => false,
@@ -213,7 +213,7 @@ defmodule DbserviceWeb.EnrollmentRecordControllerTest do
         INSERT INTO holistic_mentorship_mentor_mentee_mappings
           (student_id, mentor_user_id, school_id, program_id, academic_year, started_at,
            assignment_source)
-        VALUES ($1, $2, $3, $4, '2026-27', timezone('UTC', now()), 'af_lms')
+        VALUES ($1, $2, $3, $4, '2026-2027', timezone('UTC', now()), 'af_lms')
         RETURNING id
         """,
         [student_id, mentor_user_id, school_id, program_id]
@@ -224,7 +224,7 @@ defmodule DbserviceWeb.EnrollmentRecordControllerTest do
         """
         INSERT INTO enrollment_record
           (user_id, group_id, group_type, academic_year, start_date, is_current, inserted_at, updated_at)
-        VALUES ($1, $2, 'program', '2026-27', '2026-04-01', true, now(), now())
+        VALUES ($1, $2, 'program', '2026-2027', '2026-04-01', true, now(), now())
         RETURNING id
         """,
         [student_user_id, program_id]

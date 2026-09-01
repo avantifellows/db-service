@@ -71,7 +71,7 @@ defmodule Dbservice.Services.StudentEligibilityCleanupTest do
         """
         INSERT INTO enrollment_record
           (user_id, group_id, group_type, academic_year, start_date, is_current, inserted_at, updated_at)
-        VALUES ($1, $2, 'school', '2026-27', '2026-04-01', true, now(), now())
+        VALUES ($1, $2, 'school', '2026-2027', '2026-04-01', true, now(), now())
         RETURNING id
         """,
         [student.user_id, old_school_id]
@@ -102,7 +102,7 @@ defmodule Dbservice.Services.StudentEligibilityCleanupTest do
         """
         INSERT INTO enrollment_record
           (user_id, group_id, group_type, academic_year, start_date, is_current, inserted_at, updated_at)
-        VALUES ($1, $2, 'school', '2026-27', '2026-04-01', true, now(), now())
+        VALUES ($1, $2, 'school', '2026-2027', '2026-04-01', true, now(), now())
         RETURNING id
         """,
         [student.user_id, school_id]
@@ -135,7 +135,7 @@ defmodule Dbservice.Services.StudentEligibilityCleanupTest do
         "user_id" => student.user_id,
         "enrollment_type" => "school",
         "school_code" => "BATCH-SCHOOL",
-        "academic_year" => "2026-27",
+        "academic_year" => "2026-2027",
         "start_date" => ~D[2026-04-01]
       })
     end
@@ -167,7 +167,7 @@ defmodule Dbservice.Services.StudentEligibilityCleanupTest do
         user_id: student.user_id,
         group_id: old_grade_id,
         group_type: "grade",
-        academic_year: "2026-27",
+        academic_year: "2026-2027",
         start_date: ~D[2026-04-01],
         is_current: true
       })
@@ -201,7 +201,7 @@ defmodule Dbservice.Services.StudentEligibilityCleanupTest do
         user_id: student.user_id,
         group_id: enrolled_status.id,
         group_type: "status",
-        academic_year: "2026-27",
+        academic_year: "2026-2027",
         start_date: ~D[2026-04-01],
         is_current: true
       })
@@ -209,7 +209,7 @@ defmodule Dbservice.Services.StudentEligibilityCleanupTest do
     install_failing_cleanup_trigger()
 
     assert_raise Postgrex.Error, fn ->
-      DropoutService.process_dropout(student, ~D[2026-07-01], "2026-27")
+      DropoutService.process_dropout(student, ~D[2026-07-01], "2026-2027")
     end
 
     assert Repo.get!(Dbservice.EnrollmentRecords.EnrollmentRecord, current_enrollment.id).is_current
@@ -264,7 +264,7 @@ defmodule Dbservice.Services.StudentEligibilityCleanupTest do
         user_id: student.user_id,
         group_id: 10,
         group_type: "batch",
-        academic_year: "2026-27",
+        academic_year: "2026-2027",
         start_date: ~D[2026-04-01],
         is_current: true
       })
@@ -294,7 +294,7 @@ defmodule Dbservice.Services.StudentEligibilityCleanupTest do
                user_id: student.user_id,
                group_id: school_id,
                group_type: "school",
-               academic_year: "2026-27",
+               academic_year: "2026-2027",
                start_date: ~D[2026-04-01],
                is_current: true
              })
@@ -304,7 +304,7 @@ defmodule Dbservice.Services.StudentEligibilityCleanupTest do
         user_id: student.user_id,
         group_id: 1,
         group_type: "program",
-        academic_year: "2026-27",
+        academic_year: "2026-2027",
         start_date: ~D[2026-04-01],
         is_current: true
       })
@@ -355,7 +355,7 @@ defmodule Dbservice.Services.StudentEligibilityCleanupTest do
         INSERT INTO holistic_mentorship_mentor_mentee_mappings
           (student_id, mentor_user_id, school_id, program_id, academic_year, started_at,
            assignment_source)
-        VALUES ($1, $2, $3, $4, '2026-27', timezone('UTC', now()), 'af_lms')
+        VALUES ($1, $2, $3, $4, '2026-2027', timezone('UTC', now()), 'af_lms')
         RETURNING id
         """,
         [student_id, mentor_user_id, school_id, program_id]

@@ -292,7 +292,7 @@ defmodule Dbservice.HolisticMentorshipPhaseSchemaTest do
         Repo.query(
           """
           INSERT INTO holistic_mentorship_phase_plans (program_id, academic_year)
-          VALUES ($1, '2026-27')
+          VALUES ($1, '2026-2027')
           """,
           [program_id]
         )
@@ -646,7 +646,7 @@ defmodule Dbservice.HolisticMentorshipPhaseSchemaTest do
       Repo.query!(
         """
         INSERT INTO holistic_mentorship_phase_plans (program_id, academic_year)
-        VALUES ($1, '2026-27')
+        VALUES ($1, '2026-2027')
         RETURNING id
         """,
         [program_id]

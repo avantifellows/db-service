@@ -1051,7 +1051,7 @@ defmodule DbserviceWeb.HolisticMentorshipProfilePublishControllerTest do
         user_id: user_id,
         group_id: group_id,
         group_type: group_type,
-        academic_year: "2026-27",
+        academic_year: "2026-2027",
         start_date: ~D[2026-06-01],
         is_current: true
       })

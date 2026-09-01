@@ -288,7 +288,7 @@ defmodule DbserviceWeb.SwaggerSchema.Student do
             batch_id(:string, "Batch ID", required: false)
             grade(:integer, "Grade number", required: false)
             grade_id(:integer, "Grade ID (alternative to grade number)", required: false)
-            academic_year(:string, "Academic year (e.g., 2024-25)", required: true)
+            academic_year(:string, "Academic year (e.g., 2024-2025)", required: true)
 
             start_date(:string, "Enrollment start date (YYYY-MM-DD)",
               format: :date,
