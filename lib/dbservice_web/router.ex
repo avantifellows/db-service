@@ -184,6 +184,7 @@ defmodule DbserviceWeb.Router do
     patch("/resources/problems/batch", ResourceController, :update_problems_batch)
     get("/resource/subtypes/:type", ResourceController, :get_subtypes)
     get("/problems/search", ResourceController, :search_problems)
+    post("/problems/similar-search", ResourceController, :similar_search)
 
     # Some students were incorrectly marked as "dropouts" in our system. This endpoint was introduced to reverse this mistake by removing the dropout status from both the enrollment records and the student table
     patch("/student/remove-dropout-status/:student_id", StudentController, :remove_dropout_status)

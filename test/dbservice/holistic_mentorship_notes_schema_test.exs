@@ -362,7 +362,7 @@ defmodule Dbservice.HolisticMentorshipNotesSchemaTest do
       Repo.transaction(fn ->
         [[plan_id]] =
           Repo.query!(
-            "INSERT INTO holistic_mentorship_phase_plans (program_id, academic_year) VALUES ($1, '2026-27') RETURNING id",
+            "INSERT INTO holistic_mentorship_phase_plans (program_id, academic_year) VALUES ($1, '2026-2027') RETURNING id",
             [program_id]
           ).rows
 

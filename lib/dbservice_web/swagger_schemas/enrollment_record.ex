@@ -21,7 +21,7 @@ defmodule DbserviceWeb.SwaggerSchema.EnrollmentRecord do
           end
 
           example(%{
-            academic_year: "2022",
+            academic_year: "2022-2023",
             is_current: true,
             student_id: 1,
             board_medium: "English",

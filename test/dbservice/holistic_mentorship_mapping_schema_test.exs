@@ -453,7 +453,7 @@ defmodule Dbservice.HolisticMentorshipMappingSchemaTest do
       INSERT INTO #{@table}
         (student_id, mentor_user_id, school_id, program_id, academic_year, started_at,
          assignment_source, ended_at, ended_by_user_id, end_reason, end_source)
-      VALUES ($1, $2, $3, $4, '2026-27', $5, 'af_lms', $6, $7, $8, $9)
+      VALUES ($1, $2, $3, $4, '2026-2027', $5, 'af_lms', $6, $7, $8, $9)
       RETURNING id
       """,
       [

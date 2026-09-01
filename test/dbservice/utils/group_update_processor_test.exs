@@ -39,7 +39,7 @@ defmodule Dbservice.DataImport.GroupUpdateProcessorTest do
           group_type: "batch",
           is_current: true,
           start_date: ~D[2024-01-01],
-          academic_year: "2024-25"
+          academic_year: "2024-2025"
         })
 
       record = %{
@@ -136,7 +136,7 @@ defmodule Dbservice.DataImport.GroupUpdateProcessorTest do
           group_type: "school",
           is_current: true,
           start_date: ~D[2024-01-01],
-          academic_year: "2024-25"
+          academic_year: "2024-2025"
         })
 
       mapping_id = insert_active_mapping(student.id)
@@ -365,7 +365,7 @@ defmodule Dbservice.DataImport.GroupUpdateProcessorTest do
           group_type: "grade",
           is_current: true,
           start_date: ~D[2024-01-01],
-          academic_year: "2024-25"
+          academic_year: "2024-2025"
         })
 
       record = %{
@@ -448,7 +448,7 @@ defmodule Dbservice.DataImport.GroupUpdateProcessorTest do
           group_type: "auth_group",
           is_current: true,
           start_date: ~D[2024-01-01],
-          academic_year: "2024-25"
+          academic_year: "2024-2025"
         })
 
       record = %{
@@ -522,7 +522,7 @@ defmodule Dbservice.DataImport.GroupUpdateProcessorTest do
         INSERT INTO holistic_mentorship_mentor_mentee_mappings
           (student_id, mentor_user_id, school_id, program_id, academic_year, started_at,
            assignment_source)
-        VALUES ($1, $2, $3, $4, '2026-27', timezone('UTC', now()), 'af_lms')
+        VALUES ($1, $2, $3, $4, '2026-2027', timezone('UTC', now()), 'af_lms')
         RETURNING id
         """,
         [student_id, mentor.id, school.id, program_id]

@@ -24,7 +24,7 @@ defmodule Dbservice.DataImport.BatchMovementTest do
         "batch_id" => batch.batch_id,
         "grade" => 10,
         "start_date" => "2024-01-01",
-        "academic_year" => "2024-25"
+        "academic_year" => "2024-2025"
       }
 
       result = BatchMovement.process_batch_movement(record)
@@ -48,7 +48,7 @@ defmodule Dbservice.DataImport.BatchMovementTest do
         "batch_id" => batch.batch_id,
         "grade" => nil,
         "start_date" => "2024-01-01",
-        "academic_year" => "2024-25"
+        "academic_year" => "2024-2025"
       }
 
       result = BatchMovement.process_batch_movement(record)
@@ -72,7 +72,7 @@ defmodule Dbservice.DataImport.BatchMovementTest do
         "batch_id" => batch.batch_id,
         "grade" => "",
         "start_date" => "2024-01-01",
-        "academic_year" => "2024-25"
+        "academic_year" => "2024-2025"
       }
 
       result = BatchMovement.process_batch_movement(record)
@@ -86,7 +86,7 @@ defmodule Dbservice.DataImport.BatchMovementTest do
         "apaar_id" => "NONEXISTENT_APAAR",
         "batch_id" => "BATCH001",
         "start_date" => "2024-01-01",
-        "academic_year" => "2024-25"
+        "academic_year" => "2024-2025"
       }
 
       result = BatchMovement.process_batch_movement(record)
@@ -110,7 +110,7 @@ defmodule Dbservice.DataImport.BatchMovementTest do
         "apaar_id" => nil,
         "batch_id" => "NONEXISTENT_BATCH",
         "start_date" => "2024-01-01",
-        "academic_year" => "2024-25"
+        "academic_year" => "2024-2025"
       }
 
       result = BatchMovement.process_batch_movement(record)
@@ -134,7 +134,7 @@ defmodule Dbservice.DataImport.BatchMovementTest do
         "batch_id" => batch.batch_id,
         "grade" => 999,
         "start_date" => "2024-01-01",
-        "academic_year" => "2024-25"
+        "academic_year" => "2024-2025"
       }
 
       result = BatchMovement.process_batch_movement(record)
@@ -158,7 +158,7 @@ defmodule Dbservice.DataImport.BatchMovementTest do
         "apaar_id" => nil,
         "batch_id" => batch.batch_id,
         "start_date" => "2024-01-01",
-        "academic_year" => "2024-25"
+        "academic_year" => "2024-2025"
       }
 
       # Process first enrollment
@@ -171,7 +171,7 @@ defmodule Dbservice.DataImport.BatchMovementTest do
         "apaar_id" => nil,
         "batch_id" => batch.batch_id,
         "start_date" => "2024-01-01",
-        "academic_year" => "2024-25"
+        "academic_year" => "2024-2025"
       }
 
       result2 = BatchMovement.process_batch_movement(record2)
@@ -197,7 +197,7 @@ defmodule Dbservice.DataImport.BatchMovementTest do
         "batch_id" => batch.batch_id,
         "grade" => grade1.number,
         "start_date" => "2024-01-01",
-        "academic_year" => "2024-25"
+        "academic_year" => "2024-2025"
       }
 
       result1 = BatchMovement.process_batch_movement(record1)
@@ -210,7 +210,7 @@ defmodule Dbservice.DataImport.BatchMovementTest do
         "batch_id" => batch.batch_id,
         "grade" => grade2.number,
         "start_date" => "2024-01-01",
-        "academic_year" => "2024-25"
+        "academic_year" => "2024-2025"
       }
 
       result2 = BatchMovement.process_batch_movement(record2)
@@ -231,7 +231,7 @@ defmodule Dbservice.DataImport.BatchMovementTest do
         "student_id" => student.student_id,
         "apaar_id" => nil,
         "batch_id" => batch.batch_id,
-        "academic_year" => "2024-25"
+        "academic_year" => "2024-2025"
       }
 
       result = BatchMovement.process_batch_movement(record)
