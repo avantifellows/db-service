@@ -20,6 +20,7 @@ defmodule DbserviceWeb.HolisticMentorshipProfilePreflightControllerTest do
     "entry_grade" => 12,
     "form_id" => "6a4deca8e030ebe34669fb0f"
   }
+  @new_profile_program_ids [74, 88, 99]
 
   test "preflights both approved Profile sources in input order with canonical Student IDs", %{
     conn: conn
@@ -83,6 +84,54 @@ defmodule DbserviceWeb.HolisticMentorshipProfilePreflightControllerTest do
                  "profile_revision" => nil
                }
              ]
+           }
+  end
+
+  test "accepts Students from each newly eligible Profile Program", %{conn: conn} do
+    prompt_configuration_id = prompt_configuration_id(conn)
+
+    eligible_students =
+      for program_id <- @new_profile_program_ids do
+        {user, student} = eligible_student(11, "PROGRAM-#{program_id}", program_id)
+        {program_id, user, student}
+      end
+
+    records =
+      for {program_id, user, _student} <- eligible_students do
+        record("program-#{program_id}", user.id, prompt_configuration_id, @grade_11_source)
+      end
+
+    response =
+      conn
+      |> post("/api/holistic-mentorship/profile-preflight", %{"records" => records})
+      |> json_response(200)
+
+    expected_results =
+      for {program_id, _user, student} <- eligible_students do
+        %{
+          "record_ref" => "program-#{program_id}",
+          "student_id" => student.id,
+          "prompt_configuration_id" => prompt_configuration_id,
+          "profile_state" => "missing",
+          "profile_revision" => nil
+        }
+      end
+
+    assert response["results"] == expected_results
+  end
+
+  test "rejects a Student from an unsupported Profile Program", %{conn: conn} do
+    prompt_configuration_id = prompt_configuration_id(conn)
+    {user, _student} = eligible_student(11, "UNSUPPORTED-PROGRAM", 2)
+
+    assert conn
+           |> post("/api/holistic-mentorship/profile-preflight", %{
+             "records" => [
+               record("unsupported", user.id, prompt_configuration_id, @grade_11_source)
+             ]
+           })
+           |> json_response(200) == %{
+             "results" => [rejected("unsupported", "program_ineligible")]
            }
   end
 
@@ -320,14 +369,13 @@ defmodule DbserviceWeb.HolisticMentorshipProfilePreflightControllerTest do
            }
   end
 
-  test "rejects out-of-scope, duplicate, and inconsistent current eligibility", %{conn: conn} do
+  test "rejects out-of-scope and inconsistent current eligibility", %{conn: conn} do
     prompt_configuration_id = prompt_configuration_id(conn)
     {school_program_user, _student} = eligible_student(11, "SCHOOL-NO-PROGRAM")
     {school_user, _student} = eligible_student(11, "NO-SCHOOL")
     {duplicate_school_user, _student} = eligible_student(11, "TWO-SCHOOLS")
     {grade_10_user, _student} = eligible_student(10, "GRADE-10")
     {missing_grade_user, _student} = eligible_student(11, "NO-GRADE")
-    {duplicate_grade_user, duplicate_grade_student} = eligible_student(11, "TWO-GRADES")
     {mismatched_grade_user, _student} = eligible_student(11, "GRADE-MISMATCH")
     {dropout_user, _student} = eligible_student(11, "DROPOUT")
 
@@ -336,14 +384,11 @@ defmodule DbserviceWeb.HolisticMentorshipProfilePreflightControllerTest do
     remove_group_membership(school_user.id, "school")
 
     second_school = school_fixture(%{program_ids: [], code: "second-school"})
-    enroll(duplicate_school_user.id, "school", second_school.id)
     add_group_membership(duplicate_school_user.id, "school", second_school.id)
 
     Repo.query!("DELETE FROM enrollment_record WHERE user_id = $1 AND group_type = 'grade'", [
       missing_grade_user.id
     ])
-
-    enroll(duplicate_grade_user.id, "grade", duplicate_grade_student.grade_id)
 
     grade_12 = grade_fixture(%{number: 12})
 
@@ -360,7 +405,6 @@ defmodule DbserviceWeb.HolisticMentorshipProfilePreflightControllerTest do
       preflight_record("two-schools", duplicate_school_user.id, prompt_configuration_id),
       preflight_record("grade-10", grade_10_user.id, prompt_configuration_id),
       preflight_record("no-grade", missing_grade_user.id, prompt_configuration_id),
-      preflight_record("two-grades", duplicate_grade_user.id, prompt_configuration_id),
       preflight_record("grade-mismatch", mismatched_grade_user.id, prompt_configuration_id),
       preflight_record("dropout", dropout_user.id, prompt_configuration_id)
     ]
@@ -374,7 +418,6 @@ defmodule DbserviceWeb.HolisticMentorshipProfilePreflightControllerTest do
                rejected("two-schools", "school_missing_or_ambiguous"),
                rejected("grade-10", "grade_ineligible"),
                rejected("no-grade", "grade_ineligible"),
-               rejected("two-grades", "eligibility_inconsistent"),
                rejected("grade-mismatch", "eligibility_inconsistent"),
                rejected("dropout", "dropout")
              ]

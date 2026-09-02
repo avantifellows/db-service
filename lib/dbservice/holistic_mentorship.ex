@@ -6,7 +6,7 @@ defmodule Dbservice.HolisticMentorship do
   alias Dbservice.Repo
 
   @mapping_table "holistic_mentorship_mentor_mentee_mappings"
-  @profile_program_ids [1, 78]
+  @profile_program_ids [1, 74, 78, 88, 99]
   @eligibility_end_reasons ~w(student_dropout student_program_changed student_school_changed student_grade_changed)a
   @approved_profile_sources %{
     {"6a44a83d1184e717b920c499", "EnableStudents_6a44a83d1184e717b920c499", 11} => true,
