@@ -14,7 +14,7 @@ defmodule DbserviceWeb.HolisticMentorshipProfilePublishControllerTest do
     "entry_grade" => 11,
     "form_id" => "6a44a83d1184e717b920c499"
   }
-  @new_profile_program_ids [74, 88, 99]
+  @new_profile_program_ids [74, 88, 94, 99]
 
   test "publishes one complete Student Profile and completes its generation status", %{conn: conn} do
     {user, student} = eligible_student()

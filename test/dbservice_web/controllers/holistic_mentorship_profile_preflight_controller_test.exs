@@ -20,7 +20,7 @@ defmodule DbserviceWeb.HolisticMentorshipProfilePreflightControllerTest do
     "entry_grade" => 12,
     "form_id" => "6a4deca8e030ebe34669fb0f"
   }
-  @new_profile_program_ids [74, 88, 99]
+  @new_profile_program_ids [74, 88, 94, 99]
 
   test "preflights both approved Profile sources in input order with canonical Student IDs", %{
     conn: conn
