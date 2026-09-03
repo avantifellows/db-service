@@ -27,7 +27,8 @@ _Avoid_: using business `student.student_id` as a database join key
 
 **Program**:
 The canonical organizational scope that groups eligible Schools and Students.
-Holistic Mentorship v1 launches only for Program ID `1`.
+Holistic Profile eligibility currently supports Program IDs `1`, `74`, `78`,
+`88`, `94`, and `99`.
 _Avoid_: hard-coded School allowlist
 
 **Academic Year**:
