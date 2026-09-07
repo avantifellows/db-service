@@ -327,7 +327,6 @@ defmodule DbserviceWeb.HolisticMentorshipProfilePreflightControllerTest do
     {duplicate_school_user, _student} = eligible_student(11, "TWO-SCHOOLS")
     {grade_10_user, _student} = eligible_student(10, "GRADE-10")
     {missing_grade_user, _student} = eligible_student(11, "NO-GRADE")
-    {duplicate_grade_user, duplicate_grade_student} = eligible_student(11, "TWO-GRADES")
     {mismatched_grade_user, _student} = eligible_student(11, "GRADE-MISMATCH")
     {dropout_user, _student} = eligible_student(11, "DROPOUT")
 
@@ -335,16 +334,18 @@ defmodule DbserviceWeb.HolisticMentorshipProfilePreflightControllerTest do
 
     remove_group_membership(school_user.id, "school")
 
+    # School enrollment records are exclusive at the database level. A second
+    # group membership is sufficient to exercise the preflight ambiguity guard.
     second_school = school_fixture(%{program_ids: [], code: "second-school"})
-    enroll(duplicate_school_user.id, "school", second_school.id)
     add_group_membership(duplicate_school_user.id, "school", second_school.id)
 
     Repo.query!("DELETE FROM enrollment_record WHERE user_id = $1 AND group_type = 'grade'", [
       missing_grade_user.id
     ])
 
-    enroll(duplicate_grade_user.id, "grade", duplicate_grade_student.grade_id)
-
+    # Current grade enrollment records are exclusive too; the mismatch below
+    # covers inconsistent current grade eligibility without manufacturing an
+    # impossible duplicate enrollment.
     grade_12 = grade_fixture(%{number: 12})
 
     Repo.query!(
@@ -360,7 +361,6 @@ defmodule DbserviceWeb.HolisticMentorshipProfilePreflightControllerTest do
       preflight_record("two-schools", duplicate_school_user.id, prompt_configuration_id),
       preflight_record("grade-10", grade_10_user.id, prompt_configuration_id),
       preflight_record("no-grade", missing_grade_user.id, prompt_configuration_id),
-      preflight_record("two-grades", duplicate_grade_user.id, prompt_configuration_id),
       preflight_record("grade-mismatch", mismatched_grade_user.id, prompt_configuration_id),
       preflight_record("dropout", dropout_user.id, prompt_configuration_id)
     ]
@@ -374,7 +374,6 @@ defmodule DbserviceWeb.HolisticMentorshipProfilePreflightControllerTest do
                rejected("two-schools", "school_missing_or_ambiguous"),
                rejected("grade-10", "grade_ineligible"),
                rejected("no-grade", "grade_ineligible"),
-               rejected("two-grades", "eligibility_inconsistent"),
                rejected("grade-mismatch", "eligibility_inconsistent"),
                rejected("dropout", "dropout")
              ]

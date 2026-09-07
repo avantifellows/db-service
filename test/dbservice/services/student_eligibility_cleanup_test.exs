@@ -8,6 +8,8 @@ defmodule Dbservice.Services.StudentEligibilityCleanupTest do
   alias Dbservice.Services.DropoutService
   alias Dbservice.Services.EnrollmentService
 
+  import Dbservice.StatusesFixtures
+
   test "a dropout transition ends the Student's active Holistic Mapping" do
     %{mapping_id: mapping_id, student: student} = insert_mapping_scope()
 
@@ -193,8 +195,8 @@ defmodule Dbservice.Services.StudentEligibilityCleanupTest do
 
   test "a cleanup failure rolls back the dropout status and enrollment changes" do
     %{mapping_id: mapping_id, student: student} = insert_mapping_scope()
-    enrolled_status = Dbservice.Statuses.get_status_by_title(:enrolled)
-    dropout_status = Dbservice.Statuses.get_status_by_title(:dropout)
+    enrolled_status = status_fixture(%{title: :enrolled})
+    dropout_status = status_fixture(%{title: :dropout})
 
     {:ok, current_enrollment} =
       Dbservice.EnrollmentRecords.create_enrollment_record(%{
