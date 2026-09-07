@@ -331,12 +331,19 @@ defmodule Dbservice.LmsCurriculumTest do
       chapter_name =
         if row.chapter_code == mismatch_code, do: "Different Name", else: row.chapter_name
 
-      Repo.insert!(%Chapter{
-        code: row.chapter_code,
+      attrs = %{
         name: [%{"chapter" => chapter_name, "lang_code" => "en"}],
         grade_id: grade_by_number[row.grade].id,
         subject_id: subject_by_name[row.subject].id
-      })
+      }
+
+      case Repo.get_by(Chapter, code: row.chapter_code) do
+        nil ->
+          Repo.insert!(struct(Chapter, Map.put(attrs, :code, row.chapter_code)))
+
+        chapter ->
+          Repo.update!(Ecto.Changeset.change(chapter, attrs))
+      end
     end)
   end
 

@@ -6,6 +6,7 @@ defmodule DbserviceWeb.LmsStudentUpdateControllerTest do
   alias Dbservice.EnrollmentRecords.EnrollmentRecord
   alias Dbservice.Grades.Grade
   alias Dbservice.Groups.Group
+  alias Dbservice.LmsStudentRegistrationMode
   alias Dbservice.Repo
   alias Dbservice.Schools.School
   alias Dbservice.Statuses.Status
@@ -605,7 +606,1325 @@ defmodule DbserviceWeb.LmsStudentUpdateControllerTest do
   end
 
   describe "PATCH /api/lms/students/:student_id/update-with-enrollments" do
+    test "rejects annual family income for a phone-mode cohort edit even when blank", %{
+      conn: conn
+    } do
+      :ok = LmsStudentRegistrationMode.put_test_active_mode("phone")
+      on_exit(fn -> LmsStudentRegistrationMode.put_test_active_mode(nil) end)
+
+      school = insert_school!()
+      grade = insert_grade!(11)
+      batch = insert_nvs_batch!(11, "engineering")
+
+      {user, student} =
+        insert_enrolled_student!(school, grade, batch, %{
+          student_id: "9456591269",
+          g10_roll_no: nil
+        })
+
+      enable_students = insert_auth_group!("EnableStudents")
+      ensure_group_user!(user.id, "auth_group", enable_students.id)
+      insert_enrollment!(user.id, enable_students.id, "auth_group")
+
+      conn =
+        lms_update(conn, student.id, %{
+          "registration_mode" => "phone",
+          "actor" => actor(),
+          "school" => %{"code" => school.code, "udise_code" => school.udise_code},
+          "program_id" => 64,
+          "academic_year" => "2026-2027",
+          "start_date" => "2026-07-01",
+          "annual_family_income" => nil
+        })
+
+      response = json_response(conn, 422)
+      assert response["error"]["code"] == "locked_fields"
+      assert response["error"]["fields"] == ["annual_family_income"]
+      assert Users.get_user!(user.id).phone == "9456591269"
+      assert Repo.get!(Student, student.id).student_id == "9456591269"
+      assert Repo.aggregate(Dbservice.LmsStudentWriteAudit, :count, :id) == 0
+    end
+
+    test "rejects every deferred identifier in phone mode before writes or audit", %{
+      conn: conn
+    } do
+      :ok = LmsStudentRegistrationMode.put_test_active_mode("phone")
+      on_exit(fn -> LmsStudentRegistrationMode.put_test_active_mode(nil) end)
+
+      school = insert_school!()
+      grade = insert_grade!(11)
+      batch = insert_nvs_batch!(11, "engineering")
+
+      {user, student} =
+        insert_enrolled_student!(school, grade, batch, %{
+          student_id: "9456591269",
+          g10_roll_no: nil,
+          pen_number: nil
+        })
+
+      enable_students = insert_auth_group!("EnableStudents")
+      ensure_group_user!(user.id, "auth_group", enable_students.id)
+      insert_enrollment!(user.id, enable_students.id, "auth_group")
+
+      for {field, value} <- [
+            {"pen_number", nil},
+            {"g10_roll_no", "  "},
+            {"annual_family_income", nil}
+          ] do
+        conn =
+          lms_update(recycle(conn), student.id, %{
+            "registration_mode" => "phone",
+            "actor" => actor(),
+            "school" => %{"code" => school.code, "udise_code" => school.udise_code},
+            "program_id" => 64,
+            "academic_year" => "2026-2027",
+            "start_date" => "2026-07-01",
+            field => value
+          })
+
+        response = json_response(conn, 422)
+        assert response["error"]["code"] == "locked_fields"
+        assert response["error"]["fields"] == [field]
+      end
+
+      assert Users.get_user!(user.id).phone == "9456591269"
+      assert Repo.get!(Student, student.id).student_id == "9456591269"
+      assert Repo.get!(Student, student.id).pen_number == nil
+      assert Repo.get!(Student, student.id).g10_roll_no == nil
+      assert Repo.aggregate(Dbservice.LmsStudentWriteAudit, :count, :id) == 0
+    end
+
+    test "keeps annual family income editable for a non-cohort phone-mode edit", %{
+      conn: conn
+    } do
+      :ok = LmsStudentRegistrationMode.put_test_active_mode("phone")
+      on_exit(fn -> LmsStudentRegistrationMode.put_test_active_mode(nil) end)
+
+      school = insert_school!()
+      grade = insert_grade!(11)
+      batch = insert_nvs_batch!(11, "engineering")
+      {user, student} = insert_enrolled_student!(school, grade, batch)
+
+      conn =
+        lms_update(conn, student.id, %{
+          "registration_mode" => "phone",
+          "actor" => actor(),
+          "school" => %{"code" => school.code, "udise_code" => school.udise_code},
+          "program_id" => 64,
+          "academic_year" => "2026-2027",
+          "start_date" => "2026-07-01",
+          "annual_family_income" => "250000"
+        })
+
+      assert json_response(conn, 200)["changed_fields"] == ["annual_family_income"]
+      assert Repo.get!(Student, student.id).annual_family_income == "250000"
+      assert Users.get_user!(user.id).phone == user.phone
+    end
+
+    test "fills a null cohort PEN once in approved mode and preserves phone identity", %{
+      conn: conn
+    } do
+      :ok = LmsStudentRegistrationMode.put_test_active_mode("approved")
+      on_exit(fn -> LmsStudentRegistrationMode.put_test_active_mode(nil) end)
+
+      school = insert_school!()
+      grade = insert_grade!(11)
+      batch = insert_nvs_batch!(11, "engineering")
+
+      {user, student} =
+        insert_enrolled_student!(school, grade, batch, %{
+          student_id: "9456591269",
+          g10_roll_no: nil,
+          pen_number: nil
+        })
+
+      enable_students = insert_auth_group!("EnableStudents")
+      ensure_group_user!(user.id, "auth_group", enable_students.id)
+      insert_enrollment!(user.id, enable_students.id, "auth_group")
+
+      conn =
+        lms_update(conn, student.id, %{
+          "actor" => actor(),
+          "school" => %{"code" => school.code, "udise_code" => school.udise_code},
+          "program_id" => 64,
+          "academic_year" => "2026-2027",
+          "start_date" => "2026-07-01",
+          "pen_number" => "01234567890"
+        })
+
+      assert json_response(conn, 200)["changed_fields"] == ["pen_number"]
+      assert Repo.get!(Student, student.id).pen_number == "01234567890"
+      assert Repo.get!(Student, student.id).student_id == "9456591269"
+      assert Users.get_user!(user.id).phone == "9456591269"
+
+      assert only_audit_changed_values()["pen_number"] == %{
+               "old" => nil,
+               "new" => "01234567890"
+             }
+    end
+
+    test "fills a null cohort Grade 10 Roll using the stored board when omitted", %{
+      conn: conn
+    } do
+      :ok = LmsStudentRegistrationMode.put_test_active_mode("approved")
+      on_exit(fn -> LmsStudentRegistrationMode.put_test_active_mode(nil) end)
+
+      school = insert_school!()
+      grade = insert_grade!(11)
+      batch = insert_nvs_batch!(11, "engineering")
+
+      {user, student} =
+        insert_enrolled_student!(school, grade, batch, %{
+          student_id: "9456591269",
+          g10_board: "CENTRAL BOARD OF SECONDARY EDUCATION",
+          g10_roll_no: nil,
+          pen_number: nil
+        })
+
+      enable_students = insert_auth_group!("EnableStudents")
+      ensure_group_user!(user.id, "auth_group", enable_students.id)
+      insert_enrollment!(user.id, enable_students.id, "auth_group")
+
+      conn =
+        lms_update(conn, student.id, %{
+          "actor" => actor(),
+          "school" => %{"code" => school.code, "udise_code" => school.udise_code},
+          "program_id" => 64,
+          "academic_year" => "2026-2027",
+          "start_date" => "2026-07-01",
+          "g10_roll_no" => "87654321"
+        })
+
+      assert json_response(conn, 200)["changed_fields"] == ["g10_roll_no"]
+      assert Repo.get!(Student, student.id).g10_roll_no == "87654321"
+      assert Repo.get!(Student, student.id).student_id == "9456591269"
+      assert Users.get_user!(user.id).phone == "9456591269"
+
+      assert only_audit_changed_values()["g10_roll_no"] == %{
+               "old" => nil,
+               "new" => "87654321"
+             }
+    end
+
+    test "locks a filled cohort PEN on identical and different approved-mode resubmission", %{
+      conn: conn
+    } do
+      :ok = LmsStudentRegistrationMode.put_test_active_mode("approved")
+      on_exit(fn -> LmsStudentRegistrationMode.put_test_active_mode(nil) end)
+
+      school = insert_school!()
+      grade = insert_grade!(11)
+      batch = insert_nvs_batch!(11, "engineering")
+
+      {user, student} =
+        insert_enrolled_student!(school, grade, batch, %{
+          student_id: "9456591269",
+          g10_roll_no: nil,
+          pen_number: nil
+        })
+
+      enable_students = insert_auth_group!("EnableStudents")
+      ensure_group_user!(user.id, "auth_group", enable_students.id)
+      insert_enrollment!(user.id, enable_students.id, "auth_group")
+
+      conn =
+        lms_update(conn, student.id, %{
+          "actor" => actor(),
+          "school" => %{"code" => school.code, "udise_code" => school.udise_code},
+          "program_id" => 64,
+          "academic_year" => "2026-2027",
+          "start_date" => "2026-07-01",
+          "pen_number" => "01234567890"
+        })
+
+      assert json_response(conn, 200)["changed_fields"] == ["pen_number"]
+
+      for value <- ["01234567890", "01234567891"] do
+        conn =
+          lms_update(recycle(conn), student.id, %{
+            "actor" => actor(),
+            "school" => %{"code" => school.code, "udise_code" => school.udise_code},
+            "program_id" => 64,
+            "academic_year" => "2026-2027",
+            "start_date" => "2026-07-01",
+            "pen_number" => value
+          })
+
+        assert json_response(conn, 422)["error"]["code"] == "locked_fields"
+        assert json_response(conn, 422)["error"]["fields"] == ["pen_number"]
+      end
+
+      assert Repo.get!(Student, student.id).pen_number == "01234567890"
+      assert Repo.aggregate(Dbservice.LmsStudentWriteAudit, :count, :id) == 1
+    end
+
+    test "locks a filled cohort Grade 10 Roll on identical and different resubmission", %{
+      conn: conn
+    } do
+      :ok = LmsStudentRegistrationMode.put_test_active_mode("approved")
+      on_exit(fn -> LmsStudentRegistrationMode.put_test_active_mode(nil) end)
+
+      school = insert_school!()
+      grade = insert_grade!(11)
+      batch = insert_nvs_batch!(11, "engineering")
+
+      {user, student} =
+        insert_enrolled_student!(school, grade, batch, %{
+          student_id: "9456591269",
+          pen_number: nil,
+          g10_roll_no: "87654321"
+        })
+
+      enable_students = insert_auth_group!("EnableStudents")
+      ensure_group_user!(user.id, "auth_group", enable_students.id)
+      insert_enrollment!(user.id, enable_students.id, "auth_group")
+
+      conn =
+        lms_update(conn, student.id, %{
+          "actor" => actor(),
+          "school" => %{"code" => school.code, "udise_code" => school.udise_code},
+          "program_id" => 64,
+          "academic_year" => "2026-2027",
+          "start_date" => "2026-07-01",
+          "g10_roll_no" => "87654321"
+        })
+
+      assert json_response(conn, 422)["error"]["fields"] == ["g10_roll_no"]
+
+      conn =
+        lms_update(recycle(conn), student.id, %{
+          "actor" => actor(),
+          "school" => %{"code" => school.code, "udise_code" => school.udise_code},
+          "program_id" => 64,
+          "academic_year" => "2026-2027",
+          "start_date" => "2026-07-01",
+          "g10_roll_no" => "12345678"
+        })
+
+      assert json_response(conn, 422)["error"]["fields"] == ["g10_roll_no"]
+      assert Repo.get!(Student, student.id).g10_roll_no == "87654321"
+      assert Repo.aggregate(Dbservice.LmsStudentWriteAudit, :count, :id) == 0
+    end
+
+    test "cross-checks a cohort Grade 10 Roll against a submitted CBSE board", %{
+      conn: conn
+    } do
+      :ok = LmsStudentRegistrationMode.put_test_active_mode("approved")
+      on_exit(fn -> LmsStudentRegistrationMode.put_test_active_mode(nil) end)
+
+      school = insert_school!()
+      grade = insert_grade!(11)
+      batch = insert_nvs_batch!(11, "engineering")
+
+      {user, student} =
+        insert_enrolled_student!(school, grade, batch, %{
+          student_id: "9456591269",
+          g10_roll_no: nil,
+          pen_number: nil
+        })
+
+      enable_students = insert_auth_group!("EnableStudents")
+      ensure_group_user!(user.id, "auth_group", enable_students.id)
+      insert_enrollment!(user.id, enable_students.id, "auth_group")
+
+      conn =
+        lms_update(conn, student.id, %{
+          "actor" => actor(),
+          "school" => %{"code" => school.code, "udise_code" => school.udise_code},
+          "program_id" => 64,
+          "academic_year" => "2026-2027",
+          "start_date" => "2026-07-01",
+          "g10_board" => "CBSE",
+          "g10_roll_no" => "ABC12345"
+        })
+
+      response = json_response(conn, 422)
+      assert response["error"]["code"] == "invalid_g10_roll_for_board"
+      assert response["error"]["fields"] == ["g10_roll_no"]
+      assert Repo.get!(Student, student.id).g10_roll_no == nil
+      assert Repo.aggregate(Dbservice.LmsStudentWriteAudit, :count, :id) == 0
+    end
+
+    test "treats blank backfill identifiers as absent without clearing stored values", %{
+      conn: conn
+    } do
+      :ok = LmsStudentRegistrationMode.put_test_active_mode("approved")
+      on_exit(fn -> LmsStudentRegistrationMode.put_test_active_mode(nil) end)
+
+      school = insert_school!()
+      grade = insert_grade!(11)
+      batch = insert_nvs_batch!(11, "engineering")
+
+      {user, student} =
+        insert_enrolled_student!(school, grade, batch, %{
+          student_id: "9456591269",
+          pen_number: "01234567890",
+          g10_roll_no: "87654321"
+        })
+
+      enable_students = insert_auth_group!("EnableStudents")
+      ensure_group_user!(user.id, "auth_group", enable_students.id)
+      insert_enrollment!(user.id, enable_students.id, "auth_group")
+
+      conn =
+        lms_update(conn, student.id, %{
+          "actor" => actor(),
+          "school" => %{"code" => school.code, "udise_code" => school.udise_code},
+          "program_id" => 64,
+          "academic_year" => "2026-2027",
+          "start_date" => "2026-07-01",
+          "pen_number" => "  ",
+          "g10_roll_no" => nil,
+          "annual_family_income" => "300000"
+        })
+
+      assert json_response(conn, 200)["changed_fields"] == ["annual_family_income"]
+      updated_student = Repo.get!(Student, student.id)
+      assert updated_student.pen_number == "01234567890"
+      assert updated_student.g10_roll_no == "87654321"
+      assert updated_student.student_id == "9456591269"
+      assert Users.get_user!(user.id).phone == "9456591269"
+    end
+
+    test "requires one backfill identifier before allowing cohort income edits", %{conn: conn} do
+      :ok = LmsStudentRegistrationMode.put_test_active_mode("approved")
+      on_exit(fn -> LmsStudentRegistrationMode.put_test_active_mode(nil) end)
+
+      school = insert_school!()
+      grade = insert_grade!(11)
+      batch = insert_nvs_batch!(11, "engineering")
+
+      {user, student} =
+        insert_enrolled_student!(school, grade, batch, %{
+          student_id: "9456591269",
+          pen_number: nil,
+          g10_roll_no: nil
+        })
+
+      enable_students = insert_auth_group!("EnableStudents")
+      ensure_group_user!(user.id, "auth_group", enable_students.id)
+      insert_enrollment!(user.id, enable_students.id, "auth_group")
+
+      conn =
+        lms_update(conn, student.id, %{
+          "actor" => actor(),
+          "school" => %{"code" => school.code, "udise_code" => school.udise_code},
+          "program_id" => 64,
+          "academic_year" => "2026-2027",
+          "start_date" => "2026-07-01",
+          "annual_family_income" => "250000"
+        })
+
+      assert json_response(conn, 422)["error"]["code"] == "backfill_identifier_required"
+      assert Repo.get!(Student, student.id).annual_family_income == student.annual_family_income
+      assert Repo.aggregate(Dbservice.LmsStudentWriteAudit, :count, :id) == 0
+
+      conn =
+        lms_update(recycle(conn), student.id, %{
+          "actor" => actor(),
+          "school" => %{"code" => school.code, "udise_code" => school.udise_code},
+          "program_id" => 64,
+          "academic_year" => "2026-2027",
+          "start_date" => "2026-07-01",
+          "pen_number" => "01234567890"
+        })
+
+      assert json_response(conn, 200)["changed_fields"] == ["pen_number"]
+
+      conn =
+        lms_update(recycle(conn), student.id, %{
+          "actor" => actor(),
+          "school" => %{"code" => school.code, "udise_code" => school.udise_code},
+          "program_id" => 64,
+          "academic_year" => "2026-2027",
+          "start_date" => "2026-07-01",
+          "annual_family_income" => "250000"
+        })
+
+      assert json_response(conn, 200)["changed_fields"] == ["annual_family_income"]
+      assert Repo.get!(Student, student.id).annual_family_income == "250000"
+    end
+
+    test "rolls back an approved-mode PEN backfill when the audit fails", %{conn: conn} do
+      :ok = LmsStudentRegistrationMode.put_test_active_mode("approved")
+      on_exit(fn -> LmsStudentRegistrationMode.put_test_active_mode(nil) end)
+
+      school = insert_school!()
+      grade = insert_grade!(11)
+      batch = insert_nvs_batch!(11, "engineering")
+
+      {user, student} =
+        insert_enrolled_student!(school, grade, batch, %{
+          student_id: "9456591269",
+          pen_number: nil,
+          g10_roll_no: nil
+        })
+
+      enable_students = insert_auth_group!("EnableStudents")
+      ensure_group_user!(user.id, "auth_group", enable_students.id)
+      insert_enrollment!(user.id, enable_students.id, "auth_group")
+
+      conn =
+        lms_update(conn, student.id, %{
+          "actor" => Map.put(actor(), "user_id", "invalid"),
+          "school" => %{"code" => school.code, "udise_code" => school.udise_code},
+          "program_id" => 64,
+          "academic_year" => "2026-2027",
+          "start_date" => "2026-07-01",
+          "pen_number" => "01234567890"
+        })
+
+      assert json_response(conn, 422)["error"]["code"] == "audit_update_failed"
+      assert Repo.get!(Student, student.id).pen_number == nil
+      assert Repo.get!(Student, student.id).student_id == "9456591269"
+      assert Users.get_user!(user.id).phone == "9456591269"
+      assert Repo.aggregate(Dbservice.LmsStudentWriteAudit, :count, :id) == 0
+    end
+
+    test "preserves a phone-cohort Student ID on a phone-mode grade edit", %{conn: conn} do
+      :ok = LmsStudentRegistrationMode.put_test_active_mode("phone")
+      on_exit(fn -> LmsStudentRegistrationMode.put_test_active_mode(nil) end)
+
+      school = insert_school!()
+      grade11 = insert_grade!(11)
+      grade12 = insert_grade!(12)
+      old_batch = insert_nvs_batch!(11, "engineering")
+      new_batch = insert_nvs_batch!(12, "engineering")
+
+      {user, student} =
+        insert_enrolled_student!(school, grade11, old_batch, %{
+          student_id: "9456591269",
+          g10_roll_no: nil
+        })
+
+      enable_students = insert_auth_group!("EnableStudents")
+      ensure_group_user!(user.id, "auth_group", enable_students.id)
+      insert_enrollment!(user.id, enable_students.id, "auth_group")
+
+      conn =
+        lms_update(conn, student.id, %{
+          "registration_mode" => "phone",
+          "actor" => actor(),
+          "school" => %{"code" => school.code, "udise_code" => school.udise_code},
+          "program_id" => 64,
+          "academic_year" => "2026-2027",
+          "start_date" => "2026-07-01",
+          "grade" => 12
+        })
+
+      response = json_response(conn, 200)
+
+      assert response["changed_fields"] == ["batch_id", "g12_graduating_year", "grade"]
+      assert Repo.get!(Student, student.id).student_id == "9456591269"
+      assert Users.get_user!(user.id).phone == "9456591269"
+      assert current_enrollment(user.id, "grade").group_id == grade12.id
+      assert current_enrollment(user.id, "batch").group_id == new_batch.id
+      refute Map.has_key?(only_audit_changed_values(), "student_id")
+
+      refute Repo.get_by(EnrollmentRecord,
+               user_id: user.id,
+               group_type: "grade",
+               group_id: grade11.id
+             ).is_current
+
+      refute Repo.get_by(EnrollmentRecord,
+               user_id: user.id,
+               group_type: "batch",
+               group_id: old_batch.id
+             ).is_current
+    end
+
+    test "preserves a phone-cohort Student ID on an approved-mode grade edit", %{conn: conn} do
+      :ok = LmsStudentRegistrationMode.put_test_active_mode("approved")
+      on_exit(fn -> LmsStudentRegistrationMode.put_test_active_mode(nil) end)
+
+      school = insert_school!()
+      grade11 = insert_grade!(11)
+      grade12 = insert_grade!(12)
+      old_batch = insert_nvs_batch!(11, "engineering")
+      new_batch = insert_nvs_batch!(12, "engineering")
+
+      {user, student} =
+        insert_enrolled_student!(school, grade11, old_batch, %{
+          student_id: "9456591269",
+          g10_roll_no: nil
+        })
+
+      enable_students = insert_auth_group!("EnableStudents")
+      ensure_group_user!(user.id, "auth_group", enable_students.id)
+      insert_enrollment!(user.id, enable_students.id, "auth_group")
+
+      conn =
+        lms_update(conn, student.id, %{
+          "actor" => actor(),
+          "school" => %{"code" => school.code, "udise_code" => school.udise_code},
+          "program_id" => 64,
+          "academic_year" => "2026-2027",
+          "start_date" => "2026-07-01",
+          "grade" => 12
+        })
+
+      assert json_response(conn, 200)["changed_fields"] == [
+               "batch_id",
+               "g12_graduating_year",
+               "grade"
+             ]
+
+      assert Repo.get!(Student, student.id).student_id == "9456591269"
+      assert Users.get_user!(user.id).phone == "9456591269"
+      assert current_enrollment(user.id, "grade").group_id == grade12.id
+      assert current_enrollment(user.id, "batch").group_id == new_batch.id
+      refute Map.has_key?(only_audit_changed_values(), "student_id")
+
+      refute Repo.get_by(EnrollmentRecord,
+               user_id: user.id,
+               group_type: "grade",
+               group_id: grade11.id
+             ).is_current
+
+      refute Repo.get_by(EnrollmentRecord,
+               user_id: user.id,
+               group_type: "batch",
+               group_id: old_batch.id
+             ).is_current
+    end
+
+    test "preserves a phone-cohort Student ID on a phone-mode stream edit", %{conn: conn} do
+      :ok = LmsStudentRegistrationMode.put_test_active_mode("phone")
+      on_exit(fn -> LmsStudentRegistrationMode.put_test_active_mode(nil) end)
+
+      school = insert_school!()
+      grade = insert_grade!(11)
+      old_batch = insert_nvs_batch!(11, "engineering")
+      new_batch = insert_nvs_batch!(11, "nda")
+
+      {user, student} =
+        insert_enrolled_student!(school, grade, old_batch, %{
+          student_id: "9456591269",
+          g10_roll_no: nil
+        })
+
+      enable_students = insert_auth_group!("EnableStudents")
+      ensure_group_user!(user.id, "auth_group", enable_students.id)
+      insert_enrollment!(user.id, enable_students.id, "auth_group")
+
+      conn =
+        lms_update(conn, student.id, %{
+          "registration_mode" => "phone",
+          "actor" => actor(),
+          "school" => %{"code" => school.code, "udise_code" => school.udise_code},
+          "program_id" => 64,
+          "academic_year" => "2026-2027",
+          "start_date" => "2026-07-01",
+          "stream" => " NDA "
+        })
+
+      assert json_response(conn, 200)["changed_fields"] == ["batch_id", "stream"]
+      assert Repo.get!(Student, student.id).student_id == "9456591269"
+      assert Repo.get!(Student, student.id).stream == "nda"
+      assert Users.get_user!(user.id).phone == "9456591269"
+      assert current_enrollment(user.id, "batch").group_id == new_batch.id
+      refute Map.has_key?(only_audit_changed_values(), "student_id")
+
+      refute Repo.get_by(EnrollmentRecord,
+               user_id: user.id,
+               group_type: "batch",
+               group_id: old_batch.id
+             ).is_current
+    end
+
+    test "corrects a phone-cohort phone and Student ID together in phone mode", %{conn: conn} do
+      :ok = LmsStudentRegistrationMode.put_test_active_mode("phone")
+      on_exit(fn -> LmsStudentRegistrationMode.put_test_active_mode(nil) end)
+
+      school = insert_school!()
+      grade = insert_grade!(11)
+      batch = insert_nvs_batch!(11, "engineering")
+
+      {user, student} =
+        insert_enrolled_student!(school, grade, batch, %{
+          student_id: "9456591269",
+          g10_roll_no: nil
+        })
+
+      enable_students = insert_auth_group!("EnableStudents")
+      ensure_group_user!(user.id, "auth_group", enable_students.id)
+      insert_enrollment!(user.id, enable_students.id, "auth_group")
+
+      conn =
+        lms_update(conn, student.id, %{
+          "registration_mode" => "phone",
+          "actor" => actor(),
+          "school" => %{"code" => school.code, "udise_code" => school.udise_code},
+          "program_id" => 64,
+          "academic_year" => "2026-2027",
+          "start_date" => "2026-07-01",
+          "phone" => " 9876543210 "
+        })
+
+      assert json_response(conn, 200)["changed_fields"] == ["phone", "student_id"]
+      assert Users.get_user!(user.id).phone == "9876543210"
+      assert Repo.get!(Student, student.id).student_id == "9876543210"
+      assert current_enrollment(user.id, "school").group_id == school.id
+      assert current_enrollment(user.id, "batch").group_id == batch.id
+      assert current_enrollment(user.id, "auth_group").group_id == enable_students.id
+      assert has_group_user?(user.id, "school", school.id)
+      assert has_group_user?(user.id, "batch", batch.id)
+      assert has_group_user?(user.id, "auth_group", enable_students.id)
+
+      assert only_audit_changed_values() == %{
+               "phone" => %{"old" => "9456591269", "new" => "9876543210"},
+               "student_id" => %{"old" => "9456591269", "new" => "9876543210"}
+             }
+    end
+
+    test "keeps the phone-based Student ID during a combined phone and grade correction", %{
+      conn: conn
+    } do
+      :ok = LmsStudentRegistrationMode.put_test_active_mode("phone")
+      on_exit(fn -> LmsStudentRegistrationMode.put_test_active_mode(nil) end)
+
+      school = insert_school!()
+      grade11 = insert_grade!(11)
+      grade12 = insert_grade!(12)
+      old_batch = insert_nvs_batch!(11, "engineering")
+      new_batch = insert_nvs_batch!(12, "engineering")
+
+      {user, student} =
+        insert_enrolled_student!(school, grade11, old_batch, %{
+          student_id: "9456591269",
+          g10_roll_no: nil
+        })
+
+      enable_students = insert_auth_group!("EnableStudents")
+      ensure_group_user!(user.id, "auth_group", enable_students.id)
+      insert_enrollment!(user.id, enable_students.id, "auth_group")
+
+      conn =
+        lms_update(conn, student.id, %{
+          "registration_mode" => "phone",
+          "actor" => actor(),
+          "school" => %{"code" => school.code, "udise_code" => school.udise_code},
+          "program_id" => 64,
+          "academic_year" => "2026-2027",
+          "start_date" => "2026-07-01",
+          "phone" => "9876543216",
+          "grade" => 12
+        })
+
+      assert json_response(conn, 200)["changed_fields"] == [
+               "batch_id",
+               "g12_graduating_year",
+               "grade",
+               "phone",
+               "student_id"
+             ]
+
+      updated_user = Users.get_user!(user.id)
+      updated_student = Repo.get!(Student, student.id)
+      assert updated_user.phone == "9876543216"
+      assert updated_student.grade_id == grade12.id
+      assert updated_student.g12_graduating_year == 2027
+      assert updated_student.student_id == "9876543216"
+      assert current_enrollment(user.id, "grade").group_id == grade12.id
+      assert current_enrollment(user.id, "batch").group_id == new_batch.id
+      assert current_enrollment(user.id, "school").group_id == school.id
+      assert current_enrollment(user.id, "auth_group").group_id == enable_students.id
+      assert has_group_user?(user.id, "auth_group", enable_students.id)
+      refute has_group_user?(user.id, "batch", old_batch.id)
+
+      changed_values = only_audit_changed_values()
+      assert changed_values["phone"] == %{"old" => "9456591269", "new" => "9876543216"}
+
+      assert changed_values["student_id"] == %{
+               "old" => "9456591269",
+               "new" => "9876543216"
+             }
+    end
+
+    test "rejects a phone correction that belongs to another EnableStudents Student", %{
+      conn: conn
+    } do
+      :ok = LmsStudentRegistrationMode.put_test_active_mode("phone")
+      on_exit(fn -> LmsStudentRegistrationMode.put_test_active_mode(nil) end)
+
+      school = insert_school!()
+      other_school = insert_school!(%{code: "JNV002", udise_code: "22345678901"})
+      grade = insert_grade!(11)
+      batch = insert_nvs_batch!(11, "engineering")
+
+      {user, student} =
+        insert_enrolled_student!(school, grade, batch, %{
+          student_id: "9456591269",
+          g10_roll_no: nil
+        })
+
+      {other_user, other_student} =
+        insert_enrolled_student!(other_school, grade, batch, %{
+          student_id: "9876543211",
+          apaar_id: "123456789013",
+          g10_roll_no: nil
+        })
+
+      Repo.update!(Ecto.Changeset.change(other_user, phone: "9876543211"))
+      enable_students = insert_auth_group!("EnableStudents")
+
+      for enrolled_user <- [user, other_user] do
+        ensure_group_user!(enrolled_user.id, "auth_group", enable_students.id)
+        insert_enrollment!(enrolled_user.id, enable_students.id, "auth_group")
+      end
+
+      conn =
+        lms_update(conn, student.id, %{
+          "registration_mode" => "phone",
+          "actor" => actor(),
+          "school" => %{"code" => school.code, "udise_code" => school.udise_code},
+          "program_id" => 64,
+          "academic_year" => "2026-2027",
+          "start_date" => "2026-07-01",
+          "phone" => "9876543211"
+        })
+
+      response = json_response(conn, 409)
+      assert response["error"]["code"] == "phone_student_id_conflict"
+      assert response["error"]["fields"] == ["phone"]
+      assert is_binary(response["error"]["message"])
+
+      assert response["error"]["existing_match"] == %{
+               "school_code" => other_school.code,
+               "school_name" => other_school.name,
+               "udise_code" => other_school.udise_code,
+               "district" => other_school.district,
+               "state" => other_school.state,
+               "grade" => 11,
+               "program" => "JNV NVS",
+               "stream" => "engineering"
+             }
+
+      refute Map.has_key?(response["error"]["existing_match"], "student_pk_id")
+      refute Map.has_key?(response["error"]["existing_match"], "user_id")
+      refute Map.has_key?(response["error"]["existing_match"], "student_id")
+      refute Map.has_key?(response["error"]["existing_match"], "phone")
+
+      assert Users.get_user!(user.id).phone == "9456591269"
+      assert Repo.get!(Student, student.id).student_id == "9456591269"
+      assert Users.get_user!(other_user.id).phone == "9876543211"
+      assert Repo.get!(Student, other_student.id).student_id == "9876543211"
+      assert Repo.aggregate(Dbservice.LmsStudentWriteAudit, :count, :id) == 0
+    end
+
+    test "rejects a cohort phone correction outside the 6-9 rule without writes", %{
+      conn: conn
+    } do
+      :ok = LmsStudentRegistrationMode.put_test_active_mode("phone")
+      on_exit(fn -> LmsStudentRegistrationMode.put_test_active_mode(nil) end)
+
+      school = insert_school!()
+      grade = insert_grade!(11)
+      batch = insert_nvs_batch!(11, "engineering")
+
+      {user, student} =
+        insert_enrolled_student!(school, grade, batch, %{
+          student_id: "9456591269",
+          g10_roll_no: nil
+        })
+
+      enable_students = insert_auth_group!("EnableStudents")
+      ensure_group_user!(user.id, "auth_group", enable_students.id)
+      insert_enrollment!(user.id, enable_students.id, "auth_group")
+
+      conn =
+        lms_update(conn, student.id, %{
+          "registration_mode" => "phone",
+          "actor" => actor(),
+          "school" => %{"code" => school.code, "udise_code" => school.udise_code},
+          "program_id" => 64,
+          "academic_year" => "2026-2027",
+          "start_date" => "2026-07-01",
+          "phone" => " 5123456789 "
+        })
+
+      response = json_response(conn, 422)
+      assert response["error"]["code"] == "invalid_phone"
+      assert response["error"]["fields"] == ["phone"]
+      assert Users.get_user!(user.id).phone == "9456591269"
+      assert Repo.get!(Student, student.id).student_id == "9456591269"
+      assert Repo.aggregate(Dbservice.LmsStudentWriteAudit, :count, :id) == 0
+    end
+
+    test "corrects a phone-cohort phone and Student ID in approved mode", %{conn: conn} do
+      :ok = LmsStudentRegistrationMode.put_test_active_mode("approved")
+      on_exit(fn -> LmsStudentRegistrationMode.put_test_active_mode(nil) end)
+
+      school = insert_school!()
+      grade = insert_grade!(11)
+      batch = insert_nvs_batch!(11, "engineering")
+
+      {user, student} =
+        insert_enrolled_student!(school, grade, batch, %{
+          student_id: "9456591269",
+          g10_roll_no: nil
+        })
+
+      enable_students = insert_auth_group!("EnableStudents")
+      ensure_group_user!(user.id, "auth_group", enable_students.id)
+      insert_enrollment!(user.id, enable_students.id, "auth_group")
+
+      conn =
+        lms_update(conn, student.id, %{
+          "actor" => actor(),
+          "school" => %{"code" => school.code, "udise_code" => school.udise_code},
+          "program_id" => 64,
+          "academic_year" => "2026-2027",
+          "start_date" => "2026-07-01",
+          "phone" => " 9876543213 "
+        })
+
+      assert json_response(conn, 200)["changed_fields"] == ["phone", "student_id"]
+      assert Users.get_user!(user.id).phone == "9876543213"
+      assert Repo.get!(Student, student.id).student_id == "9876543213"
+
+      assert only_audit_changed_values() == %{
+               "phone" => %{"old" => "9456591269", "new" => "9876543213"},
+               "student_id" => %{"old" => "9456591269", "new" => "9876543213"}
+             }
+    end
+
+    test "allows a correction when the new phone belongs only to another auth group", %{
+      conn: conn
+    } do
+      :ok = LmsStudentRegistrationMode.put_test_active_mode("phone")
+      on_exit(fn -> LmsStudentRegistrationMode.put_test_active_mode(nil) end)
+
+      school = insert_school!()
+      other_school = insert_school!(%{code: "JNV002", udise_code: "22345678901"})
+      grade = insert_grade!(11)
+      batch = insert_nvs_batch!(11, "engineering")
+
+      {user, student} =
+        insert_enrolled_student!(school, grade, batch, %{
+          student_id: "9456591269",
+          g10_roll_no: nil
+        })
+
+      {other_user, other_student} =
+        insert_enrolled_student!(other_school, grade, batch, %{
+          student_id: "9876543214",
+          apaar_id: "123456789013",
+          g10_roll_no: nil
+        })
+
+      Repo.update!(Ecto.Changeset.change(other_user, phone: "9876543214"))
+      enable_students = insert_auth_group!("EnableStudents")
+      other_auth_group = insert_auth_group!("OtherStudents")
+      ensure_group_user!(user.id, "auth_group", enable_students.id)
+      insert_enrollment!(user.id, enable_students.id, "auth_group")
+      ensure_group_user!(other_user.id, "auth_group", other_auth_group.id)
+      insert_enrollment!(other_user.id, other_auth_group.id, "auth_group")
+
+      conn =
+        lms_update(conn, student.id, %{
+          "registration_mode" => "phone",
+          "actor" => actor(),
+          "school" => %{"code" => school.code, "udise_code" => school.udise_code},
+          "program_id" => 64,
+          "academic_year" => "2026-2027",
+          "start_date" => "2026-07-01",
+          "phone" => "9876543214"
+        })
+
+      assert json_response(conn, 200)["changed_fields"] == ["phone", "student_id"]
+      assert Users.get_user!(user.id).phone == "9876543214"
+      assert Repo.get!(Student, student.id).student_id == "9876543214"
+      assert Users.get_user!(other_user.id).phone == "9876543214"
+      assert Repo.get!(Student, other_student.id).student_id == "9876543214"
+    end
+
+    test "rolls back both phone identities when the correction audit fails", %{conn: conn} do
+      :ok = LmsStudentRegistrationMode.put_test_active_mode("phone")
+      on_exit(fn -> LmsStudentRegistrationMode.put_test_active_mode(nil) end)
+
+      school = insert_school!()
+      grade = insert_grade!(11)
+      batch = insert_nvs_batch!(11, "engineering")
+
+      {user, student} =
+        insert_enrolled_student!(school, grade, batch, %{
+          student_id: "9456591269",
+          g10_roll_no: nil
+        })
+
+      enable_students = insert_auth_group!("EnableStudents")
+      ensure_group_user!(user.id, "auth_group", enable_students.id)
+      insert_enrollment!(user.id, enable_students.id, "auth_group")
+
+      conn =
+        lms_update(conn, student.id, %{
+          "registration_mode" => "phone",
+          "actor" => Map.put(actor(), "user_id", "invalid"),
+          "school" => %{"code" => school.code, "udise_code" => school.udise_code},
+          "program_id" => 64,
+          "academic_year" => "2026-2027",
+          "start_date" => "2026-07-01",
+          "phone" => "9876543215"
+        })
+
+      assert json_response(conn, 422)["error"]["code"] == "audit_update_failed"
+      assert Users.get_user!(user.id).phone == "9456591269"
+      assert Repo.get!(Student, student.id).student_id == "9456591269"
+      assert Repo.aggregate(Dbservice.LmsStudentWriteAudit, :count, :id) == 0
+    end
+
+    test "keeps legacy Student ID re-derivation without current EnableStudents membership", %{
+      conn: conn
+    } do
+      :ok = LmsStudentRegistrationMode.put_test_active_mode("approved")
+      on_exit(fn -> LmsStudentRegistrationMode.put_test_active_mode(nil) end)
+
+      school = insert_school!()
+      grade11 = insert_grade!(11)
+      grade12 = insert_grade!(12)
+      old_batch = insert_nvs_batch!(11, "engineering")
+      new_batch = insert_nvs_batch!(12, "engineering")
+
+      {user, student} =
+        insert_enrolled_student!(school, grade11, old_batch, %{
+          student_id: "9456591269",
+          g10_roll_no: nil
+        })
+
+      conn =
+        lms_update(conn, student.id, %{
+          "actor" => actor(),
+          "school" => %{"code" => school.code, "udise_code" => school.udise_code},
+          "program_id" => 64,
+          "academic_year" => "2026-2027",
+          "start_date" => "2026-07-01",
+          "grade" => 12
+        })
+
+      assert json_response(conn, 200)["changed_fields"] == [
+               "batch_id",
+               "g12_graduating_year",
+               "grade",
+               "student_id"
+             ]
+
+      assert Repo.get!(Student, student.id).student_id == nil
+      assert Users.get_user!(user.id).phone == "9456591269"
+      assert current_enrollment(user.id, "grade").group_id == grade12.id
+      assert current_enrollment(user.id, "batch").group_id == new_batch.id
+
+      assert only_audit_changed_values()["student_id"] == %{
+               "old" => "9456591269",
+               "new" => nil
+             }
+
+      refute Repo.get_by(EnrollmentRecord,
+               user_id: user.id,
+               group_type: "grade",
+               group_id: grade11.id
+             ).is_current
+
+      refute Repo.get_by(EnrollmentRecord,
+               user_id: user.id,
+               group_type: "batch",
+               group_id: old_batch.id
+             ).is_current
+    end
+
+    test "keeps generic program edits free of an NVS Program 64 guard", %{conn: conn} do
+      :ok = LmsStudentRegistrationMode.put_test_active_mode("approved")
+      on_exit(fn -> LmsStudentRegistrationMode.put_test_active_mode(nil) end)
+
+      school = insert_school!()
+      grade11 = insert_grade!(11)
+      grade12 = insert_grade!(12)
+      old_batch = insert_program_batch!(7, 11, "engineering")
+      new_batch = insert_program_batch!(7, 12, "engineering")
+
+      {user, student} =
+        insert_enrolled_student!(school, grade11, old_batch, %{
+          student_id: "9456591269",
+          g10_roll_no: nil
+        })
+
+      enable_students = insert_auth_group!("EnableStudents")
+      ensure_group_user!(user.id, "auth_group", enable_students.id)
+      insert_enrollment!(user.id, enable_students.id, "auth_group")
+
+      conn =
+        lms_update(conn, student.id, %{
+          "actor" => actor(),
+          "school" => %{"code" => school.code, "udise_code" => school.udise_code},
+          "program_id" => 7,
+          "academic_year" => "2026-2027",
+          "start_date" => "2026-07-01",
+          "grade" => 12
+        })
+
+      assert json_response(conn, 200)["changed_fields"] == [
+               "batch_id",
+               "g12_graduating_year",
+               "grade",
+               "student_id"
+             ]
+
+      assert Repo.get!(Student, student.id).student_id == nil
+      assert current_enrollment(user.id, "grade").group_id == grade12.id
+      assert current_program_enrollment(user.id, 7).group_id == new_batch.id
+
+      assert only_audit_changed_values()["student_id"] == %{
+               "old" => "9456591269",
+               "new" => nil
+             }
+
+      refute Repo.get_by(EnrollmentRecord,
+               user_id: user.id,
+               group_type: "batch",
+               group_id: old_batch.id
+             ).is_current
+    end
+
+    test "does not classify a student without current enrollment at the resolved School", %{
+      conn: conn
+    } do
+      :ok = LmsStudentRegistrationMode.put_test_active_mode("approved")
+      on_exit(fn -> LmsStudentRegistrationMode.put_test_active_mode(nil) end)
+
+      school = insert_school!()
+      grade11 = insert_grade!(11)
+      old_batch = insert_nvs_batch!(11, "engineering")
+
+      {user, student} =
+        insert_enrolled_student!(school, grade11, old_batch, %{
+          student_id: "9456591269",
+          g10_roll_no: nil
+        })
+
+      enable_students = insert_auth_group!("EnableStudents")
+      ensure_group_user!(user.id, "auth_group", enable_students.id)
+      insert_enrollment!(user.id, enable_students.id, "auth_group")
+
+      from(e in EnrollmentRecord,
+        where: e.user_id == ^user.id and e.group_type == "school" and e.group_id == ^school.id
+      )
+      |> Repo.update_all(set: [is_current: false])
+
+      conn =
+        lms_update(conn, student.id, %{
+          "actor" => actor(),
+          "school" => %{"code" => school.code, "udise_code" => school.udise_code},
+          "program_id" => 64,
+          "academic_year" => "2026-2027",
+          "start_date" => "2026-07-01",
+          "grade" => 12
+        })
+
+      assert json_response(conn, 403)["error"]["code"] == "school_mismatch"
+      assert Repo.get!(Student, student.id).student_id == "9456591269"
+      assert Repo.aggregate(Dbservice.LmsStudentWriteAudit, :count, :id) == 0
+    end
+
+    test "keeps legacy Student ID re-derivation when Student ID differs from user phone", %{
+      conn: conn
+    } do
+      :ok = LmsStudentRegistrationMode.put_test_active_mode("approved")
+      on_exit(fn -> LmsStudentRegistrationMode.put_test_active_mode(nil) end)
+
+      school = insert_school!()
+      grade11 = insert_grade!(11)
+      grade12 = insert_grade!(12)
+      old_batch = insert_nvs_batch!(11, "engineering")
+      new_batch = insert_nvs_batch!(12, "engineering")
+
+      {user, student} =
+        insert_enrolled_student!(school, grade11, old_batch, %{
+          student_id: "different-student-id",
+          g10_roll_no: nil
+        })
+
+      enable_students = insert_auth_group!("EnableStudents")
+      ensure_group_user!(user.id, "auth_group", enable_students.id)
+      insert_enrollment!(user.id, enable_students.id, "auth_group")
+
+      conn =
+        lms_update(conn, student.id, %{
+          "actor" => actor(),
+          "school" => %{"code" => school.code, "udise_code" => school.udise_code},
+          "program_id" => 64,
+          "academic_year" => "2026-2027",
+          "start_date" => "2026-07-01",
+          "grade" => 12
+        })
+
+      assert json_response(conn, 200)["changed_fields"] == [
+               "batch_id",
+               "g12_graduating_year",
+               "grade",
+               "student_id"
+             ]
+
+      assert Repo.get!(Student, student.id).student_id == nil
+      assert Users.get_user!(user.id).phone == "9456591269"
+      assert current_enrollment(user.id, "grade").group_id == grade12.id
+      assert current_enrollment(user.id, "batch").group_id == new_batch.id
+
+      assert only_audit_changed_values()["student_id"] == %{
+               "old" => "different-student-id",
+               "new" => nil
+             }
+
+      refute Repo.get_by(EnrollmentRecord,
+               user_id: user.id,
+               group_type: "batch",
+               group_id: old_batch.id
+             ).is_current
+    end
+
+    test "keeps legacy Student ID re-derivation when the phone fails phone-mode validation", %{
+      conn: conn
+    } do
+      :ok = LmsStudentRegistrationMode.put_test_active_mode("approved")
+      on_exit(fn -> LmsStudentRegistrationMode.put_test_active_mode(nil) end)
+
+      school = insert_school!()
+      grade11 = insert_grade!(11)
+      grade12 = insert_grade!(12)
+      old_batch = insert_nvs_batch!(11, "engineering")
+      new_batch = insert_nvs_batch!(12, "engineering")
+
+      {user, student} =
+        insert_enrolled_student!(school, grade11, old_batch, %{
+          student_id: "1234567890",
+          g10_roll_no: nil
+        })
+
+      user = Repo.update!(Ecto.Changeset.change(user, phone: "1234567890"))
+      enable_students = insert_auth_group!("EnableStudents")
+      ensure_group_user!(user.id, "auth_group", enable_students.id)
+      insert_enrollment!(user.id, enable_students.id, "auth_group")
+
+      conn =
+        lms_update(conn, student.id, %{
+          "actor" => actor(),
+          "school" => %{"code" => school.code, "udise_code" => school.udise_code},
+          "program_id" => 64,
+          "academic_year" => "2026-2027",
+          "start_date" => "2026-07-01",
+          "grade" => 12
+        })
+
+      assert json_response(conn, 200)["changed_fields"] == [
+               "batch_id",
+               "g12_graduating_year",
+               "grade",
+               "student_id"
+             ]
+
+      assert Repo.get!(Student, student.id).student_id == nil
+      assert Users.get_user!(user.id).phone == "1234567890"
+      assert current_enrollment(user.id, "grade").group_id == grade12.id
+      assert current_enrollment(user.id, "batch").group_id == new_batch.id
+
+      assert only_audit_changed_values()["student_id"] == %{
+               "old" => "1234567890",
+               "new" => nil
+             }
+
+      refute Repo.get_by(EnrollmentRecord,
+               user_id: user.id,
+               group_type: "batch",
+               group_id: old_batch.id
+             ).is_current
+    end
+
+    test "rejects a registration-mode mismatch before looking up the student", %{conn: conn} do
+      before_students = Repo.aggregate(Student, :count, :id)
+      before_audits = Repo.aggregate(Dbservice.LmsStudentWriteAudit, :count, :id)
+
+      response =
+        conn
+        |> patch("/api/lms/students/999999/update-with-enrollments", %{
+          "registration_mode" => "approved",
+          "registration_mode_version" => "1",
+          "school" => %{"code" => "missing", "udise_code" => "invalid"}
+        })
+        |> json_response(409)
+
+      assert response["error"]["code"] == "registration_mode_mismatch"
+      assert is_binary(response["error"]["message"])
+      assert Map.keys(response) == ["error"]
+      assert Enum.sort(Map.keys(response["error"])) == ["code", "message"]
+      assert Repo.aggregate(Student, :count, :id) == before_students
+      assert Repo.aggregate(Dbservice.LmsStudentWriteAudit, :count, :id) == before_audits
+    end
+
+    test "rejects missing and non-string registration handshake values before any write", %{
+      conn: conn
+    } do
+      before_users = Repo.aggregate(Dbservice.Users.User, :count, :id)
+      before_students = Repo.aggregate(Student, :count, :id)
+      before_audits = Repo.aggregate(Dbservice.LmsStudentWriteAudit, :count, :id)
+
+      malformed_handshakes = [
+        %{"registration_mode_version" => "1"},
+        %{"registration_mode" => "approved"},
+        %{"registration_mode" => "future", "registration_mode_version" => "1"},
+        %{"registration_mode" => "approved", "registration_mode_version" => "2"},
+        %{"registration_mode" => 123, "registration_mode_version" => "1"},
+        %{"registration_mode" => "approved", "registration_mode_version" => 1}
+      ]
+
+      Enum.each(malformed_handshakes, fn handshake ->
+        response =
+          conn
+          |> recycle()
+          |> patch(
+            "/api/lms/students/999999/update-with-enrollments",
+            Map.merge(handshake, %{
+              "school" => %{"code" => "missing", "udise_code" => "invalid"}
+            })
+          )
+          |> json_response(409)
+
+        assert response["error"]["code"] == "registration_mode_mismatch"
+        assert is_binary(response["error"]["message"])
+        assert Enum.sort(Map.keys(response["error"])) == ["code", "message"]
+        refute Map.has_key?(response, "results")
+      end)
+
+      assert Repo.aggregate(Dbservice.Users.User, :count, :id) == before_users
+      assert Repo.aggregate(Student, :count, :id) == before_students
+      assert Repo.aggregate(Dbservice.LmsStudentWriteAudit, :count, :id) == before_audits
+    end
+
+    test "uses the shipped phone mode when the test override is unset", %{conn: conn} do
+      response =
+        conn
+        |> patch("/api/lms/students/999999/update-with-enrollments", %{
+          "registration_mode" => "phone",
+          "registration_mode_version" => "1"
+        })
+        |> json_response(404)
+
+      assert response["error"]["code"] == "not_found"
+
+      mismatch_response =
+        conn
+        |> recycle()
+        |> patch("/api/lms/students/999999/update-with-enrollments", %{
+          "registration_mode" => "approved",
+          "registration_mode_version" => "1"
+        })
+        |> json_response(409)
+
+      assert mismatch_response["error"]["code"] == "registration_mode_mismatch"
+    end
+
     test "updates an NVS student without a Centre or school program_ids", %{conn: conn} do
+      use_test_registration_mode!("approved")
+
       school = insert_school!()
       grade = insert_grade!(11)
       batch = insert_nvs_batch!(11, "engineering")
@@ -616,7 +1935,7 @@ defmodule DbserviceWeb.LmsStudentUpdateControllerTest do
       Ecto.Adapters.SQL.query!(Repo, "DELETE FROM centres")
 
       conn =
-        patch(conn, "/api/lms/students/#{student.id}/update-with-enrollments", %{
+        lms_update(conn, student.id, %{
           "actor" => actor(),
           "school" => %{"code" => school.code, "udise_code" => school.udise_code},
           "program_id" => 64,
@@ -630,6 +1949,8 @@ defmodule DbserviceWeb.LmsStudentUpdateControllerTest do
     end
 
     test "updates a student regardless of which program they are enrolled in", %{conn: conn} do
+      use_test_registration_mode!("approved")
+
       # The update guard is program-agnostic: it only checks that the student is
       # currently enrolled in the supplied program at the supplied school. Any
       # program id works — program eligibility policy belongs in the LMS layer,
@@ -641,7 +1962,7 @@ defmodule DbserviceWeb.LmsStudentUpdateControllerTest do
       {user, student} = insert_enrolled_student!(school, grade, batch)
 
       conn =
-        patch(conn, "/api/lms/students/#{student.id}/update-with-enrollments", %{
+        lms_update(conn, student.id, %{
           "actor" => actor(),
           "school" => %{"code" => school.code, "udise_code" => school.udise_code},
           "program_id" => arbitrary_program_id,
@@ -655,6 +1976,8 @@ defmodule DbserviceWeb.LmsStudentUpdateControllerTest do
     end
 
     test "rejects a school outside the student's current enrollment", %{conn: conn} do
+      use_test_registration_mode!("approved")
+
       school = insert_school!()
       other_school = insert_school!(%{code: "JNV002", udise_code: "22345678901"})
       grade = insert_grade!(11)
@@ -662,7 +1985,7 @@ defmodule DbserviceWeb.LmsStudentUpdateControllerTest do
       {user, student} = insert_enrolled_student!(school, grade, batch)
 
       conn =
-        patch(conn, "/api/lms/students/#{student.id}/update-with-enrollments", %{
+        lms_update(conn, student.id, %{
           "actor" => actor(),
           "school" => %{
             "code" => other_school.code,
@@ -679,6 +2002,8 @@ defmodule DbserviceWeb.LmsStudentUpdateControllerTest do
     end
 
     test "updates safe profile fields and audits old and new values", %{conn: conn} do
+      use_test_registration_mode!("approved")
+
       school = insert_school!()
       grade = insert_grade!(11)
       batch = insert_nvs_batch!(11, "engineering")
@@ -687,7 +2012,7 @@ defmodule DbserviceWeb.LmsStudentUpdateControllerTest do
         insert_enrolled_student!(school, grade, batch, %{pen_number: "12345678901"})
 
       conn =
-        patch(conn, "/api/lms/students/#{student.id}/update-with-enrollments", %{
+        lms_update(conn, student.id, %{
           "actor" => actor(),
           "school" => %{"code" => school.code, "udise_code" => school.udise_code},
           "program_id" => 64,
@@ -740,6 +2065,8 @@ defmodule DbserviceWeb.LmsStudentUpdateControllerTest do
     end
 
     test "profile-only edits do not rederive identity or enrollments", %{conn: conn} do
+      use_test_registration_mode!("approved")
+
       school = insert_school!()
       grade = insert_grade!(11)
       batch = insert_nvs_batch!(11, "engineering")
@@ -748,7 +2075,7 @@ defmodule DbserviceWeb.LmsStudentUpdateControllerTest do
         insert_enrolled_student!(school, grade, batch, %{student_id: "LEGACY-ID"})
 
       conn =
-        patch(conn, "/api/lms/students/#{student.id}/update-with-enrollments", %{
+        lms_update(conn, student.id, %{
           "actor" => actor(),
           "school" => %{"code" => school.code, "udise_code" => school.udise_code},
           "program_id" => 64,
@@ -765,6 +2092,8 @@ defmodule DbserviceWeb.LmsStudentUpdateControllerTest do
     end
 
     test "rejects a student without a current NVS enrollment", %{conn: conn} do
+      use_test_registration_mode!("approved")
+
       school = insert_school!()
       grade = insert_grade!(11)
       batch = insert_nvs_batch!(11, "engineering")
@@ -777,7 +2106,7 @@ defmodule DbserviceWeb.LmsStudentUpdateControllerTest do
       |> Repo.update_all([])
 
       conn =
-        patch(conn, "/api/lms/students/#{student.id}/update-with-enrollments", %{
+        lms_update(conn, student.id, %{
           "actor" => actor(),
           "school" => %{"code" => school.code, "udise_code" => school.udise_code},
           "program_id" => 64,
@@ -791,6 +2120,8 @@ defmodule DbserviceWeb.LmsStudentUpdateControllerTest do
     end
 
     test "allows a profile-only edit even with multiple current batches", %{conn: conn} do
+      use_test_registration_mode!("approved")
+
       # "One batch per program per student" is a business invariant owned by the
       # LMS, not the schema — so the update service must not block a harmless
       # profile-only edit just because the student has more than one current
@@ -804,7 +2135,7 @@ defmodule DbserviceWeb.LmsStudentUpdateControllerTest do
       insert_enrollment!(user.id, extra_batch.id, "batch")
 
       conn =
-        patch(conn, "/api/lms/students/#{student.id}/update-with-enrollments", %{
+        lms_update(conn, student.id, %{
           "actor" => actor(),
           "school" => %{"code" => school.code, "udise_code" => school.udise_code},
           "program_id" => 64,
@@ -819,6 +2150,8 @@ defmodule DbserviceWeb.LmsStudentUpdateControllerTest do
 
     test "rejects a grade/stream reassignment when multiple current batches are ambiguous",
          %{conn: conn} do
+      use_test_registration_mode!("approved")
+
       # The single-batch requirement still applies where it is actually needed:
       # resolving which current batch to move the student off during a
       # grade/stream change.
@@ -830,7 +2163,7 @@ defmodule DbserviceWeb.LmsStudentUpdateControllerTest do
       insert_enrollment!(user.id, extra_batch.id, "batch")
 
       conn =
-        patch(conn, "/api/lms/students/#{student.id}/update-with-enrollments", %{
+        lms_update(conn, student.id, %{
           "actor" => actor(),
           "school" => %{"code" => school.code, "udise_code" => school.udise_code},
           "program_id" => 64,
@@ -844,13 +2177,15 @@ defmodule DbserviceWeb.LmsStudentUpdateControllerTest do
     end
 
     test "returns 422 for invalid editable enum values", %{conn: conn} do
+      use_test_registration_mode!("approved")
+
       school = insert_school!()
       grade = insert_grade!(11)
       batch = insert_nvs_batch!(11, "engineering")
       {_user, student} = insert_enrolled_student!(school, grade, batch)
 
       conn =
-        patch(conn, "/api/lms/students/#{student.id}/update-with-enrollments", %{
+        lms_update(conn, student.id, %{
           "actor" => actor(),
           "school" => %{"code" => school.code, "udise_code" => school.udise_code},
           "program_id" => 64,
@@ -863,7 +2198,7 @@ defmodule DbserviceWeb.LmsStudentUpdateControllerTest do
       assert response["error"]["code"] == "invalid_user_fields"
 
       conn =
-        patch(recycle(conn), "/api/lms/students/#{student.id}/update-with-enrollments", %{
+        lms_update(recycle(conn), student.id, %{
           "actor" => actor(),
           "school" => %{"code" => school.code, "udise_code" => school.udise_code},
           "program_id" => 64,
@@ -878,13 +2213,15 @@ defmodule DbserviceWeb.LmsStudentUpdateControllerTest do
     end
 
     test "rejects invalid stream values without clearing the stored stream", %{conn: conn} do
+      use_test_registration_mode!("approved")
+
       school = insert_school!()
       grade = insert_grade!(11)
       batch = insert_nvs_batch!(11, "engineering")
       {_user, student} = insert_enrolled_student!(school, grade, batch)
 
       conn =
-        patch(conn, "/api/lms/students/#{student.id}/update-with-enrollments", %{
+        lms_update(conn, student.id, %{
           "actor" => actor(),
           "school" => %{"code" => school.code, "udise_code" => school.udise_code},
           "program_id" => 64,
@@ -900,6 +2237,8 @@ defmodule DbserviceWeb.LmsStudentUpdateControllerTest do
     end
 
     test "rejects null canonical enum inputs", %{conn: conn} do
+      use_test_registration_mode!("approved")
+
       school = insert_school!()
       grade = insert_grade!(11)
       batch = insert_nvs_batch!(11, "engineering")
@@ -915,9 +2254,9 @@ defmodule DbserviceWeb.LmsStudentUpdateControllerTest do
 
       for field <- ~w(g10_board gender stream) do
         conn =
-          patch(
+          lms_update(
             recycle(conn),
-            "/api/lms/students/#{student.id}/update-with-enrollments",
+            student.id,
             Map.put(metadata, field, nil)
           )
 
@@ -930,6 +2269,8 @@ defmodule DbserviceWeb.LmsStudentUpdateControllerTest do
     end
 
     test "rejects a category that does not match the resulting CWSN status", %{conn: conn} do
+      use_test_registration_mode!("approved")
+
       school = insert_school!()
       grade = insert_grade!(11)
       batch = insert_nvs_batch!(11, "engineering")
@@ -938,7 +2279,7 @@ defmodule DbserviceWeb.LmsStudentUpdateControllerTest do
         insert_enrolled_student!(school, grade, batch, %{physically_handicapped: false})
 
       conn =
-        patch(conn, "/api/lms/students/#{student.id}/update-with-enrollments", %{
+        lms_update(conn, student.id, %{
           "actor" => actor(),
           "school" => %{"code" => school.code, "udise_code" => school.udise_code},
           "program_id" => 64,
@@ -953,6 +2294,8 @@ defmodule DbserviceWeb.LmsStudentUpdateControllerTest do
     end
 
     test "rejects invalid phone and DOB values", %{conn: conn} do
+      use_test_registration_mode!("approved")
+
       school = insert_school!()
       grade = insert_grade!(11)
       batch = insert_nvs_batch!(11, "engineering")
@@ -967,18 +2310,18 @@ defmodule DbserviceWeb.LmsStudentUpdateControllerTest do
       }
 
       conn =
-        patch(
+        lms_update(
           conn,
-          "/api/lms/students/#{student.id}/update-with-enrollments",
+          student.id,
           Map.put(metadata, "phone", "0123456789")
         )
 
       assert json_response(conn, 422)["error"]["code"] == "invalid_phone"
 
       conn =
-        patch(
+        lms_update(
           recycle(conn),
-          "/api/lms/students/#{student.id}/update-with-enrollments",
+          student.id,
           Map.put(metadata, "date_of_birth", "2016-01-01")
         )
 
@@ -987,13 +2330,15 @@ defmodule DbserviceWeb.LmsStudentUpdateControllerTest do
     end
 
     test "normalizes day-first DOB edits", %{conn: conn} do
+      use_test_registration_mode!("approved")
+
       school = insert_school!()
       grade = insert_grade!(11)
       batch = insert_nvs_batch!(11, "engineering")
       {user, student} = insert_enrolled_student!(school, grade, batch)
 
       conn =
-        patch(conn, "/api/lms/students/#{student.id}/update-with-enrollments", %{
+        lms_update(conn, student.id, %{
           "actor" => actor(),
           "school" => %{"code" => school.code, "udise_code" => school.udise_code},
           "program_id" => 64,
@@ -1007,13 +2352,15 @@ defmodule DbserviceWeb.LmsStudentUpdateControllerTest do
     end
 
     test "rejects every locked identity field even when PEN is currently null", %{conn: conn} do
+      use_test_registration_mode!("approved")
+
       school = insert_school!()
       grade = insert_grade!(11)
       batch = insert_nvs_batch!(11, "engineering")
       {user, student} = insert_enrolled_student!(school, grade, batch)
 
       conn =
-        patch(conn, "/api/lms/students/#{student.id}/update-with-enrollments", %{
+        lms_update(conn, student.id, %{
           "actor" => actor(),
           "school" => %{"code" => school.code, "udise_code" => school.udise_code},
           "program_id" => 64,
@@ -1042,13 +2389,15 @@ defmodule DbserviceWeb.LmsStudentUpdateControllerTest do
     end
 
     test "rejects fields outside the PRD editable contract", %{conn: conn} do
+      use_test_registration_mode!("approved")
+
       school = insert_school!()
       grade = insert_grade!(11)
       batch = insert_nvs_batch!(11, "engineering")
       {_user, student} = insert_enrolled_student!(school, grade, batch)
 
       conn =
-        patch(conn, "/api/lms/students/#{student.id}/update-with-enrollments", %{
+        lms_update(conn, student.id, %{
           "actor" => actor(),
           "school" => %{"code" => school.code, "udise_code" => school.udise_code},
           "program_id" => 64,
@@ -1066,6 +2415,8 @@ defmodule DbserviceWeb.LmsStudentUpdateControllerTest do
     test "rejects G10 board edits when the locked G10 roll is invalid for the new board", %{
       conn: conn
     } do
+      use_test_registration_mode!("approved")
+
       school = insert_school!()
       grade = insert_grade!(11)
       batch = insert_nvs_batch!(11, "engineering")
@@ -1077,7 +2428,7 @@ defmodule DbserviceWeb.LmsStudentUpdateControllerTest do
         })
 
       conn =
-        patch(conn, "/api/lms/students/#{student.id}/update-with-enrollments", %{
+        lms_update(conn, student.id, %{
           "actor" => actor(),
           "school" => %{"code" => school.code, "udise_code" => school.udise_code},
           "program_id" => 64,
@@ -1093,13 +2444,15 @@ defmodule DbserviceWeb.LmsStudentUpdateControllerTest do
     end
 
     test "stores canonical Others board as null", %{conn: conn} do
+      use_test_registration_mode!("approved")
+
       school = insert_school!()
       grade = insert_grade!(11)
       batch = insert_nvs_batch!(11, "engineering")
       {_user, student} = insert_enrolled_student!(school, grade, batch)
 
       conn =
-        patch(conn, "/api/lms/students/#{student.id}/update-with-enrollments", %{
+        lms_update(conn, student.id, %{
           "actor" => actor(),
           "school" => %{"code" => school.code, "udise_code" => school.udise_code},
           "program_id" => 64,
@@ -1118,13 +2471,15 @@ defmodule DbserviceWeb.LmsStudentUpdateControllerTest do
     end
 
     test "trims G10 board before validating an edit", %{conn: conn} do
+      use_test_registration_mode!("approved")
+
       school = insert_school!()
       grade = insert_grade!(11)
       batch = insert_nvs_batch!(11, "engineering")
       {_user, student} = insert_enrolled_student!(school, grade, batch)
 
       conn =
-        patch(conn, "/api/lms/students/#{student.id}/update-with-enrollments", %{
+        lms_update(conn, student.id, %{
           "actor" => actor(),
           "school" => %{"code" => school.code, "udise_code" => school.udise_code},
           "program_id" => 64,
@@ -1138,6 +2493,8 @@ defmodule DbserviceWeb.LmsStudentUpdateControllerTest do
     end
 
     test "rejects Others board when the locked roll is not already canonical", %{conn: conn} do
+      use_test_registration_mode!("approved")
+
       school = insert_school!()
       grade = insert_grade!(11)
       batch = insert_nvs_batch!(11, "engineering")
@@ -1149,7 +2506,7 @@ defmodule DbserviceWeb.LmsStudentUpdateControllerTest do
         })
 
       conn =
-        patch(conn, "/api/lms/students/#{student.id}/update-with-enrollments", %{
+        lms_update(conn, student.id, %{
           "actor" => actor(),
           "school" => %{"code" => school.code, "udise_code" => school.udise_code},
           "program_id" => 64,
@@ -1164,6 +2521,8 @@ defmodule DbserviceWeb.LmsStudentUpdateControllerTest do
     end
 
     test "stores canonical CBSE, CWSN category, and Other gender values", %{conn: conn} do
+      use_test_registration_mode!("approved")
+
       school = insert_school!()
       grade = insert_grade!(11)
       batch = insert_nvs_batch!(11, "engineering")
@@ -1172,7 +2531,7 @@ defmodule DbserviceWeb.LmsStudentUpdateControllerTest do
         insert_enrolled_student!(school, grade, batch, %{physically_handicapped: false})
 
       conn =
-        patch(conn, "/api/lms/students/#{student.id}/update-with-enrollments", %{
+        lms_update(conn, student.id, %{
           "actor" => actor(),
           "school" => %{"code" => school.code, "udise_code" => school.udise_code},
           "program_id" => 64,
@@ -1199,13 +2558,15 @@ defmodule DbserviceWeb.LmsStudentUpdateControllerTest do
     end
 
     test "rejects a board outside the canonical edit values", %{conn: conn} do
+      use_test_registration_mode!("approved")
+
       school = insert_school!()
       grade = insert_grade!(11)
       batch = insert_nvs_batch!(11, "engineering")
       {_user, student} = insert_enrolled_student!(school, grade, batch)
 
       conn =
-        patch(conn, "/api/lms/students/#{student.id}/update-with-enrollments", %{
+        lms_update(conn, student.id, %{
           "actor" => actor(),
           "school" => %{"code" => school.code, "udise_code" => school.udise_code},
           "program_id" => 64,
@@ -1221,6 +2582,8 @@ defmodule DbserviceWeb.LmsStudentUpdateControllerTest do
     test "grade edits atomically update derived identity, grade enrollment, and batch", %{
       conn: conn
     } do
+      use_test_registration_mode!("approved")
+
       school = insert_school!()
       grade11 = insert_grade!(11)
       grade12 = insert_grade!(12)
@@ -1229,7 +2592,7 @@ defmodule DbserviceWeb.LmsStudentUpdateControllerTest do
       {_user, student} = insert_enrolled_student!(school, grade11, old_batch)
 
       conn =
-        patch(conn, "/api/lms/students/#{student.id}/update-with-enrollments", %{
+        lms_update(conn, student.id, %{
           "actor" => actor(),
           "school" => %{"code" => school.code, "udise_code" => school.udise_code},
           "program_id" => 64,
@@ -1274,6 +2637,8 @@ defmodule DbserviceWeb.LmsStudentUpdateControllerTest do
     end
 
     test "NDA stream edits atomically update stream and derived batch", %{conn: conn} do
+      use_test_registration_mode!("approved")
+
       school = insert_school!()
       grade = insert_grade!(11)
       old_batch = insert_nvs_batch!(11, "engineering")
@@ -1281,7 +2646,7 @@ defmodule DbserviceWeb.LmsStudentUpdateControllerTest do
       {_user, student} = insert_enrolled_student!(school, grade, old_batch)
 
       conn =
-        patch(conn, "/api/lms/students/#{student.id}/update-with-enrollments", %{
+        lms_update(conn, student.id, %{
           "actor" => actor(),
           "school" => %{"code" => school.code, "udise_code" => school.udise_code},
           "program_id" => 64,
@@ -1305,6 +2670,8 @@ defmodule DbserviceWeb.LmsStudentUpdateControllerTest do
     end
 
     test "stream edits leave another program's current batch untouched", %{conn: conn} do
+      use_test_registration_mode!("approved")
+
       school = insert_school!()
       grade = insert_grade!(11)
       old_batch = insert_nvs_batch!(11, "engineering")
@@ -1315,7 +2682,7 @@ defmodule DbserviceWeb.LmsStudentUpdateControllerTest do
       ensure_group_user!(user.id, "batch", coe_batch.id)
 
       conn =
-        patch(conn, "/api/lms/students/#{student.id}/update-with-enrollments", %{
+        lms_update(conn, student.id, %{
           "actor" => actor(),
           "school" => %{"code" => school.code, "udise_code" => school.udise_code},
           "program_id" => 64,
@@ -1333,6 +2700,8 @@ defmodule DbserviceWeb.LmsStudentUpdateControllerTest do
     end
 
     test "grade edits derive graduating year from academic year", %{conn: conn} do
+      use_test_registration_mode!("approved")
+
       school = insert_school!()
       grade11 = insert_grade!(11)
       insert_grade!(12)
@@ -1341,7 +2710,7 @@ defmodule DbserviceWeb.LmsStudentUpdateControllerTest do
       {_user, student} = insert_enrolled_student!(school, grade11, old_batch)
 
       conn =
-        patch(conn, "/api/lms/students/#{student.id}/update-with-enrollments", %{
+        lms_update(conn, student.id, %{
           "actor" => actor(),
           "school" => %{"code" => school.code, "udise_code" => school.udise_code},
           "program_id" => 64,
@@ -1357,6 +2726,8 @@ defmodule DbserviceWeb.LmsStudentUpdateControllerTest do
     end
 
     test "stream-only edit preserves legacy Student ID when G10 roll is absent", %{conn: conn} do
+      use_test_registration_mode!("approved")
+
       school = insert_school!()
       grade = insert_grade!(11)
       old_batch = insert_nvs_batch!(11, "engineering")
@@ -1369,7 +2740,7 @@ defmodule DbserviceWeb.LmsStudentUpdateControllerTest do
         })
 
       conn =
-        patch(conn, "/api/lms/students/#{student.id}/update-with-enrollments", %{
+        lms_update(conn, student.id, %{
           "actor" => actor(),
           "school" => %{"code" => school.code, "udise_code" => school.udise_code},
           "program_id" => 64,
@@ -1385,6 +2756,8 @@ defmodule DbserviceWeb.LmsStudentUpdateControllerTest do
     end
 
     test "blank last name does not create a false changed field when already nil", %{conn: conn} do
+      use_test_registration_mode!("approved")
+
       school = insert_school!()
       grade = insert_grade!(11)
       batch = insert_nvs_batch!(11, "engineering")
@@ -1392,7 +2765,7 @@ defmodule DbserviceWeb.LmsStudentUpdateControllerTest do
       {:ok, _user} = Users.update_user(user, %{last_name: nil})
 
       conn =
-        patch(conn, "/api/lms/students/#{student.id}/update-with-enrollments", %{
+        lms_update(conn, student.id, %{
           "actor" => actor(),
           "school" => %{"code" => school.code, "udise_code" => school.udise_code},
           "program_id" => 64,
@@ -1410,6 +2783,8 @@ defmodule DbserviceWeb.LmsStudentUpdateControllerTest do
          %{
            conn: conn
          } do
+      use_test_registration_mode!("approved")
+
       school = insert_school!()
       grade11 = insert_grade!(11)
       insert_grade!(12)
@@ -1419,7 +2794,7 @@ defmodule DbserviceWeb.LmsStudentUpdateControllerTest do
       Dbservice.UsersFixtures.student_fixture(%{student_id: "202712345678"})
 
       conn =
-        patch(conn, "/api/lms/students/#{student.id}/update-with-enrollments", %{
+        lms_update(conn, student.id, %{
           "actor" => actor(),
           "school" => %{"code" => school.code, "udise_code" => school.udise_code},
           "program_id" => 64,
@@ -1439,6 +2814,8 @@ defmodule DbserviceWeb.LmsStudentUpdateControllerTest do
     end
 
     test "audit validation failure rolls back profile and NVS enrollment changes", %{conn: conn} do
+      use_test_registration_mode!("approved")
+
       school = insert_school!()
       grade = insert_grade!(11)
       old_batch = insert_nvs_batch!(11, "engineering")
@@ -1446,7 +2823,7 @@ defmodule DbserviceWeb.LmsStudentUpdateControllerTest do
       {user, student} = insert_enrolled_student!(school, grade, old_batch)
 
       conn =
-        patch(conn, "/api/lms/students/#{student.id}/update-with-enrollments", %{
+        lms_update(conn, student.id, %{
           "actor" => Map.put(actor(), "user_id", "invalid"),
           "school" => %{"code" => school.code, "udise_code" => school.udise_code},
           "program_id" => 64,
@@ -1465,13 +2842,15 @@ defmodule DbserviceWeb.LmsStudentUpdateControllerTest do
     end
 
     test "missing actor metadata rolls back the update", %{conn: conn} do
+      use_test_registration_mode!("approved")
+
       school = insert_school!()
       grade = insert_grade!(11)
       batch = insert_nvs_batch!(11, "engineering")
       {user, student} = insert_enrolled_student!(school, grade, batch)
 
       conn =
-        patch(conn, "/api/lms/students/#{student.id}/update-with-enrollments", %{
+        lms_update(conn, student.id, %{
           "school" => %{"code" => school.code, "udise_code" => school.udise_code},
           "program_id" => 64,
           "academic_year" => "2026-2027",
@@ -1485,13 +2864,15 @@ defmodule DbserviceWeb.LmsStudentUpdateControllerTest do
     end
 
     test "rejects stream edits when batch lookup is not exactly one match", %{conn: conn} do
+      use_test_registration_mode!("approved")
+
       school = insert_school!()
       grade = insert_grade!(11)
       old_batch = insert_nvs_batch!(11, "engineering")
       {_user, student} = insert_enrolled_student!(school, grade, old_batch)
 
       conn =
-        patch(conn, "/api/lms/students/#{student.id}/update-with-enrollments", %{
+        lms_update(conn, student.id, %{
           "actor" => actor(),
           "school" => %{"code" => school.code, "udise_code" => school.udise_code},
           "program_id" => 64,
@@ -1509,7 +2890,7 @@ defmodule DbserviceWeb.LmsStudentUpdateControllerTest do
       insert_nvs_batch!(11, "medical")
 
       conn =
-        patch(recycle(conn), "/api/lms/students/#{student.id}/update-with-enrollments", %{
+        lms_update(recycle(conn), student.id, %{
           "actor" => actor(),
           "school" => %{"code" => school.code, "udise_code" => school.udise_code},
           "program_id" => 64,
@@ -1527,6 +2908,8 @@ defmodule DbserviceWeb.LmsStudentUpdateControllerTest do
     test "rejects a target batch without a batch group and rolls back profile changes", %{
       conn: conn
     } do
+      use_test_registration_mode!("approved")
+
       school = insert_school!()
       grade = insert_grade!(11)
       old_batch = insert_nvs_batch!(11, "engineering")
@@ -1535,7 +2918,7 @@ defmodule DbserviceWeb.LmsStudentUpdateControllerTest do
       {user, student} = insert_enrolled_student!(school, grade, old_batch)
 
       conn =
-        patch(conn, "/api/lms/students/#{student.id}/update-with-enrollments", %{
+        lms_update(conn, student.id, %{
           "actor" => actor(),
           "school" => %{"code" => school.code, "udise_code" => school.udise_code},
           "program_id" => 64,
@@ -1551,6 +2934,25 @@ defmodule DbserviceWeb.LmsStudentUpdateControllerTest do
       assert current_program_enrollment(user.id, 64).group_id == old_batch.id
       assert Repo.aggregate(Dbservice.LmsStudentWriteAudit, :count, :id) == 0
     end
+  end
+
+  defp use_test_registration_mode!(mode) do
+    :ok = LmsStudentRegistrationMode.put_test_active_mode(mode)
+    on_exit(fn -> LmsStudentRegistrationMode.put_test_active_mode(nil) end)
+  end
+
+  defp lms_update(conn, student_id, params) do
+    patch(
+      conn,
+      "/api/lms/students/#{student_id}/update-with-enrollments",
+      Map.merge(
+        %{
+          "registration_mode" => "approved",
+          "registration_mode_version" => "1"
+        },
+        params
+      )
+    )
   end
 
   defp actor do
@@ -1586,6 +2988,12 @@ defmodule DbserviceWeb.LmsStudentUpdateControllerTest do
     ensure_group_user!(user.id, "grade", grade.id)
     ensure_group_user!(user.id, "batch", batch.id)
     {user, student}
+  end
+
+  defp insert_auth_group!(name) do
+    auth_group = Repo.insert!(%Dbservice.Groups.AuthGroup{name: name})
+    ensure_group!("auth_group", auth_group.id)
+    auth_group
   end
 
   defp insert_active_centre!(school, program_id) do

@@ -3,6 +3,7 @@ defmodule DbserviceWeb.HolisticMentorshipRegenerationRequestControllerTest do
 
   alias Dbservice.Repo
 
+  import Dbservice.BatchesFixtures
   import Dbservice.GradesFixtures
   import Dbservice.SchoolsFixtures
   import Dbservice.UsersFixtures
@@ -359,12 +360,52 @@ defmodule DbserviceWeb.HolisticMentorshipRegenerationRequestControllerTest do
   defp eligible_student do
     grade = grade_fixture(%{number: 11})
     {user, student} = student_fixture(%{grade_id: grade.id, status: "active"})
-    school = school_fixture(%{program_ids: [1], code: "school-#{user.id}"})
+    school = school_fixture(%{program_ids: [], code: "school-#{user.id}"})
 
     enroll(user.id, "school", school.id)
     enroll(user.id, "grade", grade.id)
+    add_program_roster(user.id, school.id)
 
     {user, student}
+  end
+
+  defp add_program_roster(user_id, school_id) do
+    ensure_program_one()
+
+    batch =
+      batch_fixture(%{
+        name: "Program 1 User #{user_id}",
+        batch_id: "P1-#{user_id}",
+        program_id: 1
+      })
+
+    add_group_membership(user_id, "school", school_id)
+    add_group_membership(user_id, "batch", batch.id)
+
+    Repo.query!(
+      """
+      INSERT INTO centres (name, school_id, program_id, is_active)
+      VALUES ($1, $2, 1, true)
+      """,
+      ["Program 1 User #{user_id}", school_id]
+    )
+  end
+
+  defp ensure_program_one do
+    Repo.get(Dbservice.Programs.Program, 1) ||
+      Repo.insert!(%Dbservice.Programs.Program{
+        id: 1,
+        name: "JNV CoE",
+        product_id: Dbservice.ProductsFixtures.product_fixture().id
+      })
+  end
+
+  defp add_group_membership(user_id, type, child_id) do
+    group =
+      Repo.get_by(Dbservice.Groups.Group, type: type, child_id: child_id) ||
+        Repo.insert!(%Dbservice.Groups.Group{type: type, child_id: child_id})
+
+    Repo.insert!(%Dbservice.Groups.GroupUser{user_id: user_id, group_id: group.id})
   end
 
   defp enroll(user_id, group_type, group_id) do
