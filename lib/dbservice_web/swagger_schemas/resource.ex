@@ -541,4 +541,43 @@ defmodule DbserviceWeb.SwaggerSchema.Resource do
         end
     }
   end
+
+  def similar_search do
+    %{
+      SimilarSearchRequest:
+        swagger_schema do
+          title("SimilarSearchRequest")
+          description("A problem's per-language question texts to check for near-duplicates")
+
+          properties do
+            languages(
+              Schema.array(:object),
+              "One entry per language: {lang_code, text}. text is raw meta_data.text (HTML/LaTeX)"
+            )
+          end
+
+          example(%{
+            languages: [
+              %{lang_code: "en", text: "<div>What is the value of \\(2+2\\)?</div>"},
+              %{lang_code: "hi", text: "<div>\\(2+2\\) का मान क्या है?</div>"}
+            ]
+          })
+        end,
+      SimilarSearchResponse:
+        swagger_schema do
+          title("SimilarSearchResponse")
+          description("Near-duplicate matches (> 0.75), per language, sorted by score desc")
+
+          properties do
+            problems(Schema.array(:object), "Matches: {id, code, lang_code, match_score}")
+          end
+
+          example(%{
+            problems: [
+              %{id: 8323, code: "P0008323", lang_code: "en", match_score: 0.83}
+            ]
+          })
+        end
+    }
+  end
 end

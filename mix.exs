@@ -77,7 +77,10 @@ defmodule Dbservice.MixProject do
       {:ecto_psql_extras, "~> 0.6"},
       {:ex_aws, "~> 2.5"},
       {:ex_aws_s3, "~> 2.5"},
-      {:sweet_xml, "~> 0.7"}
+      {:sweet_xml, "~> 0.7"},
+      # HTML parser used to normalize problem question text (strip tags, keep
+      # LaTeX) for trigram similarity search — see Dbservice.Resources.ProblemText.
+      {:floki, "~> 0.36"}
     ]
   end
 

@@ -194,7 +194,7 @@ defmodule DbserviceWeb.StudentControllerTest do
         INSERT INTO holistic_mentorship_mentor_mentee_mappings
           (student_id, mentor_user_id, school_id, program_id, academic_year, started_at,
            assignment_source)
-        VALUES ($1, $2, $3, $4, '2026-27', timezone('UTC', now()), 'af_lms')
+        VALUES ($1, $2, $3, $4, '2026-2027', timezone('UTC', now()), 'af_lms')
         RETURNING id
         """,
         [student_id, mentor.id, school_id, program_id]

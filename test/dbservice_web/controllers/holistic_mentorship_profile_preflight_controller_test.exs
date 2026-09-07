@@ -383,6 +383,8 @@ defmodule DbserviceWeb.HolisticMentorshipProfilePreflightControllerTest do
 
     remove_group_membership(school_user.id, "school")
 
+    # School enrollment records are exclusive at the database level. A second
+    # group membership is sufficient to exercise the preflight ambiguity guard.
     second_school = school_fixture(%{program_ids: [], code: "second-school"})
     add_group_membership(duplicate_school_user.id, "school", second_school.id)
 
@@ -390,6 +392,9 @@ defmodule DbserviceWeb.HolisticMentorshipProfilePreflightControllerTest do
       missing_grade_user.id
     ])
 
+    # Current grade enrollment records are exclusive too; the mismatch below
+    # covers inconsistent current grade eligibility without manufacturing an
+    # impossible duplicate enrollment.
     grade_12 = grade_fixture(%{number: 12})
 
     Repo.query!(
@@ -532,7 +537,7 @@ defmodule DbserviceWeb.HolisticMentorshipProfilePreflightControllerTest do
         user_id: user_id,
         group_id: group_id,
         group_type: group_type,
-        academic_year: "2026-27",
+        academic_year: "2026-2027",
         start_date: ~D[2026-06-01],
         is_current: true
       })

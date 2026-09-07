@@ -49,7 +49,12 @@ defmodule Dbservice.Services.StudentUpdateService do
     # Filter out nil/empty values to only update provided fields
     filtered_params = filter_update_params(params)
 
-    Users.update_student_with_user(student, user, filtered_params)
+    # Reject a row that would move another student's identifier onto this student
+    # before writing, so the import fails with a clear message instead of a raw
+    # unique-constraint error (see issue #641).
+    with :ok <- Users.validate_identifier_conflicts(filtered_params, student) do
+      Users.update_student_with_user(student, user, filtered_params)
+    end
   end
 
   # Private helper functions

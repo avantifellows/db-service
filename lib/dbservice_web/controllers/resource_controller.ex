@@ -36,6 +36,7 @@ defmodule DbserviceWeb.ResourceController do
     |> Map.merge(SwaggerSchemaResource.move_resources())
     |> Map.merge(SwaggerSchemaResource.tests_containing_problems())
     |> Map.merge(SwaggerSchemaResource.problems_batch())
+    |> Map.merge(SwaggerSchemaResource.similar_search())
   end
 
   swagger_path :index do
@@ -1585,4 +1586,41 @@ defmodule DbserviceWeb.ResourceController do
 
   defp lang_code_present?(%{"lang_code" => code}) when is_binary(code) and code != "", do: true
   defp lang_code_present?(_), do: false
+
+  swagger_path :similar_search do
+    post("/api/problems/similar-search")
+    summary("Fuzzy/similarity search for near-duplicate problems")
+
+    description(
+      "Given a problem's language texts (as stored in meta_data.text, HTML/LaTeX " <>
+        "intact), returns existing problems whose question text is a near-duplicate " <>
+        "(trigram similarity > 0.75), scoped per language, across all curricula. " <>
+        "db-service normalizes the text internally, so the client sends it raw. " <>
+        "Results are capped per language and sorted by match_score descending, each " <>
+        "tagged with the lang_code it matched on."
+    )
+
+    parameters do
+      body(:body, Schema.ref(:SimilarSearchRequest), "Per-language question texts",
+        required: true
+      )
+    end
+
+    response(200, "OK", Schema.ref(:SimilarSearchResponse))
+  end
+
+  @doc """
+  POST /api/problems/similar-search — near-duplicate detection (issue #700).
+
+  Body: `%{"languages" => [%{"lang_code" => "en", "text" => "<html>"}, ...]}`.
+  """
+  def similar_search(conn, %{"languages" => languages}) when is_list(languages) do
+    json(conn, %{problems: Resources.similar_problems(languages)})
+  end
+
+  def similar_search(conn, _params) do
+    conn
+    |> put_status(:bad_request)
+    |> json(%{error: "Request body must include a \"languages\" list of {lang_code, text}"})
+  end
 end

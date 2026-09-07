@@ -1138,7 +1138,7 @@ defmodule DbserviceWeb.HolisticMentorshipProfilePublishControllerTest do
         user_id: user_id,
         group_id: group_id,
         group_type: group_type,
-        academic_year: "2026-27",
+        academic_year: "2026-2027",
         start_date: ~D[2026-06-01],
         is_current: true
       })
@@ -1283,8 +1283,9 @@ defmodule DbserviceWeb.HolisticMentorshipProfilePublishControllerTest do
       ).rows
       |> List.flatten()
 
-    Repo.query!("DELETE FROM enrollment_record WHERE user_id = $1", [user_id])
+    Repo.query!("DELETE FROM centres WHERE school_id = $1", [school_id])
     Repo.query!("DELETE FROM group_user WHERE user_id = $1", [user_id])
+    Repo.query!("DELETE FROM enrollment_record WHERE user_id = $1", [user_id])
     Repo.query!("DELETE FROM student WHERE id = $1", [student_id])
 
     Repo.query!(
@@ -1297,7 +1298,6 @@ defmodule DbserviceWeb.HolisticMentorshipProfilePublishControllerTest do
       Repo.query!("DELETE FROM batch WHERE id = $1", [batch_id])
     end)
 
-    Repo.query!("DELETE FROM centres WHERE school_id = $1", [school_id])
     Repo.query!("DELETE FROM grade WHERE id = $1", [grade_id])
     Repo.query!("DELETE FROM school WHERE id = $1", [school_id])
     Repo.query!("DELETE FROM \"user\" WHERE id = $1", [user_id])
