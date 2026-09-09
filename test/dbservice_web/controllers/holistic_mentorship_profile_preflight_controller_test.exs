@@ -64,6 +64,40 @@ defmodule DbserviceWeb.HolisticMentorshipProfilePreflightControllerTest do
     refute response |> inspect() =~ "BUSINESS-G"
   end
 
+  test "accepts new exact sources and rejects wrong session or grade", %{conn: conn} do
+    configuration_id = prompt_configuration_id(conn)
+
+    for {program, form, session} <- [
+          {78, "6a76d43e24402e7cb501f34f", "EMRSStudents_6a76d43e24402e7cb501f34f"},
+          {99, "6a8843143834e2f94dd88f5d", "MaharashtraStudents_6a8843143834e2f94dd88f5d"}
+        ] do
+      {user, student} = eligible_student(11, "ADDITIONAL-#{program}", program)
+      source = %{"form_id" => form, "af_session_id" => session, "entry_grade" => 11}
+
+      records = [
+        record("valid", user.id, configuration_id, source),
+        record(
+          "wrong-session",
+          user.id,
+          configuration_id,
+          Map.put(source, "af_session_id", "other")
+        ),
+        record("wrong-grade", user.id, configuration_id, Map.put(source, "entry_grade", 12))
+      ]
+
+      result =
+        conn
+        |> post("/api/holistic-mentorship/profile-preflight", %{"records" => records})
+        |> json_response(200)
+
+      assert [valid, wrong_session, wrong_grade] = result["results"]
+      assert valid["student_id"] == student.id
+      assert valid["profile_state"] == "missing"
+      assert wrong_session["reason_code"] == "form_grade_mismatch"
+      assert wrong_grade["reason_code"] == "form_grade_mismatch"
+    end
+  end
+
   test "accepts an EMRS CoE Student from Program 78", %{conn: conn} do
     prompt_configuration_id = prompt_configuration_id(conn)
     {user, student} = eligible_student(11, "EMRS-G11", 78)
