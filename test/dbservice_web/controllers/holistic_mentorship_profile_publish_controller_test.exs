@@ -14,6 +14,7 @@ defmodule DbserviceWeb.HolisticMentorshipProfilePublishControllerTest do
     "entry_grade" => 11,
     "form_id" => "6a44a83d1184e717b920c499"
   }
+  @new_profile_program_ids [74, 88, 94, 99]
 
   test "publishes one complete Student Profile and completes its generation status", %{conn: conn} do
     {user, student} = eligible_student()
@@ -52,6 +53,26 @@ defmodule DbserviceWeb.HolisticMentorshipProfilePublishControllerTest do
                   "Fixed summary #{position}"
                 ]
               end)
+  end
+
+  test "publishes Profiles for each newly eligible Profile Program", %{conn: conn} do
+    configuration_id = insert_prompt_configuration!()
+
+    results =
+      for program_id <- @new_profile_program_ids do
+        {user, student} = eligible_student(program_id)
+        run_id = "publish-program-#{program_id}"
+        insert_running_status!(student.id, configuration_id, run_id)
+
+        {program_id, publish(conn, publish_params(user.id, student.id, configuration_id, run_id))}
+      end
+
+    expected_results =
+      for program_id <- @new_profile_program_ids do
+        {program_id, %{"result" => "published", "revision" => 1}}
+      end
+
+    assert results == expected_results
   end
 
   test "replaces changed answers for the same configuration", %{conn: conn} do
@@ -975,6 +996,31 @@ defmodule DbserviceWeb.HolisticMentorshipProfilePublishControllerTest do
     refute inspect(response) =~ Integer.to_string(user.id)
   end
 
+  test "revalidates and rejects an unsupported Profile Program at publication time", %{
+    conn: conn
+  } do
+    {user, student} = eligible_student(2)
+    configuration_id = insert_prompt_configuration!()
+    insert_running_status!(student.id, configuration_id, "unsupported-program-run")
+
+    response =
+      conn
+      |> post(
+        "/api/holistic-mentorship/profiles/publish",
+        publish_params(user.id, student.id, configuration_id, "unsupported-program-run")
+      )
+      |> json_response(422)
+
+    assert response == %{
+             "error" => %{
+               "code" => "program_ineligible",
+               "message" => "Profile publication is not eligible"
+             }
+           }
+
+    assert Repo.query!("SELECT count(*) FROM holistic_mentorship_profile_journeys").rows == [[0]]
+  end
+
   test "retains a Profile published for another Prompt Configuration", %{conn: conn} do
     {user, student} = eligible_student()
     first_configuration = insert_prompt_configuration!()
@@ -1036,25 +1082,25 @@ defmodule DbserviceWeb.HolisticMentorshipProfilePublishControllerTest do
     end
   end
 
-  defp eligible_student do
+  defp eligible_student(program_id \\ 1) do
     grade = grade_fixture(%{number: 11})
     {user, student} = student_fixture(%{grade_id: grade.id, status: "active"})
     school = school_fixture(%{program_ids: [], code: "publish-school-#{user.id}"})
 
     enroll(user.id, "school", school.id)
     enroll(user.id, "grade", grade.id)
-    add_program_roster(user.id, school.id)
+    add_program_roster(user.id, school.id, "publish-#{user.id}", program_id)
     {user, student}
   end
 
-  defp add_program_roster(user_id, school_id) do
-    ensure_program_one()
+  defp add_program_roster(user_id, school_id, suffix, program_id) do
+    ensure_program(program_id)
 
     batch =
       batch_fixture(%{
-        name: "Program 1 User #{user_id}",
-        batch_id: "P1-#{user_id}",
-        program_id: 1
+        name: "Program #{program_id} #{suffix}",
+        batch_id: "P#{program_id}-#{suffix}",
+        program_id: program_id
       })
 
     add_group_membership(user_id, "school", school_id)
@@ -1063,17 +1109,17 @@ defmodule DbserviceWeb.HolisticMentorshipProfilePublishControllerTest do
     Repo.query!(
       """
       INSERT INTO centres (name, school_id, program_id, is_active)
-      VALUES ($1, $2, 1, true)
+      VALUES ($1, $2, $3, true)
       """,
-      ["Program 1 User #{user_id}", school_id]
+      ["Program #{program_id} #{suffix}", school_id, program_id]
     )
   end
 
-  defp ensure_program_one do
-    Repo.get(Dbservice.Programs.Program, 1) ||
+  defp ensure_program(program_id) do
+    Repo.get(Dbservice.Programs.Program, program_id) ||
       Repo.insert!(%Dbservice.Programs.Program{
-        id: 1,
-        name: "JNV CoE",
+        id: program_id,
+        name: "Program #{program_id}",
         product_id: Dbservice.ProductsFixtures.product_fixture().id
       })
   end
@@ -1225,15 +1271,20 @@ defmodule DbserviceWeb.HolisticMentorshipProfilePublishControllerTest do
     RESTART IDENTITY
     """)
 
+    batch_ids =
+      Repo.query!(
+        """
+        SELECT school_group.child_id
+        FROM group_user
+        JOIN "group" school_group ON school_group.id = group_user.group_id
+        WHERE group_user.user_id = $1 AND school_group.type = 'batch'
+        """,
+        [user_id]
+      ).rows
+      |> List.flatten()
+
     Repo.query!("DELETE FROM centres WHERE school_id = $1", [school_id])
     Repo.query!("DELETE FROM group_user WHERE user_id = $1", [user_id])
-
-    Repo.query!(
-      "DELETE FROM \"group\" WHERE type = 'batch' AND child_id IN (SELECT id FROM batch WHERE batch_id = $1)",
-      ["P1-#{user_id}"]
-    )
-
-    Repo.query!("DELETE FROM batch WHERE batch_id = $1", ["P1-#{user_id}"])
     Repo.query!("DELETE FROM enrollment_record WHERE user_id = $1", [user_id])
     Repo.query!("DELETE FROM student WHERE id = $1", [student_id])
 
@@ -1241,6 +1292,11 @@ defmodule DbserviceWeb.HolisticMentorshipProfilePublishControllerTest do
       "DELETE FROM \"group\" WHERE (type = 'grade' AND child_id = $1) OR (type = 'school' AND child_id = $2)",
       [grade_id, school_id]
     )
+
+    Enum.each(batch_ids, fn batch_id ->
+      Repo.query!("DELETE FROM \"group\" WHERE type = 'batch' AND child_id = $1", [batch_id])
+      Repo.query!("DELETE FROM batch WHERE id = $1", [batch_id])
+    end)
 
     Repo.query!("DELETE FROM grade WHERE id = $1", [grade_id])
     Repo.query!("DELETE FROM school WHERE id = $1", [school_id])
