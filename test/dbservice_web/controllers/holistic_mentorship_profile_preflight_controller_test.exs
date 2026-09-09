@@ -20,6 +20,7 @@ defmodule DbserviceWeb.HolisticMentorshipProfilePreflightControllerTest do
     "entry_grade" => 12,
     "form_id" => "6a4deca8e030ebe34669fb0f"
   }
+  @new_profile_program_ids [74, 88, 94, 99]
 
   test "preflights both approved Profile sources in input order with canonical Student IDs", %{
     conn: conn
@@ -83,6 +84,54 @@ defmodule DbserviceWeb.HolisticMentorshipProfilePreflightControllerTest do
                  "profile_revision" => nil
                }
              ]
+           }
+  end
+
+  test "accepts Students from each newly eligible Profile Program", %{conn: conn} do
+    prompt_configuration_id = prompt_configuration_id(conn)
+
+    eligible_students =
+      for program_id <- @new_profile_program_ids do
+        {user, student} = eligible_student(11, "PROGRAM-#{program_id}", program_id)
+        {program_id, user, student}
+      end
+
+    records =
+      for {program_id, user, _student} <- eligible_students do
+        record("program-#{program_id}", user.id, prompt_configuration_id, @grade_11_source)
+      end
+
+    response =
+      conn
+      |> post("/api/holistic-mentorship/profile-preflight", %{"records" => records})
+      |> json_response(200)
+
+    expected_results =
+      for {program_id, _user, student} <- eligible_students do
+        %{
+          "record_ref" => "program-#{program_id}",
+          "student_id" => student.id,
+          "prompt_configuration_id" => prompt_configuration_id,
+          "profile_state" => "missing",
+          "profile_revision" => nil
+        }
+      end
+
+    assert response["results"] == expected_results
+  end
+
+  test "rejects a Student from an unsupported Profile Program", %{conn: conn} do
+    prompt_configuration_id = prompt_configuration_id(conn)
+    {user, _student} = eligible_student(11, "UNSUPPORTED-PROGRAM", 2)
+
+    assert conn
+           |> post("/api/holistic-mentorship/profile-preflight", %{
+             "records" => [
+               record("unsupported", user.id, prompt_configuration_id, @grade_11_source)
+             ]
+           })
+           |> json_response(200) == %{
+             "results" => [rejected("unsupported", "program_ineligible")]
            }
   end
 
@@ -320,7 +369,7 @@ defmodule DbserviceWeb.HolisticMentorshipProfilePreflightControllerTest do
            }
   end
 
-  test "rejects out-of-scope, duplicate, and inconsistent current eligibility", %{conn: conn} do
+  test "rejects out-of-scope and inconsistent current eligibility", %{conn: conn} do
     prompt_configuration_id = prompt_configuration_id(conn)
     {school_program_user, _student} = eligible_student(11, "SCHOOL-NO-PROGRAM")
     {school_user, _student} = eligible_student(11, "NO-SCHOOL")

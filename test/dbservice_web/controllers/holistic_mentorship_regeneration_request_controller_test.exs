@@ -364,19 +364,19 @@ defmodule DbserviceWeb.HolisticMentorshipRegenerationRequestControllerTest do
 
     enroll(user.id, "school", school.id)
     enroll(user.id, "grade", grade.id)
-    add_program_roster(user.id, school.id)
+    add_program_roster(user.id, school.id, "regeneration-#{user.id}", 1)
 
     {user, student}
   end
 
-  defp add_program_roster(user_id, school_id) do
-    ensure_program_one()
+  defp add_program_roster(user_id, school_id, suffix, program_id) do
+    ensure_program(program_id)
 
     batch =
       batch_fixture(%{
-        name: "Program 1 User #{user_id}",
-        batch_id: "P1-#{user_id}",
-        program_id: 1
+        name: "Program #{program_id} #{suffix}",
+        batch_id: "P#{program_id}-#{suffix}",
+        program_id: program_id
       })
 
     add_group_membership(user_id, "school", school_id)
@@ -385,17 +385,17 @@ defmodule DbserviceWeb.HolisticMentorshipRegenerationRequestControllerTest do
     Repo.query!(
       """
       INSERT INTO centres (name, school_id, program_id, is_active)
-      VALUES ($1, $2, 1, true)
+      VALUES ($1, $2, $3, true)
       """,
-      ["Program 1 User #{user_id}", school_id]
+      ["Program #{program_id} #{suffix}", school_id, program_id]
     )
   end
 
-  defp ensure_program_one do
-    Repo.get(Dbservice.Programs.Program, 1) ||
+  defp ensure_program(program_id) do
+    Repo.get(Dbservice.Programs.Program, program_id) ||
       Repo.insert!(%Dbservice.Programs.Program{
-        id: 1,
-        name: "JNV CoE",
+        id: program_id,
+        name: "Program #{program_id}",
         product_id: Dbservice.ProductsFixtures.product_fixture().id
       })
   end
