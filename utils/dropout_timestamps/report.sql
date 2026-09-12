@@ -95,7 +95,6 @@ SELECT r.enrollment_id, r.dropout_audit_id, r.evidence_audit_id, r.proposed_upda
     WHEN e.user_id::text IS DISTINCT FROM r.user_id OR NOT EXISTS (
       SELECT 1 FROM student s WHERE s.id::text = r.student_id AND s.user_id = e.user_id
     ) THEN 'unresolved_identity'
-    WHEN e.updated_at >= r.proposed_updated_at THEN 'preserve_equal_or_later'
     WHEN e.inserted_at > r.proposed_updated_at THEN 'unresolved_creation_time'
     WHEN (r.kind = 'batch' AND (e.group_type <> 'batch' OR e.group_id::text IS DISTINCT FROM r.batch_id))
       OR (r.kind = 'status' AND (e.group_type <> 'status' OR NOT EXISTS (
@@ -104,6 +103,7 @@ SELECT r.enrollment_id, r.dropout_audit_id, r.evidence_audit_id, r.proposed_upda
     WHEN e.is_current IS DISTINCT FROM r.expected_current
       OR e.end_date::text IS DISTINCT FROM r.expected_end_date THEN 'unresolved_state'
     WHEN e.updated_at IS NULL THEN 'unresolved_missing_timestamp'
+    WHEN e.updated_at >= r.proposed_updated_at THEN 'preserve_equal_or_later'
     ELSE 'proposed'
   END AS disposition
 FROM ranked r LEFT JOIN enrollment_record e ON e.id = r.enrollment_id

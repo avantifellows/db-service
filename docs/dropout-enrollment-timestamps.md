@@ -32,6 +32,11 @@ The reported September 8 dropout/undo example resolves to the undo audit time;
 its School enrollment's genuinely later September 9 update is preserved. The six
 unresolved rows are batch enrollments whose latest audit records undo, but whose
 current state is inactive with an end date. They require separate investigation.
+The counts above describe the original September 12 query. They have not been
+refreshed after moving consistency checks ahead of timestamp preservation;
+some previously preserved rows may now be classified as unresolved. Regenerate
+and review manifests with the current query before apply. Older manifests fail
+the existing SQL-hash check.
 No personal data or row-level production export is committed here. The private
 report contains internal evidence/enrollment IDs and before snapshots. Live
 counts will change; regenerate bounded manifests before seeking repair approval.
@@ -51,7 +56,10 @@ duplicate target evidence anywhere in history, malformed target arrays/IDs,
 wrong batch/status identities,
 creation after evidence, missing timestamps, and inconsistent current state are
 explicitly unresolved. Incomplete audit history blocks automatic repair for the
-affected Student/User, including older valid events. An equal/later timestamp is preserved. A global audit
+affected Student/User, including older valid events. Consistency checks run before
+timestamp comparison: an equal/later timestamp is preserved only when the
+record passes those checks. Inconsistent records remain unresolved and are
+never repaired, even if their timestamps are already current. A global audit
 lists exact row IDs but does not retain their prior group identities; the tool
 can validate owner and current state, not reconstruct a missing group snapshot.
 The report cannot prove the absence of historical unaudited writers. Human

@@ -101,6 +101,24 @@ class RepairTest(unittest.TestCase):
         self.assertEqual([r["disposition"] for r in rows],
                          ["unresolved_state", "preserve_equal_or_later", "proposed"])
 
+    def test_current_timestamps_do_not_hide_state_or_group_mismatches(self):
+        for timestamp in ("2026-09-04", "2026-09-09"):
+            with self.subTest(timestamp=timestamp):
+                self.conn.execute("UPDATE enrollment_record SET updated_at=%s", (timestamp,))
+                self.conn.execute("UPDATE enrollment_record SET is_current=false, end_date='2026-09-05' WHERE id=101")
+                self.conn.execute("UPDATE enrollment_record SET group_id=99 WHERE id=103")
+                before = self.conn.execute("SELECT * FROM enrollment_record ORDER BY id").fetchall()
+                manifest = self.manifest()
+                self.assertEqual([r["disposition"] for r in manifest["rows"]],
+                                 ["unresolved_state", "preserve_equal_or_later", "unresolved_group"])
+                with self.assertRaisesRegex(ValueError, "1..500"):
+                    repair.apply_manifest(self.conn, manifest)
+                self.assertEqual(self.conn.execute("SELECT * FROM enrollment_record ORDER BY id").fetchall(), before)
+
+    def test_later_timestamp_does_not_hide_creation_after_evidence(self):
+        self.conn.execute("UPDATE enrollment_record SET inserted_at='2026-09-05', updated_at='2026-09-09' WHERE id=101")
+        self.assertEqual(self.manifest()["rows"][0]["disposition"], "unresolved_creation_time")
+
     def test_missing_identity_in_earlier_undo_fails_closed(self):
         self.conn.execute("UPDATE lms_student_write_audits SET affected_identifiers=affected_identifiers-'user_id' WHERE id=2")
         self.assertTrue(all(r["disposition"] == "unresolved_audit_link" for r in self.manifest()["rows"]))

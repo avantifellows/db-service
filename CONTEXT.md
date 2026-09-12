@@ -16,6 +16,8 @@ is audit-derived and separately approved; see
 timestamps, and left six state mismatches unresolved. No production repair ran.
 Unaudited historical changes cannot be reconstructed from current snapshots.
 
+Local QA on 2026-09-12 exercised PR #731 through the actual Brave LMS UI and Phoenix server on an isolated synthetic database. Final-program, repeated, and multiple-program dropout/undo matched enrollment updated_at to audit time while preserving creation times and unrelated rows. The actual repair CLI passed read-only, hash, stale-batch rollback, timestamp-only apply, and idempotency checks (6 repaired, 1 preserved, 1 unresolved). Initial QA passed all 824 Elixir and 13 repair tests and configured mix checks. After the reporting fix, all 824 Elixir and 15 repair tests and configured mix checks passed; an actual local CLI recheck confirmed the previously preserved mismatch is now unresolved without writes. The QA reporting finding is fixed: creation/group/state consistency checks now precede timestamp preservation, so inconsistent records remain unresolved even with current timestamps. The original production inventory counts predate this precedence change and were not refreshed. No production repair was made. Evidence: ../release-records/db-service-pr731-local-qa-20260912/QA-checklist-and-findings.md.
+
 ## Revised NVS Student Writes
 
 - LMS is the authorization boundary for private NVS student writes; DB Service treats submitted actor metadata as trusted audit context.
