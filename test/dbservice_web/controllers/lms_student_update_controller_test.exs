@@ -451,6 +451,8 @@ defmodule DbserviceWeb.LmsStudentUpdateControllerTest do
       insert_enrollment!(user.id, coe_batch.id, "batch")
       ensure_group_user!(user.id, "batch", coe_batch.id)
 
+      before_dropout = age_enrollments(user.id)
+
       patch(conn, "/api/dropout", %{
         "student_id" => student.student_id,
         "start_date" => "2026-07-01",
@@ -461,6 +463,12 @@ defmodule DbserviceWeb.LmsStudentUpdateControllerTest do
       })
       |> json_response(200)
 
+      assert_enrollment_timestamps(before_dropout, [
+        current_program_id(before_dropout, nvs_batch.id)
+      ])
+
+      before_undo = age_enrollments(user.id)
+
       response =
         patch(conn, "/api/lms/students/undo-program-dropout", %{
           "student_id" => student.student_id,
@@ -470,6 +478,7 @@ defmodule DbserviceWeb.LmsStudentUpdateControllerTest do
         })
         |> json_response(200)
 
+      assert_enrollment_timestamps(before_undo, [current_program_id(before_undo, nvs_batch.id)])
       assert response["status"] == student.status
       assert current_program_enrollment(user.id, 64).group_id == nvs_batch.id
       assert current_program_enrollment(user.id, 1).group_id == coe_batch.id
@@ -486,6 +495,8 @@ defmodule DbserviceWeb.LmsStudentUpdateControllerTest do
       {user, student} = insert_enrolled_student!(school, grade, batch)
       ensure_dropout_status!()
 
+      before_dropout = age_enrollments(user.id)
+
       patch(conn, "/api/dropout", %{
         "student_id" => student.student_id,
         "start_date" => "2026-07-01",
@@ -496,6 +507,9 @@ defmodule DbserviceWeb.LmsStudentUpdateControllerTest do
       })
       |> json_response(200)
 
+      assert_enrollment_timestamps(before_dropout, Map.keys(before_dropout))
+      before_undo = age_enrollments(user.id)
+
       patch(conn, "/api/lms/students/undo-program-dropout", %{
         "student_id" => student.student_id,
         "actor" => actor(),
@@ -504,6 +518,7 @@ defmodule DbserviceWeb.LmsStudentUpdateControllerTest do
       })
       |> json_response(200)
 
+      assert_enrollment_timestamps(before_undo, Map.keys(before_undo))
       assert Repo.get!(Student, student.id).status == student.status
       assert current_program_enrollment(user.id, 64).group_id == batch.id
       assert current_enrollment(user.id, "school").group_id == school.id
@@ -2933,6 +2948,41 @@ defmodule DbserviceWeb.LmsStudentUpdateControllerTest do
       assert Repo.get!(Student, student.id).stream == "engineering"
       assert current_program_enrollment(user.id, 64).group_id == old_batch.id
       assert Repo.aggregate(Dbservice.LmsStudentWriteAudit, :count, :id) == 0
+    end
+  end
+
+  # Age timestamps so a missing update cannot pass when dropout/undo run in one second.
+  defp age_enrollments(user_id) do
+    from(e in EnrollmentRecord, where: e.user_id == ^user_id)
+    |> Repo.update_all(
+      set: [updated_at: ~N[2020-01-02 00:00:00], inserted_at: ~N[2020-01-01 00:00:00]]
+    )
+
+    from(e in EnrollmentRecord, where: e.user_id == ^user_id)
+    |> Repo.all()
+    |> Map.new(&{&1.id, &1})
+  end
+
+  defp current_program_id(enrollments, batch_id) do
+    Enum.find_value(enrollments, fn {id, e} ->
+      if e.group_type == "batch" and e.group_id == batch_id, do: id
+    end)
+  end
+
+  defp assert_enrollment_timestamps(before, changed_ids) do
+    operation_time =
+      Repo.one!(from(a in Dbservice.LmsStudentWriteAudit, order_by: [desc: a.id], limit: 1)).inserted_at
+
+    for {id, previous} <- before do
+      current = Repo.get!(EnrollmentRecord, id)
+      assert current.inserted_at == previous.inserted_at
+
+      if id in changed_ids do
+        assert current.updated_at == operation_time
+        assert NaiveDateTime.compare(current.updated_at, previous.updated_at) == :gt
+      else
+        assert current == previous
+      end
     end
   end
 
