@@ -3,6 +3,21 @@
 This file defines the canonical language used by db-service. It includes the
 Holistic Mentorship persistence and machine-contract terms approved for v1.
 
+## Dropout Enrollment Timestamps
+
+last_updated: 2026-09-12
+
+Dropout and undo use one second-precision UTC operation timestamp, captured after
+the Student lock/validation, for every changed enrollment and dedicated audit.
+Creation times and enrollment state rules remain unchanged. Historical repair
+is audit-derived and separately approved; see
+[the bounded repair runbook](docs/dropout-enrollment-timestamps.md). The September
+12 read-only production inventory proposed 11,369 rows, preserved 149 later/equal
+timestamps, and left six state mismatches unresolved. No production repair ran.
+Unaudited historical changes cannot be reconstructed from current snapshots.
+
+Local QA on 2026-09-12 exercised PR #731 through the actual Brave LMS UI and Phoenix server on an isolated synthetic database. Final-program, repeated, and multiple-program dropout/undo matched enrollment updated_at to audit time while preserving creation times and unrelated rows. The actual repair CLI passed read-only, hash, stale-batch rollback, timestamp-only apply, and idempotency checks (6 repaired, 1 preserved, 1 unresolved). Initial QA passed all 824 Elixir and 13 repair tests and configured mix checks. After the reporting fix, all 824 Elixir and 15 repair tests and configured mix checks passed; an actual local CLI recheck confirmed the previously preserved mismatch is now unresolved without writes. The QA reporting finding is fixed: creation/group/state consistency checks now precede timestamp preservation, so inconsistent records remain unresolved even with current timestamps. The original production inventory counts predate this precedence change and were not refreshed. No production repair was made. Evidence: ../release-records/db-service-pr731-local-qa-20260912/QA-checklist-and-findings.md.
+
 ## Revised NVS Student Writes
 
 - LMS is the authorization boundary for private NVS student writes; DB Service treats submitted actor metadata as trusted audit context.

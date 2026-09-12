@@ -50,8 +50,15 @@ defmodule Dbservice.Services.DropoutService do
       with {:ok, student} <- lock_student(student.id),
            :ok <- validate_dropout_status(student),
            :ok <- validate_lms_audit_params(student, audit_params),
+           operation_time = NaiveDateTime.utc_now() |> NaiveDateTime.truncate(:second),
            {:ok, updated_student} <-
-             create_dropout_with_audit(student, start_date, academic_year, audit_params) do
+             create_dropout_with_audit(
+               student,
+               start_date,
+               academic_year,
+               audit_params,
+               operation_time
+             ) do
         updated_student
       else
         {:error, reason} -> Repo.rollback(reason)
@@ -72,12 +79,18 @@ defmodule Dbservice.Services.DropoutService do
 
   defp validate_dropout_status(_student), do: :ok
 
-  defp create_dropout_with_audit(student, start_date, academic_year, audit_params) do
+  defp create_dropout_with_audit(student, start_date, academic_year, audit_params, operation_time) do
     dropout_result =
       if lms_program_dropout?(audit_params) do
-        create_program_dropout(student, start_date, academic_year, audit_params["program_id"])
+        create_program_dropout(
+          student,
+          start_date,
+          academic_year,
+          audit_params["program_id"],
+          operation_time
+        )
       else
-        case create_dropout_enrollment(student, start_date, academic_year) do
+        case create_dropout_enrollment(student, start_date, academic_year, operation_time) do
           {:ok, updated_student} -> {:ok, updated_student, nil, nil}
           error -> error
         end
@@ -92,7 +105,8 @@ defmodule Dbservice.Services.DropoutService do
              global_restore,
              start_date,
              academic_year,
-             audit_params
+             audit_params,
+             operation_time
            ) do
       {:ok, updated_student}
     end
@@ -102,7 +116,7 @@ defmodule Dbservice.Services.DropoutService do
     is_map(params["actor"]) and is_map(params["school"])
   end
 
-  defp create_program_dropout(student, start_date, academic_year, program_id) do
+  defp create_program_dropout(student, start_date, academic_year, program_id, operation_time) do
     enrollments = current_program_enrollments(student.user_id, program_id)
 
     case enrollments do
@@ -110,9 +124,9 @@ defmodule Dbservice.Services.DropoutService do
         {:error, "Student is not currently enrolled in this program"}
 
       [enrollment] ->
-        with {1, nil} <- end_program_enrollment(enrollment, start_date),
+        with {1, nil} <- end_program_enrollment(enrollment, start_date, operation_time),
              {1, nil} <- delete_program_group_user(student.user_id, enrollment.group_id) do
-          finish_program_dropout(student, enrollment, start_date, academic_year)
+          finish_program_dropout(student, enrollment, start_date, academic_year, operation_time)
         else
           _ -> {:error, "Failed to end program enrollment"}
         end
@@ -122,13 +136,13 @@ defmodule Dbservice.Services.DropoutService do
     end
   end
 
-  defp finish_program_dropout(student, enrollment, start_date, academic_year) do
+  defp finish_program_dropout(student, enrollment, start_date, academic_year, operation_time) do
     if current_batch_count(student.user_id) > 0 do
       {:ok, student, enrollment, nil}
     else
       ended_enrollment_ids = current_enrollment_ids(student.user_id)
 
-      case create_dropout_enrollment(student, start_date, academic_year) do
+      case create_dropout_enrollment(student, start_date, academic_year, operation_time) do
         {:ok, updated_student} ->
           {:ok, updated_student, enrollment,
            %{
@@ -174,10 +188,10 @@ defmodule Dbservice.Services.DropoutService do
     |> Repo.all()
   end
 
-  defp end_program_enrollment(enrollment, end_date) do
+  defp end_program_enrollment(enrollment, end_date, operation_time) do
     from(e in EnrollmentRecord,
       where: e.id == ^enrollment.id,
-      update: [set: [is_current: false, end_date: ^end_date]]
+      update: [set: [is_current: false, end_date: ^end_date, updated_at: ^operation_time]]
     )
     |> Repo.update_all([])
   end
@@ -199,14 +213,14 @@ defmodule Dbservice.Services.DropoutService do
     |> Repo.one()
   end
 
-  defp create_dropout_enrollment(student, start_date, academic_year) do
+  defp create_dropout_enrollment(student, start_date, academic_year, operation_time) do
     case get_dropout_status_info() do
       nil ->
         {:error, "Dropout status not found in the system"}
 
       {status_id, group_type} ->
         user_id = student.user_id
-        update_current_enrollments(user_id, start_date)
+        update_current_enrollments(user_id, start_date, operation_time)
 
         new_enrollment_attrs =
           build_enrollment_attrs(student, status_id, group_type, start_date, academic_year)
@@ -242,7 +256,8 @@ defmodule Dbservice.Services.DropoutService do
          _global_restore,
          _start_date,
          _academic_year,
-         params
+         params,
+         _operation_time
        )
        when params == %{},
        do: {:ok, nil}
@@ -254,7 +269,8 @@ defmodule Dbservice.Services.DropoutService do
          _global_restore,
          _start_date,
          _academic_year,
-         params
+         params,
+         _operation_time
        )
        when not is_map_key(params, "actor") or not is_map_key(params, "school"),
        do: {:ok, nil}
@@ -266,35 +282,39 @@ defmodule Dbservice.Services.DropoutService do
          global_restore,
          start_date,
          academic_year,
-         params
+         params,
+         operation_time
        ) do
     audit_changeset =
-      LmsStudentWriteAudit.changeset(%LmsStudentWriteAudit{}, %{
-        action: @audit_action,
-        actor_user_id: get_in(params, ["actor", "user_id"]),
-        actor_email: get_in(params, ["actor", "email"]),
-        actor_login_type: get_in(params, ["actor", "login_type"]),
-        actor_role: get_in(params, ["actor", "role"]),
-        school_code: get_in(params, ["school", "code"]),
-        school_udise_code: get_in(params, ["school", "udise_code"]),
-        program_id: params["program_id"],
-        row_counts: %{},
-        affected_identifiers: %{
-          "student_pk_id" => student.id,
-          "user_id" => student.user_id,
-          "student_id" => student.student_id,
-          "pen_number" => student.pen_number,
-          "apaar_id" => student.apaar_id
-        },
-        changed_values:
-          %{
-            "status" => %{"old" => student.status, "new" => updated_student.status},
-            "dropout_date" => %{"old" => nil, "new" => start_date},
-            "academic_year" => %{"old" => nil, "new" => academic_year}
-          }
-          |> Map.merge(program_enrollment_changes(program_enrollment, start_date))
-          |> Map.merge(global_restore_changes(global_restore))
-      })
+      LmsStudentWriteAudit.changeset(
+        %LmsStudentWriteAudit{inserted_at: operation_time, updated_at: operation_time},
+        %{
+          action: @audit_action,
+          actor_user_id: get_in(params, ["actor", "user_id"]),
+          actor_email: get_in(params, ["actor", "email"]),
+          actor_login_type: get_in(params, ["actor", "login_type"]),
+          actor_role: get_in(params, ["actor", "role"]),
+          school_code: get_in(params, ["school", "code"]),
+          school_udise_code: get_in(params, ["school", "udise_code"]),
+          program_id: params["program_id"],
+          row_counts: %{},
+          affected_identifiers: %{
+            "student_pk_id" => student.id,
+            "user_id" => student.user_id,
+            "student_id" => student.student_id,
+            "pen_number" => student.pen_number,
+            "apaar_id" => student.apaar_id
+          },
+          changed_values:
+            %{
+              "status" => %{"old" => student.status, "new" => updated_student.status},
+              "dropout_date" => %{"old" => nil, "new" => start_date},
+              "academic_year" => %{"old" => nil, "new" => academic_year}
+            }
+            |> Map.merge(program_enrollment_changes(program_enrollment, start_date))
+            |> Map.merge(global_restore_changes(global_restore))
+        }
+      )
 
     case Repo.insert(audit_changeset) do
       {:ok, audit} -> {:ok, audit}
@@ -370,8 +390,9 @@ defmodule Dbservice.Services.DropoutService do
            {:ok, audit} <- undoable_dropout_audit(student, params),
            {:ok, enrollment, batch} <- validate_undo_target(student, audit),
            :ok <- validate_undo_school(student, audit),
-           :ok <- restore_dropout(student, enrollment, batch, audit),
-           {:ok, _audit} <- insert_undo_audit(student, audit, params) do
+           operation_time = NaiveDateTime.utc_now() |> NaiveDateTime.truncate(:second),
+           :ok <- restore_dropout(student, enrollment, batch, audit, operation_time),
+           {:ok, _audit} <- insert_undo_audit(student, audit, params, operation_time) do
         Repo.get!(Dbservice.Users.Student, student.id)
       else
         {:error, reason} -> Repo.rollback(reason)
@@ -464,14 +485,15 @@ defmodule Dbservice.Services.DropoutService do
       else: {:error, "Student is no longer in the same school"}
   end
 
-  defp restore_dropout(student, enrollment, batch, audit) do
+  defp restore_dropout(student, enrollment, batch, audit, operation_time) do
     global_ids = get_in(audit.changed_values, ["ended_enrollment_ids", "old"]) || []
     dropout_status_id = get_in(audit.changed_values, ["dropout_status_enrollment_id", "new"])
 
     with {1, nil} <-
            from(e in EnrollmentRecord, where: e.id == ^enrollment.id)
-           |> Repo.update_all(set: [is_current: true, end_date: nil]),
-         :ok <- restore_global_enrollments(student, global_ids, dropout_status_id),
+           |> Repo.update_all(set: [is_current: true, end_date: nil, updated_at: operation_time]),
+         :ok <-
+           restore_global_enrollments(student, global_ids, dropout_status_id, operation_time),
          :ok <- restore_batch_group_user(student.user_id, batch.id) do
       restore_student_status(student, audit, global_ids)
     else
@@ -482,16 +504,16 @@ defmodule Dbservice.Services.DropoutService do
     end
   end
 
-  defp restore_global_enrollments(_student, [], nil), do: :ok
+  defp restore_global_enrollments(_student, [], nil, _operation_time), do: :ok
 
-  defp restore_global_enrollments(student, enrollment_ids, dropout_status_id)
+  defp restore_global_enrollments(student, enrollment_ids, dropout_status_id, operation_time)
        when is_list(enrollment_ids) and is_integer(dropout_status_id) do
     with :ok <- ensure_no_exclusive_conflict(student.user_id, enrollment_ids) do
-      do_restore_global_enrollments(student, enrollment_ids, dropout_status_id)
+      do_restore_global_enrollments(student, enrollment_ids, dropout_status_id, operation_time)
     end
   end
 
-  defp restore_global_enrollments(_student, _ids, _status_id),
+  defp restore_global_enrollments(_student, _ids, _status_id, _operation_time),
     do: {:error, "This dropout cannot be safely undone"}
 
   # Rejects an undo that would create a second current enrollment for an exclusive
@@ -525,19 +547,21 @@ defmodule Dbservice.Services.DropoutService do
       else: :ok
   end
 
-  defp do_restore_global_enrollments(student, enrollment_ids, dropout_status_id) do
+  defp do_restore_global_enrollments(student, enrollment_ids, dropout_status_id, operation_time) do
     {restored, nil} =
       from(e in EnrollmentRecord,
         where: e.user_id == ^student.user_id and e.id in ^enrollment_ids and e.is_current == false
       )
-      |> Repo.update_all(set: [is_current: true, end_date: nil])
+      |> Repo.update_all(set: [is_current: true, end_date: nil, updated_at: operation_time])
 
     {ended_dropout, nil} =
       from(e in EnrollmentRecord,
         where:
           e.id == ^dropout_status_id and e.user_id == ^student.user_id and e.is_current == true
       )
-      |> Repo.update_all(set: [is_current: false, end_date: Date.utc_today()])
+      |> Repo.update_all(
+        set: [is_current: false, end_date: Date.utc_today(), updated_at: operation_time]
+      )
 
     if restored == length(enrollment_ids) and ended_dropout == 1,
       do: :ok,
@@ -574,36 +598,39 @@ defmodule Dbservice.Services.DropoutService do
     end
   end
 
-  defp insert_undo_audit(student, dropout_audit, params) do
-    LmsStudentWriteAudit.changeset(%LmsStudentWriteAudit{}, %{
-      action: @undo_audit_action,
-      actor_user_id: get_in(params, ["actor", "user_id"]),
-      actor_email: get_in(params, ["actor", "email"]),
-      actor_login_type: get_in(params, ["actor", "login_type"]),
-      actor_role: get_in(params, ["actor", "role"]),
-      school_code: dropout_audit.school_code,
-      school_udise_code: dropout_audit.school_udise_code,
-      program_id: @nvs_program_id,
-      row_counts: %{},
-      affected_identifiers: %{
-        "student_pk_id" => student.id,
-        "user_id" => student.user_id,
-        "student_id" => student.student_id,
-        "pen_number" => student.pen_number,
-        "apaar_id" => student.apaar_id,
-        "dropout_audit_id" => dropout_audit.id
-      },
-      changed_values: %{
-        "batch_id" => %{
-          "old" => nil,
-          "new" => get_in(dropout_audit.changed_values, ["batch_id", "old"])
+  defp insert_undo_audit(student, dropout_audit, params, operation_time) do
+    LmsStudentWriteAudit.changeset(
+      %LmsStudentWriteAudit{inserted_at: operation_time, updated_at: operation_time},
+      %{
+        action: @undo_audit_action,
+        actor_user_id: get_in(params, ["actor", "user_id"]),
+        actor_email: get_in(params, ["actor", "email"]),
+        actor_login_type: get_in(params, ["actor", "login_type"]),
+        actor_role: get_in(params, ["actor", "role"]),
+        school_code: dropout_audit.school_code,
+        school_udise_code: dropout_audit.school_udise_code,
+        program_id: @nvs_program_id,
+        row_counts: %{},
+        affected_identifiers: %{
+          "student_pk_id" => student.id,
+          "user_id" => student.user_id,
+          "student_id" => student.student_id,
+          "pen_number" => student.pen_number,
+          "apaar_id" => student.apaar_id,
+          "dropout_audit_id" => dropout_audit.id
         },
-        "status" => %{
-          "old" => student.status,
-          "new" => get_in(dropout_audit.changed_values, ["status", "old"])
+        changed_values: %{
+          "batch_id" => %{
+            "old" => nil,
+            "new" => get_in(dropout_audit.changed_values, ["batch_id", "old"])
+          },
+          "status" => %{
+            "old" => student.status,
+            "new" => get_in(dropout_audit.changed_values, ["status", "old"])
+          }
         }
       }
-    })
+    )
     |> Repo.insert()
   end
 
@@ -630,10 +657,14 @@ defmodule Dbservice.Services.DropoutService do
   Updates all current enrollment records for a user to mark them as not current.
   Sets is_current=false and end_date for all current enrollments.
   """
-  def update_current_enrollments(user_id, end_date) do
+  def update_current_enrollments(
+        user_id,
+        end_date,
+        operation_time \\ NaiveDateTime.truncate(NaiveDateTime.utc_now(), :second)
+      ) do
     from(e in EnrollmentRecord,
       where: e.user_id == ^user_id and e.is_current == true,
-      update: [set: [is_current: false, end_date: ^end_date]]
+      update: [set: [is_current: false, end_date: ^end_date, updated_at: ^operation_time]]
     )
     |> Repo.update_all([])
   end
