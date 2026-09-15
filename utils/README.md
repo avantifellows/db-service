@@ -76,3 +76,5 @@ The script reads from `utils/.env` file. Key variables:
 - ⚠️  **Safety prompts**: Confirms before destructive operations
 - 🛡️  **Error handling**: Exits cleanly on any errors
 - 🧹 **Auto cleanup**: Removes temporary dump files
+
+Replication publications and subscriptions are excluded from source dumps; they are environment-specific and can conflict with staging objects.

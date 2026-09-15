@@ -27,6 +27,8 @@ class FetchDataTests(unittest.TestCase):
             self.sql("postgres", f'CREATE DATABASE "{database}"')
         for table in ("holistic_mentorship_student_profiles", "holistic_mentorship_privacy_deletions", "oban_jobs", "session", "session_occurrence", "group_session", "user_session"):
             self.sql(self.source, f'CREATE TABLE "{table}" (id integer); INSERT INTO "{table}" VALUES (1)')
+        for database in (self.source, self.target):
+            self.sql(database, "CREATE PUBLICATION sync_test_publication")
         self.sql(self.target, "CREATE TABLE old_target (id integer); INSERT INTO old_target VALUES (9)")
 
     def tearDown(self):

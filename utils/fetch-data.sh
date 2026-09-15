@@ -189,6 +189,8 @@ PG_DUMP_ARGS=(
     --file="$SCRIPT_DIR/$DUMP_FILE" \
     --no-owner \
     --no-acl \
+    --no-publications \
+    --no-subscriptions \
     --exclude-table-data=public.oban_jobs \
     --verbose
 )
