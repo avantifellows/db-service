@@ -193,10 +193,11 @@ Journey and Generation Status CHECK constraints to accept these exact tuples:
 
 The application allowlist matches the constraints. Existing program, identity,
 privacy, Journey conflict and publication idempotency checks still apply.
-Deploy this change before opting ETL into the new sources. ETL ships disabled
-for automatic inclusion and provides a separate single-Student pilot override.
+Deploy these DB changes before deploying the extended ETL catalog. ETL uses the
+existing catalog and targeted Student runs; adding catalog entries takes effect
+when that code is deployed. Current verification is local and staging only.
 This migration neither creates Profiles nor activates a Prompt Configuration.
 
-To stop new-source generation, disable ETL inclusion. Migration rollback restores
-the original two sources and fails transactionally if additional-source rows
-exist. Preserve published Profiles; do not delete them to force rollback.
+Migration rollback restores the original two sources and fails transactionally
+if additional-source rows exist. Preserve published Profiles; do not delete them
+to force rollback. Production deployment and cohort selection are separate work.
