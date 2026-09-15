@@ -10,6 +10,29 @@ second precision, after acquiring the Student lock and validating the operation.
 Every changed enrollment and the dedicated operation audit uses that timestamp.
 Existing enrollment creation timestamps and all state/identity rules are preserved.
 
+## LMS status enrollment history
+
+LMS Add Student and Bulk Upload now create a current enrolled status enrollment
+in the same transaction as the Student, memberships, and creation audit. The
+creation audit records the new status enrollment ID.
+
+A full dropout ends the current status period along with the memberships and
+creates the dropout status period. Undo restores the memberships, keeps previous
+status periods ended, closes the dropout period, and creates a new period for
+the Student status saved in the dropout audit (normally enrolled). Its start date
+is the undo date; its timestamps match the undo audit. The undo audit records the
+new status enrollment ID and the old status enrollment IDs that remain ended.
+The repair report understands this distinction and still supports older audits.
+
+Program-only dropout/undo leaves status history unchanged when another active
+Batch remains. Status changes and audit creation are atomic; repeated undo or an
+extra current status row causes rejection instead of another current status row.
+A missing/unconfigured previous status cannot be restored automatically.
+
+This PR does not backfill existing Students, add a global uniqueness constraint,
+or change unrelated import/re-enrollment APIs. Existing-Student status history
+requires a separate plan. No LMS code or API request changes are needed.
+
 ## Read-only production findings
 
 A single `REPEATABLE READ READ ONLY` production snapshot at **2026-09-12

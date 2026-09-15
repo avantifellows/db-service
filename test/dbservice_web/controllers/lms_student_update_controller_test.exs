@@ -13,6 +13,13 @@ defmodule DbserviceWeb.LmsStudentUpdateControllerTest do
   alias Dbservice.Users
   alias Dbservice.Users.Student
 
+  setup do
+    Repo.get_by(Dbservice.Statuses.Status, title: :enrolled) ||
+      Repo.insert!(%Dbservice.Statuses.Status{title: :enrolled})
+
+    :ok
+  end
+
   describe "PATCH /api/dropout" do
     test "marks the student dropout and writes LMS audit metadata", %{conn: conn} do
       school = insert_school!()
@@ -451,6 +458,7 @@ defmodule DbserviceWeb.LmsStudentUpdateControllerTest do
       insert_enrollment!(user.id, coe_batch.id, "batch")
       ensure_group_user!(user.id, "batch", coe_batch.id)
 
+      insert_enrollment!(user.id, Repo.get_by!(Status, title: :enrolled).id, "status")
       before_dropout = age_enrollments(user.id)
 
       patch(conn, "/api/dropout", %{
@@ -524,12 +532,130 @@ defmodule DbserviceWeb.LmsStudentUpdateControllerTest do
       assert current_enrollment(user.id, "school").group_id == school.id
       assert current_enrollment(user.id, "grade").group_id == grade.id
 
-      refute Repo.exists?(
-               from(e in EnrollmentRecord,
-                 where:
-                   e.user_id == ^user.id and e.group_type == "status" and e.is_current == true
-               )
-             )
+      restored_status = current_enrollment(user.id, "status")
+      assert restored_status.group_id == Repo.get_by!(Status, title: :enrolled).id
+      assert restored_status.start_date == Date.utc_today()
+    end
+
+    test "full dropout and repeated undo keep status periods as history", %{conn: conn} do
+      for previous_status <- [:enrolled, :registered] do
+        school = insert_school!()
+        grade = insert_grade!(11)
+        batch = insert_nvs_batch!(11, "engineering")
+
+        {user, student} =
+          insert_enrolled_student!(school, grade, batch, %{
+            student_id: "STATUS-#{previous_status}",
+            apaar_id: nil,
+            g10_roll_no: nil,
+            status: Atom.to_string(previous_status)
+          })
+
+        status =
+          Repo.get_by(Status, title: previous_status) ||
+            Repo.insert!(%Status{title: previous_status})
+
+        original = insert_enrollment!(user.id, status.id, "status")
+        ensure_dropout_status!()
+
+        params = %{
+          "student_id" => student.student_id,
+          "actor" => actor(),
+          "school" => %{"code" => school.code, "udise_code" => school.udise_code},
+          "program_id" => 64
+        }
+
+        for cycle <- 1..2 do
+          active_status = current_enrollment(user.id, "status")
+
+          dropout =
+            Map.merge(params, %{
+              "start_date" => Date.to_iso8601(Date.utc_today()),
+              "academic_year" => "2026-2027"
+            })
+
+          patch(conn, "/api/dropout", dropout) |> json_response(200)
+          ended = Repo.get!(EnrollmentRecord, active_status.id)
+          refute ended.is_current
+          assert ended.end_date == Date.utc_today()
+          dropout_status = current_enrollment(user.id, "status")
+          assert Repo.get!(Status, dropout_status.group_id).title == :dropout
+          assert Repo.get!(Student, student.id).status == "dropout"
+
+          patch(conn, "/api/lms/students/undo-program-dropout", params) |> json_response(200)
+          restored = current_enrollment(user.id, "status")
+          assert restored.id != active_status.id
+          assert restored.id != dropout_status.id
+          assert restored.group_id == status.id
+          assert restored.start_date == Date.utc_today()
+          assert Repo.get!(Student, student.id).status == Atom.to_string(previous_status)
+          assert Repo.get!(EnrollmentRecord, ended.id) == ended
+          refute Repo.get!(EnrollmentRecord, dropout_status.id).is_current
+
+          assert Repo.aggregate(
+                   from(e in EnrollmentRecord,
+                     where: e.user_id == ^user.id and e.group_type == "status"
+                   ),
+                   :count
+                 ) == 1 + cycle * 2
+
+          audit =
+            Repo.one!(from(a in Dbservice.LmsStudentWriteAudit, order_by: [desc: a.id], limit: 1))
+
+          assert audit.created_values["status_enrollment_id"] == restored.id
+
+          assert audit.changed_values["retained_status_enrollment_ids"]["old"] == [
+                   active_status.id
+                 ]
+
+          assert restored.inserted_at == audit.inserted_at
+          assert restored.updated_at == audit.inserted_at
+
+          before_repeat =
+            Repo.all(from(e in EnrollmentRecord, where: e.user_id == ^user.id, order_by: e.id))
+
+          patch(conn, "/api/lms/students/undo-program-dropout", params) |> json_response(400)
+
+          assert Repo.all(
+                   from(e in EnrollmentRecord, where: e.user_id == ^user.id, order_by: e.id)
+                 ) == before_repeat
+        end
+
+        refute Repo.get!(EnrollmentRecord, original.id).is_current
+      end
+    end
+
+    test "undo rolls back memberships when another current status exists", %{conn: conn} do
+      school = insert_school!()
+      grade = insert_grade!(11)
+      batch = insert_nvs_batch!(11, "engineering")
+      {user, student} = insert_enrolled_student!(school, grade, batch)
+      ensure_dropout_status!()
+
+      params = %{
+        "student_id" => student.student_id,
+        "actor" => actor(),
+        "school" => %{"code" => school.code, "udise_code" => school.udise_code},
+        "program_id" => 64
+      }
+
+      patch(
+        conn,
+        "/api/dropout",
+        Map.merge(params, %{"start_date" => "2026-07-01", "academic_year" => "2026-2027"})
+      )
+      |> json_response(200)
+
+      insert_enrollment!(user.id, Repo.get_by!(Status, title: :enrolled).id, "status")
+      before = Repo.all(from(e in EnrollmentRecord, where: e.user_id == ^user.id, order_by: e.id))
+      audits = Repo.aggregate(Dbservice.LmsStudentWriteAudit, :count)
+      patch(conn, "/api/lms/students/undo-program-dropout", params) |> json_response(400)
+
+      assert Repo.all(from(e in EnrollmentRecord, where: e.user_id == ^user.id, order_by: e.id)) ==
+               before
+
+      assert Repo.get!(Student, student.id).status == "dropout"
+      assert Repo.aggregate(Dbservice.LmsStudentWriteAudit, :count) == audits
     end
 
     test "blocks a second undo and an undo when another NVS batch is active", %{conn: conn} do
@@ -3020,6 +3146,7 @@ defmodule DbserviceWeb.LmsStudentUpdateControllerTest do
     {user, student} =
       %{
         student_id: "202812345678",
+        status: "enrolled",
         apaar_id: "123456789012",
         g10_board: "CENTRAL BOARD OF SECONDARY EDUCATION",
         g10_roll_no: "12345678",

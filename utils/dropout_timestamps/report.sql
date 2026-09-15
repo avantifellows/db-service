@@ -6,6 +6,40 @@ WITH relevant_audits AS MATERIALIZED (
   SELECT id, action, inserted_at, affected_identifiers, changed_values
   FROM lms_student_write_audits
   WHERE action IN ('student_program_dropout', 'student_program_dropout_undo')
+), undo_values AS MATERIALIZED (
+  SELECT u.*,
+    u.changed_values #> '{retained_status_enrollment_ids,old}' AS retained_status_ids,
+    CASE
+      WHEN NOT (u.changed_values ? 'retained_status_enrollment_ids') THEN true
+      WHEN jsonb_typeof(u.changed_values #> '{retained_status_enrollment_ids,old}') IS DISTINCT FROM 'array'
+        OR (u.changed_values #> '{retained_status_enrollment_ids,new}') IS DISTINCT FROM
+          (u.changed_values #> '{retained_status_enrollment_ids,old}') THEN false
+      ELSE NOT EXISTS (
+        SELECT 1 FROM jsonb_array_elements(u.changed_values #> '{retained_status_enrollment_ids,old}') item
+        LEFT JOIN enrollment_record e ON e.id = CASE WHEN jsonb_typeof(item) = 'number'
+          AND item::text ~ '^[1-9][0-9]{0,17}$' THEN item::text::bigint END
+        WHERE jsonb_typeof(item) IS DISTINCT FROM 'number'
+          OR item::text !~ '^[1-9][0-9]{0,17}$'
+          OR e.id IS NULL OR e.group_type IS DISTINCT FROM 'status'
+          OR e.user_id::text IS DISTINCT FROM d.affected_identifiers ->> 'user_id'
+          OR COALESCE(d.changed_values #> '{ended_enrollment_ids,old}' @> jsonb_build_array(item), false) IS NOT TRUE
+      ) AND NOT EXISTS (
+        SELECT 1 FROM jsonb_array_elements(u.changed_values #> '{retained_status_enrollment_ids,old}') item
+        GROUP BY item HAVING count(*) > 1
+      ) AND NOT EXISTS (
+        SELECT 1 FROM jsonb_array_elements(
+          CASE WHEN jsonb_typeof(d.changed_values #> '{ended_enrollment_ids,old}') = 'array'
+            THEN d.changed_values #> '{ended_enrollment_ids,old}' ELSE '[]'::jsonb END) item
+        JOIN enrollment_record e ON e.id = CASE WHEN jsonb_typeof(item) = 'number'
+          AND item::text ~ '^[1-9][0-9]{0,17}$' THEN item::text::bigint END
+        WHERE e.group_type = 'status'
+          AND NOT (u.changed_values #> '{retained_status_enrollment_ids,old}' @> jsonb_build_array(e.id))
+      )
+    END AS retained_status_ids_valid
+  FROM relevant_audits u
+  LEFT JOIN relevant_audits d ON d.action = 'student_program_dropout'
+    AND d.id::text = u.affected_identifiers ->> 'dropout_audit_id'
+  WHERE u.action = 'student_program_dropout_undo'
 ), dropout_values AS MATERIALIZED (
   SELECT d.id, d.inserted_at, d.affected_identifiers, d.changed_values,
     d.affected_identifiers ->> 'user_id' AS user_id,
@@ -186,6 +220,9 @@ WITH relevant_audits AS MATERIALIZED (
    AND d.action = 'student_program_dropout'
    AND d.id::text = u.affected_identifiers ->> 'dropout_audit_id'
   WHERE u.action = 'student_program_dropout_undo' AND d.id IS NULL
+  UNION ALL
+  SELECT u.id, u.affected_identifiers ->> 'user_id', u.affected_identifiers ->> 'student_pk_id'
+  FROM undo_values u WHERE u.retained_status_ids_valid IS NOT TRUE
 ), targets AS (
   SELECT d.*, d.batch_enrollment_id AS enrollment_id, 'batch' AS kind
   FROM audited_dropouts d
@@ -199,8 +236,9 @@ WITH relevant_audits AS MATERIALIZED (
   SELECT u.id AS undo_audit_id, d.id AS dropout_audit_id,
     u.inserted_at, u.affected_identifiers ->> 'user_id' AS undo_user_id,
     u.affected_identifiers ->> 'student_pk_id' AS undo_student_id,
+    u.retained_status_ids, u.retained_status_ids_valid,
     count(*) OVER (PARTITION BY d.id) AS undo_link_count
-  FROM relevant_audits u
+  FROM undo_values u
   JOIN relevant_audits d
     ON u.action = 'student_program_dropout_undo'
    AND d.action = 'student_program_dropout'
@@ -212,7 +250,9 @@ WITH relevant_audits AS MATERIALIZED (
     t.user_id, t.student_id, t.batch_id::text AS batch_id,
     false AS expected_current, t.dropout_date_raw AS expected_end_date,
     t.operation_is_valid AS operation_is_valid,
-    true AS valid_link
+    NOT EXISTS (SELECT 1 FROM undo_values u
+      WHERE u.affected_identifiers ->> 'dropout_audit_id' = t.id::text
+        AND u.retained_status_ids_valid IS NOT TRUE) AS valid_link
   FROM targets t
   UNION ALL
   SELECT t.enrollment_id, t.kind, t.id, u.undo_audit_id, u.inserted_at,
@@ -223,9 +263,10 @@ WITH relevant_audits AS MATERIALIZED (
       AND u.undo_user_id = t.user_id
       AND u.undo_student_id = t.student_id
       AND u.inserted_at >= t.inserted_at
-      AND u.undo_link_count = 1 AS valid_link
+      AND u.undo_link_count = 1 AND u.retained_status_ids_valid AS valid_link
   FROM targets t
   JOIN undo_links u ON u.dropout_audit_id = t.id
+  WHERE NOT COALESCE(u.retained_status_ids @> jsonb_build_array(t.enrollment_id), false)
   UNION ALL
   SELECT d.status_enrollment_id, 'status', d.id, u.undo_audit_id, u.inserted_at,
     d.user_id, d.student_id, NULL, false, u.inserted_at::date::text,
@@ -235,7 +276,7 @@ WITH relevant_audits AS MATERIALIZED (
       AND u.undo_user_id = d.user_id
       AND u.undo_student_id = d.student_id
       AND u.inserted_at >= d.inserted_at
-      AND u.undo_link_count = 1 AS valid_link
+      AND u.undo_link_count = 1 AND u.retained_status_ids_valid AS valid_link
   FROM audited_dropouts d
   JOIN undo_links u ON u.dropout_audit_id = d.id
   WHERE d.status_enrollment_id IS NOT NULL

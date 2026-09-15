@@ -280,6 +280,30 @@ class RepairTest(unittest.TestCase):
         self.assertEqual([r["enrollment_id"] for r in rows], [101, 102, 103, 999])
         self.assertTrue(all(r["disposition"] == "unresolved_incomplete_audit_history" for r in rows))
 
+    def test_new_undo_keeps_previous_status_period_ended(self):
+        self.conn.execute("DELETE FROM lms_student_write_audits WHERE id > 2")
+        self.conn.execute("INSERT INTO status VALUES (9, 'enrolled')")
+        self.enrollment(104, "status", 9, current=False, end_date="2026-09-02")
+        self.enrollment(105, "status", 9)
+        self.conn.execute("UPDATE enrollment_record SET end_date='2026-09-03' WHERE id=103")
+        self.conn.execute("UPDATE lms_student_write_audits SET changed_values=jsonb_set(changed_values, '{ended_enrollment_ids,old}', '[102,104]') WHERE id=1")
+        metadata = {"retained_status_enrollment_ids": {"old": [104], "new": [104]}}
+        self.conn.execute("UPDATE lms_student_write_audits SET changed_values=%s WHERE id=2", (Jsonb(metadata),))
+        rows = {r["enrollment_id"]: r for r in self.manifest()["rows"]}
+        self.assertEqual(set(rows), {101, 102, 103, 104})
+        self.assertEqual(rows[104]["evidence_audit_id"], 1)
+        self.assertEqual(rows[104]["event_count"], 1)
+        self.assertTrue(all(r["disposition"] == "proposed" for r in rows.values()))
+        repair.apply_manifest(self.conn, self.manifest())
+        self.assertFalse(self.conn.execute("SELECT is_current FROM enrollment_record WHERE id=104").fetchone()["is_current"])
+        self.assertEqual(self.conn.execute("SELECT updated_at FROM enrollment_record WHERE id=105").fetchone()["updated_at"], datetime(2026, 9, 1))
+
+        for retained in (None, "bad", [0], [102], [104, 104], []):
+            with self.subTest(retained=retained):
+                self.conn.execute("UPDATE lms_student_write_audits SET changed_values=%s WHERE id=2",
+                                  (Jsonb({"retained_status_enrollment_ids": {"old": retained, "new": retained}}),))
+                self.assertTrue(all(r["disposition"].startswith("unresolved_") for r in self.manifest()["rows"]))
+
     def test_status_id_without_ended_ids_is_not_program_only(self):
         self.conn.execute(
             "UPDATE lms_student_write_audits "
