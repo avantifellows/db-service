@@ -169,7 +169,7 @@ _Avoid_: best-effort identity matching
   that School's canonical Program IDs; it does not require a Program enrollment.
 - Profile publication is atomic per Student and revalidates identity and scope.
 - Student eligibility mutations end affected active Mappings atomically.
-- Production-to-staging sync excludes all Holistic table data after launch.
+- Database sync includes all Holistic data for local and staging targets, including privacy-deletion markers. Oban job data is excluded from both targets.
 
 ## Example Dialogue
 

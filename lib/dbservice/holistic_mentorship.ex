@@ -10,7 +10,9 @@ defmodule Dbservice.HolisticMentorship do
   @eligibility_end_reasons ~w(student_dropout student_program_changed student_school_changed student_grade_changed)a
   @approved_profile_sources %{
     {"6a44a83d1184e717b920c499", "EnableStudents_6a44a83d1184e717b920c499", 11} => true,
-    {"6a4deca8e030ebe34669fb0f", "EnableStudents_6a4deca8e030ebe34669fb0f", 12} => true
+    {"6a4deca8e030ebe34669fb0f", "EnableStudents_6a4deca8e030ebe34669fb0f", 12} => true,
+    {"6a76d43e24402e7cb501f34f", "EMRSStudents_6a76d43e24402e7cb501f34f", 11} => true,
+    {"6a8843143834e2f94dd88f5d", "MaharashtraStudents_6a8843143834e2f94dd88f5d", 11} => true
   }
   @invalid_publication_database_codes [
     :check_violation,
@@ -1077,7 +1079,9 @@ defmodule Dbservice.HolisticMentorship do
       Map.has_key?(@approved_profile_sources, source) ->
         :ok
 
-      record["form_id"] in ["6a44a83d1184e717b920c499", "6a4deca8e030ebe34669fb0f"] ->
+      Enum.any?(Map.keys(@approved_profile_sources), fn {form_id, _, _} ->
+        form_id == record["form_id"]
+      end) ->
         {:error, :form_grade_mismatch}
 
       true ->
