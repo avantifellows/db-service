@@ -1,6 +1,6 @@
 # Dropout enrollment timestamp repair
 
-last_updated: 2026-09-12
+last_updated: 2026-09-15
 
 Issue: https://github.com/avantifellows/db-service/issues/730
 
@@ -53,15 +53,22 @@ only verify that the current state matches the operation's expected result.
 
 Missing rows, mismatched Student/User ownership, bad undo links (including NULL),
 duplicate target evidence anywhere in history, malformed target arrays/IDs,
-wrong batch/status identities,
-creation after evidence, missing timestamps, and inconsistent current state are
-explicitly unresolved. Incomplete audit history blocks automatic repair for the
-affected Student/User, including older valid events. Consistency checks run before
-timestamp comparison: an equal/later timestamp is preserved only when the
-record passes those checks. Inconsistent records remain unresolved and are
-never repaired, even if their timestamps are already current. A global audit
-lists exact row IDs but does not retain their prior group identities; the tool
-can validate owner and current state, not reconstruct a missing group snapshot.
+non-positive IDs, invalid calendar dates, incomplete program/global target shapes,
+wrong batch/status identities, creation after evidence, missing timestamps, and
+inconsistent current state are explicitly unresolved. A malformed operation
+blocks every exact target it names, including targets from later history; an
+owner-scoped malformed operation also blocks that Student/User's history. When
+owner identifiers are absent, exact target IDs are required to link the issue;
+the report does not infer ownership for unrelated rows. A global audit requires
+both global fields, allows an empty ended-enrollment array, and validates the
+referenced dropout status enrollment's existence, owner, and type. Duplicate
+undo audits for one dropout are unresolved; separate dropout/undo cycles remain
+supported. Immutable owner, group, creation, and evidence checks cover the full
+target history before the latest event is ranked, while current state checks use
+only that latest event. Inconsistent records remain unresolved and are never
+repaired, even if their timestamps are already current. A global audit lists
+exact row IDs but does not retain their prior group identities; the tool can
+validate owner and current state, not reconstruct a missing group snapshot.
 The report cannot prove the absence of historical unaudited writers. Human
 review of each proposed batch remains required.
 

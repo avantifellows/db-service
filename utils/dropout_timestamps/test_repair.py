@@ -110,7 +110,7 @@ class RepairTest(unittest.TestCase):
                 before = self.conn.execute("SELECT * FROM enrollment_record ORDER BY id").fetchall()
                 manifest = self.manifest()
                 self.assertEqual([r["disposition"] for r in manifest["rows"]],
-                                 ["unresolved_state", "preserve_equal_or_later", "unresolved_group"])
+                                 ["unresolved_incomplete_audit_history"] * 3)
                 with self.assertRaisesRegex(ValueError, "1..500"):
                     repair.apply_manifest(self.conn, manifest)
                 self.assertEqual(self.conn.execute("SELECT * FROM enrollment_record ORDER BY id").fetchall(), before)
@@ -179,6 +179,147 @@ class RepairTest(unittest.TestCase):
         manifest["rows"].append(manifest["rows"][0])
         with self.assertRaisesRegex(ValueError, "distinct"):
             repair.apply_manifest(self.conn, manifest)
+
+    def test_nonpositive_target_ids_block_valid_siblings(self):
+        self.conn.execute("DELETE FROM lms_student_write_audits WHERE id > 1")
+        self.conn.execute(
+            "UPDATE lms_student_write_audits "
+            "SET changed_values=jsonb_set("
+            "jsonb_set(changed_values, '{ended_enrollment_ids,old}', '[102,0]'), "
+            "'{dropout_status_enrollment_id,new}', '0') WHERE id=1"
+        )
+        rows = self.manifest()["rows"]
+        self.assertEqual([r["enrollment_id"] for r in rows], [101, 102])
+        self.assertTrue(all(r["disposition"] == "unresolved_incomplete_audit_history" for r in rows))
+        self.assertTrue(all(r["enrollment_id"] > 0 for r in rows))
+
+    def test_duplicate_undo_links_block_every_affected_target(self):
+        self.undo(5, 5, 1)
+        rows = self.manifest()["rows"]
+        self.assertEqual([r["enrollment_id"] for r in rows], [101, 102, 103])
+        self.assertTrue(all(r["disposition"] == "unresolved_audit_link" for r in rows))
+
+    def test_earlier_bad_owner_and_batch_evidence_block_later_history(self):
+        self.conn.execute(
+            "UPDATE lms_student_write_audits "
+            "SET affected_identifiers='{}'::jsonb, "
+            "changed_values=jsonb_set(changed_values, '{batch_id,old}', '999') WHERE id=1"
+        )
+        self.dropout(5, 5)
+        self.conn.execute(
+            "UPDATE enrollment_record SET is_current=false,end_date='2026-09-05' "
+            "WHERE id IN (101,102)"
+        )
+        rows = self.manifest()["rows"]
+        self.assertEqual([r["enrollment_id"] for r in rows], [101, 102, 103])
+        self.assertTrue(all(r["disposition"] == "unresolved_incomplete_audit_history" for r in rows))
+
+    def test_invalid_dropout_dates_block_the_exact_target_history(self):
+        self.conn.execute("DELETE FROM lms_student_write_audits WHERE id > 1")
+        original = self.conn.execute(
+            "SELECT changed_values FROM lms_student_write_audits WHERE id=1"
+        ).fetchone()["changed_values"]
+        missing = object()
+        cases = (
+            ("missing", missing),
+            ("null", None),
+            ("number", 3),
+            ("object", {}),
+            ("empty", ""),
+            ("impossible_day", "2026-02-30"),
+            ("impossible_month", "2026-13-01"),
+            ("noncanonical", "2026-9-02"),
+        )
+        for name, value in cases:
+            with self.subTest(name=name):
+                changed_values = copy.deepcopy(original)
+                if value is missing:
+                    changed_values.pop("dropout_date")
+                else:
+                    changed_values["dropout_date"]["new"] = value
+                self.conn.execute(
+                    "UPDATE lms_student_write_audits SET changed_values=%s WHERE id=1",
+                    (Jsonb(changed_values),),
+                )
+                observed = self.conn.execute(
+                    "SELECT changed_values FROM lms_student_write_audits WHERE id=1"
+                ).fetchone()["changed_values"]
+                if value is missing:
+                    self.assertNotIn("dropout_date", observed)
+                else:
+                    self.assertIn("dropout_date", observed)
+                    self.assertEqual(observed["dropout_date"]["new"], value)
+                rows = self.manifest()["rows"]
+                self.assertEqual([r["enrollment_id"] for r in rows], [101, 102])
+                self.assertTrue(
+                    all(r["disposition"] == "unresolved_incomplete_audit_history" for r in rows)
+                )
+
+        changed_values = copy.deepcopy(original)
+        changed_values["dropout_date"]["new"] = "2024-02-29"
+        self.conn.execute(
+            "UPDATE lms_student_write_audits SET changed_values=%s WHERE id=1",
+            (Jsonb(changed_values),),
+        )
+        self.conn.execute(
+            "UPDATE enrollment_record SET is_current=false,end_date='2024-02-29' "
+            "WHERE id IN (101,102)"
+        )
+        rows = self.manifest()["rows"]
+        self.assertEqual([r["enrollment_id"] for r in rows], [101, 102])
+        self.assertTrue(all(r["disposition"] == "proposed" for r in rows))
+
+    def test_invalid_global_shape_and_status_evidence_block_siblings(self):
+        self.conn.execute(
+            "UPDATE lms_student_write_audits "
+            "SET changed_values=jsonb_set(changed_values, '{dropout_status_enrollment_id,new}', '999') "
+            "WHERE id=1"
+        )
+        self.undo(5, 5, 1)
+        rows = self.manifest()["rows"]
+        self.assertEqual([r["enrollment_id"] for r in rows], [101, 102, 103, 999])
+        self.assertTrue(all(r["disposition"] == "unresolved_incomplete_audit_history" for r in rows))
+
+    def test_status_id_without_ended_ids_is_not_program_only(self):
+        self.conn.execute(
+            "UPDATE lms_student_write_audits "
+            "SET changed_values=changed_values-'ended_enrollment_ids' WHERE id=1"
+        )
+        rows = self.manifest()["rows"]
+        self.assertEqual([r["enrollment_id"] for r in rows], [101, 102, 103])
+        self.assertTrue(all(r["disposition"] == "unresolved_incomplete_audit_history" for r in rows))
+        coverage = self.conn.execute(repair.Path(__file__).with_name("coverage.sql").read_text()).fetchall()
+        self.assertEqual([r["audit_id"] for r in coverage], [1])
+
+    def test_valid_program_only_dropout_remains_repairable(self):
+        self.conn.execute("DELETE FROM lms_student_write_audits WHERE id > 1")
+        self.conn.execute(
+            "UPDATE lms_student_write_audits "
+            "SET changed_values=changed_values-'ended_enrollment_ids'-'dropout_status_enrollment_id' "
+            "WHERE id=1"
+        )
+        self.conn.execute(
+            "UPDATE enrollment_record SET is_current=false,end_date='2026-09-02' WHERE id=101"
+        )
+        rows = self.manifest()["rows"]
+        self.assertEqual(len(rows), 1)
+        self.assertEqual(rows[0]["enrollment_id"], 101)
+        self.assertEqual(rows[0]["disposition"], "proposed")
+
+    def test_global_dropout_with_empty_ended_ids_remains_valid(self):
+        self.conn.execute("DELETE FROM lms_student_write_audits WHERE id > 1")
+        self.conn.execute(
+            "UPDATE lms_student_write_audits "
+            "SET changed_values=jsonb_set(changed_values, '{ended_enrollment_ids,old}', '[]') "
+            "WHERE id=1"
+        )
+        self.conn.execute(
+            "UPDATE enrollment_record SET is_current=false,end_date='2026-09-02' WHERE id=101"
+        )
+        rows = self.manifest()["rows"]
+        self.assertEqual(len(rows), 1)
+        self.assertEqual(rows[0]["enrollment_id"], 101)
+        self.assertEqual(rows[0]["disposition"], "proposed")
 
 
 if __name__ == "__main__":
