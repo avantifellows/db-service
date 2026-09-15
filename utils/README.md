@@ -27,9 +27,8 @@ This folder contains utilities for managing database operations.
 This script will:
 - ✅ Validate all required environment variables
 - ⚠️  Ask for confirmation before proceeding
-- 🧹 Clear your target database
 - 📥 Fetch data from the specified environment
-- 📤 Restore data to your target database
+- 📤 Replace the target schema and restore data in one transaction
 - 🧹 Clean up temporary files
 
 To sync production into staging:
