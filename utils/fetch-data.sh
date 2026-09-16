@@ -4,7 +4,8 @@
 # Enhanced Database Fetch Script with Environment Variables
 # This script fetches data from production/staging and restores to local/staging database
 
-set -e  # Exit on any error
+set -eo pipefail
+umask 077  # Dumps contain private data.
 
 # Color codes for output
 RED='\033[0;31m'
@@ -15,7 +16,7 @@ NC='\033[0m' # No Color
 
 # Get the directory where this script is located
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-ENV_FILE="$SCRIPT_DIR/.env"
+ENV_FILE="${DB_FETCH_ENV_FILE:-$SCRIPT_DIR/.env}"
 
 echo -e "${BLUE}🗄️  DB Service - Data Fetch Utility${NC}"
 echo "======================================="
@@ -49,12 +50,12 @@ check_required_var() {
 # Check required environment variables
 echo -e "${BLUE}🔍 Validating configuration...${NC}"
 
-check_required_var "FETCH_ENVIRONMENT" "$FETCH_ENVIRONMENT"
+check_required_var "FETCH_ENVIRONMENT" "${FETCH_ENVIRONMENT:-}"
 # Set default values
 LOCAL_DB_PORT=${LOCAL_DB_PORT:-5432}
 DUMP_FILE=${DUMP_FILE:-dump.sql}
 TARGET_ENVIRONMENT=${TARGET_ENVIRONMENT:-local}
-STAGING_EXCLUDED_TABLE_DATA=(public.session public.session_occurrence public.group_session public.user_session 'public.holistic_mentorship_*')
+STAGING_EXCLUDED_TABLE_DATA=(public.session public.session_occurrence public.group_session public.user_session)
 
 # Validate source environment and set database credentials
 if [ "$FETCH_ENVIRONMENT" == "production" ]; then
@@ -186,6 +187,11 @@ PG_DUMP_ARGS=(
     --username="$SOURCE_DB_USER" \
     --dbname="$SOURCE_DB_NAME" \
     --file="$SCRIPT_DIR/$DUMP_FILE" \
+    --no-owner \
+    --no-acl \
+    --no-publications \
+    --no-subscriptions \
+    --exclude-table-data=public.oban_jobs \
     --verbose
 )
 
@@ -195,7 +201,7 @@ if [ "$TARGET_ENVIRONMENT" == "staging" ]; then
     done
 fi
 
-if PGPASSWORD="$SOURCE_DB_PASSWORD" "$PG_DUMP_PATH" "${PG_DUMP_ARGS[@]}"; then
+if PGOPTIONS="-c default_transaction_read_only=on" PGPASSWORD="$SOURCE_DB_PASSWORD" "$PG_DUMP_PATH" "${PG_DUMP_ARGS[@]}"; then
     echo -e "${GREEN}✅ Data dump fetched successfully${NC}"
 else
     echo -e "${RED}❌ Error: Failed to fetch data dump${NC}"
@@ -213,37 +219,23 @@ fi
 
 echo -e "${GREEN}✅ Dump file validated ($(du -h "$SCRIPT_DIR/$DUMP_FILE" | cut -f1))${NC}"
 
-# Step 2: NOW clear target database (only after successful fetch)
-echo -e "${BLUE}🧹 Clearing $TARGET_ENVIRONMENT database...${NC}"
+# Clear and restore together. A SQL error rolls back the schema replacement.
+echo -e "${BLUE}📤 Replacing $TARGET_ENVIRONMENT schema and restoring data...${NC}"
 if PGPASSWORD="$TARGET_DB_PASSWORD" "$PSQL_PATH" \
+    --no-psqlrc \
     --host="$TARGET_DB_HOST" \
     --port="$TARGET_DB_PORT" \
     --username="$TARGET_DB_USER" \
     --dbname="$TARGET_DB_NAME" \
+    --set=ON_ERROR_STOP=on \
+    --single-transaction \
     --command="DROP SCHEMA public CASCADE; CREATE SCHEMA public;" \
-    --quiet; then
-    echo -e "${GREEN}✅ Target database cleared${NC}"
-else
-    echo -e "${RED}❌ Error: Failed to clear target database${NC}"
-    echo -e "${YELLOW}💡 Dump file saved at: $SCRIPT_DIR/$DUMP_FILE${NC}"
-    echo -e "${YELLOW}💡 You can manually restore it later${NC}"
-    exit 1
-fi
-
-# Step 3: Restore to target database
-echo -e "${BLUE}📤 Restoring data to $TARGET_ENVIRONMENT database...${NC}"
-if PGPASSWORD="$TARGET_DB_PASSWORD" "$PSQL_PATH" \
-    --host="$TARGET_DB_HOST" \
-    --port="$TARGET_DB_PORT" \
-    --username="$TARGET_DB_USER" \
-    --dbname="$TARGET_DB_NAME" \
     --file="$SCRIPT_DIR/$DUMP_FILE" \
     --quiet; then
     echo -e "${GREEN}✅ Data restored successfully${NC}"
 else
-    echo -e "${RED}❌ Error: Failed to restore data${NC}"
-    echo -e "${YELLOW}💡 WARNING: Target database may be in an inconsistent state${NC}"
-    echo -e "${YELLOW}💡 Dump file saved at: $SCRIPT_DIR/$DUMP_FILE${NC}"
+    echo -e "${RED}❌ Restore failed; schema replacement was rolled back${NC}"
+    echo -e "${YELLOW}💡 Dump retained at: $SCRIPT_DIR/$DUMP_FILE${NC}"
     exit 1
 fi
 
