@@ -70,8 +70,7 @@ def main():
     if args.approve_sha256 and not args.apply:
         parser.error("approval hash requires --apply")
     # Open output exclusively BEFORE connecting; never overwrite evidence.
-    with args.output.open("x") as output:
-        os.chmod(args.output, 0o600)
+    with open(args.output, "x", opener=lambda path, flags: os.open(path, flags, 0o600)) as output:
         import psycopg
         from psycopg.rows import dict_row
         with psycopg.connect(os.environ["DATABASE_URL"], row_factory=dict_row) as conn:

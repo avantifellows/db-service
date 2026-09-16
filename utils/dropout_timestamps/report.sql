@@ -190,6 +190,7 @@ WITH relevant_audits AS MATERIALIZED (
           WHERE status_enrollment.id = d.status_enrollment_id
             AND status_enrollment.user_id::text IS NOT DISTINCT FROM d.user_id
             AND status_enrollment.group_type = 'status'
+            AND status_enrollment.inserted_at <= d.inserted_at
         )
       ELSE NOT d.has_ended_enrollment_ids AND NOT d.has_status_enrollment_id
     END AS status_evidence_is_valid
