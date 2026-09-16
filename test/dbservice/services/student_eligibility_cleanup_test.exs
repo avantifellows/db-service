@@ -193,6 +193,54 @@ defmodule Dbservice.Services.StudentEligibilityCleanupTest do
     assert mapping_active?(mapping_id)
   end
 
+  test "unaudited global dropout timestamps only current enrollments and preserves creation times" do
+    %{student: student} = insert_mapping_scope()
+    enrolled_status = status_fixture(%{title: :enrolled})
+    status_fixture(%{title: :dropout})
+
+    other_user_id =
+      Repo.query!(
+        "INSERT INTO \"user\" (inserted_at, updated_at) VALUES (now(), now()) RETURNING id"
+      ).rows
+      |> hd()
+      |> hd()
+
+    rows =
+      for {user_id, current} <- [
+            {student.user_id, true},
+            {student.user_id, false},
+            {other_user_id, true}
+          ] do
+        [[id]] =
+          Repo.query!(
+            """
+            INSERT INTO enrollment_record
+              (user_id, group_id, group_type, academic_year, start_date, is_current, inserted_at, updated_at)
+            VALUES ($1, $2, 'status', '2026-2027', '2026-04-01', $3, '2020-01-01', '2020-01-02') RETURNING id
+            """,
+            [user_id, enrolled_status.id, current]
+          ).rows
+
+        Repo.get!(Dbservice.EnrollmentRecords.EnrollmentRecord, id)
+      end
+
+    before_time = NaiveDateTime.utc_now() |> NaiveDateTime.truncate(:second)
+    assert {:ok, _student} = DropoutService.process_dropout(student, ~D[2026-07-01], "2026-2027")
+
+    for previous <- rows do
+      current = Repo.get!(Dbservice.EnrollmentRecords.EnrollmentRecord, previous.id)
+
+      if previous.user_id == student.user_id and previous.is_current do
+        assert current.inserted_at == previous.inserted_at
+        assert NaiveDateTime.compare(current.updated_at, before_time) in [:eq, :gt]
+        refute current.is_current
+        assert current.end_date == ~D[2026-07-01]
+      else
+        assert current == previous
+      end
+    end
+  end
+
   test "a cleanup failure rolls back the dropout status and enrollment changes" do
     %{mapping_id: mapping_id, student: student} = insert_mapping_scope()
     enrolled_status = status_fixture(%{title: :enrolled})
@@ -214,7 +262,9 @@ defmodule Dbservice.Services.StudentEligibilityCleanupTest do
       DropoutService.process_dropout(student, ~D[2026-07-01], "2026-2027")
     end
 
-    assert Repo.get!(Dbservice.EnrollmentRecords.EnrollmentRecord, current_enrollment.id).is_current
+    assert Repo.get!(Dbservice.EnrollmentRecords.EnrollmentRecord, current_enrollment.id) ==
+             current_enrollment
+
     assert Dbservice.Users.get_student!(student.id).status == "enrolled"
     assert mapping_active?(mapping_id)
 

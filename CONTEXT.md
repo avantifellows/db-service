@@ -3,6 +3,16 @@
 This file defines the canonical language used by db-service. It includes the
 Holistic Mentorship persistence and machine-contract terms approved for v1.
 
+## Dropout Enrollment Timestamps
+
+last_updated: 2026-09-16
+
+Dropout and undo use one second-precision UTC timestamp, captured after the
+Student lock and validation, for every changed enrollment and operation audit.
+Existing `inserted_at` values and membership/status behavior stay unchanged.
+Historical timestamp repair is a separate follow-up; this change does not repair
+existing data.
+
 ## Revised NVS Student Writes
 
 - LMS is the authorization boundary for private NVS student writes; DB Service treats submitted actor metadata as trusted audit context.
