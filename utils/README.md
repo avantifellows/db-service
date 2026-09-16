@@ -27,9 +27,8 @@ This folder contains utilities for managing database operations.
 This script will:
 - ✅ Validate all required environment variables
 - ⚠️  Ask for confirmation before proceeding
-- 🧹 Clear your target database
 - 📥 Fetch data from the specified environment
-- 📤 Restore data to your target database
+- 📤 Replace the target schema and restore data in one transaction
 - 🧹 Clean up temporary files
 
 To sync production into staging:
@@ -40,8 +39,18 @@ TARGET_ENVIRONMENT=staging
 ```
 
 Staging sync skips data for `session`, `session_occurrence`, `group_session`,
-`user_session`, and every table matching `public.holistic_mentorship_*`.
-Production-to-local syncs do not apply these staging-only exclusions.
+and `user_session`. All Holistic table data is included for both staging and local
+syncs. `public.oban_jobs` data is excluded for both targets so copied jobs cannot run.
+
+The source is dumped before modifying the target. Schema reset and restore run in
+one transaction with `ON_ERROR_STOP`: SQL failures return a nonzero exit code,
+roll back the replacement, and retain the private dump for diagnosis. No staging
+backup is created. Use PostgreSQL client tools compatible with the destination
+(e.g. PostgreSQL 16 tools for a PostgreSQL 16 target).
+
+`DB_FETCH_ENV_FILE=/path/to/config` can select a private configuration without
+changing `utils/.env`. Dumps omit source ownership/ACLs and restore under the
+target account; verify target service access after a refresh.
 
 ### Configuration
 
@@ -66,3 +75,5 @@ The script reads from `utils/.env` file. Key variables:
 - ⚠️  **Safety prompts**: Confirms before destructive operations
 - 🛡️  **Error handling**: Exits cleanly on any errors
 - 🧹 **Auto cleanup**: Removes temporary dump files
+
+Replication publications and subscriptions are excluded from source dumps; they are environment-specific and can conflict with staging objects.

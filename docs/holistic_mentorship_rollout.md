@@ -182,3 +182,22 @@ Holistic wildcard.
    reads.
 5. Preserve all Holistic schema and data. Do not down-migrate populated tables;
    forward-fix the application or apply a new additive migration.
+
+## Additional Grade 11 questionnaire sources
+
+Migration `20260909170000_allow_additional_holistic_profile_sources` expands both
+Journey and Generation Status CHECK constraints to accept these exact tuples:
+
+- `6a76d43e24402e7cb501f34f`, `EMRSStudents_6a76d43e24402e7cb501f34f`, Grade 11.
+- `6a8843143834e2f94dd88f5d`, `MaharashtraStudents_6a8843143834e2f94dd88f5d`, Grade 11.
+
+The application allowlist matches the constraints. Existing program, identity,
+privacy, Journey conflict and publication idempotency checks still apply.
+Deploy these DB changes before deploying the extended ETL catalog. ETL uses the
+existing catalog and targeted Student runs; adding catalog entries takes effect
+when that code is deployed. Current verification is local and staging only.
+This migration neither creates Profiles nor activates a Prompt Configuration.
+
+Migration rollback restores the original two sources and fails transactionally
+if additional-source rows exist. Preserve published Profiles; do not delete them
+to force rollback. Production deployment and cohort selection are separate work.

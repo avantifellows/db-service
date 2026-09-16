@@ -75,6 +75,49 @@ defmodule DbserviceWeb.HolisticMentorshipProfilePublishControllerTest do
     assert results == expected_results
   end
 
+  test "publishes additional sources through status API and retains exact journey identity", %{
+    conn: conn
+  } do
+    configuration_id = insert_prompt_configuration!()
+
+    for {program, form, session} <- [
+          {78, "6a76d43e24402e7cb501f34f", "EMRSStudents_6a76d43e24402e7cb501f34f"},
+          {99, "6a8843143834e2f94dd88f5d", "MaharashtraStudents_6a8843143834e2f94dd88f5d"}
+        ] do
+      {user, student} = eligible_student(program)
+      run_id = "additional-#{program}"
+      source = %{"form_id" => form, "af_session_id" => session, "entry_grade" => 11}
+
+      for state <- ["queued", "running"] do
+        status =
+          Map.merge(source, %{
+            "student_id" => student.id,
+            "etl_run_id" => run_id,
+            "prompt_configuration_id" => configuration_id,
+            "state" => state
+          })
+
+        assert (conn
+                |> post("/api/holistic-mentorship/profile-generation-statuses", status)
+                |> json_response(200))["state"] == state
+      end
+
+      params = publish_params(user.id, student.id, configuration_id, run_id, source)
+      assert publish(conn, params) == %{"result" => "published", "revision" => 1}
+      assert publish(conn, params) == %{"result" => "published", "revision" => 1}
+
+      assert Repo.query!(
+               "SELECT form_id, af_session_id, entry_grade FROM holistic_mentorship_profile_journeys WHERE student_id = $1",
+               [student.id]
+             ).rows == [[form, session, 11]]
+
+      assert Repo.query!(
+               "SELECT count(*) FROM holistic_mentorship_student_profile_summaries s JOIN holistic_mentorship_student_profiles p ON p.id=s.student_profile_id JOIN holistic_mentorship_profile_journeys j ON j.id=p.profile_journey_id WHERE j.student_id=$1",
+               [student.id]
+             ).rows == [[5]]
+    end
+  end
+
   test "replaces changed answers for the same configuration", %{conn: conn} do
     {user, student} = eligible_student()
     configuration_id = insert_prompt_configuration!()
