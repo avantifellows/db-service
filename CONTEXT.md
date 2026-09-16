@@ -20,10 +20,17 @@ last_updated: 2026-09-16
 - Dropout/undo uses one second-precision UTC timestamp, captured after the Student
   lock and validation, for changed enrollments and the operation audit. Existing
   `inserted_at` values stay unchanged.
-- Historical timestamp repair is a separate follow-up; this change does not repair
-  existing data.
+- [Historical timestamp repair](utils/dropout_timestamps/README.md) uses exact audit
+  evidence, preserves valid later timestamps, and leaves incomplete or conflicting
+  history unresolved. It changes only `updated_at` after separate approval of a
+  fresh bounded manifest. No production repair has run; old inventory counts are
+  stale and must not be used for apply.
 - Existing-Student status backfill and unrelated import/re-enrollment APIs remain
   out of scope. No LMS code, request contract, or database schema change is needed.
+
+Validation at `c76c6090`: 826 service tests, 24 repair tests, and configured checks
+passed. Local Brave QA covered Add/Bulk, full and Program-only dropout/undo;
+staging Add/cancel/two full cycles preserved history and an untouched control.
 
 ## Revised NVS Student Writes
 
