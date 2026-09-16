@@ -577,7 +577,11 @@ defmodule Dbservice.Services.DropoutService do
         ]
       )
       |> Repo.update_all(
-        set: [is_current: false, end_date: Date.utc_today(), updated_at: operation_time]
+        set: [
+          is_current: false,
+          end_date: NaiveDateTime.to_date(operation_time),
+          updated_at: operation_time
+        ]
       )
 
     if length(ended) == length(enrollment_ids) and restored == length(membership_ids) and
@@ -630,6 +634,7 @@ defmodule Dbservice.Services.DropoutService do
            ) do
       {:ok, %{enrollment_id: status_enrollment.id, retained_ids: retained_status_ids}}
     else
+      {:error, reason} when is_binary(reason) -> {:error, reason}
       {:error, _} -> {:error, "Failed to restore student status"}
     end
   end
