@@ -136,9 +136,12 @@ defmodule Dbservice.EnrollmentRecords do
   The caller must own a newly inserted Student or hold the Student row lock.
   """
   def create_status_enrollment(user_id, title, start_date, academic_year, operation_time) do
-    status =
-      from(s in Dbservice.Statuses.Status, where: fragment("?::text = ?", s.title, ^title))
-      |> Repo.one()
+    statuses =
+      from(s in Dbservice.Statuses.Status,
+        where: fragment("?::text = ?", s.title, ^title),
+        limit: 2
+      )
+      |> Repo.all()
 
     current_status? =
       Repo.exists?(
@@ -148,13 +151,18 @@ defmodule Dbservice.EnrollmentRecords do
       )
 
     cond do
-      is_nil(status) ->
+      statuses == [] ->
         {:error, "The Student status is not configured"}
+
+      length(statuses) > 1 ->
+        {:error, "Multiple Student statuses are configured with the same title"}
 
       current_status? ->
         {:error, "Student already has a current status enrollment"}
 
       true ->
+        [status] = statuses
+
         %EnrollmentRecord{inserted_at: operation_time, updated_at: operation_time}
         |> EnrollmentRecord.changeset(%{
           user_id: user_id,
