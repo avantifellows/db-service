@@ -3,20 +3,34 @@
 This file defines the canonical language used by db-service. It includes the
 Holistic Mentorship persistence and machine-contract terms approved for v1.
 
-## Dropout Enrollment Timestamps
+## Student Status History and Dropout Timestamps
 
-last_updated: 2026-09-12
+last_updated: 2026-09-16
 
-Dropout and undo use one second-precision UTC operation timestamp, captured after
-the Student lock/validation, for every changed enrollment and dedicated audit.
-Creation times and enrollment state rules remain unchanged. Historical repair
-is audit-derived and separately approved; see
-[the bounded repair runbook](docs/dropout-enrollment-timestamps.md). The September
-12 read-only production inventory proposed 11,369 rows, preserved 149 later/equal
-timestamps, and left six state mismatches unresolved. No production repair ran.
-Unaudited historical changes cannot be reconstructed from current snapshots.
+- LMS Add Student and Bulk Upload create a current `enrolled` status enrollment
+  atomically with the Student, memberships, and creation audit.
+- Full dropout ends the current status period and memberships, then creates a
+  dropout period. Undo restores the same membership rows, ends the dropout period,
+  and creates a new period matching the audited prior Student status (normally
+  `enrolled`). Earlier status periods remain ended. The new period starts on the
+  undo date; audits record its ID and the old status IDs that remain ended.
+- Program-only dropout/undo leaves overall status history unchanged while another
+  active Batch remains. Repeated undo, an extra current status row, or a missing
+  configured prior status causes rejection; changes and audits remain atomic.
+- Dropout/undo uses one second-precision UTC timestamp, captured after the Student
+  lock and validation, for changed enrollments and the operation audit. Existing
+  `inserted_at` values stay unchanged.
+- [Historical timestamp repair](utils/dropout_timestamps/README.md) uses exact audit
+  evidence, preserves valid later timestamps, and leaves incomplete or conflicting
+  history unresolved. It changes only `updated_at` after separate approval of a
+  fresh bounded manifest. No production repair has run; old inventory counts are
+  stale and must not be used for apply.
+- Existing-Student status backfill and unrelated import/re-enrollment APIs remain
+  out of scope. No LMS code, request contract, or database schema change is needed.
 
-Local QA on 2026-09-12 exercised PR #731 through the actual Brave LMS UI and Phoenix server on an isolated synthetic database. Final-program, repeated, and multiple-program dropout/undo matched enrollment updated_at to audit time while preserving creation times and unrelated rows. The actual repair CLI passed read-only, hash, stale-batch rollback, timestamp-only apply, and idempotency checks (6 repaired, 1 preserved, 1 unresolved). Initial QA passed all 824 Elixir and 13 repair tests and configured mix checks. After the reporting fix, all 824 Elixir and 15 repair tests and configured mix checks passed; an actual local CLI recheck confirmed the previously preserved mismatch is now unresolved without writes. The QA reporting finding is fixed: creation/group/state consistency checks now precede timestamp preservation, so inconsistent records remain unresolved even with current timestamps. The original production inventory counts predate this precedence change and were not refreshed. No production repair was made. Evidence: ../release-records/db-service-pr731-local-qa-20260912/QA-checklist-and-findings.md.
+Validation at `c76c6090`: 826 service tests, 24 repair tests, and configured checks
+passed. Local Brave QA covered Add/Bulk, full and Program-only dropout/undo;
+staging Add/cancel/two full cycles preserved history and an untouched control.
 
 ## Revised NVS Student Writes
 

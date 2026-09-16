@@ -134,10 +134,10 @@ PHX_HOST="your-domain.com"  # Production host
 
 ### Dropout enrollment timestamp maintenance
 
-last_updated: 2026-09-12
+last_updated: 2026-09-16
 
 Every dropout/undo enrollment `update_all` must set `updated_at` to the shared
 operation timestamp captured after the Student lock. Preserve `inserted_at`.
-Use [the repair runbook](docs/dropout-enrollment-timestamps.md) for historical
+Use [the repair runbook](utils/dropout_timestamps/README.md) for historical
 records; repair defaults to read-only and requires separate approval of a
 bounded manifest before any production write.

@@ -1,73 +1,22 @@
-# Dropout enrollment timestamp repair
+# Dropout timestamp repair utilities
 
-last_updated: 2026-09-15
+These tools review and repair historical enrollment `updated_at` values using
+exact dropout/undo audit evidence. They do not change Student status, memberships,
+creation times, or add missing status enrollments. See [domain context](../../CONTEXT.md#student-status-history-and-dropout-timestamps)
+for the live service behavior.
 
-Issue: https://github.com/avantifellows/db-service/issues/730
+## Files
 
-Dropout and undo previously changed enrollment state with `update_all` without
-updating timestamps. The service now captures one UTC timestamp, at the schema's
-second precision, after acquiring the Student lock and validating the operation.
-Every changed enrollment and the dedicated operation audit uses that timestamp.
-Existing enrollment creation timestamps and all state/identity rules are preserved.
-
-## LMS status enrollment history
-
-LMS Add Student and Bulk Upload now create a current enrolled status enrollment
-in the same transaction as the Student, memberships, and creation audit. The
-creation audit records the new status enrollment ID.
-
-A full dropout ends the current status period along with the memberships and
-creates the dropout status period. Undo restores the memberships, keeps previous
-status periods ended, closes the dropout period, and creates a new period for
-the Student status saved in the dropout audit (normally enrolled). Its start date
-is the undo date; its timestamps match the undo audit. The undo audit records the
-new status enrollment ID and the old status enrollment IDs that remain ended.
-The repair report understands this distinction and still supports older audits.
-
-Program-only dropout/undo leaves status history unchanged when another active
-Batch remains. Status changes and audit creation are atomic; repeated undo or an
-extra current status row causes rejection instead of another current status row.
-A missing/unconfigured previous status cannot be restored automatically.
-
-This PR does not backfill existing Students, add a global uniqueness constraint,
-or change unrelated import/re-enrollment APIs. Existing-Student status history
-requires a separate plan. No LMS code or API request changes are needed.
-
-## Read-only production findings
-
-A single `REPEATABLE READ READ ONLY` production snapshot at **2026-09-12
-07:05:40 UTC (12:35 IST)**, with a 10-second per-query timeout, found:
-
-| Disposition | Enrollment rows |
-| --- | ---: |
-| Proposed timestamp repair | 11,369 |
-| Preserve equal or later timestamp | 149 |
-| Unresolved: current state differs from latest audit | 6 |
-| Total exact audited targets | 11,524 |
-
-The separate coverage query found zero orphan undo / missing-target audit shapes
-in that snapshot. This does **not** mean every historical operation was audited.
-Legacy global/import dropouts without exact enrollment audit IDs cannot be
-reconstructed reliably and are outside automatic repair. Do not infer timestamps
-from student creation, current Student status, or repair execution time.
-
-The reported September 8 dropout/undo example resolves to the undo audit time;
-its School enrollment's genuinely later September 9 update is preserved. The six
-unresolved rows are batch enrollments whose latest audit records undo, but whose
-current state is inactive with an end date. They require separate investigation.
-The counts above describe the original September 12 query. They have not been
-refreshed after moving consistency checks ahead of timestamp preservation;
-some previously preserved rows may now be classified as unresolved. Regenerate
-and review manifests with the current query before apply. Older manifests fail
-the existing SQL-hash check.
-No personal data or row-level production export is committed here. The private
-report contains internal evidence/enrollment IDs and before snapshots. Live
-counts will change; regenerate bounded manifests before seeking repair approval.
-**No production repair was applied.**
+| File | Purpose |
+| --- | --- |
+| `repair.py` | CLI: saves a read-only report by default; applies a separately reviewed manifest only with its approval hash. |
+| `report.sql` | Resolves exact enrollment targets across dropout/undo history, validates evidence, and classifies each row as proposed, preserved, or unresolved. Used by the CLI for both reporting and apply verification. |
+| `coverage.sql` | Separate read-only check for malformed or missing-target audit shapes that may not appear in the paginated report. Run alongside the report for a full inventory. |
+| `test_repair.py` | Local PostgreSQL integration tests for evidence validation, repeated cycles, retained status history, timestamp-only repair, rollback, and idempotency. |
 
 ## Evidence rules
 
-`utils/dropout_timestamps/report.sql` expands exact batch and global enrollment
+`report.sql` expands exact batch and global enrollment
 IDs in dropout audits, links undo via `dropout_audit_id`, and includes the ended
 dropout-status enrollment on undo. It ranks the complete event history per
 record **before** applying enrollment-ID pagination, including repeated cycles.
@@ -97,7 +46,8 @@ review of each proposed batch remains required.
 
 ## Operator runbook
 
-Use a private directory for manifests/verification (mode 0600), never commit them.
+Run commands from the repository root. Store manifests/verification privately
+(the CLI creates files with mode 0600); never commit them.
 Install `psycopg[binary]>=3.2,<4` in an isolated Python environment. Set
 `DATABASE_URL` through the approved secret mechanism; never paste it into logs or
 command arguments. The tool starts only a PostgreSQL connection, not the app.
