@@ -237,3 +237,13 @@ audit. School and other membership information remain untouched. This remains
 local-only; production repair and coordination with the older historical
 mutation timestamp utility are deferred. Operator guide:
 `utils/lms_enrolled_status/ACCIDENTAL_DROPOUT.md`.
+
+### Missing enrolled history before one dropout (2026-09-17)
+
+`utils/lms_enrolled_status/backfill_before_dropout.py` handles the284 third-box
+Students with one audited dropout and no undo. It adds one non-current enrolled
+period from original enrollment date to dropout date plus a linked repair audit.
+Student.status, all memberships, current dropout and all existing timestamps
+remain unchanged. Repeated cycles and missing-audit cases remain separate.
+Local-only report/apply and verification instructions: `BEFORE_DROPOUT.md` in
+the same directory. No production repair or timestamp cleanup is included.

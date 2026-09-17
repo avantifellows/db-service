@@ -96,3 +96,6 @@ was performed. See the private QA record for snapshot-specific evidence.
 The separate second-box utility is documented in
 [ACCIDENTAL_DROPOUT.md](ACCIDENTAL_DROPOUT.md). It corrects the 152 confirmed
 accidental dropout/undo records; the first-box utility above is unchanged.
+
+The third-box utility, which adds historical enrolled periods while preserving
+current dropout records, is documented in [BEFORE_DROPOUT.md](BEFORE_DROPOUT.md).
