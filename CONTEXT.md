@@ -218,3 +218,9 @@ unchanged. Students with existing status history, including the 152 accidental
 undo cases, are out of scope. Fresh local production snapshot: 36,817 eligible,
 unchanged from the chart. No production data repair has been run. See
 `utils/lms_enrolled_status/README.md` for the report/apply safeguards and commands.
+
+Full-cohort local follow-up: all 36,817 repaired in 74 batches, then every batch
+replayed without duplicates; zero remaining. Existing Student/enrollment/audit
+rows match the untouched snapshot. Apply commands totaled 26.09s; full loop
+297.25s plus full-table verification 63.88s. No utility changes or production
+access were needed.

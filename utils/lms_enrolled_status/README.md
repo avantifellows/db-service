@@ -86,6 +86,9 @@ idempotency, modified manifests, and local-only database guards.
 
 The September 17, 2026 local rehearsal confirmed 37,255 LMS-created Students,
 36,817 eligible missing-status cases (change: zero), and 438 excluded with
-existing status history. A 100-Student local apply and repeat-apply were tested;
-see the private QA record for the snapshot-specific verification. No production
-repair was performed.
+existing status history. A separate fresh local clone passed all 36,817 repairs across 74 batches and
+repeat-apply of every batch with zero duplicates. Final missing count: zero.
+Complete comparisons preserved every existing Student, enrollment, and audit
+row. Apply commands totaled 26.09 seconds; reports, applies, and reruns took
+4m57s, followed by 64 seconds of full-table verification. No production repair
+was performed. See the private QA record for snapshot-specific evidence.
