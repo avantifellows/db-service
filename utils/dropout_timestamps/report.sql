@@ -2,7 +2,72 @@
 -- Rank ALL audit history before pagination. No student names/contact/identifiers.
 -- Audit IDs are parsed only after positive-integer/range checks; malformed
 -- operations remain linked to every valid exact target they contain.
-WITH relevant_audits AS MATERIALIZED (
+WITH -- Only a fully matched, later correction can supersede the old status shape.
+-- The correction preserves the original row identity and logs its before/after.
+correction_values AS MATERIALIZED (
+  SELECT a.id, a.inserted_at, a.affected_identifiers, a.created_values,
+    a.affected_identifiers->>'user_id' AS user_id,
+    a.affected_identifiers->>'student_pk_id' AS student_id,
+    CASE WHEN jsonb_typeof(a.changed_values #> '{status_enrollment,old}')='object'
+      THEN a.changed_values #> '{status_enrollment,old}' END AS old_row,
+    CASE WHEN jsonb_typeof(a.changed_values #> '{status_enrollment,new}')='object'
+      THEN a.changed_values #> '{status_enrollment,new}' END AS new_row,
+    CASE WHEN jsonb_typeof(a.created_values->'status_enrollment_id')='number'
+      AND a.created_values->>'status_enrollment_id' ~ '^[1-9][0-9]{0,17}$'
+      THEN (a.created_values->>'status_enrollment_id')::bigint END AS enrollment_id
+  FROM lms_student_write_audits a
+  WHERE a.action='student_accidental_dropout_correction'
+), correction_checks AS MATERIALIZED (
+  SELECT c.*,
+    COALESCE(
+      count(*) OVER (PARTITION BY c.enrollment_id)=1
+      AND c.created_values->>'repair_version'='1'
+      AND e.id IS NOT NULL AND e.group_type='status'
+      AND e.user_id::text=c.user_id AND s.user_id=e.user_id
+      AND c.old_row->>'id'=e.id::text
+      AND c.old_row->>'group_type'='status'
+      AND c.old_row->'is_current'='false'::jsonb
+      AND c.new_row->'is_current'='true'::jsonb
+      AND c.new_row->'end_date'='null'::jsonb
+      AND c.old_row->>'academic_year'='2026-2027'
+      AND c.old_row->>'group_id'=ds.id::text AND ds.title='dropout'
+      AND e.group_id=es.id AND es.title='enrolled'
+      AND (c.old_row - ARRAY['group_id','is_current','start_date','end_date','updated_at'])
+        = (c.new_row - ARRAY['group_id','is_current','start_date','end_date','updated_at'])
+      AND (to_jsonb(e) - ARRAY['inserted_at','updated_at'])
+        = (c.new_row - ARRAY['inserted_at','updated_at'])
+      AND rtrim(regexp_replace(replace(c.new_row->>'inserted_at','T',' '), '(\.[0-9]*?)0+$', '\1'), '.')=e.inserted_at::text
+      AND rtrim(regexp_replace(replace(c.new_row->>'updated_at','T',' '), '(\.[0-9]*?)0+$', '\1'), '.')=e.updated_at::text
+      AND e.updated_at=c.inserted_at
+      AND c.inserted_at >= u.inserted_at AND u.inserted_at >= d.inserted_at
+      AND e.inserted_at <= d.inserted_at
+      AND c.old_row->>'start_date'=d.changed_values #>> '{dropout_date,new}'
+      AND c.old_row->>'end_date'=u.inserted_at::date::text
+      AND c.new_row->>'start_date' <= c.old_row->>'start_date'
+      AND d.changed_values #>> '{dropout_status_enrollment_id,new}'=e.id::text
+      AND u.affected_identifiers->>'dropout_audit_id'=d.id::text
+      AND d.affected_identifiers->>'user_id'=c.user_id
+      AND d.affected_identifiers->>'student_pk_id'=c.student_id
+      AND u.affected_identifiers->>'user_id'=c.user_id
+      AND u.affected_identifiers->>'student_pk_id'=c.student_id
+      AND origin.affected_identifiers->>'user_id'=c.user_id
+      AND origin.affected_identifiers->>'student_pk_id'=c.student_id
+      AND origin.created_values->>'status'='enrolled'
+      AND origin.inserted_at <= d.inserted_at,
+      false) AS correction_is_valid
+  FROM correction_values c
+  LEFT JOIN enrollment_record e ON e.id=c.enrollment_id
+  LEFT JOIN student s ON s.id::text=c.student_id
+  LEFT JOIN status ds ON ds.id::text=c.old_row->>'group_id'
+  LEFT JOIN status es ON es.id=e.group_id
+  LEFT JOIN lms_student_write_audits d ON d.id::text=c.created_values->>'dropout_audit_id'
+    AND d.action='student_program_dropout'
+  LEFT JOIN lms_student_write_audits u ON u.id::text=c.created_values->>'undo_audit_id'
+    AND u.action='student_program_dropout_undo'
+  LEFT JOIN lms_student_write_audits origin ON origin.id::text=c.created_values->>'source_creation_audit_id'
+    AND origin.action='student_bulk_create'
+),
+ relevant_audits AS MATERIALIZED (
   SELECT id, action, inserted_at, affected_identifiers, changed_values
   FROM lms_student_write_audits
   WHERE action IN ('student_program_dropout', 'student_program_dropout_undo')
@@ -191,6 +256,11 @@ WITH relevant_audits AS MATERIALIZED (
             AND status_enrollment.user_id::text IS NOT DISTINCT FROM d.user_id
             AND status_enrollment.group_type = 'status'
             AND status_enrollment.inserted_at <= d.inserted_at
+        ) OR EXISTS (
+          SELECT 1 FROM correction_checks c
+          WHERE c.correction_is_valid AND c.enrollment_id=d.status_enrollment_id
+            AND c.created_values->>'dropout_audit_id'=d.id::text
+            AND c.user_id=d.user_id AND c.student_id=d.student_id
         )
       ELSE NOT d.has_ended_enrollment_ids AND NOT d.has_status_enrollment_id
     END AS status_evidence_is_valid
@@ -331,6 +401,9 @@ WITH relevant_audits AS MATERIALIZED (
 SELECT r.enrollment_id, r.dropout_audit_id, r.evidence_audit_id, r.proposed_updated_at,
   r.student_id, r.event_count, to_jsonb(e) AS before,
   CASE
+    WHEN EXISTS (SELECT 1 FROM correction_checks c
+      WHERE NOT c.correction_is_valid AND (c.user_id=r.user_id OR c.student_id=r.student_id
+        OR c.enrollment_id=r.enrollment_id)) THEN 'unresolved_status_correction'
     WHEN EXISTS (
       SELECT 1
       FROM incomplete_history h
@@ -344,6 +417,9 @@ SELECT r.enrollment_id, r.dropout_audit_id, r.evidence_audit_id, r.proposed_upda
     WHEN r.all_identity_consistent IS NOT TRUE THEN 'unresolved_identity'
     WHEN r.all_creation_consistent IS NOT TRUE THEN 'unresolved_creation_time'
     WHEN r.all_group_consistent IS NOT TRUE THEN 'unresolved_group'
+    WHEN EXISTS (SELECT 1 FROM correction_checks c
+      WHERE c.correction_is_valid AND c.enrollment_id=r.enrollment_id)
+      THEN 'preserve_status_correction'
     WHEN e.is_current IS DISTINCT FROM r.expected_current
       OR e.end_date::text IS DISTINCT FROM r.expected_end_date
       THEN 'unresolved_state'

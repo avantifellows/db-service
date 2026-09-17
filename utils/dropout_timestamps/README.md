@@ -107,3 +107,30 @@ exercise repeated cycles, later-update preservation, unresolved evidence,
 changed-state/evidence rollback, manifest bounds, column preservation, and
 idempotent apply. Controller/service regressions cover program-only, final-program,
 undo, and unaudited global paths plus unrelated rows and `inserted_at`.
+
+## Coordinate with enrollment-history cleanup
+
+Run the reviewed status-history utilities in `utils/lms_enrolled_status/` first,
+then generate **fresh** timestamp reports and coverage on the resulting data.
+Old manifests are not reusable across cleanup; both the SQL hash and current
+row/evidence snapshots are rechecked at apply. Do not rerun an old status-repair
+manifest after timestamp repair changes its surrounding enrollment evidence.
+
+The 152 accidental dropout corrections deliberately turn an ended dropout row
+into a current enrolled row. A matching `student_accidental_dropout_correction`
+audit now explains that state change. The report validates its source creation,
+dropout and undo links, ownership, before/after identity, and current row contents
+and timestamp. Valid corrected rows are `preserve_status_correction`: their
+`updated_at` remains the actual correction time. Their original Batch/Grade/
+School/Auth Group timestamp targets remain independently repairable from the
+original operation audits. Those operations occurred even when the dropout was
+a mistake; preserving that mutation time does not recreate a dropout period.
+
+Missing, malformed, duplicated or mismatched correction evidence remains
+unresolved. `unresolved_status_correction` blocks the affected owner/target and
+is also surfaced by `coverage.sql`. The utility does not blindly trust an action
+name or accept an unexplained change from dropout to enrolled.
+
+New status rows from the insert-only backfills are not targets of old operation
+audits, so their repair-time timestamps are untouched. The approved missing-audit
+exception does not invent a dropout audit or authorize a guessed timestamp fix.

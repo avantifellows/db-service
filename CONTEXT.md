@@ -265,3 +265,14 @@ Local apply/rerun and all-table preservation checks passed. The remaining-cases
 report recognizes the completed exception.41 utility tests pass; no production
 access or generic missing-audit bypass. All five chart groups now have utilities
 and have passed separate local rehearsals.
+
+### Coordinated status cleanup and timestamp repair (2026-09-17)
+
+All five chart utilities are included in PR737's historical-utilities layer.
+The timestamp report/coverage now validate accidental-status correction audits:
+matched corrected status rows are preserve_status_correction, while original
+membership mutation timestamps can still be repaired. Invalid/duplicate/stale
+corrections are unresolved_status_correction and block related targets. New
+backfill rows are not old audit targets. Run status cleanup first, then generate
+fresh timestamp manifests; never reuse manifests across state changes. New
+status utilities remain local-only. See utils/lms_enrolled_status/WORKFLOW.md.

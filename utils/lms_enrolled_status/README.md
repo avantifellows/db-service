@@ -107,3 +107,6 @@ missing-audit Student is reported for a separate evidence/policy decision.
 The user subsequently approved DB evidence for the one missing-audit Student.
 The narrowly restricted utility is documented in
 [APPROVED_DB_EXCEPTION.md](APPROVED_DB_EXCEPTION.md); no generic audit bypass exists.
+
+See [WORKFLOW.md](WORKFLOW.md) for the five-box map and the required order when
+combining status cleanup with the historical timestamp utility.

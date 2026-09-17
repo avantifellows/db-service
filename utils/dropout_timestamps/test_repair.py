@@ -26,7 +26,7 @@ class RepairTest(unittest.TestCase):
         """)
         self.conn.execute("""CREATE TEMP TABLE lms_student_write_audits (
             id bigint, action text, inserted_at timestamp,
-            affected_identifiers jsonb, changed_values jsonb)
+            affected_identifiers jsonb, changed_values jsonb, created_values jsonb DEFAULT '{}')
         """)
         self.conn.execute("INSERT INTO student VALUES (1, 10)")
         self.conn.execute("INSERT INTO status VALUES (8, 'dropout')")
@@ -55,9 +55,77 @@ class RepairTest(unittest.TestCase):
                    {"student_pk_id": 1, "user_id": user_id, "dropout_audit_id": dropout_id})
 
     def audit(self, id, day, action, changes, identifiers=None):
-        self.conn.execute("INSERT INTO lms_student_write_audits VALUES (%s,%s,%s,%s,%s)",
+        self.conn.execute("INSERT INTO lms_student_write_audits(id,action,inserted_at,affected_identifiers,changed_values) VALUES (%s,%s,%s,%s,%s)",
                           (id, action, datetime(2026, 9, day),
                            Jsonb(identifiers or {"student_pk_id": 1, "user_id": 10}), Jsonb(changes)))
+
+    def correct_status(self):
+        # One real dropout/undo cycle, followed by the status cleanup audit.
+        self.conn.execute("DELETE FROM lms_student_write_audits WHERE id IN (1,2)")
+        self.conn.execute("ALTER TABLE enrollment_record ADD COLUMN academic_year text DEFAULT '2026-2027', ADD COLUMN start_date date DEFAULT '2026-09-01', ADD COLUMN subject_id bigint")
+        self.conn.execute("INSERT INTO status VALUES(9,'enrolled')")
+        self.conn.execute("UPDATE enrollment_record SET start_date='2026-09-03' WHERE id=103")
+        self.audit(5,1,'student_bulk_create',{})
+        self.conn.execute("UPDATE lms_student_write_audits SET created_values=%s WHERE id=5",(Jsonb({'status':'enrolled'}),))
+        old=self.conn.execute('SELECT to_jsonb(e) AS row FROM enrollment_record e WHERE id=103').fetchone()['row']
+        self.conn.execute("UPDATE enrollment_record SET group_id=9,is_current=true,end_date=NULL,start_date='2026-09-01',updated_at='2026-09-05' WHERE id=103")
+        new=self.conn.execute('SELECT to_jsonb(e) AS row FROM enrollment_record e WHERE id=103').fetchone()['row']
+        self.audit(6,5,'student_accidental_dropout_correction',{'status_enrollment':{'old':old,'new':new}})
+        self.conn.execute('UPDATE lms_student_write_audits SET created_values=%s WHERE id=6',
+                          (Jsonb({'status_enrollment_id':103,'dropout_audit_id':3,'undo_audit_id':4,'source_creation_audit_id':5,'repair_version':1}),))
+
+    def test_status_cleanup_preserves_new_time_but_repairs_membership_times(self):
+        self.correct_status()
+        manifest=self.manifest()
+        dispositions={r['enrollment_id']:r['disposition'] for r in manifest['rows']}
+        self.assertEqual(dispositions,{101:'proposed',102:'proposed',103:'preserve_status_correction'})
+        before=self.conn.execute('SELECT to_jsonb(e) AS row FROM enrollment_record e WHERE id=103').fetchone()['row']
+        result=repair.apply_manifest(self.conn,manifest)
+        self.assertEqual(len(result),2)
+        self.assertEqual(before,self.conn.execute('SELECT to_jsonb(e) AS row FROM enrollment_record e WHERE id=103').fetchone()['row'])
+        self.assertEqual(self.conn.execute('SELECT updated_at FROM enrollment_record WHERE id=101').fetchone()['updated_at'],datetime(2026,9,4))
+        self.assertEqual(self.conn.execute(repair.Path(__file__).with_name('coverage.sql').read_text()).fetchall(),[])
+        self.assertTrue(all(r['result']=='already_repaired' for r in repair.apply_manifest(self.conn,manifest)))
+
+    def test_correction_accepts_equivalent_fractional_timestamp_rendering(self):
+        self.correct_status()
+        self.conn.execute("UPDATE enrollment_record SET inserted_at='2026-09-01 00:00:00.123' WHERE id=103")
+        changes=self.conn.execute('SELECT changed_values FROM lms_student_write_audits WHERE id=6').fetchone()['changed_values']
+        for side in ('old','new'):
+            changes['status_enrollment'][side]['inserted_at']='2026-09-01 00:00:00.123000'
+        self.conn.execute('UPDATE lms_student_write_audits SET changed_values=%s WHERE id=6',(Jsonb(changes),))
+        row=next(r for r in self.manifest()['rows'] if r['enrollment_id']==103)
+        self.assertEqual(row['disposition'],'preserve_status_correction')
+
+    def test_mismatched_or_duplicate_correction_blocks_owner_and_coverage(self):
+        self.correct_status()
+        for sql,args in [
+            ("UPDATE enrollment_record SET updated_at='2026-09-06' WHERE id=103",()),
+            ('UPDATE lms_student_write_audits SET created_values=created_values || %s WHERE id=6',(Jsonb({'undo_audit_id':999}),)),
+            ('UPDATE lms_student_write_audits SET changed_values=%s WHERE id=6',(Jsonb({'status_enrollment':{'old':{},'new':{}}}),)),
+            ('UPDATE lms_student_write_audits SET changed_values=%s WHERE id=6',(Jsonb({'status_enrollment':{'old':5,'new':False}}),)),
+            ("INSERT INTO lms_student_write_audits SELECT 7,action,inserted_at,affected_identifiers,changed_values,created_values FROM lms_student_write_audits WHERE id=6",()),
+        ]:
+            with self.subTest(sql=sql),self.conn.transaction(force_rollback=True):
+                self.conn.execute(sql,args)
+                self.assertTrue(all(r['disposition']=='unresolved_status_correction' for r in self.manifest()['rows']))
+                coverage=self.conn.execute(repair.Path(__file__).with_name('coverage.sql').read_text()).fetchall()
+                self.assertIn('unresolved_status_correction',{r['disposition'] for r in coverage})
+
+    def test_cleanup_invalidates_pre_cleanup_manifest_and_rolls_back_batch(self):
+        self.conn.execute("DELETE FROM lms_student_write_audits WHERE id IN (1,2)")
+        manifest=self.manifest()
+        self.correct_status()
+        with self.assertRaises(ValueError):
+            with self.conn.transaction():repair.apply_manifest(self.conn,manifest)
+        self.assertEqual(self.conn.execute('SELECT updated_at FROM enrollment_record WHERE id=101').fetchone()['updated_at'],datetime(2026,9,1))
+
+    def test_corrected_status_cannot_be_forced_into_proposed_rows(self):
+        self.correct_status();manifest=self.manifest()
+        manifest['rows']=[r for r in manifest['rows'] if r['enrollment_id']==103]
+        manifest['rows'][0]['disposition']='proposed'
+        with self.assertRaises(ValueError):repair.apply_manifest(self.conn,manifest)
+        self.assertEqual(self.conn.execute('SELECT updated_at FROM enrollment_record WHERE id=103').fetchone()['updated_at'],datetime(2026,9,5))
 
     def manifest(self):
         return {"sql_sha256": repair.SQL_HASH, "rows": repair.report(self.conn, 0, 500)}
