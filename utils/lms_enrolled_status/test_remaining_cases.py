@@ -50,6 +50,16 @@ class RemainingTest(unittest.TestCase):
         self.assertEqual(self.apply(manifest)[0]['result'],'already_applied')
         self.assertEqual(self.report()['summary']['box_count'],0)
 
+    def test_second_dropout_creation_must_not_predate_undo(self):
+        _,secondrow,_,_,_=self.cycle()
+        for timestamp,eligible in [('2026-08-02 23:59:59',0),('2026-08-03 00:00:00',1)]:
+            with self.conn.transaction(force_rollback=True):
+                self.conn.execute('UPDATE enrollment_record SET inserted_at=%s WHERE id=%s',(timestamp,secondrow))
+                report=self.report()
+                self.assertEqual(report['summary']['eligible_count'],eligible)
+                if not eligible:
+                    self.assertEqual(report['summary']['dispositions']['box_excluded:second_dropout_predates_undo'],1)
+
     def test_missing_audit_is_report_only_even_when_db_dates_agree(self):
         _,aid=self.drop();self.conn.execute('DELETE FROM lms_student_write_audits WHERE id=%s',(aid,))
         manifest=self.report()

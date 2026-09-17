@@ -71,6 +71,8 @@ def classify(evidence, statuses):
     two=by_id.get(single.change(last,'dropout_status_enrollment_id','new'))
     if len(status_rows)!=2 or one is None or two is None or one['id']==two['id']:
         return reject('status_row_identity_mismatch')
+    if not two['inserted_at'] or initial.timestamp(two['inserted_at']) < initial.timestamp(undo['inserted_at']):
+        return reject('second_dropout_predates_undo')
     if one['is_current'] is not False or one['end_date']!=undo_date:
         return reject('first_dropout_not_closed_by_undo')
     periods=[]
