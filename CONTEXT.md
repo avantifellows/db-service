@@ -247,3 +247,12 @@ Student.status, all memberships, current dropout and all existing timestamps
 remain unchanged. Repeated cycles and missing-audit cases remain separate.
 Local-only report/apply and verification instructions: `BEFORE_DROPOUT.md` in
 the same directory. No production repair or timestamp cleanup is included.
+
+### Remaining singleton status cases (2026-09-17)
+
+`remaining_cases.py` adds two non-current enrolled periods for the one completely
+audited dropout→undo→dropout case, preserving both dropout rows and all prior
+records. The other Student has no matching dropout audit in the local snapshot;
+creation/membership/current-dropout dates support a possible July22–July27
+period, but DB-evidence fallback is not approved. This case is report-only and
+cannot be auto-applied. See `utils/lms_enrolled_status/REMAINING_CASES.md`.

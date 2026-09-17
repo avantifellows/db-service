@@ -99,3 +99,7 @@ accidental dropout/undo records; the first-box utility above is unchanged.
 
 The third-box utility, which adds historical enrolled periods while preserving
 current dropout records, is documented in [BEFORE_DROPOUT.md](BEFORE_DROPOUT.md).
+
+The last two cases are covered in [REMAINING_CASES.md](REMAINING_CASES.md):
+`remaining_cases.py` can repair the fully audited repeated cycle, while the
+missing-audit Student is reported for a separate evidence/policy decision.
