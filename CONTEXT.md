@@ -206,3 +206,15 @@ _Avoid_: best-effort identity matching
   invariants above are fixed.
 - The live staging deployment path may change, so release work must verify the
   currently active path rather than encode one historical workflow name.
+
+### Missing initial enrolled status utility (2026-09-17)
+
+`utils/lms_enrolled_status/repair.py` is a separate, local-only rehearsal utility
+based after the historical timestamp repair stack. It recounts the 2026–2027
+LMS-created, currently enrolled cohort with no status ER history, then proposes
+bounded insert-only repairs from creation audits and original Batch/Grade dates.
+School mismatch is not a blocker; all existing memberships and audits stay
+unchanged. Students with existing status history, including the 152 accidental
+undo cases, are out of scope. Fresh local production snapshot: 36,817 eligible,
+unchanged from the chart. No production data repair has been run. See
+`utils/lms_enrolled_status/README.md` for the report/apply safeguards and commands.
