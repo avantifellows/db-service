@@ -183,6 +183,7 @@ defmodule DbserviceWeb.Router do
     post("/resources/problems/batch", ResourceController, :create_problems_batch)
     patch("/resources/problems/batch", ResourceController, :update_problems_batch)
     get("/resource/subtypes/:type", ResourceController, :get_subtypes)
+    get("/resources/test-sequences", ResourceController, :test_sequences)
     get("/problems/search", ResourceController, :search_problems)
     post("/problems/similar-search", ResourceController, :similar_search)
 

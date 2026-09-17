@@ -72,6 +72,65 @@ defmodule DbserviceWeb.ResourceController do
     json(conn, subtypes)
   end
 
+  swagger_path :test_sequences do
+    get("/api/resources/test-sequences")
+    summary("List the test-code sequence numbers already in use")
+
+    description(
+      "Test codes are `<program>-<type_code>-<sequence>-<year>`, e.g. `JN-P-1-26`. " <>
+        "Given a program, type code and year, returns every sequence number already " <>
+        "used by an existing test, sorted ascending. The caller derives the free " <>
+        "numbers from this list, so gaps in the middle are visible rather than only " <>
+        "the numbers after the current maximum. Matching is case sensitive."
+    )
+
+    parameters do
+      program(:query, :string, "Program code, e.g. 'JN'", required: true)
+      type_code(:query, :string, "Test type code, e.g. 'P' or 'MoT'", required: true)
+      year(:query, :string, "Two-digit year, e.g. '26'", required: true)
+    end
+
+    response(200, "OK")
+    response(400, "Bad Request - missing or malformed parameter")
+  end
+
+  def test_sequences(conn, params) do
+    with {:ok, program} <- fetch_code_part(params, "program"),
+         {:ok, type_code} <- fetch_code_part(params, "type_code"),
+         {:ok, year} <- fetch_code_year(params) do
+      json(conn, %{used_sequences: Resources.list_used_test_sequences(program, type_code, year)})
+    else
+      {:error, message} ->
+        conn
+        |> put_status(:bad_request)
+        |> json(%{error: message})
+    end
+  end
+
+  # Restricting the code parts to letters and digits keeps LIKE wildcards (`%`,
+  # `_`) out of the pattern built in `Resources.list_used_test_sequences/3`. The
+  # allowed program and type codes are not hardcoded here, so a newly added code
+  # works without a change to this endpoint.
+  defp fetch_code_part(params, key) do
+    value = params[key]
+
+    if is_binary(value) and Regex.match?(~r/\A[A-Za-z0-9]{1,10}\z/, value) do
+      {:ok, value}
+    else
+      {:error, "#{key} is required and must be 1-10 letters or digits"}
+    end
+  end
+
+  defp fetch_code_year(params) do
+    value = params["year"]
+
+    if is_binary(value) and Regex.match?(~r/\A[0-9]{2}\z/, value) do
+      {:ok, value}
+    else
+      {:error, ~s(year is required and must be a two-digit string such as "26")}
+    end
+  end
+
   def create(conn, params) do
     type = params["type"]
     type_params = params["type_params"] || %{}
