@@ -92,3 +92,7 @@ Complete comparisons preserved every existing Student, enrollment, and audit
 row. Apply commands totaled 26.09 seconds; reports, applies, and reruns took
 4m57s, followed by 64 seconds of full-table verification. No production repair
 was performed. See the private QA record for snapshot-specific evidence.
+
+The separate second-box utility is documented in
+[ACCIDENTAL_DROPOUT.md](ACCIDENTAL_DROPOUT.md). It corrects the 152 confirmed
+accidental dropout/undo records; the first-box utility above is unchanged.

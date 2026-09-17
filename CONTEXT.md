@@ -224,3 +224,16 @@ replayed without duplicates; zero remaining. Existing Student/enrollment/audit
 rows match the untouched snapshot. Apply commands totaled 26.09s; full loop
 297.25s plus full-table verification 63.88s. No utility changes or production
 access were needed.
+
+### Accidental dropout/undo correction (2026-09-17)
+
+The next chart box has 152 currently enrolled LMS-created Students, each with
+one ended dropout status row and one linked dropout/undo cycle. The cohort owner
+confirmed these were mistakes and should be continuously enrolled. Separate
+`utils/lms_enrolled_status/cancel_accidental_dropout.py` corrects that row in
+place to current enrolled from the original enrollment date, preserves the row
+ID/inserted_at and old audit logs, and records before/after fields in a new repair
+audit. School and other membership information remain untouched. This remains
+local-only; production repair and coordination with the older historical
+mutation timestamp utility are deferred. Operator guide:
+`utils/lms_enrolled_status/ACCIDENTAL_DROPOUT.md`.
