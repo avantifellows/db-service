@@ -532,7 +532,20 @@ defmodule Dbservice.LmsStudentIngestion do
       |> Multi.run(:enrollments, fn _repo, %{user: user} ->
         StudentEnrollment.create_enrollments(user, enrollment_params)
       end)
-      |> Multi.insert(:audit, fn %{user: user, student: student} ->
+      |> Multi.run(:status_enrollment, fn _repo, %{user: user} ->
+        Dbservice.EnrollmentRecords.create_status_enrollment(
+          user.id,
+          "enrolled",
+          params["start_date"],
+          params["academic_year"],
+          NaiveDateTime.utc_now() |> NaiveDateTime.truncate(:second)
+        )
+      end)
+      |> Multi.insert(:audit, fn %{
+                                   user: user,
+                                   student: student,
+                                   status_enrollment: status_enrollment
+                                 } ->
         LmsStudentWriteAudit.changeset(%LmsStudentWriteAudit{}, %{
           action: @action,
           actor_user_id: get_in(params, ["actor", "user_id"]),
@@ -552,6 +565,7 @@ defmodule Dbservice.LmsStudentIngestion do
             |> Map.merge(row["student"])
             |> Map.merge(audit_identifiers_for_row(row, user, student))
             |> Map.merge(%{
+              "status_enrollment_id" => status_enrollment.id,
               "school_id" => school.id,
               "grade_id" => grade.id,
               "batch_id" => batch.batch_id,

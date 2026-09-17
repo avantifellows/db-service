@@ -3,15 +3,27 @@
 This file defines the canonical language used by db-service. It includes the
 Holistic Mentorship persistence and machine-contract terms approved for v1.
 
-## Dropout Enrollment Timestamps
+## Student Status History and Dropout Timestamps
 
 last_updated: 2026-09-16
 
-Dropout and undo use one second-precision UTC timestamp, captured after the
-Student lock and validation, for every changed enrollment and operation audit.
-Existing `inserted_at` values and membership/status behavior stay unchanged.
-Historical timestamp repair is a separate follow-up; this change does not repair
-existing data.
+- LMS Add Student and Bulk Upload create a current `enrolled` status enrollment
+  atomically with the Student, memberships, and creation audit.
+- Full dropout ends the current status period and memberships, then creates a
+  dropout period. Undo restores the same membership rows, ends the dropout period,
+  and creates a new period matching the audited prior Student status (normally
+  `enrolled`). Earlier status periods remain ended. The new period starts on the
+  undo date; audits record its ID and the old status IDs that remain ended.
+- Program-only dropout/undo leaves overall status history unchanged while another
+  active Batch remains. Repeated undo, an extra current status row, or a missing
+  configured prior status causes rejection; changes and audits remain atomic.
+- Dropout/undo uses one second-precision UTC timestamp, captured after the Student
+  lock and validation, for changed enrollments and the operation audit. Existing
+  `inserted_at` values stay unchanged.
+- Historical timestamp repair is a separate follow-up; this change does not repair
+  existing data.
+- Existing-Student status backfill and unrelated import/re-enrollment APIs remain
+  out of scope. No LMS code, request contract, or database schema change is needed.
 
 ## Revised NVS Student Writes
 

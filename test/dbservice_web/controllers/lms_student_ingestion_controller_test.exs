@@ -17,6 +17,13 @@ defmodule DbserviceWeb.LmsStudentIngestionControllerTest do
   alias Dbservice.Users.User
   alias Dbservice.Users.Student
 
+  setup do
+    Repo.get_by(Dbservice.Statuses.Status, title: :enrolled) ||
+      Repo.insert!(%Dbservice.Statuses.Status{title: :enrolled})
+
+    :ok
+  end
+
   describe "POST /api/lms/students/bulk-create-with-enrollments" do
     test "rejects a registration-mode mismatch before validating the bulk payload", %{conn: conn} do
       before_students = Repo.aggregate(Student, :count, :id)
@@ -181,7 +188,18 @@ defmodule DbserviceWeb.LmsStudentIngestionControllerTest do
           :id
         )
 
-      assert enrollment_count == 4
+      assert enrollment_count == 5
+
+      status_row =
+        Repo.one!(
+          from(e in EnrollmentRecord,
+            where: e.user_id == ^student.user_id and e.group_type == "status" and e.is_current
+          )
+        )
+
+      assert status_row.group_id == Repo.get_by!(Dbservice.Statuses.Status, title: :enrolled).id
+      assert status_row.start_date == ~D[2026-07-01]
+      assert student.status == "enrolled"
       assert group_user_count == 4
 
       audit =
@@ -192,6 +210,7 @@ defmodule DbserviceWeb.LmsStudentIngestionControllerTest do
           )
         )
 
+      assert audit.created_values["status_enrollment_id"] == status_row.id
       assert audit.created_values["phone"] == "9876543210"
       assert audit.created_values["student_id"] == "9876543210"
     end
