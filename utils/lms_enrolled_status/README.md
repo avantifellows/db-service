@@ -103,3 +103,7 @@ current dropout records, is documented in [BEFORE_DROPOUT.md](BEFORE_DROPOUT.md)
 The last two cases are covered in [REMAINING_CASES.md](REMAINING_CASES.md):
 `remaining_cases.py` can repair the fully audited repeated cycle, while the
 missing-audit Student is reported for a separate evidence/policy decision.
+
+The user subsequently approved DB evidence for the one missing-audit Student.
+The narrowly restricted utility is documented in
+[APPROVED_DB_EXCEPTION.md](APPROVED_DB_EXCEPTION.md); no generic audit bypass exists.

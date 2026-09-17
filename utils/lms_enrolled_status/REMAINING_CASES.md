@@ -44,9 +44,11 @@ any intermediate event is missing.
 The report contains this evidence under `manual_review`, with
 `automatic_repair=false`. A proposed exception would add an ended enrolled
 period from July 22 to July 27 while preserving the current dropout, recording
-DB evidence explicitly as its source. Accepting that fallback departs from the
-agreed audit-derived rule and needs a separate decision. No repair has been
-applied to this Student, even locally; no synthetic dropout audit is created.
+DB evidence explicitly as its source. The user subsequently approved this fallback for this Student only. The
+separate, identity-restricted `approved_db_exception.py` has now passed local
+apply/rerun tests; see [APPROVED_DB_EXCEPTION.md](APPROVED_DB_EXCEPTION.md).
+No synthetic dropout audit is created. This report recognizes its completed
+repair audit; all other missing-audit cases remain report-only.
 
 ## Local commands
 

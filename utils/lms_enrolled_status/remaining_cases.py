@@ -30,6 +30,9 @@ def read_evidence(conn, ids=None):
 
 def classify(evidence, statuses):
     audits, student, rows = (evidence[k] for k in ('audits','student','enrollments'))
+    if student.get('id')==500583 and student.get('user_id')==511050 and any(
+        a['action']=='student_approved_db_evidence_enrollment_backfill' for a in audits):
+        return 'approved_exception_repaired',None
     if any(a['action']==ACTION for a in audits):
         return 'previously_repaired',None
     if student.get('status')!='dropout':

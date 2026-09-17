@@ -256,3 +256,12 @@ records. The other Student has no matching dropout audit in the local snapshot;
 creation/membership/current-dropout dates support a possible July22–July27
 period, but DB-evidence fallback is not approved. This case is report-only and
 cannot be auto-applied. See `utils/lms_enrolled_status/REMAINING_CASES.md`.
+
+September17 follow-up: user explicitly approved DB evidence for the singleton
+Student20272025066071. `approved_db_exception.py` is pinned to that exact identity,
+source audit and enrollment IDs/dates; adds only the July22→July27 ended enrolled
+period plus a repair audit declaring the fallback and null dropout_audit_id.
+Local apply/rerun and all-table preservation checks passed. The remaining-cases
+report recognizes the completed exception.41 utility tests pass; no production
+access or generic missing-audit bypass. All five chart groups now have utilities
+and have passed separate local rehearsals.
