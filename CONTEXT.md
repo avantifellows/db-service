@@ -20,10 +20,17 @@ last_updated: 2026-09-16
 - Dropout/undo uses one second-precision UTC timestamp, captured after the Student
   lock and validation, for changed enrollments and the operation audit. Existing
   `inserted_at` values stay unchanged.
-- Historical timestamp repair is a separate follow-up; this change does not repair
-  existing data.
+- [Historical timestamp repair](utils/dropout_timestamps/README.md) uses exact audit
+  evidence, preserves valid later timestamps, and leaves incomplete or conflicting
+  history unresolved. It changes only `updated_at` after separate approval of a
+  fresh bounded manifest. No production repair has run; old inventory counts are
+  stale and must not be used for apply.
 - Existing-Student status backfill and unrelated import/re-enrollment APIs remain
   out of scope. No LMS code, request contract, or database schema change is needed.
+
+Validation at `c76c6090`: 826 service tests, 24 repair tests, and configured checks
+passed. Local Brave QA covered Add/Bulk, full and Program-only dropout/undo;
+staging Add/cancel/two full cycles preserved history and an untouched control.
 
 ## Revised NVS Student Writes
 
@@ -199,3 +206,73 @@ _Avoid_: best-effort identity matching
   invariants above are fixed.
 - The live staging deployment path may change, so release work must verify the
   currently active path rather than encode one historical workflow name.
+
+### Missing initial enrolled status utility (2026-09-17)
+
+`utils/lms_enrolled_status/repair.py` is a separate, local-only rehearsal utility
+based after the historical timestamp repair stack. It recounts the 2026–2027
+LMS-created, currently enrolled cohort with no status ER history, then proposes
+bounded insert-only repairs from creation audits and original Batch/Grade dates.
+School mismatch is not a blocker; all existing memberships and audits stay
+unchanged. Students with existing status history, including the 152 accidental
+undo cases, are out of scope. Fresh local production snapshot: 36,817 eligible,
+unchanged from the chart. No production data repair has been run. See
+`utils/lms_enrolled_status/README.md` for the report/apply safeguards and commands.
+
+Full-cohort local follow-up: all 36,817 repaired in 74 batches, then every batch
+replayed without duplicates; zero remaining. Existing Student/enrollment/audit
+rows match the untouched snapshot. Apply commands totaled 26.09s; full loop
+297.25s plus full-table verification 63.88s. No utility changes or production
+access were needed.
+
+### Accidental dropout/undo correction (2026-09-17)
+
+The next chart box has 152 currently enrolled LMS-created Students, each with
+one ended dropout status row and one linked dropout/undo cycle. The cohort owner
+confirmed these were mistakes and should be continuously enrolled. Separate
+`utils/lms_enrolled_status/cancel_accidental_dropout.py` corrects that row in
+place to current enrolled from the original enrollment date, preserves the row
+ID/inserted_at and old audit logs, and records before/after fields in a new repair
+audit. School and other membership information remain untouched. This remains
+local-only; production repair and coordination with the older historical
+mutation timestamp utility are deferred. Operator guide:
+`utils/lms_enrolled_status/ACCIDENTAL_DROPOUT.md`.
+
+### Missing enrolled history before one dropout (2026-09-17)
+
+`utils/lms_enrolled_status/backfill_before_dropout.py` handles the284 third-box
+Students with one audited dropout and no undo. It adds one non-current enrolled
+period from original enrollment date to dropout date plus a linked repair audit.
+Student.status, all memberships, current dropout and all existing timestamps
+remain unchanged. Repeated cycles and missing-audit cases remain separate.
+Local-only report/apply and verification instructions: `BEFORE_DROPOUT.md` in
+the same directory. No production repair or timestamp cleanup is included.
+
+### Remaining singleton status cases (2026-09-17)
+
+`remaining_cases.py` adds two non-current enrolled periods for the one completely
+audited dropout→undo→dropout case, preserving both dropout rows and all prior
+records. The other Student has no matching dropout audit in the local snapshot;
+creation/membership/current-dropout dates support a possible July22–July27
+period, but DB-evidence fallback is not approved. This case is report-only and
+cannot be auto-applied. See `utils/lms_enrolled_status/REMAINING_CASES.md`.
+
+September17 follow-up: user explicitly approved DB evidence for the singleton
+Student20272025066071. `approved_db_exception.py` is pinned to that exact identity,
+source audit and enrollment IDs/dates; adds only the July22→July27 ended enrolled
+period plus a repair audit declaring the fallback and null dropout_audit_id.
+Local apply/rerun and all-table preservation checks passed. The remaining-cases
+report recognizes the completed exception.41 utility tests pass; no production
+access or generic missing-audit bypass. All five chart groups now have utilities
+and have passed separate local rehearsals.
+
+### Coordinated status cleanup and timestamp repair (2026-09-17)
+
+All five chart utilities are included in PR737's historical-utilities layer.
+The timestamp report/coverage now validate accidental-status correction audits:
+matched corrected status rows are preserve_status_correction, while original
+membership mutation timestamps can still be repaired. Invalid/duplicate/stale
+corrections are unresolved_status_correction and block related targets. New
+backfill rows are not old audit targets. Run status cleanup first, then generate
+fresh timestamp manifests; never reuse manifests across state changes. New
+status utilities remain local-only. See utils/lms_enrolled_status/WORKFLOW.md.
