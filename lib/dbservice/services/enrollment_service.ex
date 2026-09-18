@@ -4,7 +4,8 @@ defmodule Dbservice.Services.EnrollmentService do
   This module contains reusable functions for creating and updating group user enrollments
   across different parts of the application.
 
-  Ensures that users can only be enrolled in one school, grade, or auth_group at a time.
+  Ensures that users can only be enrolled in one school, grade, auth_group or
+  centre at a time.
   """
 
   import Ecto.Query
@@ -13,14 +14,19 @@ defmodule Dbservice.Services.EnrollmentService do
   alias Dbservice.AuthGroups
   alias Dbservice.Schools
   alias Dbservice.Batches
+  alias Dbservice.Centres
   alias Dbservice.Grades
   alias Dbservice.EnrollmentRecords
   alias Dbservice.Groups.GroupUser
   alias Dbservice.EnrollmentRecords.EnrollmentRecord
   alias Dbservice.Repo
 
-  # Group types that should be exclusive (only one active at a time)
-  @exclusive_group_types ["school", "grade", "auth_group"]
+  # Group types that should be exclusive (only one active at a time).
+  # `centre` is exclusive by product rule (confirmed 2026-09-17) and matches the
+  # data: the 2026-09-10 production check behind `centre_students` found zero
+  # students matching more than one active centre. `batch` stays off this list -
+  # a student legitimately holds batches across programs.
+  @exclusive_group_types ["school", "grade", "auth_group", "centre"]
 
   @doc """
   Creates or updates a group user enrollment based on the enrollment type.
@@ -48,6 +54,13 @@ defmodule Dbservice.Services.EnrollmentService do
 
   def process_enrollment(%{"enrollment_type" => "grade"} = data) do
     case get_grade_group_id(data["grade_id"]) do
+      {:error, error_msg} -> {:error, error_msg}
+      group_id -> handle_group_user_enrollment(Map.put(data, "group_id", group_id))
+    end
+  end
+
+  def process_enrollment(%{"enrollment_type" => "centre"} = data) do
+    case get_centre_group_id(data["centre_id"]) do
       {:error, error_msg} -> {:error, error_msg}
       group_id -> handle_group_user_enrollment(Map.put(data, "group_id", group_id))
     end
@@ -211,6 +224,9 @@ defmodule Dbservice.Services.EnrollmentService do
       "auth_group" ->
         "Student is already enrolled in a different auth_group. Use 'update_incorrect_auth_group_to_correct_auth_group' import type to change auth groups."
 
+      "centre" ->
+        "Student is already enrolled in a different centre. A student belongs to one centre at a time; end the existing centre enrollment first."
+
       _ ->
         "Student is already enrolled in a different #{group_type}. Use the appropriate update import type."
     end
@@ -330,6 +346,26 @@ defmodule Dbservice.Services.EnrollmentService do
       grade ->
         case Groups.get_group_by_child_id_and_type(grade.id, "grade") do
           nil -> {:error, "Grade group not found with id: #{grade_id}"}
+          group -> group.id
+        end
+    end
+  end
+
+  @doc """
+  Gets the group ID for a centre by centre ID.
+
+  Centres have no business code (unlike school_code / batch_id), so they are
+  named by `centres.id` - the same key `centre_batch`, `centre_positions` and
+  `centre_exam_tracks` already use.
+  """
+  def get_centre_group_id(centre_id) do
+    case Centres.get_centre(centre_id) do
+      nil ->
+        {:error, "Centre not found with id: #{centre_id}"}
+
+      centre ->
+        case Centres.get_centre_group(centre.id) do
+          nil -> {:error, "Centre group not found with id: #{centre_id}"}
           group -> group.id
         end
     end
