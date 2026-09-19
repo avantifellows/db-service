@@ -6,6 +6,8 @@ defmodule DbserviceWeb.Router do
   import Phoenix.LiveView.Router
   import Plug.Conn
 
+  import DbserviceWeb.UserAuth, only: [fetch_current_user: 2, require_authenticated_user: 2]
+
   pipeline :api do
     plug(:accepts, ["json"])
   end
@@ -17,26 +19,49 @@ defmodule DbserviceWeb.Router do
     plug(:put_root_layout, {DbserviceWeb.Layouts, :root})
     plug(:protect_from_forgery)
     plug(:put_secure_browser_headers)
+    plug(:fetch_current_user)
+  end
+
+  pipeline :require_sso do
+    plug(:require_authenticated_user)
   end
 
   pipeline :dashboard_auth do
     plug(:admin_basic_auth)
   end
 
+  # Google SSO. `/signin` is the only page reachable while signed out; note that
+  # "/auth/logout" is declared before "/auth/:provider" so it is not read as a
+  # provider name.
   scope "/", DbserviceWeb do
     pipe_through(:browser)
 
-    live("/imports", ImportLive.Index)
-    live("/imports/new", ImportLive.New)
-    live("/imports/:id", ImportLive.Show)
+    get("/signin", AuthController, :new)
+    get("/auth/logout", AuthController, :logout)
+    get("/auth/:provider", AuthController, :request)
+    get("/auth/:provider/callback", AuthController, :callback)
+  end
+
+  scope "/", DbserviceWeb do
+    pipe_through([:browser, :require_sso])
+
+    # `live_session` re-checks the session on every live navigation, so the
+    # on_mount hook cannot be skipped by patching between imports pages.
+    live_session :imports, on_mount: {DbserviceWeb.UserAuth, :ensure_authenticated} do
+      live("/imports", ImportLive.Index)
+      live("/imports/new", ImportLive.New)
+      live("/imports/:id", ImportLive.Show)
+    end
 
     # Add route for CSV template downloads
     get("/templates/:type/download", TemplateController, :download_csv_template)
   end
 
-  # Protected endpoints (basic auth) for dropout, re-enrollment, auth group, product, program, batch imports
+  # Destructive import types. These sit behind Google SSO *and* the shared
+  # dashboard password: SSO records who ran the import, the password limits who
+  # can run these particular types until per-person permissions land.
   scope "/", DbserviceWeb do
-    pipe_through([:browser, :dashboard_auth])
+    pipe_through([:browser, :require_sso, :dashboard_auth])
 
     post("/imports/dropout", ImportController, :create_dropout_import)
     post("/imports/re_enrollment", ImportController, :create_re_enrollment_import)

@@ -44,6 +44,8 @@ locals {
     { name = "GOOGLE_CREDENTIALS_JSON", value = var.google_credentials_json },
     { name = "DASHBOARD_USER", value = var.dashboard_user },
     { name = "DASHBOARD_PASS", value = var.dashboard_pass },
+    { name = "GOOGLE_OAUTH_CLIENT_ID", value = var.google_oauth_client_id },
+    { name = "GOOGLE_OAUTH_CLIENT_SECRET", value = var.google_oauth_client_secret },
   ]
 }
 

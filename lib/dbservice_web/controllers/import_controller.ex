@@ -1,15 +1,6 @@
 defmodule DbserviceWeb.ImportController do
   use DbserviceWeb, :controller
   alias Dbservice.DataImport
-  import Plug.Conn
-
-  def admin_auth(conn, _params) do
-    # This endpoint requires basic auth via the dashboard_auth pipeline
-    # If auth is successful, set session variable and redirect back to imports/new
-    conn
-    |> put_session("admin_authenticated", true)
-    |> redirect(to: ~p"/imports/new")
-  end
 
   def create_dropout_import(conn, params) do
     # Extract import params from nested "import" key
@@ -18,7 +9,7 @@ defmodule DbserviceWeb.ImportController do
       |> Map.get("import", %{})
       |> Map.put("type", "dropout")
 
-    case DataImport.start_import(import_params) do
+    case DataImport.start_import(import_params, actor(conn)) do
       {:ok, _import} ->
         conn
         |> put_flash(
@@ -41,7 +32,7 @@ defmodule DbserviceWeb.ImportController do
       |> Map.get("import", %{})
       |> Map.put("type", "student_enrollment")
 
-    case DataImport.start_import(import_params) do
+    case DataImport.start_import(import_params, actor(conn)) do
       {:ok, _import} ->
         conn
         |> put_flash(
@@ -64,7 +55,7 @@ defmodule DbserviceWeb.ImportController do
       |> Map.get("import", %{})
       |> Map.put("type", "re_enrollment")
 
-    case DataImport.start_import(import_params) do
+    case DataImport.start_import(import_params, actor(conn)) do
       {:ok, _import} ->
         conn
         |> put_flash(
@@ -86,7 +77,7 @@ defmodule DbserviceWeb.ImportController do
       |> Map.get("import", %{})
       |> Map.put("type", "auth_group_addition")
 
-    case DataImport.start_import(import_params) do
+    case DataImport.start_import(import_params, actor(conn)) do
       {:ok, _import} ->
         conn
         |> put_flash(
@@ -108,7 +99,7 @@ defmodule DbserviceWeb.ImportController do
       |> Map.get("import", %{})
       |> Map.put("type", "product_addition")
 
-    case DataImport.start_import(import_params) do
+    case DataImport.start_import(import_params, actor(conn)) do
       {:ok, _import} ->
         conn
         |> put_flash(
@@ -130,7 +121,7 @@ defmodule DbserviceWeb.ImportController do
       |> Map.get("import", %{})
       |> Map.put("type", "program_addition")
 
-    case DataImport.start_import(import_params) do
+    case DataImport.start_import(import_params, actor(conn)) do
       {:ok, _import} ->
         conn
         |> put_flash(
@@ -152,7 +143,7 @@ defmodule DbserviceWeb.ImportController do
       |> Map.get("import", %{})
       |> Map.put("type", "batch_addition")
 
-    case DataImport.start_import(import_params) do
+    case DataImport.start_import(import_params, actor(conn)) do
       {:ok, _import} ->
         conn
         |> put_flash(
@@ -174,7 +165,7 @@ defmodule DbserviceWeb.ImportController do
       |> Map.get("import", %{})
       |> Map.put("type", "batch_id_correction")
 
-    case DataImport.start_import(import_params) do
+    case DataImport.start_import(import_params, actor(conn)) do
       {:ok, _import} ->
         conn
         |> put_flash(
@@ -196,7 +187,7 @@ defmodule DbserviceWeb.ImportController do
       |> Map.get("import", %{})
       |> Map.put("type", "school_deletion")
 
-    case DataImport.start_import(import_params) do
+    case DataImport.start_import(import_params, actor(conn)) do
       {:ok, _import} ->
         conn
         |> put_flash(
@@ -218,7 +209,7 @@ defmodule DbserviceWeb.ImportController do
       |> Map.get("import", %{})
       |> Map.put("type", "school_addition")
 
-    case DataImport.start_import(import_params) do
+    case DataImport.start_import(import_params, actor(conn)) do
       {:ok, _import} ->
         conn
         |> put_flash(
@@ -232,5 +223,14 @@ defmodule DbserviceWeb.ImportController do
         |> put_flash(:error, "Import failed: #{reason}")
         |> redirect(to: ~p"/imports/new")
     end
+  end
+
+  # Identity comes from the SSO session on the connection, never from the
+  # submitted form, so the recorded importer cannot be forged by the client.
+  defp actor(conn) do
+    %{
+      email: conn.assigns[:current_user_email],
+      name: conn.assigns[:current_user_name]
+    }
   end
 end

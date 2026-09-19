@@ -52,6 +52,23 @@ defmodule Dbservice.DataImport do
   def format_type_name(type), do: String.capitalize(type)
 
   @doc """
+  Human-readable label for whoever started an import.
+
+  Imports created before the imports UI required sign-in have no attribution
+  and are labelled as such rather than shown blank, so an empty cell is never
+  mistaken for a display bug.
+  """
+  def format_importer(%Import{initiated_by_email: nil}), do: "Unknown (before sign-in)"
+  def format_importer(%Import{initiated_by_email: ""}), do: "Unknown (before sign-in)"
+
+  def format_importer(%Import{initiated_by_email: email, initiated_by_name: name})
+      when is_binary(name) and name != "" and name != email do
+    "#{name} (#{email})"
+  end
+
+  def format_importer(%Import{initiated_by_email: email}), do: email
+
+  @doc """
   Returns the list of Import.
   ## Examples
       iex> list_imports()
@@ -146,27 +163,40 @@ defmodule Dbservice.DataImport do
     |> Repo.update()
   end
 
-  def start_import(params) when not is_map_key(params, "sheet_url") do
+  @doc """
+  Queues an import from a Google Sheet URL.
+
+  `actor` identifies the signed-in person who triggered the import and is
+  taken from the server-side session, never from the submitted form, so the
+  attribution recorded on the import cannot be spoofed by the client. It
+  defaults to empty for callers outside the web layer (tests, console).
+  """
+  def start_import(params, actor \\ %{})
+
+  def start_import(params, _actor) when not is_map_key(params, "sheet_url") do
     {:error, "URL is required for starting an import"}
   end
 
-  def start_import(%{"sheet_url" => url}) when url == "" do
+  def start_import(%{"sheet_url" => url}, _actor) when url == "" do
     {:error, "URL cannot be empty"}
   end
 
-  def start_import(params) when not is_map_key(params, "type") do
+  def start_import(params, _actor) when not is_map_key(params, "type") do
     {:error, "Import type is required"}
   end
 
-  def start_import(params) when not is_map_key(params, "start_row") do
+  def start_import(params, _actor) when not is_map_key(params, "start_row") do
     {:error, "Start row is required"}
   end
 
-  def start_import(%{
-        "sheet_url" => url,
-        "type" => type,
-        "start_row" => start_row
-      })
+  def start_import(
+        %{
+          "sheet_url" => url,
+          "type" => type,
+          "start_row" => start_row
+        },
+        actor
+      )
       when url != "" do
     start_row = String.to_integer(start_row)
 
@@ -182,7 +212,9 @@ defmodule Dbservice.DataImport do
                 type: type,
                 total_rows: 0,
                 processed_rows: 0,
-                start_row: start_row
+                start_row: start_row,
+                initiated_by_email: actor[:email],
+                initiated_by_name: actor[:name]
               })
 
             %{id: import_record.id}

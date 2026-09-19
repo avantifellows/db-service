@@ -73,6 +73,8 @@ defmodule Dbservice.MixProject do
       {:hackney, "~> 1.24.1"},
       {:google_api_sheets, "~> 0.35.0"},
       {:goth, "~> 1.4.5"},
+      {:ueberauth, "~> 0.10"},
+      {:ueberauth_google, "~> 0.12"},
       {:phoenix_html, "~> 4.1"},
       {:ecto_psql_extras, "~> 0.6"},
       {:ex_aws, "~> 2.5"},

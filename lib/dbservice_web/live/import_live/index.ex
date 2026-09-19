@@ -153,14 +153,24 @@ defmodule DbserviceWeb.ImportLive.Index do
               DATA IMPORTS
             </h1>
 
-            <.link navigate={~p"/imports/new"}
-                class="w-full sm:w-auto group relative flex items-center justify-center px-4 sm:px-6 py-2 sm:py-3 overflow-hidden rounded-xl bg-gradient-to-r from-indigo-600 to-violet-600 text-white font-medium transition-all duration-300 hover:scale-105 hover:shadow-lg">
-              <span class="absolute inset-0 bg-white/10 opacity-0 transition-opacity group-hover:opacity-100"></span>
-              <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4" />
-              </svg>
-              New Import
-            </.link>
+            <div class="w-full sm:w-auto flex flex-col sm:flex-row items-center gap-3 sm:gap-4">
+              <div class="flex items-center gap-2 text-sm text-gray-600 dark:text-gray-300">
+                <span class="hidden sm:inline">Signed in as</span>
+                <span class="font-medium text-gray-900 dark:text-white"><%= @current_user_email %></span>
+                <a href={~p"/auth/logout"} class="text-indigo-600 hover:text-indigo-800 dark:text-indigo-400 dark:hover:text-indigo-300 underline">
+                  Sign out
+                </a>
+              </div>
+
+              <.link navigate={~p"/imports/new"}
+                  class="w-full sm:w-auto group relative flex items-center justify-center px-4 sm:px-6 py-2 sm:py-3 overflow-hidden rounded-xl bg-gradient-to-r from-indigo-600 to-violet-600 text-white font-medium transition-all duration-300 hover:scale-105 hover:shadow-lg">
+                <span class="absolute inset-0 bg-white/10 opacity-0 transition-opacity group-hover:opacity-100"></span>
+                <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4" />
+                </svg>
+                New Import
+              </.link>
+            </div>
           </div>
         </div>
 
@@ -307,7 +317,8 @@ defmodule DbserviceWeb.ImportLive.Index do
 
                     <div class="flex justify-between items-center">
                       <div class="text-xs text-gray-500 dark:text-gray-400">
-                        <%= format_date(import.inserted_at) %> at <%= format_time(import.inserted_at) %>
+                        <div><%= format_date(import.inserted_at) %> at <%= format_time(import.inserted_at) %></div>
+                        <div class="mt-0.5">by <%= DataImport.format_importer(import) %></div>
                       </div>
                       <div class="flex space-x-2">
                         <.link navigate={~p"/imports/#{import.id}"}
@@ -348,13 +359,14 @@ defmodule DbserviceWeb.ImportLive.Index do
                 <th scope="col" class="px-4 sm:px-6 py-3 sm:py-4 text-left text-xs font-semibold uppercase tracking-wider text-gray-500 dark:text-gray-400">Status</th>
                   <th scope="col" class="px-8 sm:px-12 py-3 sm:py-4 text-left text-xs font-semibold uppercase tracking-wider text-gray-500 dark:text-gray-400">Progress</th>
                   <th scope="col" class="px-4 sm:px-6 py-3 sm:py-4 text-left text-xs font-semibold uppercase tracking-wider text-gray-500 dark:text-gray-400">Created</th>
+                  <th scope="col" class="px-4 sm:px-6 py-3 sm:py-4 text-left text-xs font-semibold uppercase tracking-wider text-gray-500 dark:text-gray-400">Imported by</th>
                   <th scope="col" class="px-4 sm:px-6 py-3 sm:py-4 text-left text-xs font-semibold uppercase tracking-wider text-gray-500 dark:text-gray-400">Actions</th>
                 </tr>
               </thead>
               <tbody class="divide-y divide-gray-200 dark:divide-gray-700">
                 <%= if Enum.empty?(@imports) do %>
                   <tr>
-                    <td colspan="5" class="px-4 sm:px-6 py-8 sm:py-12 text-center text-gray-500 dark:text-gray-400">
+                    <td colspan="6" class="px-4 sm:px-6 py-8 sm:py-12 text-center text-gray-500 dark:text-gray-400">
                       <div class="flex flex-col items-center">
                         <svg xmlns="http://www.w3.org/2000/svg" class="h-10 sm:h-12 w-10 sm:w-12 mb-4 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                           <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20 13V6a2 2 0 00-2-2H6a2 2 0 00-2 2v7m16 0v5a2 2 0 01-2 2H6a2 2 0 01-2-2v-5m16 0h-2.586a1 1 0 00-.707.293l-2.414 2.414a1 1 0 01-.707.293h-3.172a1 1 0 01-.707-.293l-2.414-2.414A1 1 0 006.586 13H4" />
@@ -394,6 +406,9 @@ defmodule DbserviceWeb.ImportLive.Index do
                           <span><%= format_date(import.inserted_at) %></span>
                           <span class="text-xs text-gray-500 dark:text-gray-400"><%= format_time(import.inserted_at) %></span>
                         </div>
+                      </td>
+                      <td class="px-4 sm:px-6 py-3 sm:py-4 whitespace-nowrap text-sm text-gray-700 dark:text-gray-300">
+                        <%= DataImport.format_importer(import) %>
                       </td>
                       <td class="px-4 sm:px-6 py-3 sm:py-4 whitespace-nowrap text-sm">
                         <div class="flex space-x-2">

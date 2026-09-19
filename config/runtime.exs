@@ -42,3 +42,21 @@ if config_env() == :prod do
     config :dbservice, DbserviceWeb.Endpoint, server: true
   end
 end
+
+# Google SSO for the /imports admin UI — configured in every environment so
+# local development uses the same code path as production.
+#
+# `allowed_domain` is enforced server-side on the profile Google returns, so a
+# personal Gmail account can't reach the imports UI even if it completes the
+# OAuth flow.
+config :ueberauth, Ueberauth.Strategy.Google.OAuth,
+  client_id: env!("GOOGLE_OAUTH_CLIENT_ID", :string, nil),
+  client_secret: env!("GOOGLE_OAUTH_CLIENT_SECRET", :string, nil)
+
+config :dbservice, :imports_auth,
+  allowed_domain: env!("IMPORTS_ALLOWED_DOMAIN", :string, "avantifellows.org"),
+  # Escape hatch for local development and tests only. This is additionally
+  # gated on the compile-time Mix environment in DbserviceWeb.UserAuth, so
+  # setting it on a production host has no effect.
+  bypass: env!("IMPORTS_AUTH_BYPASS", :boolean, false),
+  bypass_email: env!("IMPORTS_AUTH_BYPASS_EMAIL", :string, "dev@localhost")

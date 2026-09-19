@@ -91,7 +91,12 @@ defmodule DbserviceWeb.ImportLive.New do
        })}
     else
       # For other import types, process normally
-      case DataImport.start_import(import_params) do
+      actor = %{
+        email: socket.assigns[:current_user_email],
+        name: socket.assigns[:current_user_name]
+      }
+
+      case DataImport.start_import(import_params, actor) do
         {:ok, _import} ->
           {:noreply,
            socket
@@ -146,7 +151,7 @@ defmodule DbserviceWeb.ImportLive.New do
          id="template-downloader">
       <div class="max-w-7xl mx-auto px-4 py-10 sm:px-6 lg:px-8">
         <!-- Header with navigation -->
-        <div class="mb-8 flex items-center">
+        <div class="mb-8 flex items-center justify-between gap-4">
           <.link navigate={~p"/imports"}
               class="group flex items-center text-sm font-medium text-gray-600 hover:text-indigo-600 dark:text-gray-400 dark:hover:text-indigo-400 transition-colors">
             <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 mr-2 transition-transform group-hover:-translate-x-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -154,6 +159,14 @@ defmodule DbserviceWeb.ImportLive.New do
             </svg>
             Back to imports
           </.link>
+
+          <div class="flex items-center gap-2 text-sm text-gray-600 dark:text-gray-300">
+            <span class="hidden sm:inline">Signed in as</span>
+            <span class="font-medium text-gray-900 dark:text-white"><%= @current_user_email %></span>
+            <a href={~p"/auth/logout"} class="text-indigo-600 hover:text-indigo-800 dark:text-indigo-400 dark:hover:text-indigo-300 underline">
+              Sign out
+            </a>
+          </div>
         </div>
 
         <!-- Main content card with glass morphism -->
@@ -164,7 +177,8 @@ defmodule DbserviceWeb.ImportLive.New do
               New Import
             </h1>
             <p class="mt-1 text-sm text-gray-500 dark:text-gray-400">
-              Start a new data import from a Google Sheet
+              Start a new data import from a Google Sheet. This import will be
+              recorded against <span class="font-medium text-gray-700 dark:text-gray-300"><%= @current_user_email %></span>.
             </p>
           </div>
 

@@ -102,6 +102,22 @@ config :esbuild,
   ],
   http_client_opts: [ssl: [verify: :verify_none]]
 
+# Google SSO for the /imports admin UI. Client credentials live in the
+# environment (see config/runtime.exs); this block has to stay compile-time
+# because Phoenix initialises controller plugs at compile time in releases.
+#
+# `hd` only pre-filters Google's account chooser and can be dropped by the
+# caller, so it is a convenience, not a control. The binding check is
+# DbserviceWeb.UserAuth.authorize_email/1, which re-tests the domain on the
+# email Google returns and is overridable via IMPORTS_ALLOWED_DOMAIN.
+config :ueberauth, Ueberauth,
+  base_path: "/auth",
+  providers: [
+    google:
+      {Ueberauth.Strategy.Google,
+       [default_scope: "email profile", hd: "avantifellows.org", prompt: "select_account"]}
+  ]
+
 # Import environment-specific config. This must remain at the bottom
 # of this file so it overrides the configuration defined above.
 import_config "#{config_env()}.exs"
