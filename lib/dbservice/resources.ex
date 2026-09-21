@@ -358,6 +358,52 @@ defmodule Dbservice.Resources do
   end
 
   @doc """
+  Lists the sequence numbers already used by test codes for a
+  program/type_code/year combination.
+
+  A test code is `<program>-<type_code>-<sequence>-<year>`, e.g. `JN-P-1-26`.
+  Returns every used sequence number, sorted and deduplicated, so a caller can
+  work out the free numbers itself — including gaps in the middle, which a
+  "next available sequence" answer would hide.
+
+  Matching is case sensitive, because type codes are not uniformly cased
+  (`MoT` alongside `P` and `FST`).
+
+  ## Examples
+
+      iex> list_used_test_sequences("JN", "P", "26")
+      [1, 2, 3, 7, 10]
+
+      iex> list_used_test_sequences("JN", "P", "99")
+      []
+  """
+  def list_used_test_sequences(program, type_code, year) do
+    pattern = "#{program}-#{type_code}-%-#{year}"
+
+    from(r in Resource,
+      where: r.type == "test" and like(r.code, ^pattern),
+      select: r.code
+    )
+    |> Repo.all()
+    |> Enum.flat_map(&test_code_sequence(&1, program, type_code, year))
+    |> Enum.uniq()
+    |> Enum.sort()
+  end
+
+  # The `%` in the LIKE pattern spans hyphens, so `JN-P-%-26` also matches codes
+  # with extra parts such as `JN-P-1-2-26`. Split each code back into its four
+  # parts and keep only an exact `<program>-<type_code>-<sequence>-<year>` match
+  # with a numeric sequence.
+  defp test_code_sequence(code, program, type_code, year) do
+    with [^program, ^type_code, sequence, ^year] <- String.split(code, "-"),
+         {number, ""} <- Integer.parse(sequence) do
+      [number]
+    else
+      _ -> []
+    end
+  end
+
+  @doc """
   Gets a resource by name and sourceId.
 
   Raises `Ecto.NoResultsError` if the School does not exist.
