@@ -38,4 +38,19 @@ defmodule DbserviceWeb.SwaggerSchema.Branch do
         end
     }
   end
+
+  def branch_names do
+    %{
+      BranchNames:
+        swagger_schema do
+          title("BranchNames")
+          description("Branch names only — lightweight list for dropdowns")
+          type(:array)
+
+          example([
+            %{id: 1, branch_id: "CSE", name: "Computer Science Engineering"}
+          ])
+        end
+    }
+  end
 end

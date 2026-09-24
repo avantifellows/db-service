@@ -72,4 +72,20 @@ defmodule DbserviceWeb.SwaggerSchema.College do
         end
     }
   end
+
+  def college_names do
+    %{
+      CollegeNames:
+        swagger_schema do
+          title("CollegeNames")
+          description("College names only — lightweight list for dropdowns/autocomplete")
+          type(:array)
+
+          example([
+            %{college_id: "COL123", name: "IIT Bombay"},
+            %{college_id: "COL124", name: "IIT Delhi"}
+          ])
+        end
+    }
+  end
 end
