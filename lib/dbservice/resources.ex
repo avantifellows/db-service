@@ -15,6 +15,7 @@ defmodule Dbservice.Resources do
   alias Dbservice.Utils.Util
   alias Dbservice.Utils.Pagination
   alias Dbservice.CmsStatuses
+  alias Dbservice.CmsStatuses.CmsStatus
   alias Dbservice.Chapters.Chapter
   alias Dbservice.Topics.Topic
   alias Dbservice.ChapterCurriculums
@@ -1485,45 +1486,58 @@ defmodule Dbservice.Resources do
   `languages` is a list of `%{"lang_code" => code, "text" => html}` entries (one
   per language of the problem being saved). Matching is scoped per language: each
   entry's text is normalized (see `ProblemText`) and trigram-compared only against
-  `problem_lang` rows in the same language, across all curricula. Returns matches
-  with `similarity > #{@similarity_threshold}` (the pg_trgm `%` operator is
-  strictly greater than the threshold), at most #{@similarity_limit} per language,
-  each tagged with the `lang_code` it matched on, merged and sorted by
-  `match_score` descending:
+  `problem_lang` rows in the same language. Returns matches with
+  `similarity > #{@similarity_threshold}` (the pg_trgm `%` operator is strictly
+  greater than the threshold), at most #{@similarity_limit} per language, each
+  tagged with the `lang_code` it matched on, merged and sorted by `match_score`
+  descending:
 
       [%{id: 123, code: "P0001234", lang_code: "en", match_score: 0.83}, ...]
+
+  `curriculum_id` restricts candidates to problems mapped to that curriculum via
+  `resource_curriculum` (issue #745) — a near-duplicate in an unrelated
+  curriculum is not this problem's duplicate. It is optional for now: when it is
+  nil the search falls back to matching across all curricula, so clients that
+  have not been updated keep working. Once every client sends it, the fallback
+  goes away.
+
+  Archived problems are never returned, with or without a curriculum: a
+  near-duplicate that has already been archived should not block saving a new
+  problem. Problems with no cms_status are treated as not archived.
 
   Entries with blank text, an unknown `lang_code`, or no matches contribute
   nothing.
   """
-  def similar_problems(languages) when is_list(languages) do
+  def similar_problems(languages, curriculum_id \\ nil)
+
+  def similar_problems(languages, curriculum_id) when is_list(languages) do
     languages
-    |> Enum.flat_map(&similar_problems_for_entry/1)
+    |> Enum.flat_map(&similar_problems_for_entry(&1, curriculum_id))
     |> Enum.sort_by(& &1.match_score, :desc)
   end
 
-  def similar_problems(_), do: []
+  def similar_problems(_, _), do: []
 
-  defp similar_problems_for_entry(entry) when is_map(entry) do
+  defp similar_problems_for_entry(entry, curriculum_id) when is_map(entry) do
     lang_code = entry["lang_code"] || entry[:lang_code]
     text = entry["text"] || entry[:text]
     normalized = ProblemText.to_plain_text(text)
 
     with true <- is_binary(lang_code) and normalized != "",
          %Language{id: lang_id} <- Repo.get_by(Language, code: lang_code) do
-      query_similar_problems(lang_id, lang_code, normalized)
+      query_similar_problems(lang_id, lang_code, normalized, curriculum_id)
     else
       _ -> []
     end
   end
 
-  defp similar_problems_for_entry(_), do: []
+  defp similar_problems_for_entry(_, _), do: []
 
   # Uses the `%` operator (backed by the GIN trigram index) with a
   # transaction-local similarity threshold, then orders by the exact similarity
   # score. Runs inside a transaction so set_config's local scope applies to the
   # query on the same connection.
-  defp query_similar_problems(lang_id, lang_code, normalized) do
+  defp query_similar_problems(lang_id, lang_code, normalized, curriculum_id) do
     {:ok, matches} =
       Repo.transaction(fn ->
         Repo.query!("SELECT set_config('pg_trgm.similarity_threshold', $1, true)", [
@@ -1532,6 +1546,7 @@ defmodule Dbservice.Resources do
 
         from(pl in ProblemLanguage,
           join: r in Resource,
+          as: :res,
           on: r.id == pl.res_id,
           where:
             pl.lang_id == ^lang_id and fragment("? % ?", pl.question_plain_text, ^normalized),
@@ -1543,6 +1558,8 @@ defmodule Dbservice.Resources do
             match_score: fragment("similarity(?, ?)", pl.question_plain_text, ^normalized)
           }
         )
+        |> scope_similar_to_curriculum(curriculum_id)
+        |> exclude_archived_problems()
         |> Repo.all()
       end)
 
@@ -1554,6 +1571,39 @@ defmodule Dbservice.Resources do
         match_score: Float.round(m.match_score * 1.0, 4)
       }
     end)
+  end
+
+  # A semi-join, not a plain join: a problem can have several resource_curriculum
+  # rows for the same curriculum (one per grade/subject), and a plain join would
+  # return it once per row — duplicating matches and eating into the per-language
+  # limit before ten distinct problems had been found.
+  defp scope_similar_to_curriculum(query, nil), do: query
+
+  defp scope_similar_to_curriculum(query, curriculum_id) do
+    from([res: r] in query,
+      where:
+        exists(
+          from(rc in Dbservice.Resources.ResourceCurriculum,
+            where: rc.resource_id == parent_as(:res).id and rc.curriculum_id == ^curriculum_id
+          )
+        )
+    )
+  end
+
+  # An archived near-duplicate should not block saving a new problem (issue
+  # #745). Problems with no cms_status are kept — only "archived" is excluded.
+  # When the archived status row does not exist, nothing is archived and the
+  # query is left untouched. Mirrors `Chapters.exclude_archived_topics/1`.
+  defp exclude_archived_problems(query) do
+    case CmsStatuses.get_cms_status_by_name("archived") do
+      %CmsStatus{id: archived_id} ->
+        from([res: r] in query,
+          where: is_nil(r.cms_status_id) or r.cms_status_id != ^archived_id
+        )
+
+      _ ->
+        query
+    end
   end
 
   # Distinct problems (by res_id) for the current search filters, ordered for
