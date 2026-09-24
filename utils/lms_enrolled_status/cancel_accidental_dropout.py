@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Local-only correction of the 152 confirmed accidental dropout/undo cases."""
+"""Correction of the 243 confirmed accidental dropout/undo cases (local by default)."""
 import argparse
 import copy
 from datetime import datetime, timezone
@@ -12,7 +12,12 @@ from psycopg.types.json import Jsonb
 import repair as initial
 
 ACTION = 'student_accidental_dropout_correction'
-SCRIPT_HASH = hashlib.sha256(Path(__file__).read_bytes() + initial.SCRIPT_HASH.encode()).hexdigest()
+CONFIRMED_FILE = Path(__file__).with_name('confirmed_accidental_dropouts.txt')
+# Only Students the cohort owner confirmed; any other dropout/undo is reported, never corrected.
+CONFIRMED_STUDENT_IDS = frozenset(int(line) for line in CONFIRMED_FILE.read_text().splitlines()
+                                  if line.strip() and not line.startswith('#'))
+SCRIPT_HASH = hashlib.sha256(Path(__file__).read_bytes() + CONFIRMED_FILE.read_bytes()
+                             + initial.SCRIPT_HASH.encode()).hexdigest()
 
 
 def read_evidence(conn, ids=None):
@@ -96,6 +101,8 @@ def classify(evidence, statuses, year):
         not any(e['id'] == change(drop, 'batch_enrollment_id', 'old') and e['group_type'] == 'batch'
                 and e['group_id'] == batch and e['academic_year'] == year for e in evidence['enrollments'])):
         return reject('cycle_batch_mismatch')
+    if student['id'] not in CONFIRMED_STUDENT_IDS:
+        return reject('not_confirmed_accidental')
     return 'proposed', {'student_id': student['id'], 'source_creation_audit_id': source['id'],
         'dropout_audit_id': drop['id'], 'undo_audit_id': undo['id'], 'enrollment_id': row['id'],
         'before': row, 'proposed': base['proposed'], 'evidence': evidence,
@@ -114,9 +121,9 @@ def inventory(conn, year, after=0, limit=100):
     plans.sort(key=lambda p: p['student_id'])
     box = counts['proposed'] + sum(n for k, n in counts.items() if k.startswith('box_excluded:'))
     page = plans[:limit]
-    return {'version': 1, 'script_sha256': SCRIPT_HASH, 'database': conn.info.dbname,
-        'academic_year': year, 'summary': {'box_count': box, 'previous_count': 152,
-        'change_since_previous': box - 152, 'eligible_count': counts['proposed'],
+    return {'version': 1, 'script_sha256': SCRIPT_HASH, 'database': initial.target(conn),
+        'academic_year': year, 'summary': {'box_count': box, 'previous_count': len(CONFIRMED_STUDENT_IDS),
+        'change_since_previous': box - len(CONFIRMED_STUDENT_IDS), 'eligible_count': counts['proposed'],
         'dispositions': dict(counts), 'malformed_creation_audits': malformed},
         'next_after_student_id': page[-1]['student_id'] if page else None,
         'more_candidates': len(plans) > limit, 'rows': page}
@@ -151,7 +158,7 @@ def already_applied(plan, fresh):
 
 def apply_manifest(conn, manifest, actor):
     if (manifest['version'] != 1 or manifest['script_sha256'] != SCRIPT_HASH or
-        manifest['database'] != conn.info.dbname or manifest['academic_year'] != '2026-2027'):
+        manifest['database'] != initial.target(conn) or manifest['academic_year'] != '2026-2027'):
         raise ValueError('Manifest code/database/year mismatch')
     plans = manifest['rows']; ids = [p['student_id'] for p in plans]
     if not 1 <= len(ids) <= 500 or len(ids) != len(set(ids)):
@@ -196,8 +203,7 @@ def apply_manifest(conn, manifest, actor):
 
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument('--database', required=True)
-    parser.add_argument('--port', type=int, default=5432)
+    initial.add_target_args(parser)
     parser.add_argument('--limit', type=int, default=100)
     parser.add_argument('--after-student-id', type=int, default=0)
     parser.add_argument('--output', type=Path, required=True)
@@ -205,8 +211,7 @@ def main():
     parser.add_argument('--approve-sha256')
     parser.add_argument('--actor')
     args = parser.parse_args()
-    if not 1 <= args.limit <= 500 or args.after_student_id < 0:
-        parser.error('limit must be 1..500; cursor nonnegative')
+    initial.check_limit(parser, args)
     if (args.apply and (not args.approve_sha256 or not args.actor)) or (not args.apply and (args.approve_sha256 or args.actor)):
         parser.error('apply requires an approved hash and actor')
     with open(args.output, 'x', opener=lambda path, flags: os.open(path, flags, 0o600)) as output:
@@ -216,14 +221,14 @@ def main():
             if hashlib.sha256(raw).hexdigest() != args.approve_sha256:
                 raise ValueError('Manifest hash mismatch')
             manifest = json.loads(raw)
-        with initial.connect_local(args.database, args.port) as conn:
+        with initial.connect(args) as conn:
             conn.execute('SET TRANSACTION ISOLATION LEVEL SERIALIZABLE, READ WRITE' if manifest else
                          'SET TRANSACTION ISOLATION LEVEL REPEATABLE READ, READ ONLY')
             conn.execute("SET LOCAL TIME ZONE 'UTC'")
             result = {'manifest_sha256': args.approve_sha256, 'verification': apply_manifest(conn, manifest, args.actor)} if manifest else inventory(conn, '2026-2027', args.after_student_id, args.limit)
             json.dump(result, output, indent=2, default=str)
             output.write('\n'); output.flush(); os.fsync(output.fileno())
-    print('Local correction committed; verification saved' if manifest else json.dumps(result['summary'], sort_keys=True))
+    print('Correction committed; verification saved' if manifest else json.dumps(result['summary'], sort_keys=True))
 
 
 if __name__ == '__main__':

@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Local repeated-dropout repair and read-only report of missing-audit cases."""
+"""Repeated-dropout repair and read-only report of missing-audit cases (local by default)."""
 import argparse
 from collections import Counter
 import copy
@@ -115,7 +115,7 @@ def inventory(conn,after=0,limit=100):
                 'reason':'Missing dropout audit; policy/evidence review required','evidence':e})
     plans.sort(key=lambda p:p['student_id']);page=plans[:limit]
     box=counts['proposed']+sum(n for k,n in counts.items() if k.startswith('box_excluded:'))
-    return {'version':1,'script_sha256':SCRIPT_HASH,'database':conn.info.dbname,'academic_year':'2026-2027',
+    return {'version':1,'script_sha256':SCRIPT_HASH,'database':initial.target(conn),'academic_year':'2026-2027',
         'summary':{'box_count':box,'previous_count':1,'change_since_previous':box-1,
                    'eligible_count':counts['proposed'],'manual_review_count':len(manual),
                    'dispositions':dict(counts),'malformed_creation_audits':malformed},
@@ -151,7 +151,7 @@ def already_applied(conn,plan,fresh):
 
 def apply_manifest(conn,manifest,actor):
     if (manifest['version']!=1 or manifest['script_sha256']!=SCRIPT_HASH or
-        manifest['database']!=conn.info.dbname or manifest['academic_year']!='2026-2027'):
+        manifest['database']!=initial.target(conn) or manifest['academic_year']!='2026-2027'):
         raise ValueError('Manifest code/database/year mismatch')
     plans=manifest['rows'];ids=[p['student_id'] for p in plans]
     if not 1<=len(ids)<=500 or len(ids)!=len(set(ids)):raise ValueError('Apply requires 1..500 distinct Students')
@@ -190,8 +190,7 @@ def apply_manifest(conn,manifest,actor):
 
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument('--database', required=True)
-    parser.add_argument('--port', type=int, default=5432)
+    initial.add_target_args(parser)
     parser.add_argument('--limit', type=int, default=100)
     parser.add_argument('--after-student-id', type=int, default=0)
     parser.add_argument('--output', type=Path, required=True)
@@ -199,8 +198,7 @@ def main():
     parser.add_argument('--approve-sha256')
     parser.add_argument('--actor')
     args = parser.parse_args()
-    if not 1 <= args.limit <= 500 or args.after_student_id < 0:
-        parser.error('limit must be 1..500; cursor nonnegative')
+    initial.check_limit(parser, args)
     if (args.apply and (not args.approve_sha256 or not args.actor)) or (not args.apply and (args.approve_sha256 or args.actor)):
         parser.error('apply requires an approved hash and actor')
     with open(args.output, 'x', opener=lambda path, flags: os.open(path, flags, 0o600)) as output:
@@ -210,14 +208,14 @@ def main():
             if hashlib.sha256(raw).hexdigest() != args.approve_sha256:
                 raise ValueError('Manifest hash mismatch')
             manifest = json.loads(raw)
-        with initial.connect_local(args.database, args.port) as conn:
+        with initial.connect(args) as conn:
             conn.execute('SET TRANSACTION ISOLATION LEVEL SERIALIZABLE, READ WRITE' if manifest else
                          'SET TRANSACTION ISOLATION LEVEL REPEATABLE READ, READ ONLY')
             conn.execute("SET LOCAL TIME ZONE 'UTC'")
             result = {'manifest_sha256':args.approve_sha256,'verification':apply_manifest(conn,manifest,args.actor)} if manifest else inventory(conn,args.after_student_id,args.limit)
             json.dump(result,output,indent=2,default=str)
             output.write('\n'); output.flush(); os.fsync(output.fileno())
-    print('Local repair committed; verification saved' if manifest else json.dumps(result['summary'],sort_keys=True))
+    print('Repair committed; verification saved' if manifest else json.dumps(result['summary'],sort_keys=True))
 
 
 if __name__ == '__main__':

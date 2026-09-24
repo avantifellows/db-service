@@ -1,7 +1,9 @@
 """Integration checks on a dedicated LOCAL database, with temporary tables only."""
+import argparse
 import copy
 from datetime import datetime
 import json
+import os
 import unittest
 from unittest.mock import patch
 
@@ -132,6 +134,39 @@ class RepairTest(unittest.TestCase):
             with self.assertRaisesRegex(ValueError, "Only dedicated"):
                 repair.connect_local("prod_af_db", 5432)
             connect.assert_not_called()
+
+    def test_manifest_binds_host_port_and_database(self):
+        self.assertEqual(self.report()["database"], "127.0.0.1:5432/dbservice_status_repair_tests")
+
+    def args(self, *extra):
+        parser = argparse.ArgumentParser()
+        repair.add_target_args(parser)
+        parser.add_argument("--limit", type=int, default=100)
+        parser.add_argument("--after-student-id", type=int, default=0)
+        return parser, parser.parse_args(["--database", "dbservice_status_repair_tests", *extra])
+
+    def test_remote_requires_explicit_url_and_matching_database_name(self):
+        _, args = self.args("--remote")
+        with patch.dict(os.environ, {}, clear=True), patch("psycopg.connect") as connect:
+            with self.assertRaisesRegex(ValueError, repair.REMOTE_URL_ENV):
+                repair.connect(args)
+            connect.assert_not_called()
+        url = "postgresql://postgres:postgres@127.0.0.1:5432/"
+        with patch.dict(os.environ, {repair.REMOTE_URL_ENV: url + "postgres"}):
+            with self.assertRaisesRegex(ValueError, "does not match"):
+                repair.connect(args)
+        with patch.dict(os.environ, {repair.REMOTE_URL_ENV: url + "dbservice_status_repair_tests"}):
+            with repair.connect(args) as conn:
+                self.assertEqual(conn.execute("SHOW default_transaction_read_only").fetchone()["default_transaction_read_only"], "on")
+                self.assertEqual(conn.execute("SHOW lock_timeout").fetchone()["lock_timeout"], "2s")
+
+    def test_remote_batches_are_capped_at_100(self):
+        parser, args = self.args("--remote", "--limit", "101")
+        with patch.object(parser, "error", side_effect=SystemExit) as error, self.assertRaises(SystemExit):
+            repair.check_limit(parser, args)
+        self.assertIn("1..100", error.call_args[0][0])
+        parser, args = self.args("--limit", "500")
+        repair.check_limit(parser, args)
 
     def test_manifest_code_database_and_payload_changes_are_rejected(self):
         for key, value in (("script_sha256", "changed"), ("database", "another_database")):

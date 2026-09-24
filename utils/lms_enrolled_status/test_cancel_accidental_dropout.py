@@ -9,8 +9,14 @@ import test_repair as fixtures
 
 
 class CorrectionTest(unittest.TestCase):
-    setUp = fixtures.RepairTest.setUp
     add_student = fixtures.RepairTest.add_student
+
+    def setUp(self):
+        fixtures.RepairTest.setUp(self)
+        confirmed = patch.object(correction, 'CONFIRMED_STUDENT_IDS', frozenset({1, 2}))
+        confirmed.start()
+        self.addCleanup(confirmed.stop)
+
     audit = fixtures.RepairTest.audit
 
     def cycle(self, sid=1):
@@ -116,6 +122,23 @@ class CorrectionTest(unittest.TestCase):
         self.apply(original)
         self.conn.execute("UPDATE enrollment_record SET updated_at='2026-01-01' WHERE id=%s", (rid,))
         with self.assertRaisesRegex(ValueError, 'Corrected row changed'): self.apply(original)
+
+    def test_unconfirmed_cycle_is_reported_but_never_corrected(self):
+        self.cycle(); self.add_student(3); self.cycle(3)
+        manifest = self.report()
+        self.assertEqual(manifest['summary']['box_count'], 2)
+        self.assertEqual(manifest['summary']['dispositions']['box_excluded:not_confirmed_accidental'], 1)
+        self.assertEqual([r['student_id'] for r in manifest['rows']], [1])
+        smuggled = copy.deepcopy(manifest)
+        with patch.object(correction, 'CONFIRMED_STUDENT_IDS', frozenset({1, 2, 3})):
+            smuggled['rows'] = self.report()['rows']
+        with self.assertRaisesRegex(ValueError, 'Evidence changed'):
+            self.apply(smuggled)
+
+    def test_confirmed_list_is_the_reviewed_243(self):
+        lines = [l for l in correction.CONFIRMED_FILE.read_text().splitlines() if l.strip() and not l.startswith('#')]
+        self.assertEqual(len(lines), 243)
+        self.assertEqual(len(set(lines)), 243)
 
     def test_shared_helper_change_invalidates_manifest_and_remote_names_rejected(self):
         self.cycle(); manifest = self.report()

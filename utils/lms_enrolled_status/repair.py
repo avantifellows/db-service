@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Local-only repair of missing initial enrolled status rows for LMS-created Students."""
+"""Repair of missing initial enrolled status rows for LMS-created Students (local by default)."""
 import argparse
 from collections import Counter
 from datetime import date, datetime, timezone
@@ -8,6 +8,7 @@ import ipaddress
 import json
 import os
 from pathlib import Path
+import sys
 
 import psycopg
 from psycopg.rows import dict_row
@@ -15,6 +16,8 @@ from psycopg.types.json import Jsonb
 
 ACTION = "student_status_enrollment_backfill"
 VERSION = 1
+REMOTE_URL_ENV = "STATUS_REPAIR_DATABASE_URL"
+REMOTE_BATCH_LIMIT = 100
 SCRIPT_HASH = hashlib.sha256(Path(__file__).read_bytes()).hexdigest()
 
 
@@ -177,7 +180,7 @@ def inventory(conn, year, expected, after=0, limit=100):
     count = dispositions["proposed"] + sum(n for k, n in dispositions.items() if k.startswith("box_excluded:"))
     page = proposals[:limit]
     return {"version": VERSION, "script_sha256": SCRIPT_HASH, "academic_year": year,
-            "database": conn.info.dbname, "summary": {"lms_created_students": len(evidence),
+            "database": target(conn), "summary": {"lms_created_students": len(evidence),
             "box_count": count, "previous_count": expected, "change_since_previous": count - expected,
             "eligible_count": dispositions["proposed"], "dispositions": dict(dispositions),
             "malformed_creation_audits": malformed}, "after_student_id": after,
@@ -209,7 +212,7 @@ def already_applied(conn, plan, fresh):
 def apply_manifest(conn, manifest, actor):
     if manifest["version"] != VERSION or manifest["script_sha256"] != SCRIPT_HASH:
         raise ValueError("Utility changed; regenerate and review the report")
-    if manifest["database"] != conn.info.dbname:
+    if manifest["database"] != target(conn):
         raise ValueError("Manifest belongs to a different database")
     plans = manifest["rows"]
     ids = [p["student_id"] for p in plans]
@@ -274,10 +277,43 @@ def connect_local(database, port):
         raise
 
 
+def target(conn):
+    """Reports bind host, port and database, so they cannot be applied elsewhere."""
+    return f"{conn.info.host}:{conn.info.port}/{conn.info.dbname}"
+
+
+def add_target_args(parser):
+    parser.add_argument("--database", required=True,
+                        help="Local database name; with --remote, must match the URL's database")
+    parser.add_argument("--port", type=int, default=5432)
+    parser.add_argument("--remote", action="store_true",
+                        help=f"Connect using the {REMOTE_URL_ENV} environment variable")
+
+
+def check_limit(parser, args):
+    maximum = REMOTE_BATCH_LIMIT if args.remote else 500
+    if not 1 <= args.limit <= maximum or args.after_student_id < 0:
+        parser.error(f"limit must be 1..{maximum}; cursor must be nonnegative")
+
+
+def connect(args):
+    if not args.remote:
+        return connect_local(args.database, args.port)
+    url = os.environ.get(REMOTE_URL_ENV)
+    if not url:
+        raise ValueError(f"--remote requires {REMOTE_URL_ENV}")
+    conn = psycopg.connect(url, row_factory=dict_row, connect_timeout=10,
+                           options="-c statement_timeout=30000 -c lock_timeout=2000 -c default_transaction_read_only=on")
+    if conn.info.dbname != args.database:
+        conn.close()
+        raise ValueError("--database does not match the remote database")
+    print(f"Connected to {target(conn)}", file=sys.stderr)
+    return conn
+
+
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument("--database", required=True)
-    parser.add_argument("--port", type=int, default=5432)
+    add_target_args(parser)
     parser.add_argument("--academic-year", default="2026-2027")
     parser.add_argument("--previous-count", type=int, default=36817)
     parser.add_argument("--after-student-id", type=int, default=0)
@@ -289,8 +325,7 @@ def main():
     args = parser.parse_args()
     if args.academic_year != "2026-2027":
         parser.error("This utility is scoped to academic year 2026-2027")
-    if not 1 <= args.limit <= 500 or args.after_student_id < 0:
-        parser.error("limit must be 1..500; cursor must be nonnegative")
+    check_limit(parser, args)
     if args.apply and (not args.approve_sha256 or not args.actor):
         parser.error("apply requires an approved file hash and actor")
     if not args.apply and (args.approve_sha256 or args.actor):
@@ -304,7 +339,7 @@ def main():
             manifest = json.loads(raw)
             if manifest["academic_year"] != args.academic_year:
                 raise ValueError("Manifest academic year mismatch")
-        with connect_local(args.database, args.port) as conn:
+        with connect(args) as conn:
             conn.execute("SET TRANSACTION ISOLATION LEVEL SERIALIZABLE, READ WRITE" if manifest else
                          "SET TRANSACTION ISOLATION LEVEL REPEATABLE READ, READ ONLY")
             conn.execute("SET LOCAL TIME ZONE 'UTC'")
@@ -317,7 +352,7 @@ def main():
             output.flush()
             os.fsync(output.fileno())
     if manifest:
-        print("Local repair committed; verification saved")
+        print("Repair committed; verification saved")
     else:
         print(json.dumps(result["summary"], sort_keys=True))
 
