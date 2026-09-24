@@ -37,6 +37,17 @@ jobs:
             sed -i "s|BEARER_TOKEN=.*|BEARER_TOKEN=${{ secrets.PRODUCTION_BEARER_TOKEN }}|" .env
             sed -i "s|DASHBOARD_USER=.*|DASHBOARD_USER=${{ secrets.PRODUCTION_DASHBOARD_USER }}|" .env || true
             sed -i "s|DASHBOARD_PASS=.*|DASHBOARD_PASS=${{ secrets.PRODUCTION_DASHBOARD_PASS }}|" .env || true
+            # Google SSO for the /imports UI. These keys are newer than the
+            # .env file on the server, so replace in place when present and
+            # append otherwise — a bare sed would silently do nothing.
+            for pair in "GOOGLE_OAUTH_CLIENT_ID=${{ secrets.PRODUCTION_GOOGLE_OAUTH_CLIENT_ID }}" "GOOGLE_OAUTH_CLIENT_SECRET=${{ secrets.PRODUCTION_GOOGLE_OAUTH_CLIENT_SECRET }}"; do
+              key="${pair%%=*}"
+              if grep -q "^${key}=" .env; then
+                sed -i "s|^${key}=.*|${pair}|" .env
+              else
+                echo "${pair}" >> .env
+              fi
+            done
 
             #Build and prepare the application first - if this fails, server stays running
             cd /var/www/html/db-service-prod/ &&

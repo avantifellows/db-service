@@ -227,6 +227,11 @@ defmodule DbserviceWeb.ImportLive.Show do
             <h2 class="text-lg font-semibold text-gray-900 dark:text-white mb-4">Import Details</h2>
 
             <dl class="grid grid-cols-1 gap-x-4 gap-y-6 sm:grid-cols-2">
+              <div class="sm:col-span-1">
+                <dt class="text-sm font-medium text-gray-500 dark:text-gray-400">Imported By</dt>
+                <dd class="mt-1 text-sm text-gray-900 dark:text-white"><%= DataImport.format_importer(@import) %></dd>
+              </div>
+
               <%= if @import.inserted_at do %>
                 <div class="sm:col-span-1">
                   <dt class="text-sm font-medium text-gray-500 dark:text-gray-400">Started At</dt>

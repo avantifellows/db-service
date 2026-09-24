@@ -53,6 +53,14 @@ come from GitHub Secrets:
 | `TF_VAR_google_credentials_json` | `STAGING_GOOGLE_CREDENTIALS_JSON` / `PRODUCTION_GOOGLE_CREDENTIALS_JSON` |
 | `TF_VAR_dashboard_user` | `STAGING_DASHBOARD_USER` / `PRODUCTION_DASHBOARD_USER` |
 | `TF_VAR_dashboard_pass` | `STAGING_DASHBOARD_PASS` / `PRODUCTION_DASHBOARD_PASS` |
+| `TF_VAR_google_oauth_client_id` | `STAGING_GOOGLE_OAUTH_CLIENT_ID` / `PRODUCTION_GOOGLE_OAUTH_CLIENT_ID` |
+| `TF_VAR_google_oauth_client_secret` | `STAGING_GOOGLE_OAUTH_CLIENT_SECRET` / `PRODUCTION_GOOGLE_OAUTH_CLIENT_SECRET` |
+
+The OAuth client is a single "Web application" credential in the GCP project.
+Its authorised redirect URIs must list every host that serves `/imports`:
+`https://<staging host>/auth/google/callback`,
+`https://<production host>/auth/google/callback` and, for local work,
+`http://localhost:4000/auth/google/callback`.
 
 ## Apply
 

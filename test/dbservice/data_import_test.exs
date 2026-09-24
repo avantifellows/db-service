@@ -102,6 +102,52 @@ defmodule Dbservice.DataImportTest do
     end
   end
 
+  describe "import attribution" do
+    test "create_import/1 records who started the import" do
+      assert {:ok, import_record} =
+               DataImport.create_import(%{
+                 filename: "test.csv",
+                 status: "pending",
+                 type: "student",
+                 start_row: 2,
+                 initiated_by_email: "importer@avantifellows.org",
+                 initiated_by_name: "Test Importer"
+               })
+
+      assert import_record.initiated_by_email == "importer@avantifellows.org"
+      assert import_record.initiated_by_name == "Test Importer"
+    end
+
+    test "format_importer/1 labels rows created before sign-in was required" do
+      assert DataImport.format_importer(%DataImport.Import{initiated_by_email: nil}) ==
+               "Unknown (before sign-in)"
+
+      assert DataImport.format_importer(%DataImport.Import{initiated_by_email: ""}) ==
+               "Unknown (before sign-in)"
+    end
+
+    test "format_importer/1 shows the name alongside the email when both are known" do
+      assert DataImport.format_importer(%DataImport.Import{
+               initiated_by_email: "importer@avantifellows.org",
+               initiated_by_name: "Test Importer"
+             }) == "Test Importer (importer@avantifellows.org)"
+    end
+
+    test "format_importer/1 falls back to the email alone" do
+      assert DataImport.format_importer(%DataImport.Import{
+               initiated_by_email: "importer@avantifellows.org",
+               initiated_by_name: nil
+             }) == "importer@avantifellows.org"
+
+      # Google returns the email as the display name for some accounts; don't
+      # print it twice.
+      assert DataImport.format_importer(%DataImport.Import{
+               initiated_by_email: "importer@avantifellows.org",
+               initiated_by_name: "importer@avantifellows.org"
+             }) == "importer@avantifellows.org"
+    end
+  end
+
   describe "start_import/1" do
     test "fails with missing required fields" do
       invalid_params = %{

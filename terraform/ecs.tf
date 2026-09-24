@@ -38,12 +38,17 @@ locals {
     { name = "POOL_SIZE", value = var.pool_size },
     { name = "WHITELISTED_DOMAINS", value = var.whitelisted_domains },
     { name = "CSV_BUCKET", value = aws_s3_bucket.csv_imports.bucket },
+    # Region for the CSV bucket above. runtime.exs also defaults this, so a
+    # missing value can't send ExAws to us-east-1 and get a 301 from S3.
+    { name = "AWS_REGION", value = var.aws_region },
     { name = "DATABASE_URL", value = var.database_url },
     { name = "SECRET_KEY_BASE", value = var.secret_key_base },
     { name = "BEARER_TOKEN", value = var.bearer_token },
     { name = "GOOGLE_CREDENTIALS_JSON", value = var.google_credentials_json },
     { name = "DASHBOARD_USER", value = var.dashboard_user },
     { name = "DASHBOARD_PASS", value = var.dashboard_pass },
+    { name = "GOOGLE_OAUTH_CLIENT_ID", value = var.google_oauth_client_id },
+    { name = "GOOGLE_OAUTH_CLIENT_SECRET", value = var.google_oauth_client_secret },
   ]
 }
 

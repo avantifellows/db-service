@@ -95,7 +95,14 @@ Uses Oban for async processing, primarily for CSV imports. Workers are in `lib/d
 ### Authentication
 
 - API: Bearer token authentication (configured via `BEARER_TOKEN` env var)
-- Admin routes: Basic auth (dropout/re-enrollment imports, LiveDashboard in prod)
+- Imports UI (`/imports`, `/templates`): Google SSO restricted to the
+  `avantifellows.org` Workspace domain. Identity lives in the session cookie
+  (`DbserviceWeb.UserAuth`) and every import row is stamped with
+  `initiated_by_email`, so imports are traceable to a person.
+- Admin routes: Basic auth (destructive import types, LiveDashboard in prod).
+  The destructive import endpoints sit behind SSO *and* the shared dashboard
+  password; the password is what still limits *who* may run those types, and
+  is meant to be replaced by per-person permissions.
 - Google Cloud: Service account auth via Goth for Sheets integration
 
 ## Key Files
@@ -125,11 +132,25 @@ BEARER_TOKEN="your_api_auth_token"
 PATH_TO_CREDENTIALS="/path/to/google-service-account.json"
 ```
 
+Required for the `/imports` UI (Google SSO):
+```bash
+GOOGLE_OAUTH_CLIENT_ID="...apps.googleusercontent.com"
+GOOGLE_OAUTH_CLIENT_SECRET="..."
+```
+
+Locally you can skip creating an OAuth client and sign in as a stub user
+instead. This is ignored when the app is compiled with `MIX_ENV=prod`:
+```bash
+IMPORTS_AUTH_BYPASS="true"
+IMPORTS_AUTH_BYPASS_EMAIL="you@avantifellows.org"
+```
+
 Optional:
 ```bash
 DASHBOARD_USER="admin"      # For protected routes
 DASHBOARD_PASS="password"
 PHX_HOST="your-domain.com"  # Production host
+IMPORTS_ALLOWED_DOMAIN="avantifellows.org"  # Workspace domain allowed into /imports
 ```
 
 ### Dropout enrollment timestamp maintenance

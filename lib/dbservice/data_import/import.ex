@@ -15,6 +15,11 @@ defmodule Dbservice.DataImport.Import do
     field :start_row, :integer
     field :completed_at, :utc_datetime
 
+    # Who started this import, captured from the Google SSO session. NULL for
+    # rows created before the imports UI required sign-in.
+    field :initiated_by_email, :string
+    field :initiated_by_name, :string
+
     timestamps()
   end
 
@@ -29,7 +34,9 @@ defmodule Dbservice.DataImport.Import do
       :error_count,
       :error_details,
       :start_row,
-      :completed_at
+      :completed_at,
+      :initiated_by_email,
+      :initiated_by_name
     ])
     |> validate_required([:filename, :status, :type])
   end

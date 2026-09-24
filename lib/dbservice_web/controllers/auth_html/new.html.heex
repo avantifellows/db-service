@@ -1,0 +1,29 @@
+<.flash_group flash={@flash} />
+
+<main class="min-h-screen flex items-center justify-center bg-gray-50 dark:bg-gray-900 px-4">
+  <div class="w-full max-w-sm rounded-2xl bg-white dark:bg-gray-800 shadow-lg ring-1 ring-gray-200 dark:ring-gray-700 p-8 text-center">
+    <h1 class="text-xl font-semibold text-gray-900 dark:text-white">Data Imports</h1>
+    <p class="mt-2 text-sm text-gray-600 dark:text-gray-400">
+      Sign in with your
+      <span class="font-medium text-gray-900 dark:text-gray-200">{@allowed_domain}</span>
+      account to run and view imports.
+    </p>
+
+    <a
+      href={~p"/auth/google"}
+      class="mt-6 inline-flex w-full items-center justify-center gap-3 rounded-lg bg-blue-600 px-4 py-2.5 text-sm font-medium text-white hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 dark:focus:ring-offset-gray-800"
+    >
+      <svg class="h-5 w-5" viewBox="0 0 24 24" aria-hidden="true">
+        <path
+          fill="#FFFFFF"
+          d="M12.24 10.285V14.4h6.806c-.275 1.765-2.056 5.174-6.806 5.174-4.095 0-7.439-3.389-7.439-7.574s3.344-7.574 7.439-7.574c2.33 0 3.891.989 4.785 1.849l3.254-3.138C18.189 1.186 15.479 0 12.24 0c-6.635 0-12 5.365-12 12s5.365 12 12 12c6.926 0 11.52-4.869 11.52-11.726 0-.788-.085-1.39-.189-1.989H12.24z"
+        />
+      </svg>
+      Sign in with Google
+    </a>
+
+    <p class="mt-4 text-xs text-gray-500 dark:text-gray-500">
+      Every import you run is recorded against your email.
+    </p>
+  </div>
+</main>
