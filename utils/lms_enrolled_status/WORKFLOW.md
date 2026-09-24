@@ -1,8 +1,8 @@
 # Enrollment repair workflow
 
 This folder contains the five separately reviewed chart groups for2026–2027
-LMS-created Students. School differences are a separate issue. The new scripts
-are currently **local-only rehearsal tools**, not production-enabled commands.
+LMS-created Students. School differences are a separate issue. The scripts are local
+by default; `--remote` runs them against another database (see below).
 
 | Chart group | Script | Change |
 | --- | --- | --- |
@@ -36,3 +36,27 @@ reviewed evidence, an old manifest must be rejected rather than force-retried.
 
 Merging the PR does not execute any repair. Production execution remains a
 separate step requiring explicit approval of concrete, freshly reviewed data.
+
+## Running against a remote database
+
+Pass `--remote` and set `STATUS_REPAIR_DATABASE_URL`; `--database` must equal the
+URL's database name. Connections are read-only unless applying an approved batch.
+Reports bind `host:port/database`, so a local or staging report cannot be applied
+to production. A remote apply locks at most 100 Students. The accidental-dropout
+correction only proposes Students in `confirmed_accidental_dropouts.txt` (the 243
+confirmed cases); any other dropout/undo is reported as `not_confirmed_accidental`.
+
+`run_batches.py` runs one reviewed wave: it takes a 500-Student report, splits it
+into batches of 100, applies each through the utility's own CLI, checks that a
+rerun changes nothing, pauses, and stops at the first failure. Review a read-only
+report first; the wave size is `--max-students`.
+
+```sh
+export STATUS_REPAIR_DATABASE_URL=...   # never commit or print it
+python utils/lms_enrolled_status/run_batches.py --group repair --remote \
+  --database prod_af_db --actor YOUR_EMAIL --out-dir /private/tmp/wave-01 \
+  --max-students 500
+```
+
+Measured on staging from outside AWS: a report takes ~25 s, a 100-Student apply
+~7 s. Outputs contain private Student evidence; keep them out of the repo.

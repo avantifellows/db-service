@@ -192,6 +192,7 @@ def main():
             if hashlib.sha256(raw).hexdigest() != args.approve_sha256:
                 raise ValueError('Manifest hash mismatch')
             manifest = json.loads(raw)
+            initial.check_batch(args, manifest)
         with initial.connect(args) as conn:
             conn.execute('SET TRANSACTION ISOLATION LEVEL SERIALIZABLE, READ WRITE' if manifest else
                          'SET TRANSACTION ISOLATION LEVEL REPEATABLE READ, READ ONLY')

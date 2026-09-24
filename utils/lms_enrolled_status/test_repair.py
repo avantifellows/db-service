@@ -160,13 +160,13 @@ class RepairTest(unittest.TestCase):
                 self.assertEqual(conn.execute("SHOW default_transaction_read_only").fetchone()["default_transaction_read_only"], "on")
                 self.assertEqual(conn.execute("SHOW lock_timeout").fetchone()["lock_timeout"], "2s")
 
-    def test_remote_batches_are_capped_at_100(self):
-        parser, args = self.args("--remote", "--limit", "101")
-        with patch.object(parser, "error", side_effect=SystemExit) as error, self.assertRaises(SystemExit):
-            repair.check_limit(parser, args)
-        self.assertIn("1..100", error.call_args[0][0])
-        parser, args = self.args("--limit", "500")
-        repair.check_limit(parser, args)
+    def test_remote_applies_are_capped_at_100(self):
+        _, args = self.args("--remote")
+        with self.assertRaisesRegex(ValueError, "split the report"):
+            repair.check_batch(args, {"rows": [{}] * 101})
+        repair.check_batch(args, {"rows": [{}] * 100})
+        _, args = self.args()
+        repair.check_batch(args, {"rows": [{}] * 500})
 
     def test_manifest_code_database_and_payload_changes_are_rejected(self):
         for key, value in (("script_sha256", "changed"), ("database", "another_database")):

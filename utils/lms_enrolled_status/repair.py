@@ -291,9 +291,14 @@ def add_target_args(parser):
 
 
 def check_limit(parser, args):
-    maximum = REMOTE_BATCH_LIMIT if args.remote else 500
-    if not 1 <= args.limit <= maximum or args.after_student_id < 0:
-        parser.error(f"limit must be 1..{maximum}; cursor must be nonnegative")
+    if not 1 <= args.limit <= 500 or args.after_student_id < 0:
+        parser.error("limit must be 1..500; cursor must be nonnegative")
+
+
+def check_batch(args, manifest):
+    # Remote reports may list 500 Students, but each remote apply locks at most 100.
+    if args.remote and len(manifest["rows"]) > REMOTE_BATCH_LIMIT:
+        raise ValueError(f"Remote apply is limited to {REMOTE_BATCH_LIMIT} Students; split the report")
 
 
 def connect(args):
@@ -337,6 +342,7 @@ def main():
             if hashlib.sha256(raw).hexdigest() != args.approve_sha256:
                 raise ValueError("Manifest hash does not match approval")
             manifest = json.loads(raw)
+            check_batch(args, manifest)
             if manifest["academic_year"] != args.academic_year:
                 raise ValueError("Manifest academic year mismatch")
         with connect(args) as conn:
