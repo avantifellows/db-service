@@ -1653,10 +1653,13 @@ defmodule DbserviceWeb.ResourceController do
     description(
       "Given a problem's language texts (as stored in meta_data.text, HTML/LaTeX " <>
         "intact), returns existing problems whose question text is a near-duplicate " <>
-        "(trigram similarity > 0.75), scoped per language, across all curricula. " <>
-        "db-service normalizes the text internally, so the client sends it raw. " <>
-        "Results are capped per language and sorted by match_score descending, each " <>
-        "tagged with the lang_code it matched on."
+        "(trigram similarity > 0.75), scoped per language. db-service normalizes " <>
+        "the text internally, so the client sends it raw. Pass the optional " <>
+        "curriculum_id to restrict matches to problems in that curriculum; omit it " <>
+        "and matching falls back to all curricula (deprecated — it will become " <>
+        "required once every client sends it). Archived problems are never " <>
+        "returned. Results are capped per language and sorted by match_score " <>
+        "descending, each tagged with the lang_code it matched on."
     )
 
     parameters do
@@ -1671,10 +1674,14 @@ defmodule DbserviceWeb.ResourceController do
   @doc """
   POST /api/problems/similar-search — near-duplicate detection (issue #700).
 
-  Body: `%{"languages" => [%{"lang_code" => "en", "text" => "<html>"}, ...]}`.
+  Body: `%{"languages" => [%{"lang_code" => "en", "text" => "<html>"}, ...]}`,
+  plus an optional `curriculum_id` restricting matches to that curriculum
+  (issue #745). Omitting it matches across all curricula, which is the
+  pre-#745 behaviour and is deprecated.
   """
-  def similar_search(conn, %{"languages" => languages}) when is_list(languages) do
-    json(conn, %{problems: Resources.similar_problems(languages)})
+  def similar_search(conn, %{"languages" => languages} = params) when is_list(languages) do
+    curriculum_id = param_as_integer(params, "curriculum_id")
+    json(conn, %{problems: Resources.similar_problems(languages, curriculum_id)})
   end
 
   def similar_search(conn, _params) do
