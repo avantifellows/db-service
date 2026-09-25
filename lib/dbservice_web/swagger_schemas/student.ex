@@ -40,6 +40,16 @@ defmodule DbserviceWeb.SwaggerSchema.Student do
             pen_number(:string, "PEN of a student")
             g10_board(:string, "Grade 10 board")
             g10_roll_no(:string, "Grade 10 roll number")
+            tshirt_size(:string, "T-shirt size (XXS to XXXL)")
+            track_pant_size(:string, "Track pant size (XXS to XXXL)")
+            g10_school_state(:string, "State of the school where the student passed Grade 10")
+
+            g10_school_name(
+              :string,
+              "Grade 10 school name, as printed on the Grade 10 marksheet"
+            )
+
+            g10_school_udise_code(:string, "11-digit UDISE code of the Grade 10 school")
           end
 
           example(%{
@@ -66,7 +76,12 @@ defmodule DbserviceWeb.SwaggerSchema.Student do
             g12_graduating_year: 2027,
             apaar_id: "123456789101",
             g10_board: "CENTRAL BOARD OF SECONDARY EDUCATION",
-            g10_roll_no: "12345678"
+            g10_roll_no: "12345678",
+            tshirt_size: "M",
+            track_pant_size: "L",
+            g10_school_state: "Madhya Pradesh",
+            g10_school_name: "Govt Higher Secondary School Barwani",
+            g10_school_udise_code: "23120100101"
           })
         end
     }

@@ -321,6 +321,36 @@ defmodule Dbservice.Constants.Mappings do
       optional: ["student_update"],
       type: :string
     },
+    "student_tshirt_size" => %{
+      db_field: "tshirt_size",
+      required: [],
+      optional: ["student", "student_update"],
+      type: :string
+    },
+    "student_track_pant_size" => %{
+      db_field: "track_pant_size",
+      required: [],
+      optional: ["student", "student_update"],
+      type: :string
+    },
+    "student_g10_school_state" => %{
+      db_field: "g10_school_state",
+      required: [],
+      optional: ["student", "student_update"],
+      type: :string
+    },
+    "student_g10_school_name" => %{
+      db_field: "g10_school_name",
+      required: [],
+      optional: ["student", "student_update"],
+      type: :string
+    },
+    "student_g10_school_udise_code" => %{
+      db_field: "g10_school_udise_code",
+      required: [],
+      optional: ["student", "student_update"],
+      type: :string
+    },
     "student_apaar_id" => %{
       db_field: "apaar_id",
       required: [],

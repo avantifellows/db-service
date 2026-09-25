@@ -4,6 +4,7 @@ defmodule Dbservice.Utils.Util do
   use Ecto.Schema
   import Ecto.Changeset
   import Ecto.Query
+  alias Dbservice.Constants.IndianStates
   alias Dbservice.Repo
   alias Dbservice.Groups
   alias Dbservice.GroupUsers
@@ -12,6 +13,8 @@ defmodule Dbservice.Utils.Util do
   @valid_categories ~w(Gen OBC SC ST Gen-EWS PWD-SC PWD-Gen PWD-OBC PWD-EWS PWD-ST)
   @valid_genders ~w(Male Female Other Others)
   @valid_streams ~w(engineering medical pcmb pcm pcb foundation ca clat nda)
+  # Smallest to largest, so a dropdown built from this list is already in order.
+  @valid_uniform_sizes ~w(XXS XS S M L XL XXL XXXL)
 
   @doc """
   Requires `field` to be present, but only when inserting a new record.
@@ -151,6 +154,111 @@ defmodule Dbservice.Utils.Util do
   Returns list of valid streams. This can be used in portal to populate streams in dropdown menus
   """
   def valid_streams, do: @valid_streams
+
+  @doc """
+  Returns valid uniform sizes, smallest to largest. This can be used in portal to populate
+  t-shirt and track pant sizes in dropdown menus
+  """
+  def valid_uniform_sizes, do: @valid_uniform_sizes
+
+  @doc """
+  Returns the 36 Indian states and union territories. This can be used in portal to populate
+  states in dropdown menus
+  """
+  def valid_indian_states, do: IndianStates.all()
+
+  @doc """
+  Trims a string field and turns a blank value into nil, so stray whitespace from a sheet
+  cell can't create a near-duplicate that bypasses uniqueness or format checks.
+  """
+  def trim_to_nil(changeset, field) do
+    update_change(changeset, field, fn
+      nil ->
+        nil
+
+      value when is_binary(value) ->
+        case String.trim(value) do
+          "" -> nil
+          trimmed -> trimmed
+        end
+
+      value ->
+        value
+    end)
+  end
+
+  @doc """
+  Validates and normalizes a uniform (t-shirt or track pant) size in a changeset.
+  Casing is normalized to the canonical uppercase form.
+  """
+  def validate_uniform_size(changeset, field) do
+    changeset
+    |> trim_to_nil(field)
+    |> validate_field(field, :uniform_size, @valid_uniform_sizes)
+  end
+
+  @doc """
+  Validates and normalizes an Indian state or union territory in a changeset.
+
+  Accepts the spelling variants our data already contains - case differences, "and" for "&",
+  a trailing "(UT)", and former names like Pondicherry - and stores the canonical name.
+  """
+  def validate_indian_state(changeset, field) do
+    changeset = trim_to_nil(changeset, field)
+
+    case get_change(changeset, field) do
+      nil ->
+        changeset
+
+      value when is_binary(value) ->
+        case IndianStates.canonical_name(value) do
+          {:ok, canonical} ->
+            put_change(changeset, field, canonical)
+
+          :error ->
+            add_error(
+              changeset,
+              field,
+              "Invalid state: #{value}. Must be one of the 36 Indian states/UTs"
+            )
+        end
+
+      value ->
+        add_error(changeset, field, "state must be a string, got: #{inspect(value)}")
+    end
+  end
+
+  @doc """
+  Rejects a UDISE code whose leading two digits don't belong to the state in `state_field`.
+
+  Only runs when both fields hold a usable value, so a row can be saved with the state
+  filled in while the UDISE code is still being looked up (and vice versa). Expects
+  `state_field` to already hold a canonical name - run `validate_indian_state/2` first.
+  """
+  def validate_udise_state_prefix(changeset, udise_field, state_field) do
+    udise_code = get_field(changeset, udise_field)
+    state = get_field(changeset, state_field)
+    prefixes = if is_binary(state), do: IndianStates.udise_prefixes(state), else: []
+
+    cond do
+      is_nil(udise_code) or prefixes == [] ->
+        changeset
+
+      Keyword.has_key?(changeset.errors, udise_field) or
+          Keyword.has_key?(changeset.errors, state_field) ->
+        changeset
+
+      IndianStates.udise_code_matches_state?(udise_code, state) ->
+        changeset
+
+      true ->
+        add_error(
+          changeset,
+          udise_field,
+          "must start with #{Enum.join(prefixes, " or ")} for #{state}"
+        )
+    end
+  end
 
   @doc """
   Validates and normalizes category in a changeset.
