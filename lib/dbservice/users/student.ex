@@ -146,8 +146,12 @@ defmodule Dbservice.Users.Student do
     |> validate_uniform_size(:track_pant_size)
     |> validate_indian_state(:g10_school_state)
     |> trim_to_nil(:g10_school_name)
-    |> validate_length(:g10_school_name, max: 150)
+    # Codepoints, not graphemes: the column is varchar(150), which counts
+    # codepoints, so a Hindi name that fits by graphemes would otherwise pass
+    # here and then fail the insert.
+    |> validate_length(:g10_school_name, max: 150, count: :codepoints)
     |> trim_to_nil(:g10_school_udise_code)
+    |> pad_udise_code(:g10_school_udise_code)
     |> validate_format(:g10_school_udise_code, ~r/^[0-9]{11}$/,
       message: "must be exactly 11 digits"
     )

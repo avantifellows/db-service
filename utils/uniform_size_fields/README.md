@@ -51,7 +51,7 @@ failure part way through leaves the schemas already updated in place and stops.
 ## Values
 
 `XXS, XS, S, M, L, XL, XXL, XXXL`, smallest to largest, the same list in `en`
-and `hi`. This must stay in step with `Dbservice.Utils.Util.valid_uniform_sizes/0`,
-which is what the `student` changeset and the `student_tshirt_size_check` /
-`student_track_pant_size_check` constraints enforce. A value outside that list is
-rejected on write even if a form offers it.
+and `hi`. This must stay in step with `@valid_uniform_sizes` in
+`lib/dbservice/utils/util.ex`, which is what the `student` changeset and the
+`student_tshirt_size_check` / `student_track_pant_size_check` constraints enforce.
+A value outside that list is rejected on write even if a form offers it.

@@ -156,18 +156,6 @@ defmodule Dbservice.Utils.Util do
   def valid_streams, do: @valid_streams
 
   @doc """
-  Returns valid uniform sizes, smallest to largest. This can be used in portal to populate
-  t-shirt and track pant sizes in dropdown menus
-  """
-  def valid_uniform_sizes, do: @valid_uniform_sizes
-
-  @doc """
-  Returns the 36 Indian states and union territories. This can be used in portal to populate
-  states in dropdown menus
-  """
-  def valid_indian_states, do: IndianStates.all()
-
-  @doc """
   Trims a string field and turns a blank value into nil, so stray whitespace from a sheet
   cell can't create a near-duplicate that bypasses uniqueness or format checks.
   """
@@ -181,6 +169,26 @@ defmodule Dbservice.Utils.Util do
           "" -> nil
           trimmed -> trimmed
         end
+
+      value ->
+        value
+    end)
+  end
+
+  @doc """
+  Left-pads a 10-digit UDISE code back to 11 digits.
+
+  Real UDISE codes are always 11 digits, but the leading zero is lost whenever a code passes
+  through a spreadsheet as a number. 6,620 of our own `school.udise_code` values are stored
+  that way, every one of them in a state whose code starts with 0 (Himachal 02, Punjab 03,
+  Uttarakhand 05, Haryana 06 and so on), so a backfill from `school` or from a sheet would
+  otherwise fail for those states. Only an exactly-10-digit value is padded; anything
+  shorter is too ambiguous to repair and is left for the format check to reject.
+  """
+  def pad_udise_code(changeset, field) do
+    update_change(changeset, field, fn
+      value when is_binary(value) ->
+        if Regex.match?(~r/^[0-9]{10}$/, value), do: "0" <> value, else: value
 
       value ->
         value
@@ -234,6 +242,9 @@ defmodule Dbservice.Utils.Util do
   Only runs when both fields hold a usable value, so a row can be saved with the state
   filled in while the UDISE code is still being looked up (and vice versa). Expects
   `state_field` to already hold a canonical name - run `validate_indian_state/2` first.
+
+  The error lands on whichever of the two fields is being changed, so an update that only
+  moves the state is reported against the state rather than against an untouched code.
   """
   def validate_udise_state_prefix(changeset, udise_field, state_field) do
     udise_code = get_field(changeset, udise_field)
@@ -241,15 +252,20 @@ defmodule Dbservice.Utils.Util do
     prefixes = if is_binary(state), do: IndianStates.udise_prefixes(state), else: []
 
     cond do
-      is_nil(udise_code) or prefixes == [] ->
-        changeset
-
-      Keyword.has_key?(changeset.errors, udise_field) or
-          Keyword.has_key?(changeset.errors, state_field) ->
+      skip_prefix_check?(changeset, udise_field, state_field, udise_code, prefixes) ->
         changeset
 
       IndianStates.udise_code_matches_state?(udise_code, state) ->
         changeset
+
+      # Only the state moved, so the untouched code is not the thing to complain about.
+      is_nil(get_change(changeset, udise_field)) ->
+        add_error(
+          changeset,
+          state_field,
+          "does not match the Grade 10 UDISE code, which starts with " <>
+            String.slice(udise_code, 0, 2)
+        )
 
       true ->
         add_error(
@@ -258,6 +274,19 @@ defmodule Dbservice.Utils.Util do
           "must start with #{Enum.join(prefixes, " or ")} for #{state}"
         )
     end
+  end
+
+  # Nothing to compare (one side missing or unknown), neither field is being touched, or
+  # the field already carries an error of its own that this would only pile onto.
+  #
+  # The untouched case matters: a row backfilled by SQL could hold a mismatched pair, and
+  # an unrelated later update should not be blocked by it.
+  defp skip_prefix_check?(changeset, udise_field, state_field, udise_code, prefixes) do
+    is_nil(udise_code) or prefixes == [] or
+      (is_nil(get_change(changeset, udise_field)) and
+         is_nil(get_change(changeset, state_field))) or
+      Keyword.has_key?(changeset.errors, udise_field) or
+      Keyword.has_key?(changeset.errors, state_field)
   end
 
   @doc """

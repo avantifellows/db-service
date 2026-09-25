@@ -12,7 +12,9 @@ defmodule Dbservice.Constants.IndianStates do
 
     * Dadra & Nagar Haveli and Daman & Diu merged in 2020. Schools in this UT
       hold codes starting 25 or 26 (the two pre-merger UTs) even though the
-      UT's own state code is 38 - all three appear in our own school table.
+      UT's own state code is 38. Only 25 and 26 actually appear in
+      `school.udise_code`; 38 is accepted because it is the current code and
+      newly issued codes will use it.
     * Ladakh separated from Jammu & Kashmir in 2019; older codes start with 01.
     * Telangana separated from Andhra Pradesh in 2014; older codes start with 28.
   """
@@ -20,18 +22,18 @@ defmodule Dbservice.Constants.IndianStates do
   # {canonical name, [accepted UDISE prefixes], [extra spellings we accept]}
   # Kept alphabetical so `all/0` can feed a dropdown directly.
   @states [
-    {"Andaman & Nicobar Islands", ["35"], []},
+    {"Andaman & Nicobar Islands", ["35"], ["Andaman & Nicobar"]},
     {"Andhra Pradesh", ["28"], []},
     {"Arunachal Pradesh", ["12"], []},
     {"Assam", ["18"], []},
     {"Bihar", ["10"], []},
     {"Chandigarh", ["04"], []},
-    {"Chhattisgarh", ["22"], ["Chattisgarh"]},
+    {"Chhattisgarh", ["22"], ["Chattisgarh", "Chhatisgarh"]},
     {"Dadra & Nagar Haveli & Daman & Diu", ["38", "25", "26"],
      ["Dadra & Nagar Haveli", "Daman & Diu", "DNHDD"]},
-    {"Delhi", ["07"], ["NCT of Delhi", "New Delhi"]},
+    {"Delhi", ["07"], ["NCT of Delhi", "New Delhi", "Delhi NCR"]},
     {"Goa", ["30"], []},
-    {"Gujarat", ["24"], []},
+    {"Gujarat", ["24"], ["Gujrat"]},
     {"Haryana", ["06"], []},
     {"Himachal Pradesh", ["02"], []},
     {"Jammu & Kashmir", ["01"], []},
@@ -51,7 +53,7 @@ defmodule Dbservice.Constants.IndianStates do
     {"Punjab", ["03"], []},
     {"Rajasthan", ["08"], []},
     {"Sikkim", ["11"], []},
-    {"Tamil Nadu", ["33"], []},
+    {"Tamil Nadu", ["33"], ["Tamilnadu"]},
     {"Telangana", ["36", "28"], []},
     {"Tripura", ["16"], []},
     {"Uttar Pradesh", ["09"], []},
@@ -76,6 +78,7 @@ defmodule Dbservice.Constants.IndianStates do
                   |> String.replace(~r/\(ut\)/, " ")
                   |> String.replace(~r/[^a-z]+/, " ")
                   |> String.trim()
+                  |> String.replace(~r/^the /, "")
 
                 {key, name}
               end)
@@ -122,5 +125,6 @@ defmodule Dbservice.Constants.IndianStates do
     |> String.replace(~r/\(ut\)/, " ")
     |> String.replace(~r/[^a-z]+/, " ")
     |> String.trim()
+    |> String.replace(~r/^the /, "")
   end
 end

@@ -18,17 +18,20 @@ defmodule Dbservice.Repo.Migrations.AddUniformSizesAndG10SchoolToStudent do
       add :g10_school_udise_code, :string, size: 11
     end
 
-    create constraint(:student, :student_tshirt_size_check,
-             check: "tshirt_size IS NULL OR tshirt_size IN (#{@sizes})"
-           )
+    # One ALTER for all three, so `student` is scanned once rather than three
+    # times, and a bounded lock_timeout so this queues behind live traffic
+    # instead of blocking it. SET LOCAL is scoped to the migration transaction.
+    execute("SET LOCAL lock_timeout = '5s'")
 
-    create constraint(:student, :student_track_pant_size_check,
-             check: "track_pant_size IS NULL OR track_pant_size IN (#{@sizes})"
-           )
-
-    create constraint(:student, :student_g10_school_udise_code_check,
-             check: "g10_school_udise_code IS NULL OR g10_school_udise_code ~ '^[0-9]{11}$'"
-           )
+    execute("""
+    ALTER TABLE student
+      ADD CONSTRAINT student_tshirt_size_check
+        CHECK (tshirt_size IS NULL OR tshirt_size IN (#{@sizes})),
+      ADD CONSTRAINT student_track_pant_size_check
+        CHECK (track_pant_size IS NULL OR track_pant_size IN (#{@sizes})),
+      ADD CONSTRAINT student_g10_school_udise_code_check
+        CHECK (g10_school_udise_code IS NULL OR g10_school_udise_code ~ '^[0-9]{11}$')
+    """)
   end
 
   def down do
