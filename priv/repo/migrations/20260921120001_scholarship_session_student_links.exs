@@ -16,10 +16,23 @@ defmodule Dbservice.Repo.Migrations.ScholarshipSessionStudentLinks do
   # the email simply omits the cell.
   #
   # Additive -> deploy-safe. Apply on prod BEFORE the app deploy.
-  def change do
+  #
+  # Renumbered from 20260921120000, which it shared with
+  # create_blended_learning_mentor_mentee_mappings; Ecto refuses to run any
+  # migration while two share a version. Idempotent because the environments
+  # split on which one ran under that version: staging ran this one (columns
+  # exist), prod ran Blended Learning (columns missing).
+  def up do
     alter table(:scholarship_interview_session_students) do
-      add :summary_url, :text
-      add :documents_url, :text
+      add_if_not_exists :summary_url, :text
+      add_if_not_exists :documents_url, :text
+    end
+  end
+
+  def down do
+    alter table(:scholarship_interview_session_students) do
+      remove_if_exists :summary_url, :text
+      remove_if_exists :documents_url, :text
     end
   end
 end
