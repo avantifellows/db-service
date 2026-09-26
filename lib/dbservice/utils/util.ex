@@ -4,6 +4,7 @@ defmodule Dbservice.Utils.Util do
   use Ecto.Schema
   import Ecto.Changeset
   import Ecto.Query
+  alias Dbservice.Constants.IndianStates
   alias Dbservice.Repo
   alias Dbservice.Groups
   alias Dbservice.GroupUsers
@@ -12,6 +13,8 @@ defmodule Dbservice.Utils.Util do
   @valid_categories ~w(Gen OBC SC ST Gen-EWS PWD-SC PWD-Gen PWD-OBC PWD-EWS PWD-ST)
   @valid_genders ~w(Male Female Other Others)
   @valid_streams ~w(engineering medical pcmb pcm pcb foundation ca clat nda)
+  # Smallest to largest, so a dropdown built from this list is already in order.
+  @valid_uniform_sizes ~w(XXS XS S M L XL XXL XXXL)
 
   @doc """
   Requires `field` to be present, but only when inserting a new record.
@@ -151,6 +154,140 @@ defmodule Dbservice.Utils.Util do
   Returns list of valid streams. This can be used in portal to populate streams in dropdown menus
   """
   def valid_streams, do: @valid_streams
+
+  @doc """
+  Trims a string field and turns a blank value into nil, so stray whitespace from a sheet
+  cell can't create a near-duplicate that bypasses uniqueness or format checks.
+  """
+  def trim_to_nil(changeset, field) do
+    update_change(changeset, field, fn
+      nil ->
+        nil
+
+      value when is_binary(value) ->
+        case String.trim(value) do
+          "" -> nil
+          trimmed -> trimmed
+        end
+
+      value ->
+        value
+    end)
+  end
+
+  @doc """
+  Left-pads a 10-digit UDISE code back to 11 digits.
+
+  Real UDISE codes are always 11 digits, but the leading zero is lost whenever a code passes
+  through a spreadsheet as a number. 6,620 of our own `school.udise_code` values are stored
+  that way, every one of them in a state whose code starts with 0 (Himachal 02, Punjab 03,
+  Uttarakhand 05, Haryana 06 and so on), so a backfill from `school` or from a sheet would
+  otherwise fail for those states. Only an exactly-10-digit value is padded; anything
+  shorter is too ambiguous to repair and is left for the format check to reject.
+  """
+  def pad_udise_code(changeset, field) do
+    update_change(changeset, field, fn
+      value when is_binary(value) ->
+        if Regex.match?(~r/^[0-9]{10}$/, value), do: "0" <> value, else: value
+
+      value ->
+        value
+    end)
+  end
+
+  @doc """
+  Validates and normalizes a uniform (t-shirt or track pant) size in a changeset.
+  Casing is normalized to the canonical uppercase form.
+  """
+  def validate_uniform_size(changeset, field) do
+    changeset
+    |> trim_to_nil(field)
+    |> validate_field(field, :uniform_size, @valid_uniform_sizes)
+  end
+
+  @doc """
+  Validates and normalizes an Indian state or union territory in a changeset.
+
+  Accepts the spelling variants our data already contains - case differences, "and" for "&",
+  a trailing "(UT)", and former names like Pondicherry - and stores the canonical name.
+  """
+  def validate_indian_state(changeset, field) do
+    changeset = trim_to_nil(changeset, field)
+
+    case get_change(changeset, field) do
+      nil ->
+        changeset
+
+      value when is_binary(value) ->
+        case IndianStates.canonical_name(value) do
+          {:ok, canonical} ->
+            put_change(changeset, field, canonical)
+
+          :error ->
+            add_error(
+              changeset,
+              field,
+              "Invalid state: #{value}. Must be one of the 36 Indian states/UTs"
+            )
+        end
+
+      value ->
+        add_error(changeset, field, "state must be a string, got: #{inspect(value)}")
+    end
+  end
+
+  @doc """
+  Rejects a UDISE code whose leading two digits don't belong to the state in `state_field`.
+
+  Only runs when both fields hold a usable value, so a row can be saved with the state
+  filled in while the UDISE code is still being looked up (and vice versa). Expects
+  `state_field` to already hold a canonical name - run `validate_indian_state/2` first.
+
+  The error lands on whichever of the two fields is being changed, so an update that only
+  moves the state is reported against the state rather than against an untouched code.
+  """
+  def validate_udise_state_prefix(changeset, udise_field, state_field) do
+    udise_code = get_field(changeset, udise_field)
+    state = get_field(changeset, state_field)
+    prefixes = if is_binary(state), do: IndianStates.udise_prefixes(state), else: []
+
+    cond do
+      skip_prefix_check?(changeset, udise_field, state_field, udise_code, prefixes) ->
+        changeset
+
+      IndianStates.udise_code_matches_state?(udise_code, state) ->
+        changeset
+
+      # Only the state moved, so the untouched code is not the thing to complain about.
+      is_nil(get_change(changeset, udise_field)) ->
+        add_error(
+          changeset,
+          state_field,
+          "does not match the Grade 10 UDISE code, which starts with " <>
+            String.slice(udise_code, 0, 2)
+        )
+
+      true ->
+        add_error(
+          changeset,
+          udise_field,
+          "must start with #{Enum.join(prefixes, " or ")} for #{state}"
+        )
+    end
+  end
+
+  # Nothing to compare (one side missing or unknown), neither field is being touched, or
+  # the field already carries an error of its own that this would only pile onto.
+  #
+  # The untouched case matters: a row backfilled by SQL could hold a mismatched pair, and
+  # an unrelated later update should not be blocked by it.
+  defp skip_prefix_check?(changeset, udise_field, state_field, udise_code, prefixes) do
+    is_nil(udise_code) or prefixes == [] or
+      (is_nil(get_change(changeset, udise_field)) and
+         is_nil(get_change(changeset, state_field))) or
+      Keyword.has_key?(changeset.errors, udise_field) or
+      Keyword.has_key?(changeset.errors, state_field)
+  end
 
   @doc """
   Validates and normalizes category in a changeset.

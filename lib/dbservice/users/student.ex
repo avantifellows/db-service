@@ -59,6 +59,11 @@ defmodule Dbservice.Users.Student do
     field(:pen_number, :string)
     field(:g10_board, :string)
     field(:g10_roll_no, :string)
+    field(:tshirt_size, :string)
+    field(:track_pant_size, :string)
+    field(:g10_school_state, :string)
+    field(:g10_school_name, :string)
+    field(:g10_school_udise_code, :string)
 
     belongs_to(:user, User)
     has_one(:student_profile, StudentProfile)
@@ -119,34 +124,43 @@ defmodule Dbservice.Users.Student do
       :apaar_id,
       :pen_number,
       :g10_board,
-      :g10_roll_no
+      :g10_roll_no,
+      :tshirt_size,
+      :track_pant_size,
+      :g10_school_state,
+      :g10_school_name,
+      :g10_school_udise_code
     ])
     # Trim the globally-unique identifiers so stray whitespace can't create a
     # near-duplicate that bypasses the uniqueness checks (issue #641 review); a
     # whitespace-only value becomes nil.
-    |> trim_identifier(:apaar_id)
-    |> trim_identifier(:pen_number)
+    |> trim_to_nil(:apaar_id)
+    |> trim_to_nil(:pen_number)
     |> validate_format(:pen_number, ~r/^[0-9]{11}$/, message: "must be exactly 11 digits")
     |> unique_constraint(:apaar_id, name: :student_apaar_id_unique_not_null)
     |> unique_constraint(:pen_number, name: :student_pen_number_unique_not_null)
     |> validate_required([:user_id])
     |> validate_category(:category)
     |> validate_stream(:stream)
-  end
-
-  defp trim_identifier(changeset, field) do
-    update_change(changeset, field, fn
-      nil ->
-        nil
-
-      value when is_binary(value) ->
-        case String.trim(value) do
-          "" -> nil
-          trimmed -> trimmed
-        end
-
-      value ->
-        value
-    end)
+    |> validate_uniform_size(:tshirt_size)
+    |> validate_uniform_size(:track_pant_size)
+    |> validate_indian_state(:g10_school_state)
+    |> trim_to_nil(:g10_school_name)
+    # Codepoints, not graphemes: the column is varchar(150), which counts
+    # codepoints, so a Hindi name that fits by graphemes would otherwise pass
+    # here and then fail the insert.
+    |> validate_length(:g10_school_name, max: 150, count: :codepoints)
+    |> trim_to_nil(:g10_school_udise_code)
+    |> pad_udise_code(:g10_school_udise_code)
+    |> validate_format(:g10_school_udise_code, ~r/^[0-9]{11}$/,
+      message: "must be exactly 11 digits"
+    )
+    # The UDISE code's first two digits identify the state, so a mismatch means
+    # one of the two fields is wrong - catch it before it reaches the Grade 10
+    # to Grade 12 matching.
+    |> validate_udise_state_prefix(:g10_school_udise_code, :g10_school_state)
+    |> check_constraint(:tshirt_size, name: :student_tshirt_size_check)
+    |> check_constraint(:track_pant_size, name: :student_track_pant_size_check)
+    |> check_constraint(:g10_school_udise_code, name: :student_g10_school_udise_code_check)
   end
 end

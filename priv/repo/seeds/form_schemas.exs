@@ -143,6 +143,64 @@ form_schemas_data = [
           "helpText" => %{"en" => "You can select more than one exam ", "hi" => ""},
           "required" => true,
           "multipleSelect" => true
+        },
+        %{
+          "key" => "tshirt_size",
+          "type" => "dropdown",
+          "label" => %{"en" => "T-shirt size", "hi" => "टी-शर्ट का साइज़"},
+          "options" => %{
+            "en" => [
+              %{"label" => "XXS", "value" => "XXS"},
+              %{"label" => "XS", "value" => "XS"},
+              %{"label" => "S", "value" => "S"},
+              %{"label" => "M", "value" => "M"},
+              %{"label" => "L", "value" => "L"},
+              %{"label" => "XL", "value" => "XL"},
+              %{"label" => "XXL", "value" => "XXL"},
+              %{"label" => "XXXL", "value" => "XXXL"}
+            ],
+            "hi" => [
+              %{"label" => "XXS", "value" => "XXS"},
+              %{"label" => "XS", "value" => "XS"},
+              %{"label" => "S", "value" => "S"},
+              %{"label" => "M", "value" => "M"},
+              %{"label" => "L", "value" => "L"},
+              %{"label" => "XL", "value" => "XL"},
+              %{"label" => "XXL", "value" => "XXL"},
+              %{"label" => "XXXL", "value" => "XXXL"}
+            ]
+          },
+          "helpText" => %{"en" => "Sizes run smallest (XXS) to largest (XXXL)", "hi" => "साइज़ सबसे छोटे (XXS) से सबसे बड़े (XXXL) तक हैं"},
+          "required" => true
+        },
+        %{
+          "key" => "track_pant_size",
+          "type" => "dropdown",
+          "label" => %{"en" => "Track pant size", "hi" => "ट्रैक पैंट का साइज़"},
+          "options" => %{
+            "en" => [
+              %{"label" => "XXS", "value" => "XXS"},
+              %{"label" => "XS", "value" => "XS"},
+              %{"label" => "S", "value" => "S"},
+              %{"label" => "M", "value" => "M"},
+              %{"label" => "L", "value" => "L"},
+              %{"label" => "XL", "value" => "XL"},
+              %{"label" => "XXL", "value" => "XXL"},
+              %{"label" => "XXXL", "value" => "XXXL"}
+            ],
+            "hi" => [
+              %{"label" => "XXS", "value" => "XXS"},
+              %{"label" => "XS", "value" => "XS"},
+              %{"label" => "S", "value" => "S"},
+              %{"label" => "M", "value" => "M"},
+              %{"label" => "L", "value" => "L"},
+              %{"label" => "XL", "value" => "XL"},
+              %{"label" => "XXL", "value" => "XXL"},
+              %{"label" => "XXXL", "value" => "XXXL"}
+            ]
+          },
+          "helpText" => %{"en" => "Sizes run smallest (XXS) to largest (XXXL)", "hi" => "साइज़ सबसे छोटे (XXS) से सबसे बड़े (XXXL) तक हैं"},
+          "required" => true
         }
       ]
     }

@@ -294,6 +294,187 @@ defmodule Dbservice.UsersTest do
       assert {:ok, %Student{pen_number: nil}} = Users.update_student(student, %{pen_number: nil})
     end
 
+    test "create_student/1 normalizes uniform sizes and blanks them to nil" do
+      assert {:ok, %Student{tshirt_size: "XXL", track_pant_size: nil}} =
+               Users.create_student(%{
+                 user_id: user_fixture().id,
+                 tshirt_size: " xxl ",
+                 track_pant_size: "  "
+               })
+    end
+
+    test "create_student/1 rejects a uniform size outside the range" do
+      for {field, value} <- [tshirt_size: "XXXXL", track_pant_size: "Medium"] do
+        assert {:error, changeset} =
+                 Users.create_student(%{field => value, :user_id => user_fixture().id})
+
+        assert {"Invalid uniform_size: " <> _, _} = changeset.errors[field]
+      end
+    end
+
+    test "create_student/1 canonicalizes Grade 10 school state spellings" do
+      for {given, canonical} <- [
+            {"madhya pradesh", "Madhya Pradesh"},
+            {"Pondicherry", "Puducherry"},
+            {"Jammu And Kashmir", "Jammu & Kashmir"},
+            {"Delhi (UT)", "Delhi"}
+          ] do
+        assert {:ok, %Student{g10_school_state: ^canonical}} =
+                 Users.create_student(%{user_id: user_fixture().id, g10_school_state: given})
+      end
+    end
+
+    test "create_student/1 rejects a state outside the 36 states and UTs" do
+      assert {:error, changeset} =
+               Users.create_student(%{user_id: user_fixture().id, g10_school_state: "Avanti"})
+
+      assert {"Invalid state: Avanti. Must be one of the 36 Indian states/UTs", _} =
+               changeset.errors[:g10_school_state]
+    end
+
+    test "create_student/1 trims the Grade 10 UDISE code and keeps its leading zeros" do
+      assert {:ok, %Student{g10_school_udise_code: "01234567890"}} =
+               Users.create_student(%{
+                 user_id: user_fixture().id,
+                 g10_school_udise_code: " 01234567890 "
+               })
+    end
+
+    test "create_student/1 rejects a Grade 10 UDISE code that is not 11 digits" do
+      for udise_code <- ["abc", "231201001", "231201001012"] do
+        assert {:error, changeset} =
+                 Users.create_student(%{
+                   user_id: user_fixture().id,
+                   g10_school_udise_code: udise_code
+                 })
+
+        assert {"must be exactly 11 digits", _} = changeset.errors[:g10_school_udise_code]
+      end
+    end
+
+    test "create_student/1 pads a 10-digit Grade 10 UDISE code back to 11" do
+      # A leading zero is lost whenever a code passes through a spreadsheet as a
+      # number; 6,620 of our own school rows are stored this way.
+      assert {:ok, %Student{g10_school_udise_code: "03020113003"}} =
+               Users.create_student(%{
+                 user_id: user_fixture().id,
+                 g10_school_state: "Punjab",
+                 g10_school_udise_code: "3020113003"
+               })
+    end
+
+    test "create_student/1 accepts the state spellings our own data contains" do
+      for {given, canonical} <- [
+            {"The Dadra And Nagar Haveli", "Dadra & Nagar Haveli & Daman & Diu"},
+            {"Gujrat", "Gujarat"},
+            {"Delhi NCR", "Delhi"},
+            {"Tamilnadu", "Tamil Nadu"},
+            {"Chhatisgarh", "Chhattisgarh"},
+            {"Andaman and Nicobar", "Andaman & Nicobar Islands"}
+          ] do
+        assert {:ok, %Student{g10_school_state: ^canonical}} =
+                 Users.create_student(%{user_id: user_fixture().id, g10_school_state: given})
+      end
+    end
+
+    test "create_student/1 rejects a Grade 10 school name longer than the column" do
+      # Devanagari: 100 graphemes but 200 codepoints, which varchar(150) counts.
+      long_name = String.duplicate("नी", 100)
+
+      assert {:error, changeset} =
+               Users.create_student(%{
+                 user_id: user_fixture().id,
+                 g10_school_name: long_name
+               })
+
+      assert {"should be at most %{count} character(s)", _} = changeset.errors[:g10_school_name]
+    end
+
+    test "update_student/2 reports a state change against the state, not the stored code" do
+      {_user, student} =
+        student_fixture(%{g10_school_state: "Bihar", g10_school_udise_code: "10120100101"})
+
+      assert {:error, changeset} =
+               Users.update_student(student, %{g10_school_state: "Madhya Pradesh"})
+
+      assert changeset.errors[:g10_school_udise_code] == nil
+
+      assert {"does not match the Grade 10 UDISE code, which starts with 10", _} =
+               changeset.errors[:g10_school_state]
+    end
+
+    test "update_student/2 leaves an untouched mismatched pair alone" do
+      # A backfill done in SQL can land a mismatched pair; an unrelated update
+      # should not be held hostage by it.
+      {_user, student} = student_fixture(%{g10_school_state: "Bihar"})
+
+      {1, _} =
+        Dbservice.Repo.update_all(
+          from(s in Student, where: s.id == ^student.id),
+          set: [g10_school_udise_code: "23120100101"]
+        )
+
+      student = Users.get_student!(student.id)
+
+      assert {:ok, %Student{father_name: "Updated"}} =
+               Users.update_student(student, %{father_name: "Updated"})
+    end
+
+    test "create_student/1 rejects a Grade 10 UDISE code whose prefix is not the state's" do
+      assert {:error, changeset} =
+               Users.create_student(%{
+                 user_id: user_fixture().id,
+                 g10_school_state: "Madhya Pradesh",
+                 g10_school_udise_code: "09120100101"
+               })
+
+      assert {"must start with 23 for Madhya Pradesh", _} =
+               changeset.errors[:g10_school_udise_code]
+    end
+
+    test "create_student/1 accepts a Grade 10 UDISE code matching the state" do
+      assert {:ok, %Student{}} =
+               Users.create_student(%{
+                 user_id: user_fixture().id,
+                 g10_school_state: "Madhya Pradesh",
+                 g10_school_udise_code: "23120100101"
+               })
+    end
+
+    test "create_student/1 accepts the pre-merger prefixes for Dadra & Nagar Haveli & Daman & Diu" do
+      for udise_code <- ["25120100101", "26120100101", "38120100101"] do
+        assert {:ok, %Student{}} =
+                 Users.create_student(%{
+                   user_id: user_fixture().id,
+                   g10_school_state: "Dadra & Nagar Haveli & Daman & Diu",
+                   g10_school_udise_code: udise_code
+                 })
+      end
+    end
+
+    test "create_student/1 accepts the Grade 10 state and UDISE code independently" do
+      assert {:ok, %Student{}} =
+               Users.create_student(%{user_id: user_fixture().id, g10_school_state: "Bihar"})
+
+      assert {:ok, %Student{}} =
+               Users.create_student(%{
+                 user_id: user_fixture().id,
+                 g10_school_udise_code: "10120100101"
+               })
+    end
+
+    test "update_student/2 checks a new Grade 10 UDISE code against the stored state" do
+      {_user, student} = student_fixture(%{g10_school_state: "Bihar"})
+
+      assert {:error, changeset} =
+               Users.update_student(student, %{g10_school_udise_code: "23120100101"})
+
+      assert {"must start with 10 for Bihar", _} = changeset.errors[:g10_school_udise_code]
+
+      assert {:ok, %Student{g10_school_udise_code: "10120100101"}} =
+               Users.update_student(student, %{g10_school_udise_code: "10120100101"})
+    end
+
     test "PEN lookup is only enabled by get_student_by_id_pen_or_apaar_id/1" do
       {_user, student} = student_fixture(%{student_id: nil, pen_number: "12345678901"})
 
