@@ -96,9 +96,39 @@ defmodule Dbservice.DataImportTest do
                "Update Incorrect School to Correct School"
     end
 
+    test "formats the Blended Learning mentor assignment type" do
+      assert DataImport.format_type_name("blended_learning_mentor_assignment") ==
+               "Blended Learning Mentor Assignment"
+    end
+
     test "capitalizes unknown types" do
       assert DataImport.format_type_name("unknown_type") == "Unknown_type"
       assert DataImport.format_type_name("custom") == "Custom"
+    end
+  end
+
+  describe "generate_csv_template/1" do
+    # Header validation rejects a sheet with missing required or unknown columns,
+    # so the template is the contract for what the sheet may contain.
+    test "returns the Blended Learning mentor assignment columns" do
+      headers =
+        "blended_learning_mentor_assignment"
+        |> DataImport.generate_csv_template()
+        |> String.trim()
+        |> String.split(",")
+
+      assert headers == [
+               "academic_year",
+               "assigned_by_email",
+               "assignment_audit_reason",
+               "mentor_email",
+               "mentor_first_name",
+               "mentor_last_name",
+               "program_name",
+               "started_at",
+               "student_apaar_id",
+               "student_id"
+             ]
     end
   end
 

@@ -53,6 +53,12 @@ defmodule DbserviceWeb.Router do
       ImportController,
       :create_batch_id_correction_import
     )
+
+    post(
+      "/imports/blended_mentor_assignment",
+      ImportController,
+      :create_blended_mentor_assignment_import
+    )
   end
 
   scope "/api", DbserviceWeb do

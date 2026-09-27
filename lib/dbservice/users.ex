@@ -56,6 +56,45 @@ defmodule Dbservice.Users do
   end
 
   @doc """
+  Gets a user by email, ignoring surrounding whitespace and case.
+
+  Email is not unique on `user`, so the earliest matching row wins. The exact
+  match runs first so the `user.email` index does the work; the case-insensitive
+  fallback only runs for the emails that miss it.
+
+  ## Examples
+
+      iex> get_user_by_email("mentor@example.org")
+      %User{}
+      iex> get_user_by_email("nobody@example.org")
+      nil
+  """
+  def get_user_by_email(email) when is_binary(email) do
+    case String.trim(email) do
+      "" -> nil
+      trimmed -> user_by_exact_email(trimmed) || user_by_case_insensitive_email(trimmed)
+    end
+  end
+
+  def get_user_by_email(_email), do: nil
+
+  defp user_by_exact_email(email) do
+    from(u in User, where: u.email == ^email, order_by: [asc: u.id], limit: 1)
+    |> Repo.one()
+  end
+
+  defp user_by_case_insensitive_email(email) do
+    downcased = String.downcase(email)
+
+    from(u in User,
+      where: fragment("lower(?)", u.email) == ^downcased,
+      order_by: [asc: u.id],
+      limit: 1
+    )
+    |> Repo.one()
+  end
+
+  @doc """
   Creates a user.
 
   ## Examples
