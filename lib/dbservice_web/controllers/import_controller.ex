@@ -212,6 +212,28 @@ defmodule DbserviceWeb.ImportController do
     end
   end
 
+  def create_blended_mentor_assignment_import(conn, params) do
+    import_params =
+      params
+      |> Map.get("import", %{})
+      |> Map.put("type", "blended_learning_mentor_assignment")
+
+    case DataImport.start_import(import_params) do
+      {:ok, _import} ->
+        conn
+        |> put_flash(
+          :info,
+          "Blended Learning mentor assignment import queued successfully! Processing will begin shortly. Check the imports page for progress updates."
+        )
+        |> redirect(to: ~p"/imports")
+
+      {:error, reason} ->
+        conn
+        |> put_flash(:error, "Import failed: #{reason}")
+        |> redirect(to: ~p"/imports/new")
+    end
+  end
+
   def create_school_import(conn, params) do
     import_params =
       params

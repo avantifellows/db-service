@@ -152,6 +152,27 @@ defmodule Dbservice.UsersTest do
       assert {:ok, %User{} = updated_user} = Users.update_group(user.id, [])
       assert Enum.empty?(updated_user.group)
     end
+
+    test "get_user_by_email/1 matches regardless of case and surrounding space" do
+      user = user_fixture(%{email: "Mentor.One@Example.org"})
+
+      assert Users.get_user_by_email("Mentor.One@Example.org").id == user.id
+      assert Users.get_user_by_email("mentor.one@example.org").id == user.id
+      assert Users.get_user_by_email("  mentor.one@example.org  ").id == user.id
+    end
+
+    test "get_user_by_email/1 returns nil for a blank or unknown email" do
+      assert Users.get_user_by_email("nobody@example.org") == nil
+      assert Users.get_user_by_email("   ") == nil
+      assert Users.get_user_by_email(nil) == nil
+    end
+
+    test "get_user_by_email/1 returns the earliest row when an email repeats" do
+      first = user_fixture(%{email: "shared@example.org"})
+      _second = user_fixture(%{email: "shared@example.org"})
+
+      assert Users.get_user_by_email("shared@example.org").id == first.id
+    end
   end
 
   describe "student" do

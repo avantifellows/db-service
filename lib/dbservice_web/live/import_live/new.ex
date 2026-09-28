@@ -73,7 +73,8 @@ defmodule DbserviceWeb.ImportLive.New do
       "batch_addition" => "submit_batch_import",
       "school_addition" => "submit_school_import",
       "school_deletion" => "submit_school_deletion_import",
-      "batch_id_correction" => "submit_batch_id_correction_import"
+      "batch_id_correction" => "submit_batch_id_correction_import",
+      "blended_learning_mentor_assignment" => "submit_blended_mentor_assignment_import"
     }
 
     if Map.has_key?(protected_import_config, import_type) do
@@ -137,6 +138,10 @@ defmodule DbserviceWeb.ImportLive.New do
   defp get_protected_import_url("school_addition"), do: ~p"/imports/school"
   defp get_protected_import_url("school_deletion"), do: ~p"/imports/school_deletion"
   defp get_protected_import_url("batch_id_correction"), do: ~p"/imports/batch_id_correction"
+
+  defp get_protected_import_url("blended_learning_mentor_assignment"),
+    do: ~p"/imports/blended_mentor_assignment"
+
   defp get_protected_import_url(_), do: ~p"/imports"
 
   def render(assigns) do
@@ -208,6 +213,7 @@ defmodule DbserviceWeb.ImportLive.New do
                     <option value="student_school_movement" selected={@form[:type].value == "student_school_movement"}>Student School Movement</option>
                     <option value="update_incorrect_grade_to_correct_grade" selected={@form[:type].value == "update_incorrect_grade_to_correct_grade"}>Update Incorrect Grade to Correct Grade</option>
                     <option value="update_incorrect_auth_group_to_correct_auth_group" selected={@form[:type].value == "update_incorrect_auth_group_to_correct_auth_group"}>Update Incorrect Auth Group to Correct Auth Group</option>
+                    <option value="blended_learning_mentor_assignment" selected={@form[:type].value == "blended_learning_mentor_assignment"}>Blended Learning Mentor Assignment</option>
 
                   </select>
                 </div>

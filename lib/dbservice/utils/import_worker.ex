@@ -102,6 +102,7 @@ defmodule Dbservice.DataImport.ImportWorker do
       "student_school_movement" => &process_school_movement_record/1,
       "update_incorrect_grade_to_correct_grade" => &process_grade_update_record/1,
       "update_incorrect_auth_group_to_correct_auth_group" => &process_auth_group_update_record/1,
+      "blended_learning_mentor_assignment" => &process_blended_mentor_assignment_record/1,
       "dropout" => &process_dropout_record/1,
       "re_enrollment" => &process_re_enrollment_record/1
     }
@@ -1753,6 +1754,10 @@ defmodule Dbservice.DataImport.ImportWorker do
 
   defp process_auth_group_update_record(record) do
     DataImport.GroupUpdateProcessor.process_auth_group_update(record)
+  end
+
+  defp process_blended_mentor_assignment_record(record) do
+    DataImport.BlendedMentorAssignmentProcessor.process_mentor_assignment(record)
   end
 
   defp count_total_rows(filename, start_row) do
