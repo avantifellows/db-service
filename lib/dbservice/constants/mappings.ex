@@ -88,7 +88,8 @@ defmodule Dbservice.Constants.Mappings do
         "update_incorrect_school_to_correct_school",
         "student_school_movement",
         "update_incorrect_grade_to_correct_grade",
-        "update_incorrect_auth_group_to_correct_auth_group"
+        "update_incorrect_auth_group_to_correct_auth_group",
+        "blended_learning_mentor_assignment"
       ],
       optional: [
         "batch_movement",
@@ -336,7 +337,8 @@ defmodule Dbservice.Constants.Mappings do
         "student_school_movement",
         "update_incorrect_grade_to_correct_grade",
         "update_incorrect_auth_group_to_correct_auth_group",
-        "student_enrollment"
+        "student_enrollment",
+        "blended_learning_mentor_assignment"
       ],
       type: :string
     },
@@ -373,7 +375,8 @@ defmodule Dbservice.Constants.Mappings do
         "dropout",
         "re_enrollment",
         "student_enrollment",
-        "student_school_movement"
+        "student_school_movement",
+        "blended_learning_mentor_assignment"
       ],
       optional: ["school_addition"],
       type: :string
@@ -1048,6 +1051,52 @@ defmodule Dbservice.Constants.Mappings do
       db_field: "auth_group_name",
       required: ["update_incorrect_auth_group_to_correct_auth_group"],
       optional: [],
+      type: :string
+    },
+
+    # Blended Learning mentor assignment. The mentor is an ordinary user row:
+    # mentor_email identifies them, and the name columns are only read when no
+    # user has that email yet and one has to be created.
+    "program_name" => %{
+      db_field: "program_name",
+      required: ["blended_learning_mentor_assignment"],
+      optional: [],
+      type: :string
+    },
+    "mentor_email" => %{
+      db_field: "mentor_email",
+      required: ["blended_learning_mentor_assignment"],
+      optional: [],
+      type: :string
+    },
+    "mentor_first_name" => %{
+      db_field: "mentor_first_name",
+      required: [],
+      optional: ["blended_learning_mentor_assignment"],
+      type: :string
+    },
+    "mentor_last_name" => %{
+      db_field: "mentor_last_name",
+      required: [],
+      optional: ["blended_learning_mentor_assignment"],
+      type: :string
+    },
+    "assigned_by_email" => %{
+      db_field: "assigned_by_email",
+      required: ["blended_learning_mentor_assignment"],
+      optional: [],
+      type: :string
+    },
+    "started_at" => %{
+      db_field: "started_at",
+      required: [],
+      optional: ["blended_learning_mentor_assignment"],
+      type: :date
+    },
+    "assignment_audit_reason" => %{
+      db_field: "assignment_audit_reason",
+      required: [],
+      optional: ["blended_learning_mentor_assignment"],
       type: :string
     }
   }

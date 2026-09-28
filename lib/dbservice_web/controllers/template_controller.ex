@@ -32,7 +32,8 @@ defmodule DbserviceWeb.TemplateController do
          "update_incorrect_school_to_correct_school",
          "student_school_movement",
          "update_incorrect_grade_to_correct_grade",
-         "update_incorrect_auth_group_to_correct_auth_group"
+         "update_incorrect_auth_group_to_correct_auth_group",
+         "blended_learning_mentor_assignment"
        ] do
       csv_content = DataImport.generate_csv_template(import_type)
 

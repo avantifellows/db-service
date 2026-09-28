@@ -46,6 +46,9 @@ defmodule Dbservice.DataImport do
   def format_type_name("update_incorrect_auth_group_to_correct_auth_group"),
     do: "Update Incorrect Auth Group to Correct Auth Group"
 
+  def format_type_name("blended_learning_mentor_assignment"),
+    do: "Blended Learning Mentor Assignment"
+
   def format_type_name("dropout"), do: "Student Dropout"
   def format_type_name("re_enrollment"), do: "Student Re-Enrollment After Dropout"
 

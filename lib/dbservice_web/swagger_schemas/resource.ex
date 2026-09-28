@@ -554,9 +554,17 @@ defmodule DbserviceWeb.SwaggerSchema.Resource do
               Schema.array(:object),
               "One entry per language: {lang_code, text}. text is raw meta_data.text (HTML/LaTeX)"
             )
+
+            curriculum_id(
+              :integer,
+              "Optional. Restrict matches to problems in this curriculum. " <>
+                "Omit to match across all curricula (deprecated fallback)",
+              required: false
+            )
           end
 
           example(%{
+            curriculum_id: 9,
             languages: [
               %{lang_code: "en", text: "<div>What is the value of \\(2+2\\)?</div>"},
               %{lang_code: "hi", text: "<div>\\(2+2\\) का मान क्या है?</div>"}
@@ -566,7 +574,12 @@ defmodule DbserviceWeb.SwaggerSchema.Resource do
       SimilarSearchResponse:
         swagger_schema do
           title("SimilarSearchResponse")
-          description("Near-duplicate matches (> 0.75), per language, sorted by score desc")
+
+          description(
+            "Near-duplicate matches (> 0.75), per language, sorted by score desc. " <>
+              "Scoped to curriculum_id when the request supplies it; archived " <>
+              "problems are always excluded"
+          )
 
           properties do
             problems(Schema.array(:object), "Matches: {id, code, lang_code, match_score}")
