@@ -71,7 +71,12 @@ defmodule DbserviceWeb.StudentJSON do
       apaar_id: student.apaar_id,
       pen_number: student.pen_number,
       g10_board: student.g10_board,
-      g10_roll_no: student.g10_roll_no
+      g10_roll_no: student.g10_roll_no,
+      tshirt_size: student.tshirt_size,
+      track_pant_size: student.track_pant_size,
+      g10_school_state: student.g10_school_state,
+      g10_school_name: student.g10_school_name,
+      g10_school_udise_code: student.g10_school_udise_code
     }
   end
 
