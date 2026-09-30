@@ -68,7 +68,8 @@ _Avoid_: mentorship cycle
 
 **Holistic Mentorship**:
 A mentorship domain independent of Academic Mentorship, with its own Phases,
-Mappings, Notes, Historical Notes, Profiles, and regeneration records.
+Mappings, Notes, Follow-up Notes, Historical Notes, Profiles, and regeneration
+records.
 _Avoid_: extending or reusing Academic Mentorship records
 
 **Phase Plan**:
@@ -122,6 +123,12 @@ least one usable actor identity: a canonical `actor_user_id`, a nonblank
 ID-only system and legacy writers remain valid.
 _Avoid_: editable audit row, content snapshot
 
+**Follow-up Note**:
+An immutable answer set for one Student and stable Phase, added by its author
+after that Phase's Post-Session Notes are submitted, answering up to three fixed
+questions with a system submission time.
+_Avoid_: editable note, extra Post-Session Notes, draft
+
 **Historical Holistic Notes**:
 A provenance-bearing legacy answer set imported for a safely matched Student,
 without inventing a canonical Phase, Mapping, or completion.
@@ -152,6 +159,8 @@ _Avoid_: best-effort identity matching
 - A Program has one Phase Plan per Academic Year; a Phase Plan has ordered Phases.
 - A Student has at most one active Mentor-Mentee Mapping per Academic Year.
 - Post-Session Notes belong to one Student, one stable Phase, and their author.
+- Follow-up Notes belong to one Student, one stable Phase, and their author;
+  a Student and Phase may have many.
 - Mapping and Post-Session Note audit events retain immutable actor snapshots;
   canonical User links are optional where authenticated access has no User row.
 - Mapping machine source/reason fields are never repurposed for human audit
@@ -178,6 +187,8 @@ _Avoid_: best-effort identity matching
 - Post-Session Note audits are immutable, keep nullable canonical User references,
   require a canonical User ID or nonblank actor email, and allow 500-character
   human reasons for draft-erasure events.
+- Follow-up Notes are immutable, require submitted Post-Session Notes for the
+  same Student and Phase, and are blocked after privacy deletion.
 - Raw questionnaire answers and rendered per-Student prompts are not persisted.
 - Profile Program eligibility comes from the Student's one current School and
   that School's canonical Program IDs; it does not require a Program enrollment.
