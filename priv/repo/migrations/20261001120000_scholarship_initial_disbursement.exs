@@ -58,11 +58,14 @@ defmodule Dbservice.Repo.Migrations.ScholarshipInitialDisbursement do
   #    no regression — but the order still matters for anyone whose role is
   #    later edited.
   #
-  #    They are inserted with the level role ONLY, which is a complete
-  #    disbursement-only account: they approve money, they do not review
-  #    applications. If the Program Team decides they should also do the
-  #    ordinary work of their portal, that is an UPDATE to "reviewer,
-  #    disbursement_l1" — a row value, not a migration.
+  #    Each row carries TWO roles: the portal's ordinary role and the level.
+  #    Alekhya and Ram keep the reviewer's own work — the application queue,
+  #    bank verification, the interview round — and Agny keeps the Accounts
+  #    queue, each with their approval on top (Sanghamitra, 3 Oct 2026, settling
+  #    the question left open on 1 Oct; the disbursement-only default shipped in
+  #    af-scholarship #200 is reversed here). The roles compose, so this is a
+  #    row value and needed no app change. Dropping someone back to
+  #    disbursement-only is the reverse UPDATE, equally not a migration.
   #
   # All additive -> deploy-safe, no backfill. Apply on prod BEFORE the app
   # deploy (the responded_at lesson, 7 Aug 2026).
@@ -134,9 +137,9 @@ defmodule Dbservice.Repo.Migrations.ScholarshipInitialDisbursement do
     execute("""
     INSERT INTO scholarship_reviewers (email, name, role, is_active, inserted_at, updated_at)
     VALUES
-      ('alekhya@avantifellows.org', 'Alekhya', 'disbursement_l1', true, NOW(), NOW()),
-      ('ram@avantifellows.org', 'Ram', 'disbursement_l2', true, NOW(), NOW()),
-      ('agny@avantifellows.org', 'Agny', 'disbursement_l3', true, NOW(), NOW())
+      ('alekhya@avantifellows.org', 'Alekhya', 'reviewer,disbursement_l1', true, NOW(), NOW()),
+      ('ram@avantifellows.org', 'Ram', 'reviewer,disbursement_l2', true, NOW(), NOW()),
+      ('agny@avantifellows.org', 'Agny', 'accounts,disbursement_l3', true, NOW(), NOW())
     ON CONFLICT (email) DO NOTHING
     """)
   end
@@ -149,7 +152,11 @@ defmodule Dbservice.Repo.Migrations.ScholarshipInitialDisbursement do
       'ram@avantifellows.org',
       'agny@avantifellows.org'
     )
-    AND role IN ('disbursement_l1', 'disbursement_l2', 'disbursement_l3')
+    AND role IN (
+      'reviewer,disbursement_l1',
+      'reviewer,disbursement_l2',
+      'accounts,disbursement_l3'
+    )
     """)
 
     drop table(:scholarship_disbursement_lot_events)
