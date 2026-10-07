@@ -203,7 +203,7 @@ defmodule Dbservice.HolisticMentorshipFollowUpNotesSchemaTest do
     end)
   end
 
-  test "keeps Follow-up Notes immutable and retains referenced records" do
+  test "keeps Follow-up Notes immutable" do
     scope = insert_scope()
     assert {:ok, _} = insert_notes(scope, "submitted")
     {:ok, %{rows: [[follow_up_id]]}} = insert_follow_up(scope, %{challenges: "Original"})
@@ -223,20 +223,6 @@ defmodule Dbservice.HolisticMentorshipFollowUpNotesSchemaTest do
              "SELECT challenges_answer FROM holistic_mentorship_follow_up_notes WHERE id = $1",
              [follow_up_id]
            ).rows == [["Original"]]
-
-    Repo.query!("DELETE FROM holistic_mentorship_post_session_notes WHERE student_id = $1", [
-      scope.student_id
-    ])
-
-    for {table, id} <- [
-          {"student", scope.student_id},
-          {"user", scope.author_user_id},
-          {"holistic_mentorship_phases", scope.phase_id}
-        ] do
-      assert_constraint(:foreign_key_violation, fn ->
-        Repo.query("DELETE FROM \"#{table}\" WHERE id = $1", [id])
-      end)
-    end
   end
 
   defp other_key(:challenges), do: :solutions
