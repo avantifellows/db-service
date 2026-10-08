@@ -50,10 +50,11 @@ defmodule Dbservice.EnrollmentRecords.EnrollmentRecord do
     |> validate_required(required_fields)
     |> validate_academic_year_format
     |> validate_dates_of_enrollment
-    # Surfaces the partial unique index (migration 20260725120002) as a changeset
-    # error instead of an unhandled Ecto.ConstraintError: at most one current
-    # enrollment per (user_id, group_type) for the exclusive types
-    # (auth_group/school/grade). batch is intentionally not covered.
+    # Surfaces the partial unique index (migration 20260725120002, widened to
+    # cover centre in 20260918120001) as a changeset error instead of an
+    # unhandled Ecto.ConstraintError: at most one current enrollment per
+    # (user_id, group_type) for the exclusive types
+    # (auth_group/school/grade/centre). batch is intentionally not covered.
     |> unique_constraint([:user_id, :group_type],
       name: :enrollment_record_current_exclusive_type_unique,
       message: "already has a current enrollment for this exclusive group type"
