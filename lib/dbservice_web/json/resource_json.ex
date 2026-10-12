@@ -8,6 +8,7 @@ defmodule DbserviceWeb.ResourceJSON do
   alias Dbservice.ProblemLanguages
   alias Dbservice.ResourceConcepts
   alias Dbservice.ResourceCurriculums
+  alias Dbservice.Resources
   alias Dbservice.Repo
   import Ecto.Query
 
@@ -317,7 +318,13 @@ defmodule DbserviceWeb.ResourceJSON do
       grade_id: rc.grade_id,
       subject_id: rc.subject_id,
       difficulty_level: rc.difficulty_level,
-      concepts: concepts
+      concepts: concepts,
+      # The tests this problem is used in, for the CMS single-problem screen
+      # (issue #768). Always present, `[]` when the problem is in no test: the
+      # CMS reads a missing key as "unknown" and hides the section. Only this
+      # single-problem view carries it; list and search responses are cached by
+      # the CMS and stay unchanged.
+      tests: Resources.get_tests_containing_problem(resource.id)
     })
     |> Paragraphs.maybe_put_paragraph(resource, Map.get(assigns, :paragraph))
   end

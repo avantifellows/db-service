@@ -324,6 +324,38 @@ defmodule Dbservice.Resources do
     end
   end
 
+  @doc """
+  Returns the tests that contain the given problem, as
+  `[%{test_id: id, test_code: code}]` ordered by test id.
+
+  A test references its problems inside `type_params` rather than through a join
+  table, so the ids are pulled out in Elixir with the same extractor
+  `get_tests_containing_problems/1` uses. Only the columns the caller needs are
+  loaded, since this runs on every single-problem fetch.
+  """
+  def get_tests_containing_problem(problem_id) do
+    case to_id(problem_id) do
+      nil ->
+        []
+
+      id ->
+        from(r in Resource,
+          where: r.type == "test",
+          order_by: [asc: r.id],
+          select: %{id: r.id, code: r.code, type_params: r.type_params}
+        )
+        |> Repo.all()
+        |> Enum.filter(&test_contains_problem?(&1, id))
+        |> Enum.map(&%{test_id: &1.id, test_code: &1.code})
+    end
+  end
+
+  defp test_contains_problem?(test, problem_id) do
+    test.type_params
+    |> extract_problem_ids_from_test()
+    |> Enum.any?(fn id -> to_id(id) == problem_id end)
+  end
+
   defp to_id(id) when is_integer(id), do: id
 
   defp to_id(id) when is_binary(id) do
