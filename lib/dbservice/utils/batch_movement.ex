@@ -10,6 +10,9 @@ defmodule Dbservice.DataImport.BatchMovement do
   4. Creating new enrollment records for the new batch (isCurrent=true)
   5. Updating old batch enrollment records (isCurrent=false)
   6. Handling grade movement if grade is provided
+
+  Step 5 ends *every* other current batch the student holds, including batches
+  belonging to other programs — see `release_previous_batches/3`.
   """
 
   alias Dbservice.Users
@@ -58,6 +61,8 @@ defmodule Dbservice.DataImport.BatchMovement do
     start_date = record["start_date"]
     academic_year = record["academic_year"]
 
+    release_previous_batches(user_id, batch_id, start_date)
+
     # Handle batch and status enrollment
     handle_batch_and_status_enrollment(
       user_id,
@@ -70,10 +75,28 @@ defmodule Dbservice.DataImport.BatchMovement do
     # Handle grade movement if provided
     handle_grade_movement(student, record, user_id, academic_year, start_date)
 
-    # Always update the batch group user
+    # Always update the batch group user. Runs after the release so the target
+    # program's memberships get the final say.
     BatchEnrollmentService.update_batch_user(user_id, batch_group_id)
 
     {:ok, "Batch movement completed"}
+  end
+
+  # A batch movement is a move, so every batch the student currently holds is
+  # left behind, whatever program it belongs to.
+  #
+  # `handle_batch_enrollment/5` only ends current batch ERs in the *target*
+  # batch's program, which is right for the enrollment API — a student can be
+  # added to a second program's batch without leaving the first. But a move
+  # across programs then reads as a second enrollment and the old batch stays
+  # current (Punjab `..._common_A001` -> `..._engg_N001`), which is what breaks
+  # Gurukul. This import knows better, so it closes the rest itself.
+  defp release_previous_batches(user_id, target_batch_id, start_date) do
+    BatchEnrollmentService.release_other_batch_enrollments(
+      user_id,
+      target_batch_id,
+      start_date
+    )
   end
 
   defp handle_batch_and_status_enrollment(
