@@ -60,6 +60,9 @@ defmodule Dbservice.DataImport.BlendedMentorAssignmentProcessor do
       {:error, "Either student_id or apaar_id is required"}
     else
       case Users.get_student_by_id_or_apaar_id(record) do
+        {:error, {:ambiguous_student, _, _} = reason} ->
+          {:error, Users.ambiguous_student_message(reason)}
+
         nil ->
           {:error,
            "Student not found. student_id: #{inspect(student_id)}, apaar_id: #{inspect(apaar_id)}"}

@@ -8,6 +8,29 @@ defmodule Dbservice.DataImport.BatchMovementTest do
   import Dbservice.StatusesFixtures
 
   describe "process_batch_movement/1" do
+    test "fails the row when the student_id matches more than one student" do
+      # The same student_id legitimately exists in several auth groups. Without an
+      # auth_group or user_id on the row there is nothing to pick between them, so the
+      # import must fail the row with a message that says what to add.
+      {_user_a, _a} = student_fixture(%{student_id: "SHARED001"})
+      {_user_b, _b} = student_fixture(%{student_id: "SHARED001"})
+      batch = batch_fixture(%{batch_id: "BATCH_SHARED"})
+
+      record = %{
+        "student_id" => "SHARED001",
+        "apaar_id" => nil,
+        "batch_id" => batch.batch_id,
+        "grade" => nil,
+        "start_date" => "2024-01-01",
+        "academic_year" => "2024-2025"
+      }
+
+      assert {:error, message} = BatchMovement.process_batch_movement(record)
+      assert message =~ "SHARED001"
+      assert message =~ "auth_group"
+      assert message =~ "user_id"
+    end
+
     test "successfully processes batch movement with valid data" do
       # Clean up any existing enrolled statuses first
       from(s in Dbservice.Statuses.Status, where: s.title == :enrolled)

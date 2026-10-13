@@ -215,8 +215,16 @@ defmodule Dbservice.Users do
   auth-group-scoped match (the student in *that* group, or `nil`). This is what identity-
   sensitive callers should do so they never act on another auth group's student.
 
-  Without a resolvable auth group it falls back to the earliest-created matching student,
-  rather than raising `Ecto.MultipleResultsError` (which `Repo.get_by/2` would on duplicates).
+  Without a resolvable auth group there is nothing to disambiguate with, so an id that
+  matches more than one student returns `{:error, {:ambiguous_student, :student_id, id}}`.
+  Callers must surface that to the operator instead of acting on a guess - silently taking
+  one of the matches writes to the wrong student.
+
+  ## Returns
+
+    * `%Student{}` - exactly one match
+    * `nil` - no match
+    * `{:error, {:ambiguous_student, field, value}}` - more than one match
 
   ## Examples
       iex> get_student_by_student_id("1234")
@@ -234,12 +242,19 @@ defmodule Dbservice.Users do
   end
 
   defp get_student_by_student_id_unscoped(student_id) do
-    from(s in Student,
-      where: s.student_id == ^student_id,
-      order_by: [asc: s.id],
-      limit: 1
-    )
-    |> Repo.one()
+    find_student(:student_id, student_id)
+  end
+
+  @doc """
+  Renders an `{:ambiguous_student, field, value}` reason as an operator-facing message.
+
+  Import row errors and API responses both go to a human who has to decide which student
+  was meant, so the message names the column to add rather than just reporting a conflict.
+  """
+  def ambiguous_student_message({:ambiguous_student, field, value}) do
+    "Ambiguous #{field} '#{value}': it matches more than one student. The same student_id " <>
+      "can exist in different auth groups, so add an `auth_group` or `user_id` column to " <>
+      "identify which student is meant."
   end
 
   @doc """
@@ -261,18 +276,32 @@ defmodule Dbservice.Users do
       %Student{}
       iex> get_student_by_id_or_apaar_id(%{"student_id" => nil, "apaar_id" => nil})
       nil
+
+  Returns `{:error, {:ambiguous_student, field, value}}` when an identifier matches more
+  than one student; the apaar_id fallback is only tried when student_id matched nothing.
   """
   def get_student_by_id_or_apaar_id(record) when is_map(record) do
-    find_student(:student_id, record["student_id"]) ||
-      find_student(:apaar_id, record["apaar_id"])
+    case find_student(:student_id, record["student_id"]) do
+      nil -> find_student(:apaar_id, record["apaar_id"])
+      result -> result
+    end
   end
 
   def get_student_by_id_pen_or_apaar_id(record) when is_map(record) do
-    [
+    matches = [
       find_student(:student_id, record["student_id"]),
       find_student(:pen_number, record["pen_number"]),
       find_student(:apaar_id, record["apaar_id"])
     ]
+
+    case Enum.find(matches, &match?({:error, _}, &1)) do
+      nil -> single_identifier_match(matches)
+      ambiguous -> ambiguous
+    end
+  end
+
+  defp single_identifier_match(matches) do
+    matches
     |> Enum.reject(&is_nil/1)
     |> Enum.uniq_by(& &1.id)
     |> case do
@@ -282,8 +311,20 @@ defmodule Dbservice.Users do
     end
   end
 
+  # `student_id` is only unique within an auth group, so an unscoped lookup can match
+  # several students. Fetch two rows to tell "one" from "more than one" and report the
+  # ambiguity rather than raising (`Repo.get_by/2`) or picking the lowest id.
   defp find_student(_field, value) when value in [nil, ""], do: nil
-  defp find_student(field, value), do: Repo.get_by(Student, [{field, value}])
+
+  defp find_student(field, value) do
+    from(s in Student, where: field(s, ^field) == ^value, order_by: [asc: s.id], limit: 2)
+    |> Repo.all()
+    |> case do
+      [] -> nil
+      [student] -> student
+      [_, _] -> {:error, {:ambiguous_student, field, value}}
+    end
+  end
 
   @doc """
   Gets a student scoped to an auth group.
@@ -691,8 +732,16 @@ defmodule Dbservice.Users do
     apaar_id = params["apaar_id"]
 
     # Use the existing function to find student
-    existing_student = get_student_by_id_or_apaar_id(params)
+    case get_student_by_id_or_apaar_id(params) do
+      {:error, {:ambiguous_student, _, _} = reason} ->
+        {:error, ambiguous_student_message(reason)}
 
+      existing_student ->
+        validate_found_student(existing_student, student_id, apaar_id)
+    end
+  end
+
+  defp validate_found_student(existing_student, student_id, apaar_id) do
     # Determine which identifier was used to find the student (for validation)
     {student_by_id, student_by_apaar} =
       determine_matching_identifiers(existing_student, student_id, apaar_id)
@@ -1284,12 +1333,21 @@ defmodule Dbservice.Users do
   Gets a student by id and group.
   """
   def get_student_by_id_and_group(id, group) do
-    case group do
-      "EnableStudents" ->
-        Repo.one(from s in Student, where: s.apaar_id == ^id or s.student_id == ^id)
+    base =
+      case group do
+        "EnableStudents" ->
+          from(s in Student, where: s.apaar_id == ^id or s.student_id == ^id)
 
-      _ ->
-        Repo.one(from s in Student, where: s.student_id == ^id)
+        _ ->
+          from(s in Student, where: s.student_id == ^id)
+      end
+
+    from(s in base, order_by: [asc: s.id], limit: 2)
+    |> Repo.all()
+    |> case do
+      [] -> nil
+      [student] -> student
+      [_, _] -> {:error, {:ambiguous_student, :student_id, id}}
     end
   end
 

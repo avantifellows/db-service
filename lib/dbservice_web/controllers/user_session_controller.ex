@@ -9,6 +9,7 @@ defmodule DbserviceWeb.UserSessionController do
   alias Dbservice.Sessions.UserSession
   alias Dbservice.Users
   alias Dbservice.Users.User
+  alias Dbservice.Users.Student
   alias Dbservice.Groups.GroupUser
   alias Dbservice.EnrollmentRecords
   alias Dbservice.GroupUsers
@@ -138,7 +139,7 @@ defmodule DbserviceWeb.UserSessionController do
   end
 
   def cleanup_student(conn, %{"student_id" => student_id}) do
-    with student when not is_nil(student) <-
+    with %Student{} = student <-
            Users.get_student_by_student_id(student_id) || {:error, :not_found},
          {:ok, user_id} <- extract_user_id(student),
          :ok <- check_if_session_accessed(user_id),
@@ -149,6 +150,11 @@ defmodule DbserviceWeb.UserSessionController do
         conn
         |> put_status(:not_found)
         |> json(%{error: "Student not found"})
+
+      {:error, {:ambiguous_student, _, _} = reason} ->
+        conn
+        |> put_status(:conflict)
+        |> json(%{error: Users.ambiguous_student_message(reason)})
 
       {:error, :session_records_exists} ->
         conn
@@ -163,7 +169,7 @@ defmodule DbserviceWeb.UserSessionController do
   end
 
   def remove_batch_mapping(conn, %{"student_id" => student_id, "batch_id" => batch_id}) do
-    with student when not is_nil(student) <-
+    with %Student{} = student <-
            Users.get_student_by_student_id(student_id) || {:error, :not_found},
          {:ok, user_id} <- extract_user_id(student),
          batch when not is_nil(batch) <-
@@ -175,6 +181,11 @@ defmodule DbserviceWeb.UserSessionController do
         conn
         |> put_status(:not_found)
         |> json(%{error: "Student not found"})
+
+      {:error, {:ambiguous_student, _, _} = reason} ->
+        conn
+        |> put_status(:conflict)
+        |> json(%{error: Users.ambiguous_student_message(reason)})
 
       {:error, :user_id_not_found} ->
         conn
