@@ -37,6 +37,7 @@ locals {
     { name = "PHX_HOST", value = local.phx_host },
     { name = "POOL_SIZE", value = var.pool_size },
     { name = "WHITELISTED_DOMAINS", value = var.whitelisted_domains },
+    { name = "AWS_REGION", value = var.aws_region },
     { name = "CSV_BUCKET", value = aws_s3_bucket.csv_imports.bucket },
     { name = "DATABASE_URL", value = var.database_url },
     { name = "SECRET_KEY_BASE", value = var.secret_key_base },

@@ -304,6 +304,13 @@ defmodule DbserviceWeb.SwaggerSchema.Resource do
             grade_id(:integer, "Grade id associated with the resource")
             subject_id(:integer, "Subject id associated with the resource")
             concepts(:array, "Concepts associated with the resource")
+
+            tests(
+              Schema.array(:object),
+              "Tests this problem appears in, each with a test_id and test_code. " <>
+                "Always present; an empty array when the problem is in no test.",
+              example: [%{test_id: 12, test_code: "TEST_ABC"}]
+            )
           end
 
           example(%{
@@ -363,7 +370,8 @@ defmodule DbserviceWeb.SwaggerSchema.Resource do
                 ],
                 topic_id: 5
               }
-            ]
+            ],
+            tests: [%{test_id: 12, test_code: "TEST_ABC"}]
           })
         end
     }

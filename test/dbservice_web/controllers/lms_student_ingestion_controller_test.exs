@@ -2040,6 +2040,124 @@ defmodule DbserviceWeb.LmsStudentIngestionControllerTest do
     on_exit(fn -> LmsStudentRegistrationMode.put_test_active_mode(nil) end)
   end
 
+  describe "uniform sizes on LMS student ingestion" do
+    test "stores both sizes from a phone-mode row instead of rejecting them as unknown", %{
+      conn: conn
+    } do
+      school = insert_eligible_school!()
+      insert_auth_group!("EnableStudents")
+      insert_grade!(11)
+      insert_nvs_batch!(11, "engineering")
+
+      on_exit(fn -> LmsStudentRegistrationMode.put_test_active_mode(nil) end)
+      :ok = LmsStudentRegistrationMode.put_test_active_mode("phone")
+
+      row =
+        phone_row("9876543210", %{"tshirt_size" => "XL", "track_pant_size" => "L"})
+
+      response =
+        conn
+        |> post(
+          "/api/lms/students/bulk-create-with-enrollments",
+          payload(school, [row]) |> Map.put("registration_mode", "phone")
+        )
+        |> json_response(200)
+
+      assert response["totals"]["created"] == 1
+      assert response["totals"]["rejected"] == 0
+
+      student = Repo.get_by!(Student, student_id: "9876543210")
+      assert student.tshirt_size == "XL"
+      assert student.track_pant_size == "L"
+    end
+
+    test "leaves both sizes nil when the row omits them", %{conn: conn} do
+      school = insert_eligible_school!()
+      insert_auth_group!("EnableStudents")
+      insert_grade!(11)
+      insert_nvs_batch!(11, "engineering")
+
+      on_exit(fn -> LmsStudentRegistrationMode.put_test_active_mode(nil) end)
+      :ok = LmsStudentRegistrationMode.put_test_active_mode("phone")
+
+      response =
+        conn
+        |> post(
+          "/api/lms/students/bulk-create-with-enrollments",
+          payload(school, [phone_row("9876543211", %{})])
+          |> Map.put("registration_mode", "phone")
+        )
+        |> json_response(200)
+
+      assert response["totals"]["created"] == 1
+
+      student = Repo.get_by!(Student, student_id: "9876543211")
+      assert is_nil(student.tshirt_size)
+      assert is_nil(student.track_pant_size)
+    end
+
+    test "rejects an unsupported size with a named error and writes no student", %{conn: conn} do
+      school = insert_eligible_school!()
+      insert_auth_group!("EnableStudents")
+      insert_grade!(11)
+      insert_nvs_batch!(11, "engineering")
+
+      on_exit(fn -> LmsStudentRegistrationMode.put_test_active_mode(nil) end)
+      :ok = LmsStudentRegistrationMode.put_test_active_mode("phone")
+
+      before_students = Repo.aggregate(Student, :count, :id)
+
+      response =
+        conn
+        |> post(
+          "/api/lms/students/bulk-create-with-enrollments",
+          payload(school, [
+            phone_row("9876543212", %{"row_number" => 2, "tshirt_size" => "XXXXL"}),
+            phone_row("9876543213", %{"row_number" => 3, "track_pant_size" => "medium"})
+          ])
+          |> Map.put("registration_mode", "phone")
+        )
+        |> json_response(200)
+
+      assert response["totals"]["created"] == 0
+      assert response["totals"]["rejected"] == 2
+
+      assert Enum.at(response["results"], 0)["row_errors"] == [
+               "T-shirt Size must be one of XXS, XS, S, M, L, XL, XXL, XXXL"
+             ]
+
+      assert Enum.at(response["results"], 1)["row_errors"] == [
+               "Track Pant Size must be one of XXS, XS, S, M, L, XL, XXL, XXXL"
+             ]
+
+      assert Repo.aggregate(Student, :count, :id) == before_students
+    end
+
+    test "stores both sizes from an approved-mode row", %{conn: conn} do
+      school = insert_eligible_school!()
+      insert_auth_group!("EnableStudents")
+      insert_grade!(11)
+      insert_nvs_batch!(11, "engineering")
+
+      on_exit(fn -> LmsStudentRegistrationMode.put_test_active_mode(nil) end)
+      :ok = LmsStudentRegistrationMode.put_test_active_mode("approved")
+
+      response =
+        conn
+        |> post(
+          "/api/lms/students/bulk-create-with-enrollments",
+          payload(school, [valid_row(%{"tshirt_size" => "M", "track_pant_size" => "XXXL"})])
+        )
+        |> json_response(200)
+
+      assert response["totals"]["created"] == 1
+
+      student = Repo.get_by!(Student, pen_number: "12345678901")
+      assert student.tshirt_size == "M"
+      assert student.track_pant_size == "XXXL"
+    end
+  end
+
   defp payload(school, rows) do
     %{
       "registration_mode" => "approved",

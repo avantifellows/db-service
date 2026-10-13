@@ -324,6 +324,38 @@ defmodule Dbservice.Resources do
     end
   end
 
+  @doc """
+  Returns the tests that contain the given problem, as
+  `[%{test_id: id, test_code: code}]` ordered by test id.
+
+  A test references its problems inside `type_params` rather than through a join
+  table, so the ids are pulled out in Elixir with the same extractor
+  `get_tests_containing_problems/1` uses. Only the columns the caller needs are
+  loaded, since this runs on every single-problem fetch.
+  """
+  def get_tests_containing_problem(problem_id) do
+    case to_id(problem_id) do
+      nil ->
+        []
+
+      id ->
+        from(r in Resource,
+          where: r.type == "test",
+          order_by: [asc: r.id],
+          select: %{id: r.id, code: r.code, type_params: r.type_params}
+        )
+        |> Repo.all()
+        |> Enum.filter(&test_contains_problem?(&1, id))
+        |> Enum.map(&%{test_id: &1.id, test_code: &1.code})
+    end
+  end
+
+  defp test_contains_problem?(test, problem_id) do
+    test.type_params
+    |> extract_problem_ids_from_test()
+    |> Enum.any?(fn id -> to_id(id) == problem_id end)
+  end
+
   defp to_id(id) when is_integer(id), do: id
 
   defp to_id(id) when is_binary(id) do
@@ -657,13 +689,33 @@ defmodule Dbservice.Resources do
 
   def update_resource_and_associations(resource, params) do
     # Validate move params before any updates: topic must be under chapter, chapter under curriculum/grade/subject
-    case validate_move_association_params(params) do
-      :ok ->
-        do_update_resource_and_associations(resource, params)
-
-      {:error, _msg} = err ->
-        err
+    with :ok <- validate_test_code_unused(resource, params),
+         :ok <- validate_move_association_params(params) do
+      do_update_resource_and_associations(resource, params)
     end
+  end
+
+  # A test's code identifies it outside this system, so moving one onto a code
+  # another resource already holds is rejected the same way creating a duplicate
+  # is. Only a change to the code is checked: duplicates already in the database
+  # stay editable, and a test keeps its own code.
+  defp validate_test_code_unused(%Resource{} = resource, params) do
+    code = params["code"] || params[:code]
+
+    if test_resource?(resource, params) and is_binary(code) and code != resource.code and
+         code_taken?(code, resource.id) do
+      {:error, "This test code has already been used."}
+    else
+      :ok
+    end
+  end
+
+  defp test_resource?(resource, params) do
+    (params["type"] || params[:type] || resource.type) == "test"
+  end
+
+  defp code_taken?(code, resource_id) do
+    Repo.exists?(from(r in Resource, where: r.code == ^code and r.id != ^resource_id))
   end
 
   defp do_update_resource_and_associations(resource, params) do
