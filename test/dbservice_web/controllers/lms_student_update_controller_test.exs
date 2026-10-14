@@ -2553,6 +2553,76 @@ defmodule DbserviceWeb.LmsStudentUpdateControllerTest do
       assert Repo.aggregate(Dbservice.LmsStudentWriteAudit, :count, :id) == 0
     end
 
+    test "sets and clears uniform sizes and audits both", %{conn: conn} do
+      use_test_registration_mode!("approved")
+
+      school = insert_school!()
+      grade = insert_grade!(11)
+      batch = insert_nvs_batch!(11, "engineering")
+      {_user, student} = insert_enrolled_student!(school, grade, batch)
+
+      metadata = %{
+        "actor" => actor(),
+        "school" => %{"code" => school.code, "udise_code" => school.udise_code},
+        "program_id" => 64,
+        "academic_year" => "2026-2027",
+        "start_date" => "2026-07-01"
+      }
+
+      conn =
+        lms_update(
+          conn,
+          student.id,
+          Map.merge(metadata, %{"tshirt_size" => "L", "track_pant_size" => "M"})
+        )
+
+      assert json_response(conn, 200)["changed_fields"] == ["track_pant_size", "tshirt_size"]
+      assert %{tshirt_size: "L", track_pant_size: "M"} = Repo.get!(Student, student.id)
+
+      conn =
+        lms_update(
+          recycle(conn),
+          student.id,
+          Map.merge(metadata, %{"tshirt_size" => "", "track_pant_size" => " m "})
+        )
+
+      assert json_response(conn, 200)["changed_fields"] == ["tshirt_size"]
+      assert %{tshirt_size: nil, track_pant_size: "M"} = Repo.get!(Student, student.id)
+
+      audits = Repo.all(from(a in Dbservice.LmsStudentWriteAudit, order_by: a.id))
+
+      assert Enum.map(audits, & &1.changed_values) == [
+               %{
+                 "tshirt_size" => %{"old" => nil, "new" => "L"},
+                 "track_pant_size" => %{"old" => nil, "new" => "M"}
+               },
+               %{"tshirt_size" => %{"old" => "L", "new" => nil}}
+             ]
+    end
+
+    test "rejects an unknown uniform size without writing", %{conn: conn} do
+      use_test_registration_mode!("approved")
+
+      school = insert_school!()
+      grade = insert_grade!(11)
+      batch = insert_nvs_batch!(11, "engineering")
+      {_user, student} = insert_enrolled_student!(school, grade, batch)
+
+      conn =
+        lms_update(conn, student.id, %{
+          "actor" => actor(),
+          "school" => %{"code" => school.code, "udise_code" => school.udise_code},
+          "program_id" => 64,
+          "academic_year" => "2026-2027",
+          "start_date" => "2026-07-01",
+          "tshirt_size" => "Huge"
+        })
+
+      assert json_response(conn, 422)["error"]["code"] == "invalid_student_fields"
+      assert Repo.get!(Student, student.id).tshirt_size == nil
+      assert Repo.aggregate(Dbservice.LmsStudentWriteAudit, :count, :id) == 0
+    end
+
     test "rejects G10 board edits when the locked G10 roll is invalid for the new board", %{
       conn: conn
     } do
