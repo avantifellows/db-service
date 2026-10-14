@@ -408,6 +408,8 @@ defmodule DbserviceWeb.SwaggerSchema.Student do
             father_name(:string, "Father's name")
             annual_family_income(:string, "Annual family income")
             g10_board(:string, "Grade 10 board")
+            tshirt_size(:string, "T-shirt size (XXS to XXXL); blank clears it")
+            track_pant_size(:string, "Track pant size (XXS to XXXL); blank clears it")
             grade(:integer, "Grade number")
           end
 

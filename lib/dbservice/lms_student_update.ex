@@ -38,7 +38,9 @@ defmodule Dbservice.LmsStudentUpdate do
     "annual_family_income",
     "g10_board",
     "pen_number",
-    "g10_roll_no"
+    "g10_roll_no",
+    "tshirt_size",
+    "track_pant_size"
   ]
   @locked_fields [
     "apaar_id",
@@ -1091,6 +1093,17 @@ defmodule Dbservice.LmsStudentUpdate do
 
   defp audit_value("last_name", ""), do: nil
   defp audit_value("stream", value), do: LmsStudentIngestion.normalize_stream(value)
+
+  # Mirror what Student.changeset stores (trimmed, blank as nil, upper case), so an
+  # unchanged or differently-cased size is not audited as a change.
+  defp audit_value(field, value)
+       when field in ~w(tshirt_size track_pant_size) and is_binary(value) do
+    case String.trim(value) do
+      "" -> nil
+      size -> String.upcase(size)
+    end
+  end
+
   defp audit_value(_field, value), do: value
 
   defp normalize_params(params) do
