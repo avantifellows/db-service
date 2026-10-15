@@ -53,6 +53,35 @@ defmodule Dbservice.Branches do
   end
 
   @doc """
+  Returns branch names only — one `%{id, branch_id, name}` map per branch,
+  selecting just those columns. Lightweight counterpart of `list_branch/0`
+  for name dropdowns; accepts the same optional params as
+  `Dbservice.Colleges.list_college_names/1` (`"name"` substring match).
+
+  ## Examples
+
+      iex> list_branch_names(%{"name" => "computer"})
+      [%{id: 1, branch_id: "B001", name: "Computer Science"}, ...]
+
+  """
+  def list_branch_names(params \\ %{}) do
+    query =
+      from(b in Branch,
+        order_by: [asc: b.name],
+        select: %{id: b.id, branch_id: b.branch_id, name: b.name}
+      )
+
+    case params do
+      %{"name" => name} when is_binary(name) and name != "" ->
+        from(q in query, where: ilike(q.name, ^"%#{name}%"))
+
+      _ ->
+        query
+    end
+    |> Repo.all()
+  end
+
+  @doc """
   Creates a branch.
 
   ## Examples
