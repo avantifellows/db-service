@@ -15,8 +15,10 @@ defmodule Dbservice.DataImport.BatchMovement do
   belonging to other programs — see `release_previous_batches/3`.
   """
 
+  alias Dbservice.Repo
   alias Dbservice.Users
   alias Dbservice.Services.BatchEnrollmentService
+  alias Dbservice.Utils.ChangesetFormatter
 
   def process_batch_movement(record) do
     case Users.get_student_by_id_or_apaar_id(record) do
@@ -52,35 +54,54 @@ defmodule Dbservice.DataImport.BatchMovement do
                record
              ) do
           {:ok, _} -> {:ok, "Batch movement processed successfully"}
+          {:error, reason} -> {:error, describe(reason)}
         end
     end
   end
 
+  # The batches being left are closed *before* the new enrollment is created, so a
+  # failed create would otherwise leave the student with no current batch at all -
+  # and because each step's result was discarded, the import still reported
+  # "processed successfully". Running the movement in one transaction means a row
+  # that cannot complete changes nothing and is reported as failed.
   defp handle_batch_movement(student, {batch_group_id, batch_id, batch_group_type}, record) do
     user_id = student.user_id
     start_date = record["start_date"]
     academic_year = record["academic_year"]
 
-    release_previous_batches(user_id, batch_id, start_date)
+    Repo.transaction(fn ->
+      # update_all over the batches being left; nothing here can fail softly.
+      release_previous_batches(user_id, batch_id, start_date)
 
-    # Handle batch and status enrollment
-    handle_batch_and_status_enrollment(
-      user_id,
-      batch_id,
-      batch_group_type,
-      academic_year,
-      start_date
-    )
-
-    # Handle grade movement if provided
-    handle_grade_movement(student, record, user_id, academic_year, start_date)
-
-    # Always update the batch group user. Runs after the release so the target
-    # program's memberships get the final say.
-    BatchEnrollmentService.update_batch_user(user_id, batch_group_id)
-
-    {:ok, "Batch movement completed"}
+      with :ok <-
+             handle_batch_and_status_enrollment(
+               user_id,
+               batch_id,
+               batch_group_type,
+               academic_year,
+               start_date
+             ),
+           :ok <- handle_grade_movement(student, record, user_id, academic_year, start_date),
+           # Always update the batch group user. Runs after the release so the
+           # target program's memberships get the final say.
+           :ok <- step(BatchEnrollmentService.update_batch_user(user_id, batch_group_id)) do
+        "Batch movement completed"
+      else
+        {:error, reason} -> Repo.rollback(reason)
+      end
+    end)
   end
+
+  # The enrollment/membership helpers return {:ok, record} | {:error, changeset};
+  # a movement only cares whether the step went through.
+  defp step({:ok, _}), do: :ok
+  defp step({:error, reason}), do: {:error, reason}
+
+  defp describe(%Ecto.Changeset{} = changeset),
+    do: "Batch movement failed: #{ChangesetFormatter.format_errors(changeset)}"
+
+  defp describe(reason) when is_binary(reason), do: reason
+  defp describe(reason), do: "Batch movement failed: #{inspect(reason)}"
 
   # A batch movement is a move, so every batch the student currently holds is
   # left behind, whatever program it belongs to.
@@ -110,27 +131,32 @@ defmodule Dbservice.DataImport.BatchMovement do
       BatchEnrollmentService.existing_batch_enrollment?(user_id, batch_id)
 
     if is_already_enrolled do
-      :already_enrolled
+      :ok
     else
       # Handle the batch enrollment process
-      BatchEnrollmentService.handle_batch_enrollment(
-        user_id,
-        batch_id,
-        batch_group_type,
-        academic_year,
-        start_date
-      )
+      with :ok <-
+             step(
+               BatchEnrollmentService.handle_batch_enrollment(
+                 user_id,
+                 batch_id,
+                 batch_group_type,
+                 academic_year,
+                 start_date
+               )
+             ) do
+        # Handle the status enrollment process
+        {status_id, status_group_type} = BatchEnrollmentService.get_enrolled_status_info()
 
-      # Handle the status enrollment process
-      {status_id, status_group_type} = BatchEnrollmentService.get_enrolled_status_info()
-
-      BatchEnrollmentService.handle_status_enrollment(
-        user_id,
-        status_id,
-        status_group_type,
-        academic_year,
-        start_date
-      )
+        step(
+          BatchEnrollmentService.handle_status_enrollment(
+            user_id,
+            status_id,
+            status_group_type,
+            academic_year,
+            start_date
+          )
+        )
+      end
     end
   end
 
@@ -146,14 +172,16 @@ defmodule Dbservice.DataImport.BatchMovement do
         start_date
       )
     else
-      :no_grade_change
+      :ok
     end
   end
 
   defp process_grade_change(student, grade, user_id, academic_year, start_date) do
     case BatchEnrollmentService.get_grade_info(grade) do
+      # Unchanged behaviour: an unknown grade is skipped rather than failing the
+      # row, so this is not an error the transaction rolls back on.
       nil ->
-        :grade_not_found
+        :ok
 
       {grade_group_id, grade_id, grade_group_type} ->
         handle_grade_enrollment_if_changed(
@@ -179,21 +207,23 @@ defmodule Dbservice.DataImport.BatchMovement do
        ) do
     if BatchEnrollmentService.grade_changed?(user_id, grade_id) do
       # Handle grade enrollment
-      BatchEnrollmentService.handle_grade_enrollment(
-        user_id,
-        grade_id,
-        grade_group_type,
-        academic_year,
-        start_date
-      )
-
-      # Update grade in group_user
-      BatchEnrollmentService.update_grade_user(user_id, grade_group_id)
-
-      # Update grade in student table
-      BatchEnrollmentService.update_student_grade(student, grade_id)
+      with :ok <-
+             step(
+               BatchEnrollmentService.handle_grade_enrollment(
+                 user_id,
+                 grade_id,
+                 grade_group_type,
+                 academic_year,
+                 start_date
+               )
+             ),
+           # Update grade in group_user
+           :ok <- step(BatchEnrollmentService.update_grade_user(user_id, grade_group_id)) do
+        # Update grade in student table
+        step(BatchEnrollmentService.update_student_grade(student, grade_id))
+      end
     else
-      :grade_unchanged
+      :ok
     end
   end
 end

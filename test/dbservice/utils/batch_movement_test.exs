@@ -13,6 +13,56 @@ defmodule Dbservice.DataImport.BatchMovementTest do
   alias Dbservice.Services.BatchEnrollmentService
 
   describe "process_batch_movement/1" do
+    test "a row that cannot complete rolls back and reports the failure" do
+      # The batches being left are closed before the new enrollment is created, so
+      # a failed create used to leave the student with no current batch at all -
+      # across every program - while the import still reported success.
+      from(s in Dbservice.Statuses.Status, where: s.title == :enrolled)
+      |> Dbservice.Repo.delete_all()
+
+      _enrolled_status = status_fixture(%{title: :enrolled})
+
+      program_a = program_fixture(%{name: "Rollback Program A"})
+      program_b = program_fixture(%{name: "Rollback Program B"})
+
+      {_user, student} = student_fixture(%{student_id: "ROLLBACK001"})
+      old_batch = batch_fixture(%{batch_id: "RB_OLD", program_id: program_a.id})
+      _new_batch = batch_fixture(%{batch_id: "RB_NEW", program_id: program_a.id})
+      other_program_batch = batch_fixture(%{batch_id: "RB_OTHER", program_id: program_b.id})
+
+      for batch <- [old_batch, other_program_batch] do
+        {:ok, _} =
+          Dbservice.EnrollmentRecords.create_enrollment_record(%{
+            user_id: student.user_id,
+            is_current: true,
+            start_date: ~D[2024-01-01],
+            group_id: batch.id,
+            group_type: "batch",
+            academic_year: "2024-2025"
+          })
+      end
+
+      before_ids = current_batch_group_ids(student.user_id)
+
+      # "2025-26" fails the enrollment_record academic-year format validation.
+      result =
+        BatchMovement.process_batch_movement(%{
+          "student_id" => "ROLLBACK001",
+          "apaar_id" => nil,
+          "batch_id" => "RB_NEW",
+          "grade" => nil,
+          "start_date" => "2025-06-01",
+          "academic_year" => "2025-26"
+        })
+
+      assert {:error, message} = result
+      assert message =~ "YYYY-YYYY"
+
+      # Both batches survive: the movement left the student exactly as it found them.
+      assert Enum.sort(current_batch_group_ids(student.user_id)) == Enum.sort(before_ids)
+      assert Enum.sort(before_ids) == Enum.sort([old_batch.id, other_program_batch.id])
+    end
+
     test "successfully processes batch movement with valid data" do
       # Clean up any existing enrolled statuses first
       from(s in Dbservice.Statuses.Status, where: s.title == :enrolled)
@@ -222,12 +272,13 @@ defmodule Dbservice.DataImport.BatchMovementTest do
       assert {:ok, "Batch movement processed successfully"} = result2
     end
 
-    test "handles missing start_date gracefully" do
-      # Clean up any existing enrolled statuses first
+    test "fails the row when start_date is missing" do
+      # start_date is a required batch_movement header. The enrollment changeset
+      # rejects a blank one, and that used to be swallowed - the row reported
+      # success while no enrollment had been written.
       from(s in Dbservice.Statuses.Status, where: s.title == :enrolled)
       |> Dbservice.Repo.delete_all()
 
-      # Create fixtures
       {_user, student} = student_fixture(%{student_id: "STUDENT009"})
       batch = batch_fixture(%{batch_id: "BATCH009"})
       _enrolled_status = status_fixture(%{title: :enrolled})
@@ -239,17 +290,17 @@ defmodule Dbservice.DataImport.BatchMovementTest do
         "academic_year" => "2024-2025"
       }
 
-      result = BatchMovement.process_batch_movement(record)
-
-      assert {:ok, "Batch movement processed successfully"} = result
+      assert {:error, message} = BatchMovement.process_batch_movement(record)
+      assert message =~ "start date"
+      assert current_batch_group_ids(student.user_id) == []
     end
 
-    test "handles missing academic_year gracefully" do
-      # Clean up any existing enrolled statuses first
+    test "fails the row when academic_year is missing" do
+      # academic_year is a required batch_movement header; same swallowed-error
+      # path as the missing start_date case above.
       from(s in Dbservice.Statuses.Status, where: s.title == :enrolled)
       |> Dbservice.Repo.delete_all()
 
-      # Create fixtures
       {_user, student} = student_fixture(%{student_id: "STUDENT010"})
       batch = batch_fixture(%{batch_id: "BATCH010"})
       _enrolled_status = status_fixture(%{title: :enrolled})
@@ -261,9 +312,9 @@ defmodule Dbservice.DataImport.BatchMovementTest do
         "start_date" => "2024-01-01"
       }
 
-      result = BatchMovement.process_batch_movement(record)
-
-      assert {:ok, "Batch movement processed successfully"} = result
+      assert {:error, message} = BatchMovement.process_batch_movement(record)
+      assert message =~ "academic year"
+      assert current_batch_group_ids(student.user_id) == []
     end
   end
 
@@ -410,6 +461,15 @@ defmodule Dbservice.DataImport.BatchMovementTest do
         where:
           e.user_id == ^user_id and e.group_type == "batch" and e.group_id == ^batch_id and
             e.is_current == true
+      )
+    )
+  end
+
+  defp current_batch_group_ids(user_id) do
+    Dbservice.Repo.all(
+      from(e in EnrollmentRecord,
+        where: e.user_id == ^user_id and e.group_type == "batch" and e.is_current == true,
+        select: e.group_id
       )
     )
   end
