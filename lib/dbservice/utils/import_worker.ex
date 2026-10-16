@@ -1444,6 +1444,67 @@ defmodule Dbservice.DataImport.ImportWorker do
     |> maybe_put_school("block_code", record["block_code"] |> trim_str())
     |> maybe_put_school("block_name", record["block_name"] |> trim_str())
     |> maybe_put_school("board", record["school_board"] |> trim_str())
+    |> put_school_profile_details(record)
+  end
+
+  # The field-visit half of the school record: who to call, how the engagement
+  # is going, which grades the school runs and how big they are. Every one is
+  # optional, so a sheet that predates these columns imports unchanged, and a
+  # column left blank on a row leaves the stored value alone rather than
+  # clearing it.
+  defp put_school_profile_details(attrs, record) do
+    attrs
+    |> maybe_put_school("school_email", record["school_email"] |> trim_str())
+    |> maybe_put_school(
+      "principal_incharge_name",
+      record["principal_incharge_name"] |> trim_str()
+    )
+    |> maybe_put_school(
+      "principal_incharge_contact",
+      record["principal_incharge_contact"] |> trim_str()
+    )
+    |> maybe_put_school("pmu_coordinator_name", record["pmu_coordinator_name"] |> trim_str())
+    |> maybe_put_school(
+      "pmu_coordinator_contact",
+      record["pmu_coordinator_contact"] |> trim_str()
+    )
+    |> maybe_put_school("school_support_status", record["school_support_status"] |> trim_str())
+    |> maybe_put_school(
+      "school_residential_status",
+      record["school_residential_status"] |> trim_str()
+    )
+    # Passed through as the sheet wrote it - "6,7,8,9,10" - and split by the
+    # School changeset, so the API and the sheet take the same two forms.
+    |> maybe_put_school("grades_offered", record["grades_offered"] |> trim_str())
+    |> maybe_put_school(
+      "estimated_strength_grade_6",
+      record["estimated_strength_grade_6"] |> trim_str()
+    )
+    |> maybe_put_school(
+      "estimated_strength_grade_7",
+      record["estimated_strength_grade_7"] |> trim_str()
+    )
+    |> maybe_put_school(
+      "estimated_strength_grade_8",
+      record["estimated_strength_grade_8"] |> trim_str()
+    )
+    |> maybe_put_school(
+      "estimated_strength_grade_9",
+      record["estimated_strength_grade_9"] |> trim_str()
+    )
+    |> maybe_put_school(
+      "estimated_strength_grade_10",
+      record["estimated_strength_grade_10"] |> trim_str()
+    )
+    |> maybe_put_school(
+      "estimated_strength_grade_11",
+      record["estimated_strength_grade_11"] |> trim_str()
+    )
+    |> maybe_put_school(
+      "estimated_strength_grade_12",
+      record["estimated_strength_grade_12"] |> trim_str()
+    )
+    |> maybe_put_school("school_notes", record["school_notes"] |> trim_str())
   end
 
   # School imports create the school *as a user* too (School.user_id), matching the
