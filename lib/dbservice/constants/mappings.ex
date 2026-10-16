@@ -589,23 +589,13 @@ defmodule Dbservice.Constants.Mappings do
       optional: ["school_addition"],
       type: :string
     },
-    "has_grades_6_to_8" => %{
-      db_field: "has_grades_6_to_8",
+    # One cell listing the grades the school runs - "6,7,8,9,10". Typed as a
+    # string so the sheet value reaches the changeset intact; it splits it.
+    "grades_offered" => %{
+      db_field: "grades_offered",
       required: [],
       optional: ["school_addition"],
-      type: :boolean
-    },
-    "has_grades_9_to_10" => %{
-      db_field: "has_grades_9_to_10",
-      required: [],
-      optional: ["school_addition"],
-      type: :boolean
-    },
-    "has_grades_11_to_12" => %{
-      db_field: "has_grades_11_to_12",
-      required: [],
-      optional: ["school_addition"],
-      type: :boolean
+      type: :string
     },
     "estimated_strength_grade_6" => %{
       db_field: "estimated_strength_grade_6",

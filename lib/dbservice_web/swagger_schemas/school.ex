@@ -45,19 +45,9 @@ defmodule DbserviceWeb.SwaggerSchema.School do
 
             school_residential_status(:string, "Residential or Non-Residential")
 
-            has_grades_6_to_8(
-              :boolean,
-              "Whether the school offers Grades 6 to 8; null when not surveyed yet"
-            )
-
-            has_grades_9_to_10(
-              :boolean,
-              "Whether the school offers Grades 9 and 10; null when not surveyed yet"
-            )
-
-            has_grades_11_to_12(
-              :boolean,
-              "Whether the school offers Grades 11 and 12; null when not surveyed yet"
+            grades_offered(
+              :array,
+              "Grades the school runs, 1 to 12, e.g. [6, 7, 8]; null when not surveyed yet"
             )
 
             estimated_strength_grade_6(:integer, "Estimated number of students in Grade 6")
@@ -93,9 +83,7 @@ defmodule DbserviceWeb.SwaggerSchema.School do
             pmu_coordinator_contact: "9123456780",
             school_support_status: "Supportive",
             school_residential_status: "Non-Residential",
-            has_grades_6_to_8: true,
-            has_grades_9_to_10: true,
-            has_grades_11_to_12: false,
+            grades_offered: [6, 7, 8, 9, 10],
             estimated_strength_grade_6: 60,
             estimated_strength_grade_7: 58,
             estimated_strength_grade_8: 55,

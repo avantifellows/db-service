@@ -11,11 +11,9 @@ defmodule Dbservice.Repo.Migrations.AddProfileDetailsToSchool do
     # is going, so a field visit's findings live in someone's sheet. These
     # columns bring that onto the record itself.
     #
-    # Every column is nullable, including the three grade flags: a school we
-    # have not surveyed yet is not a school without Grades 6-8, and a boolean
-    # defaulting to false would erase that difference on the whole table the
-    # moment it is added. NULL means "not asked yet", false means "asked, and
-    # it does not offer them".
+    # Every column is nullable: a school we have not surveyed yet is not a
+    # school with no grades and no coordinator, and a default would erase that
+    # difference on the whole table the moment it is added.
     #
     # Adding nullable columns with no default is metadata-only, so this does
     # not scan the table. The CHECK constraints below do scan it, but every new
@@ -29,9 +27,17 @@ defmodule Dbservice.Repo.Migrations.AddProfileDetailsToSchool do
       add :pmu_coordinator_contact, :string, size: 15
       add :school_support_status, :string, size: 15
       add :school_residential_status, :string, size: 20
-      add :has_grades_6_to_8, :boolean
-      add :has_grades_9_to_10, :boolean
-      add :has_grades_11_to_12, :boolean
+
+      # The grades the school runs, as an integer array rather than one flag per
+      # grade band: ops fills a single comma-separated cell, and an array stays
+      # queryable - `6 = ANY(grades_offered)` - where a comma-separated string
+      # would need a LIKE that matches "1" inside "11". `program_ids` on this
+      # same table is already stored this way.
+      #
+      # No default: NULL is "not surveyed yet", and an empty array is a surveyed
+      # school that runs none of these grades. A default of {} would erase that
+      # difference across the whole table the moment the column lands.
+      add :grades_offered, {:array, :integer}
 
       # One column per grade rather than a JSON map: the estimate is filled in
       # from a sheet and read back by analytics, and both want a plain integer
@@ -68,11 +74,20 @@ defmodule Dbservice.Repo.Migrations.AddProfileDetailsToSchool do
       ADD CONSTRAINT school_estimated_strength_check
         CHECK (
           #{strength_checks}
+        ),
+      ADD CONSTRAINT school_grades_offered_check
+        CHECK (
+          -- Containment rather than a subquery, which a CHECK may not hold. It
+          -- also rejects a NULL element: ARRAY[NULL] <@ ARRAY[1..12] is false.
+          -- Duplicates are deduped by the changeset rather than rejected here.
+          grades_offered IS NULL OR
+          grades_offered <@ ARRAY[1,2,3,4,5,6,7,8,9,10,11,12]
         )
     """)
   end
 
   def down do
+    drop constraint(:school, :school_grades_offered_check)
     drop constraint(:school, :school_estimated_strength_check)
     drop constraint(:school, :school_residential_status_check)
     drop constraint(:school, :school_support_status_check)
@@ -84,9 +99,7 @@ defmodule Dbservice.Repo.Migrations.AddProfileDetailsToSchool do
         remove :"estimated_strength_grade_#{grade}"
       end
 
-      remove :has_grades_11_to_12
-      remove :has_grades_9_to_10
-      remove :has_grades_6_to_8
+      remove :grades_offered
       remove :school_residential_status
       remove :school_support_status
       remove :pmu_coordinator_contact

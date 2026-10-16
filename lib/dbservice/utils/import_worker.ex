@@ -1473,11 +1473,9 @@ defmodule Dbservice.DataImport.ImportWorker do
       "school_residential_status",
       record["school_residential_status"] |> trim_str()
     )
-    # Already true/false by here - `map_boolean_fields` converts Yes/No and
-    # TRUE/FALSE for every field the mappings declare as boolean.
-    |> maybe_put_school("has_grades_6_to_8", record["has_grades_6_to_8"])
-    |> maybe_put_school("has_grades_9_to_10", record["has_grades_9_to_10"])
-    |> maybe_put_school("has_grades_11_to_12", record["has_grades_11_to_12"])
+    # Passed through as the sheet wrote it - "6,7,8,9,10" - and split by the
+    # School changeset, so the API and the sheet take the same two forms.
+    |> maybe_put_school("grades_offered", record["grades_offered"] |> trim_str())
     |> maybe_put_school(
       "estimated_strength_grade_6",
       record["estimated_strength_grade_6"] |> trim_str()

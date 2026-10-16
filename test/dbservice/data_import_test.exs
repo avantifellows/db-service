@@ -147,9 +147,7 @@ defmodule Dbservice.DataImportTest do
           "pmu_coordinator_contact",
           "school_support_status",
           "school_residential_status",
-          "has_grades_6_to_8",
-          "has_grades_9_to_10",
-          "has_grades_11_to_12",
+          "grades_offered",
           "school_notes"
         ] ++ Enum.map(6..12, &"estimated_strength_grade_#{&1}")
 

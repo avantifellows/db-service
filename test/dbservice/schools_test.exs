@@ -405,9 +405,7 @@ defmodule Dbservice.SchoolsTest do
       pmu_coordinator_contact: "9123456780",
       school_support_status: "Supportive",
       school_residential_status: "Non-Residential",
-      has_grades_6_to_8: true,
-      has_grades_9_to_10: true,
-      has_grades_11_to_12: false,
+      grades_offered: [6, 7, 8, 9, 10],
       estimated_strength_grade_6: 60,
       estimated_strength_grade_7: 58,
       estimated_strength_grade_8: 55,
@@ -436,17 +434,51 @@ defmodule Dbservice.SchoolsTest do
       end
     end
 
-    test "a grade flag stays nil until it is answered, and false is kept as false" do
+    test "grades offered are taken as a comma-separated cell or a list" do
       school = school_fixture()
 
       assert {:ok, %School{} = school} =
-               Schools.update_school(school, %{has_grades_6_to_8: false})
+               Schools.update_school(school, %{grades_offered: " 9 , 10,11 "})
 
-      # false is an answer - the school does not offer those grades. nil is the
-      # absence of one, and must not collapse into false.
-      assert school.has_grades_6_to_8 == false
-      assert is_nil(school.has_grades_9_to_10)
-      assert is_nil(school.has_grades_11_to_12)
+      assert school.grades_offered == [9, 10, 11]
+
+      assert {:ok, %School{} = school} =
+               Schools.update_school(school, %{grades_offered: [12, 11, 11]})
+
+      # Deduped and sorted, so two sheets listing the same grades in a different
+      # order do not read as different answers.
+      assert school.grades_offered == [11, 12]
+    end
+
+    test "a blank value clears the grades, and an empty list is its own answer" do
+      school = school_fixture()
+      {:ok, school} = Schools.update_school(school, %{grades_offered: "6,7,8"})
+      assert school.grades_offered == [6, 7, 8]
+
+      # Sent explicitly over the API, blank clears the field - as it does for
+      # every other column here. The import never sends one: a blank cell is
+      # dropped from the row before the changeset sees it, which the
+      # school_addition import tests cover.
+      assert {:ok, %School{} = cleared} = Schools.update_school(school, %{grades_offered: "  "})
+      assert is_nil(cleared.grades_offered)
+
+      # An empty list is an answer rather than an absence: surveyed, and runs
+      # none of these grades.
+      assert {:ok, %School{} = none} = Schools.update_school(school, %{grades_offered: []})
+      assert none.grades_offered == []
+    end
+
+    test "a grade outside 1 to 12, or one that is not a number, is rejected" do
+      school = school_fixture()
+
+      assert {:error, changeset} = Schools.update_school(school, %{grades_offered: "6,13"})
+      assert errors_on(changeset).grades_offered != []
+
+      assert {:error, changeset} = Schools.update_school(school, %{grades_offered: [0]})
+      assert errors_on(changeset).grades_offered != []
+
+      assert {:error, changeset} = Schools.update_school(school, %{grades_offered: "six,seven"})
+      assert errors_on(changeset).grades_offered != []
     end
 
     test "a status typed in any case is stored in its canonical spelling" do
@@ -550,6 +582,18 @@ defmodule Dbservice.SchoolsTest do
                })
 
       assert errors_on(changeset).principal_incharge_name != []
+    end
+
+    test "the database refuses a grade outside the range written around the changeset" do
+      school = school_fixture()
+
+      assert_raise Postgrex.Error, fn ->
+        Ecto.Adapters.SQL.query!(
+          Repo,
+          "UPDATE school SET grades_offered = ARRAY[13] WHERE id = $1",
+          [school.id]
+        )
+      end
     end
 
     test "the database refuses a bad status written around the changeset" do

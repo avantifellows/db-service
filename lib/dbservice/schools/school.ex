@@ -13,6 +13,9 @@ defmodule Dbservice.Schools.School do
   @residential_statuses ["Residential", "Non-Residential"]
   @grades 6..12
   @estimated_strength_fields Enum.map(@grades, &:"estimated_strength_grade_#{&1}")
+  # Grades a school can run. Wider than the 6-12 the estimated strength covers,
+  # so a school that also runs primary grades can say so.
+  @offerable_grades 1..12
   # No school grade holds more than a few thousand students; a larger number is
   # a total typed into a per-grade cell, or a stray digit.
   @max_estimated_strength 10_000
@@ -20,6 +23,7 @@ defmodule Dbservice.Schools.School do
   def support_statuses, do: @support_statuses
   def residential_statuses, do: @residential_statuses
   def estimated_strength_fields, do: @estimated_strength_fields
+  def offerable_grades, do: @offerable_grades
 
   schema "school" do
     field :code, :string
@@ -44,11 +48,9 @@ defmodule Dbservice.Schools.School do
     field :pmu_coordinator_contact, :string
     field :school_support_status, :string
     field :school_residential_status, :string
-    # Nullable on purpose: nil is "not surveyed yet", false is "does not offer
-    # these grades". Defaulting to false would lose that distinction.
-    field :has_grades_6_to_8, :boolean
-    field :has_grades_9_to_10, :boolean
-    field :has_grades_11_to_12, :boolean
+    # The grades the school runs, e.g. [6, 7, 8, 9, 10]. No default: nil is
+    # "not surveyed yet", [] is a surveyed school that runs none of them.
+    field :grades_offered, {:array, :integer}
 
     for grade <- @grades do
       field :"estimated_strength_grade_#{grade}", :integer
@@ -71,7 +73,7 @@ defmodule Dbservice.Schools.School do
   def changeset(school, attrs) do
     school
     |> cast(
-      attrs,
+      normalize_grades_offered(attrs),
       [
         :code,
         :name,
@@ -96,9 +98,7 @@ defmodule Dbservice.Schools.School do
         :pmu_coordinator_contact,
         :school_support_status,
         :school_residential_status,
-        :has_grades_6_to_8,
-        :has_grades_9_to_10,
-        :has_grades_11_to_12,
+        :grades_offered,
         :school_notes
       ] ++ @estimated_strength_fields
     )
@@ -114,9 +114,81 @@ defmodule Dbservice.Schools.School do
     |> validate_contact_details()
     |> validate_statuses()
     |> validate_estimated_strength()
+    |> validate_grades_offered()
     |> trim_to_nil(:school_notes)
     |> check_constraint(:school_support_status, name: :school_support_status_check)
     |> check_constraint(:school_residential_status, name: :school_residential_status_check)
+    |> check_constraint(:grades_offered, name: :school_grades_offered_check)
+  end
+
+  # Ops fills one comma-separated cell - "6,7,8,9,10" - and the API sends a JSON
+  # array. Ecto would reject the string before any validation could explain why,
+  # so the string form is turned into a list here, ahead of the cast. Anything
+  # that is not a list of grades is left alone for `cast` to reject.
+  defp normalize_grades_offered(attrs) when is_map(attrs) do
+    case fetch_grades_offered(attrs) do
+      {key, value} when is_binary(value) ->
+        Map.put(attrs, key, split_grades(value))
+
+      _ ->
+        attrs
+    end
+  end
+
+  defp normalize_grades_offered(attrs), do: attrs
+
+  defp fetch_grades_offered(attrs) do
+    cond do
+      Map.has_key?(attrs, :grades_offered) -> {:grades_offered, attrs[:grades_offered]}
+      Map.has_key?(attrs, "grades_offered") -> {"grades_offered", attrs["grades_offered"]}
+      true -> nil
+    end
+  end
+
+  defp split_grades(value) do
+    case String.trim(value) do
+      # Left for `cast`, which treats a blank string as an explicit nil, the
+      # same as every other column here. A blank cell never reaches this: the
+      # import drops it from the row first.
+      "" ->
+        value
+
+      trimmed ->
+        trimmed
+        |> String.split(",")
+        |> Enum.map(&String.trim/1)
+        |> Enum.reject(&(&1 == ""))
+        |> Enum.map(&parse_grade/1)
+    end
+  end
+
+  # A grade that is not a number is handed to `cast` as-is, which rejects the
+  # whole field - better than silently dropping the one bad entry.
+  defp parse_grade(grade) do
+    case Integer.parse(grade) do
+      {number, ""} -> number
+      _ -> grade
+    end
+  end
+
+  defp validate_grades_offered(changeset) do
+    changeset
+    |> update_change(:grades_offered, fn
+      grades when is_list(grades) -> grades |> Enum.uniq() |> Enum.sort()
+      grades -> grades
+    end)
+    |> validate_change(:grades_offered, fn :grades_offered, grades ->
+      case Enum.reject(grades, &(&1 in @offerable_grades)) do
+        [] ->
+          []
+
+        invalid ->
+          [
+            grades_offered:
+              "must be grades #{Enum.min(@offerable_grades)} to #{Enum.max(@offerable_grades)}, got: #{Enum.join(invalid, ", ")}"
+          ]
+      end
+    end)
   end
 
   defp validate_contact_details(changeset) do

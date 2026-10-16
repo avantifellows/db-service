@@ -193,9 +193,8 @@ defmodule Dbservice.DataImport.ImportWorkerTest do
                        "district,district_code,school_email,principal_incharge_name," <>
                        "principal_incharge_contact,pmu_coordinator_name," <>
                        "pmu_coordinator_contact,school_support_status," <>
-                       "school_residential_status,has_grades_6_to_8,has_grades_9_to_10," <>
-                       "has_grades_11_to_12,estimated_strength_grade_6," <>
-                       "estimated_strength_grade_9,school_notes"
+                       "school_residential_status,grades_offered," <>
+                       "estimated_strength_grade_6,estimated_strength_grade_9,school_notes"
 
     setup do
       on_exit(fn -> cleanup_test_csv("school_profile_import.csv") end)
@@ -218,11 +217,15 @@ defmodule Dbservice.DataImport.ImportWorkerTest do
       row =
         "SCHPROF1,Profile Test School,Government,DL,Delhi,NORTH WEST DELHI,0701," <>
           "principal@profile.edu.in,Sunita Rao,9876543210,Imran Qureshi,9123456780," <>
-          "supportive,Residential,Yes,Yes,No,60,50,Two rooms offered after school"
+          "supportive,Residential,\"6,7,8,9,10\",60,50,Two rooms offered after school"
 
       run_school_import(row)
 
       school = Dbservice.Schools.get_school_by_code("SCHPROF1")
+
+      # The grades arrive as one quoted cell, "6,7,8,9,10" - what a spreadsheet
+      # writes when the cell itself contains commas - and land as an array.
+      assert school.grades_offered == [6, 7, 8, 9, 10]
 
       assert school.school_email == "principal@profile.edu.in"
       assert school.principal_incharge_name == "Sunita Rao"
@@ -232,10 +235,6 @@ defmodule Dbservice.DataImport.ImportWorkerTest do
       # Typed lowercase in the sheet, stored in its canonical spelling.
       assert school.school_support_status == "Supportive"
       assert school.school_residential_status == "Residential"
-      assert school.has_grades_6_to_8 == true
-      assert school.has_grades_9_to_10 == true
-      # No is an answer, and must survive as false rather than becoming nil.
-      assert school.has_grades_11_to_12 == false
       assert school.estimated_strength_grade_6 == 60
       assert school.estimated_strength_grade_9 == 50
       assert is_nil(school.estimated_strength_grade_7)
@@ -245,7 +244,7 @@ defmodule Dbservice.DataImport.ImportWorkerTest do
     test "a blank profile column leaves that field unset" do
       row =
         "SCHPROF2,Sparse Profile School,Government,DL,Delhi,NORTH WEST DELHI,0701," <>
-          ",,,,,,,,,,,,"
+          ",,,,,,,,,,"
 
       run_school_import(row)
 
@@ -254,7 +253,7 @@ defmodule Dbservice.DataImport.ImportWorkerTest do
       assert school.name == "Sparse Profile School"
       assert is_nil(school.school_email)
       assert is_nil(school.school_support_status)
-      assert is_nil(school.has_grades_6_to_8)
+      assert is_nil(school.grades_offered)
       assert is_nil(school.estimated_strength_grade_6)
       assert is_nil(school.school_notes)
     end

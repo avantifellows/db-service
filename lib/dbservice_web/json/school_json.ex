@@ -37,9 +37,7 @@ defmodule DbserviceWeb.SchoolJSON do
       pmu_coordinator_contact: school.pmu_coordinator_contact,
       school_support_status: school.school_support_status,
       school_residential_status: school.school_residential_status,
-      has_grades_6_to_8: school.has_grades_6_to_8,
-      has_grades_9_to_10: school.has_grades_9_to_10,
-      has_grades_11_to_12: school.has_grades_11_to_12,
+      grades_offered: school.grades_offered,
       school_notes: school.school_notes,
       user: if(school.user, do: UserJSON.render(school.user), else: nil)
     }
