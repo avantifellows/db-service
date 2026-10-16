@@ -187,14 +187,39 @@ _Avoid_: best-effort identity matching
 - Post-Session Note audits are immutable, keep nullable canonical User references,
   require a canonical User ID or nonblank actor email, and allow 500-character
   human reasons for draft-erasure events.
-- Follow-up Notes are immutable, require submitted Post-Session Notes for the
-  same Student and Phase, and are blocked after privacy deletion.
+- Follow-up Notes require submitted Post-Session Notes for the same Student and
+  Phase, and inserts are blocked after privacy deletion. Their only permitted
+  update is a complete privacy erasure: a matching Student tombstone must exist,
+  every nonnull answer becomes `Content erased under approved privacy request`,
+  and null answers and all metadata (including timestamps) stay unchanged.
+  Deletion, other edits and no-op updates remain forbidden.
 - Raw questionnaire answers and rendered per-Student prompts are not persisted.
 - Profile Program eligibility comes from the Student's one current School and
   that School's canonical Program IDs; it does not require a Program enrollment.
 - Profile publication is atomic per Student and revalidates identity and scope.
 - Student eligibility mutations end affected active Mappings atomically.
 - Database sync includes all Holistic data for local and staging targets, including privacy-deletion markers. Oban job data is excluded from both targets.
+
+### Follow-up privacy erasure (LMS #412)
+
+last_updated: 2026-10-16
+
+`20261016120000_allow_holistic_follow_up_privacy_erasure` owns the trigger exception
+and `holistic_mentorship_follow_up_erasures` schema; LMS owns the erasure transaction.
+The caller acquires the Student advisory lock before row locks, erases existing
+Profile/Historical/Post-Session content before inserting the privacy tombstone,
+then erases Follow-up answers. One immutable companion audit per tombstone records
+the actual current actor, reason, time and positive number of answer fields changed.
+The original tombstone remains immutable, so the same transaction can finish an
+older tombstone's Follow-up erasure without rewriting its original audit facts.
+Unchanged repeats and zero-content requests create no companion audit.
+
+There is no data backfill, new API or enabled privacy endpoint. External erasure
+owners must adopt the LMS transaction contract; this migration does not erase
+existing data or complete that operational rollout. Deploy schema before LMS.
+Production should use forward fixes: `down` restores unconditional Follow-up
+immutability and drops the companion table, losing its audit history, and cannot
+restore erased text. Exercise rollback only on disposable databases.
 
 ## Example Dialogue
 
