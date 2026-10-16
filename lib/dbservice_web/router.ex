@@ -216,6 +216,9 @@ defmodule DbserviceWeb.Router do
       only: [:index, :create, :show, :delete]
     )
 
+    get("/teacher-feedback-summary", TeacherFeedbackSummaryController, :index)
+    put("/teacher-feedback-summary/:session_pk", TeacherFeedbackSummaryController, :update)
+
     post(
       "/lms/students/bulk-create-with-enrollments",
       StudentController,
