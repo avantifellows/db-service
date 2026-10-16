@@ -2,6 +2,8 @@ defmodule Dbservice.HolisticMentorshipFollowUpNotesSchemaTest do
   use Dbservice.DataCase, async: false
 
   @table "holistic_mentorship_follow_up_notes"
+  @erased "Content erased under approved privacy request"
+  @erasures "holistic_mentorship_follow_up_erasures"
 
   test "defines the immutable Follow-up Note contract" do
     assert Repo.query!(
@@ -223,6 +225,213 @@ defmodule Dbservice.HolisticMentorshipFollowUpNotesSchemaTest do
              "SELECT challenges_answer FROM holistic_mentorship_follow_up_notes WHERE id = $1",
              [follow_up_id]
            ).rows == [["Original"]]
+  end
+
+  test "privacy erasure requires this Student's tombstone and preserves all metadata and nulls" do
+    scope = insert_scope()
+    other_scope = insert_scope()
+    assert {:ok, _} = insert_notes(scope, "submitted")
+
+    {:ok, %{rows: [[id]]}} =
+      insert_follow_up(scope, %{challenges: "Original", solutions: @erased})
+
+    {:ok, %{rows: [[action_id]]}} = insert_follow_up(scope, %{action_plan: "Original action"})
+    before = follow_up_row(id)
+    action_before = follow_up_row(action_id)
+    assert_constraint(:check_violation, fn -> erase_follow_up(id) end)
+    insert_tombstone(other_scope)
+    assert_constraint(:check_violation, fn -> erase_follow_up(id) end)
+    insert_tombstone(scope)
+
+    assert {:ok, %{num_rows: 1}} = erase_follow_up(id)
+    assert follow_up_row(id) == Map.merge(before, %{"challenges_answer" => @erased})
+    assert {:ok, %{num_rows: 1}} = erase_follow_up(action_id)
+
+    assert follow_up_row(action_id) ==
+             Map.merge(action_before, %{"action_plan_answer" => @erased})
+
+    assert_constraint(:check_violation, fn -> erase_follow_up(id) end)
+
+    assert_constraint(:check_violation, fn ->
+      insert_follow_up(scope, %{challenges: "New content"})
+    end)
+  end
+
+  test "privacy exception rejects partial erasure, metadata changes, restoration and deletion" do
+    scope = insert_scope()
+    assert {:ok, _} = insert_notes(scope, "submitted")
+
+    {:ok, %{rows: [[id]]}} =
+      insert_follow_up(scope, %{challenges: "Original", solutions: "Original solution"})
+
+    before = follow_up_row(id)
+    insert_tombstone(scope)
+
+    for assignment <- [
+          "challenges_answer = $2",
+          "challenges_answer = NULL, solutions_answer = NULL",
+          "challenges_answer = 'Edited'",
+          "challenges_answer = challenges_answer"
+        ] do
+      params = if String.contains?(assignment, "$2"), do: [id, @erased], else: [id]
+
+      assert_constraint(:check_violation, fn ->
+        Repo.query("UPDATE #{@table} SET #{assignment} WHERE id = $1", params)
+      end)
+    end
+
+    for metadata_change <- [
+          "id = id + 1000000",
+          "student_id = student_id + 1000000",
+          "phase_id = phase_id + 1000000",
+          "author_user_id = author_user_id + 1000000",
+          "author_email = 'changed@example.com'",
+          "submitted_at = submitted_at + interval '1 second'",
+          "inserted_at = inserted_at + interval '1 second'",
+          "updated_at = updated_at + interval '1 second'"
+        ] do
+      assert_constraint(:check_violation, fn ->
+        Repo.query(
+          "UPDATE #{@table} SET challenges_answer = $2, solutions_answer = $2, #{metadata_change} WHERE id = $1",
+          [id, @erased]
+        )
+      end)
+    end
+
+    assert follow_up_row(id) == before
+    assert {:ok, _} = erase_follow_up(id)
+
+    for assignment <- [
+          "challenges_answer = 'Restored'",
+          "challenges_answer = NULL",
+          "action_plan_answer = $2",
+          "challenges_answer = challenges_answer"
+        ] do
+      params = if String.contains?(assignment, "$2"), do: [id, @erased], else: [id]
+
+      assert_constraint(:check_violation, fn ->
+        Repo.query("UPDATE #{@table} SET #{assignment} WHERE id = $1", params)
+      end)
+    end
+
+    assert_constraint(:check_violation, fn ->
+      Repo.query("DELETE FROM #{@table} WHERE id = $1", [id])
+    end)
+  end
+
+  test "records one immutable positive Follow-up erasure audit without changing the tombstone" do
+    scope = insert_scope()
+    deletion_id = insert_tombstone(scope)
+
+    tombstone =
+      Repo.query!(
+        "SELECT to_jsonb(d) FROM holistic_mentorship_privacy_deletions d WHERE id = $1",
+        [
+          deletion_id
+        ]
+      ).rows
+
+    assert {:ok, %{rows: [[audit_id]]}} = insert_erasure(deletion_id, scope.author_user_id)
+
+    assert Repo.query!(
+             "SELECT privacy_deletion_id, actor_user_id, reason, answers_erased FROM #{@erasures} WHERE id = $1",
+             [audit_id]
+           ).rows == [[deletion_id, scope.author_user_id, "Approved follow-up erasure", 2]]
+
+    assert_constraint(:unique_violation, fn ->
+      insert_erasure(deletion_id, scope.author_user_id)
+    end)
+
+    for query <- [
+          "UPDATE #{@erasures} SET answers_erased = 3 WHERE id = $1",
+          "UPDATE #{@erasures} SET reason = reason WHERE id = $1",
+          "DELETE FROM #{@erasures} WHERE id = $1"
+        ] do
+      assert_constraint(:check_violation, fn -> Repo.query(query, [audit_id]) end)
+    end
+
+    assert Repo.query!(
+             "SELECT to_jsonb(d) FROM holistic_mentorship_privacy_deletions d WHERE id = $1",
+             [deletion_id]
+           ).rows == tombstone
+  end
+
+  test "Follow-up erasure audit requires valid references, a positive count and nonblank reason" do
+    scope = insert_scope()
+    deletion_id = insert_tombstone(scope)
+
+    for count <- [0, -1] do
+      assert_constraint(:check_violation, fn ->
+        insert_erasure(deletion_id, scope.author_user_id, count)
+      end)
+    end
+
+    for reason <- ["", "  ", "\t\n"] do
+      assert_constraint(:check_violation, fn ->
+        insert_erasure(deletion_id, scope.author_user_id, 1, reason)
+      end)
+    end
+
+    assert_constraint(:foreign_key_violation, fn ->
+      insert_erasure(-1, scope.author_user_id)
+    end)
+
+    assert_constraint(:foreign_key_violation, fn -> insert_erasure(deletion_id, -1) end)
+
+    assert Repo.query!(
+             """
+             SELECT a.attname, f.confdeltype
+             FROM pg_constraint f
+             JOIN pg_attribute a ON a.attrelid = f.conrelid AND a.attnum = ANY(f.conkey)
+             WHERE f.conrelid = to_regclass($1) AND f.contype = 'f'
+             ORDER BY a.attname
+             """,
+             [@erasures]
+           ).rows == [["actor_user_id", "a"], ["privacy_deletion_id", "a"]]
+  end
+
+  defp follow_up_row(id) do
+    [[row]] = Repo.query!("SELECT to_jsonb(note) FROM #{@table} note WHERE id = $1", [id]).rows
+    row
+  end
+
+  defp erase_follow_up(id) do
+    Repo.query(
+      """
+      UPDATE #{@table}
+      SET challenges_answer = CASE WHEN challenges_answer IS NULL THEN NULL ELSE $2 END,
+          solutions_answer = CASE WHEN solutions_answer IS NULL THEN NULL ELSE $2 END,
+          action_plan_answer = CASE WHEN action_plan_answer IS NULL THEN NULL ELSE $2 END
+      WHERE id = $1
+      """,
+      [id, @erased]
+    )
+  end
+
+  defp insert_tombstone(scope) do
+    [[id]] =
+      Repo.query!(
+        """
+        INSERT INTO holistic_mentorship_privacy_deletions
+          (student_id, actor_user_id, reason, profile_summaries_erased,
+           post_session_answers_erased, historical_answers_erased, occurred_at)
+        VALUES ($1, $2, 'Original privacy request', 0, 0, 0, now()) RETURNING id
+        """,
+        [scope.student_id, scope.author_user_id]
+      ).rows
+
+    id
+  end
+
+  defp insert_erasure(deletion_id, actor_id, count \\ 2, reason \\ "Approved follow-up erasure") do
+    Repo.query(
+      """
+      INSERT INTO #{@erasures}
+        (privacy_deletion_id, actor_user_id, reason, answers_erased, occurred_at)
+      VALUES ($1, $2, $3, $4, now()) RETURNING id
+      """,
+      [deletion_id, actor_id, reason, count]
+    )
   end
 
   defp other_key(:challenges), do: :solutions
