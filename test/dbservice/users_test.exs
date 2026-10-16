@@ -411,6 +411,35 @@ defmodule Dbservice.UsersTest do
       assert {"should be at most %{count} character(s)", _} = changeset.errors[:g10_school_name]
     end
 
+    test "create_student/1 stores the coaching fields and blanks them to nil" do
+      assert {:ok, %Student{mode_of_coaching: "Offline", coaching_name: nil}} =
+               Users.create_student(%{
+                 user_id: user_fixture().id,
+                 mode_of_coaching: "  Offline  ",
+                 coaching_name: "   "
+               })
+    end
+
+    test "create_student/1 rejects coaching fields longer than the column" do
+      # Devanagari: 40 graphemes but 80 codepoints, which varchar(50) counts.
+      long_value = String.duplicate("नी", 40)
+
+      for field <- [:mode_of_coaching, :coaching_name] do
+        assert {:error, changeset} =
+                 Users.create_student(%{field => long_value, :user_id => user_fixture().id})
+
+        assert {"should be at most %{count} character(s)", _} = changeset.errors[field]
+      end
+    end
+
+    test "update_student/2 clears the coaching fields" do
+      {_user, student} =
+        student_fixture(%{mode_of_coaching: "Online", coaching_name: "Allen Career Institute"})
+
+      assert {:ok, %Student{mode_of_coaching: nil, coaching_name: nil}} =
+               Users.update_student(student, %{mode_of_coaching: nil, coaching_name: nil})
+    end
+
     test "update_student/2 reports a state change against the state, not the stored code" do
       {_user, student} =
         student_fixture(%{g10_school_state: "Bihar", g10_school_udise_code: "10120100101"})

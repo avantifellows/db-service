@@ -64,6 +64,8 @@ defmodule Dbservice.Users.Student do
     field(:g10_school_state, :string)
     field(:g10_school_name, :string)
     field(:g10_school_udise_code, :string)
+    field(:mode_of_coaching, :string)
+    field(:coaching_name, :string)
 
     belongs_to(:user, User)
     has_one(:student_profile, StudentProfile)
@@ -129,7 +131,9 @@ defmodule Dbservice.Users.Student do
       :track_pant_size,
       :g10_school_state,
       :g10_school_name,
-      :g10_school_udise_code
+      :g10_school_udise_code,
+      :mode_of_coaching,
+      :coaching_name
     ])
     # Trim the globally-unique identifiers so stray whitespace can't create a
     # near-duplicate that bypasses the uniqueness checks (issue #641 review); a
@@ -159,6 +163,12 @@ defmodule Dbservice.Users.Student do
     # one of the two fields is wrong - catch it before it reaches the Grade 10
     # to Grade 12 matching.
     |> validate_udise_state_prefix(:g10_school_udise_code, :g10_school_state)
+    |> trim_to_nil(:mode_of_coaching)
+    |> trim_to_nil(:coaching_name)
+    # varchar(50) counts codepoints, so cap on codepoints too - otherwise a name
+    # in a non-Latin script passes here and fails on insert.
+    |> validate_length(:mode_of_coaching, max: 50, count: :codepoints)
+    |> validate_length(:coaching_name, max: 50, count: :codepoints)
     |> check_constraint(:tshirt_size, name: :student_tshirt_size_check)
     |> check_constraint(:track_pant_size, name: :student_track_pant_size_check)
     |> check_constraint(:g10_school_udise_code, name: :student_g10_school_udise_code_check)

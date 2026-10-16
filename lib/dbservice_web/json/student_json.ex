@@ -76,7 +76,9 @@ defmodule DbserviceWeb.StudentJSON do
       track_pant_size: student.track_pant_size,
       g10_school_state: student.g10_school_state,
       g10_school_name: student.g10_school_name,
-      g10_school_udise_code: student.g10_school_udise_code
+      g10_school_udise_code: student.g10_school_udise_code,
+      mode_of_coaching: student.mode_of_coaching,
+      coaching_name: student.coaching_name
     }
   end
 
