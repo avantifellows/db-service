@@ -453,6 +453,100 @@ defmodule Dbservice.Services.BatchEnrollmentServiceTest do
     end
   end
 
+  describe "release_batch_enrollment/4" do
+    test "ends the named batch's ER even when it belongs to another program" do
+      user = user_fixture()
+      program_a = program_fixture()
+      program_b = program_fixture()
+
+      batch_a1 = batch_fixture(%{program_id: program_a.id, batch_id: "REL-A1"})
+      batch_b1 = batch_fixture(%{program_id: program_b.id, batch_id: "REL-B1"})
+
+      current_batch_er(user.id, batch_a1.id)
+      current_batch_er(user.id, batch_b1.id)
+
+      {group_id, batch_id, _type} = BatchEnrollmentService.get_batch_info("REL-A1")
+
+      assert :released =
+               BatchEnrollmentService.release_batch_enrollment(
+                 user.id,
+                 batch_id,
+                 group_id,
+                 ~D[2024-02-01]
+               )
+
+      refute batch_er_current?(user.id, batch_a1.id)
+      # Only the named batch is touched.
+      assert batch_er_current?(user.id, batch_b1.id)
+    end
+
+    test "sets end_date and updated_at on the ER it ends" do
+      user = user_fixture()
+      batch = batch_fixture(%{batch_id: "REL-DATES"})
+      er = current_batch_er(user.id, batch.id)
+
+      # Timestamps are second-granular, so backdate the row to tell an actual
+      # touch apart from one that happened in the same second as the fixture.
+      stale = ~N[2024-01-01 00:00:00]
+
+      {1, _} =
+        from(e in EnrollmentRecord, where: e.id == ^er.id)
+        |> Dbservice.Repo.update_all(set: [inserted_at: stale, updated_at: stale])
+
+      {group_id, batch_id, _type} = BatchEnrollmentService.get_batch_info("REL-DATES")
+
+      BatchEnrollmentService.release_batch_enrollment(
+        user.id,
+        batch_id,
+        group_id,
+        ~D[2024-02-01]
+      )
+
+      reloaded = Dbservice.Repo.get!(EnrollmentRecord, er.id)
+      refute reloaded.is_current
+      assert reloaded.end_date == ~D[2024-02-01]
+      assert NaiveDateTime.compare(reloaded.updated_at, stale) == :gt
+      # inserted_at is preserved (CLAUDE.md enrollment timestamp rule).
+      assert reloaded.inserted_at == stale
+    end
+
+    test "deletes the batch group_user membership" do
+      user = user_fixture()
+      batch = batch_fixture(%{batch_id: "REL-GU"})
+      {group_id, batch_id, _type} = BatchEnrollmentService.get_batch_info("REL-GU")
+
+      current_batch_er(user.id, batch.id)
+      {:ok, _} = Dbservice.GroupUsers.create_group_user(%{user_id: user.id, group_id: group_id})
+
+      BatchEnrollmentService.release_batch_enrollment(
+        user.id,
+        batch_id,
+        group_id,
+        ~D[2024-02-01]
+      )
+
+      refute Dbservice.Repo.exists?(
+               from(gu in Dbservice.Groups.GroupUser,
+                 where: gu.user_id == ^user.id and gu.group_id == ^group_id
+               )
+             )
+    end
+
+    test "returns :not_enrolled when the student has no current ER for that batch" do
+      user = user_fixture()
+      _batch = batch_fixture(%{batch_id: "REL-NONE"})
+      {group_id, batch_id, _type} = BatchEnrollmentService.get_batch_info("REL-NONE")
+
+      assert :not_enrolled =
+               BatchEnrollmentService.release_batch_enrollment(
+                 user.id,
+                 batch_id,
+                 group_id,
+                 ~D[2024-02-01]
+               )
+    end
+  end
+
   defp current_batch_er(user_id, batch_id) do
     enrollment_record_fixture(%{
       user_id: user_id,

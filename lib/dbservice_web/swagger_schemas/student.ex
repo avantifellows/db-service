@@ -50,6 +50,13 @@ defmodule DbserviceWeb.SwaggerSchema.Student do
             )
 
             g10_school_udise_code(:string, "11-digit UDISE code of the Grade 10 school")
+
+            mode_of_coaching(
+              :string,
+              "Mode of the external coaching a Blended Learning student attends, e.g. Online, Offline, No Coaching"
+            )
+
+            coaching_name(:string, "Name of the external coaching institute")
           end
 
           example(%{
@@ -81,7 +88,9 @@ defmodule DbserviceWeb.SwaggerSchema.Student do
             track_pant_size: "L",
             g10_school_state: "Madhya Pradesh",
             g10_school_name: "Govt Higher Secondary School Barwani",
-            g10_school_udise_code: "23120100101"
+            g10_school_udise_code: "23120100101",
+            mode_of_coaching: "Offline",
+            coaching_name: "Allen Career Institute"
           })
         end
     }
