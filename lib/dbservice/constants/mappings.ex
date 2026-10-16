@@ -547,6 +547,114 @@ defmodule Dbservice.Constants.Mappings do
       optional: ["school_addition"],
       type: :string
     },
+    "school_email" => %{
+      db_field: "school_email",
+      required: [],
+      optional: ["school_addition"],
+      type: :string
+    },
+    "principal_incharge_name" => %{
+      db_field: "principal_incharge_name",
+      required: [],
+      optional: ["school_addition"],
+      type: :string
+    },
+    "principal_incharge_contact" => %{
+      db_field: "principal_incharge_contact",
+      required: [],
+      optional: ["school_addition"],
+      type: :string
+    },
+    "pmu_coordinator_name" => %{
+      db_field: "pmu_coordinator_name",
+      required: [],
+      optional: ["school_addition"],
+      type: :string
+    },
+    "pmu_coordinator_contact" => %{
+      db_field: "pmu_coordinator_contact",
+      required: [],
+      optional: ["school_addition"],
+      type: :string
+    },
+    "school_support_status" => %{
+      db_field: "school_support_status",
+      required: [],
+      optional: ["school_addition"],
+      type: :string
+    },
+    "school_residential_status" => %{
+      db_field: "school_residential_status",
+      required: [],
+      optional: ["school_addition"],
+      type: :string
+    },
+    "has_grades_6_to_8" => %{
+      db_field: "has_grades_6_to_8",
+      required: [],
+      optional: ["school_addition"],
+      type: :boolean
+    },
+    "has_grades_9_to_10" => %{
+      db_field: "has_grades_9_to_10",
+      required: [],
+      optional: ["school_addition"],
+      type: :boolean
+    },
+    "has_grades_11_to_12" => %{
+      db_field: "has_grades_11_to_12",
+      required: [],
+      optional: ["school_addition"],
+      type: :boolean
+    },
+    "estimated_strength_grade_6" => %{
+      db_field: "estimated_strength_grade_6",
+      required: [],
+      optional: ["school_addition"],
+      type: :integer
+    },
+    "estimated_strength_grade_7" => %{
+      db_field: "estimated_strength_grade_7",
+      required: [],
+      optional: ["school_addition"],
+      type: :integer
+    },
+    "estimated_strength_grade_8" => %{
+      db_field: "estimated_strength_grade_8",
+      required: [],
+      optional: ["school_addition"],
+      type: :integer
+    },
+    "estimated_strength_grade_9" => %{
+      db_field: "estimated_strength_grade_9",
+      required: [],
+      optional: ["school_addition"],
+      type: :integer
+    },
+    "estimated_strength_grade_10" => %{
+      db_field: "estimated_strength_grade_10",
+      required: [],
+      optional: ["school_addition"],
+      type: :integer
+    },
+    "estimated_strength_grade_11" => %{
+      db_field: "estimated_strength_grade_11",
+      required: [],
+      optional: ["school_addition"],
+      type: :integer
+    },
+    "estimated_strength_grade_12" => %{
+      db_field: "estimated_strength_grade_12",
+      required: [],
+      optional: ["school_addition"],
+      type: :integer
+    },
+    "school_notes" => %{
+      db_field: "school_notes",
+      required: [],
+      optional: ["school_addition"],
+      type: :string
+    },
     "start_date" => %{
       db_field: "start_date",
       required: [

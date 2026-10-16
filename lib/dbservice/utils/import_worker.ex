@@ -1444,6 +1444,69 @@ defmodule Dbservice.DataImport.ImportWorker do
     |> maybe_put_school("block_code", record["block_code"] |> trim_str())
     |> maybe_put_school("block_name", record["block_name"] |> trim_str())
     |> maybe_put_school("board", record["school_board"] |> trim_str())
+    |> put_school_profile_details(record)
+  end
+
+  # The field-visit half of the school record: who to call, how the engagement
+  # is going, which grades the school runs and how big they are. Every one is
+  # optional, so a sheet that predates these columns imports unchanged, and a
+  # column left blank on a row leaves the stored value alone rather than
+  # clearing it.
+  defp put_school_profile_details(attrs, record) do
+    attrs
+    |> maybe_put_school("school_email", record["school_email"] |> trim_str())
+    |> maybe_put_school(
+      "principal_incharge_name",
+      record["principal_incharge_name"] |> trim_str()
+    )
+    |> maybe_put_school(
+      "principal_incharge_contact",
+      record["principal_incharge_contact"] |> trim_str()
+    )
+    |> maybe_put_school("pmu_coordinator_name", record["pmu_coordinator_name"] |> trim_str())
+    |> maybe_put_school(
+      "pmu_coordinator_contact",
+      record["pmu_coordinator_contact"] |> trim_str()
+    )
+    |> maybe_put_school("school_support_status", record["school_support_status"] |> trim_str())
+    |> maybe_put_school(
+      "school_residential_status",
+      record["school_residential_status"] |> trim_str()
+    )
+    # Already true/false by here - `map_boolean_fields` converts Yes/No and
+    # TRUE/FALSE for every field the mappings declare as boolean.
+    |> maybe_put_school("has_grades_6_to_8", record["has_grades_6_to_8"])
+    |> maybe_put_school("has_grades_9_to_10", record["has_grades_9_to_10"])
+    |> maybe_put_school("has_grades_11_to_12", record["has_grades_11_to_12"])
+    |> maybe_put_school(
+      "estimated_strength_grade_6",
+      record["estimated_strength_grade_6"] |> trim_str()
+    )
+    |> maybe_put_school(
+      "estimated_strength_grade_7",
+      record["estimated_strength_grade_7"] |> trim_str()
+    )
+    |> maybe_put_school(
+      "estimated_strength_grade_8",
+      record["estimated_strength_grade_8"] |> trim_str()
+    )
+    |> maybe_put_school(
+      "estimated_strength_grade_9",
+      record["estimated_strength_grade_9"] |> trim_str()
+    )
+    |> maybe_put_school(
+      "estimated_strength_grade_10",
+      record["estimated_strength_grade_10"] |> trim_str()
+    )
+    |> maybe_put_school(
+      "estimated_strength_grade_11",
+      record["estimated_strength_grade_11"] |> trim_str()
+    )
+    |> maybe_put_school(
+      "estimated_strength_grade_12",
+      record["estimated_strength_grade_12"] |> trim_str()
+    )
+    |> maybe_put_school("school_notes", record["school_notes"] |> trim_str())
   end
 
   # School imports create the school *as a user* too (School.user_id), matching the

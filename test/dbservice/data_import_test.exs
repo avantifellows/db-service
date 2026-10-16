@@ -130,6 +130,39 @@ defmodule Dbservice.DataImportTest do
                "student_id"
              ]
     end
+
+    test "offers the school profile columns on the school addition template" do
+      headers =
+        "school_addition"
+        |> DataImport.generate_csv_template()
+        |> String.trim()
+        |> String.split(",")
+
+      profile_columns =
+        [
+          "school_email",
+          "principal_incharge_name",
+          "principal_incharge_contact",
+          "pmu_coordinator_name",
+          "pmu_coordinator_contact",
+          "school_support_status",
+          "school_residential_status",
+          "has_grades_6_to_8",
+          "has_grades_9_to_10",
+          "has_grades_11_to_12",
+          "school_notes"
+        ] ++ Enum.map(6..12, &"estimated_strength_grade_#{&1}")
+
+      for column <- profile_columns do
+        assert column in headers
+      end
+
+      # They are optional, so a sheet that predates them still validates.
+      refute Enum.any?(
+               profile_columns,
+               &(&1 in Dbservice.Constants.Mappings.get_required_headers("school_addition"))
+             )
+    end
   end
 
   describe "start_import/1" do

@@ -392,4 +392,178 @@ defmodule Dbservice.SchoolsTest do
       assert updated.user_id == created.user_id
     end
   end
+
+  describe "school profile details" do
+    alias Dbservice.Schools.School
+    import Dbservice.SchoolsFixtures
+
+    @profile_attrs %{
+      school_email: "principal@kvrajori.edu.in",
+      principal_incharge_name: "Sunita Rao",
+      principal_incharge_contact: "9876543210",
+      pmu_coordinator_name: "Imran Qureshi",
+      pmu_coordinator_contact: "9123456780",
+      school_support_status: "Supportive",
+      school_residential_status: "Non-Residential",
+      has_grades_6_to_8: true,
+      has_grades_9_to_10: true,
+      has_grades_11_to_12: false,
+      estimated_strength_grade_6: 60,
+      estimated_strength_grade_7: 58,
+      estimated_strength_grade_8: 55,
+      estimated_strength_grade_9: 50,
+      estimated_strength_grade_10: 48,
+      estimated_strength_grade_11: 0,
+      estimated_strength_grade_12: 0,
+      school_notes: "Principal has offered two rooms for after-school sessions."
+    }
+
+    test "update_school/2 stores every profile detail" do
+      school = school_fixture()
+
+      assert {:ok, %School{} = school} = Schools.update_school(school, @profile_attrs)
+
+      for {field, value} <- @profile_attrs do
+        assert Map.fetch!(school, field) == value
+      end
+    end
+
+    test "a school created without them has them all nil" do
+      school = school_fixture()
+
+      for field <- Map.keys(@profile_attrs) do
+        assert is_nil(Map.fetch!(school, field))
+      end
+    end
+
+    test "a grade flag stays nil until it is answered, and false is kept as false" do
+      school = school_fixture()
+
+      assert {:ok, %School{} = school} =
+               Schools.update_school(school, %{has_grades_6_to_8: false})
+
+      # false is an answer - the school does not offer those grades. nil is the
+      # absence of one, and must not collapse into false.
+      assert school.has_grades_6_to_8 == false
+      assert is_nil(school.has_grades_9_to_10)
+      assert is_nil(school.has_grades_11_to_12)
+    end
+
+    test "a status typed in any case is stored in its canonical spelling" do
+      school = school_fixture()
+
+      assert {:ok, %School{} = school} =
+               Schools.update_school(school, %{
+                 school_support_status: "  non-supportive  ",
+                 school_residential_status: "RESIDENTIAL"
+               })
+
+      assert school.school_support_status == "Non-Supportive"
+      assert school.school_residential_status == "Residential"
+    end
+
+    test "a status outside the allowed set is rejected" do
+      school = school_fixture()
+
+      assert {:error, changeset} =
+               Schools.update_school(school, %{school_support_status: "Somewhat"})
+
+      assert "is invalid" in errors_on(changeset).school_support_status
+
+      assert {:error, changeset} =
+               Schools.update_school(school, %{school_residential_status: "Hostel"})
+
+      assert "is invalid" in errors_on(changeset).school_residential_status
+    end
+
+    test "a contact number carrying anything but digits is rejected" do
+      school = school_fixture()
+
+      for value <- ["+91 98765 43210", "98765-43210", "not a number"] do
+        assert {:error, changeset} =
+                 Schools.update_school(school, %{principal_incharge_contact: value})
+
+        assert "must contain only digits" in errors_on(changeset).principal_incharge_contact
+      end
+
+      assert {:error, changeset} =
+               Schools.update_school(school, %{pmu_coordinator_contact: "+919876543210"})
+
+      assert "must contain only digits" in errors_on(changeset).pmu_coordinator_contact
+    end
+
+    test "an email that could not reach a mailbox is rejected" do
+      school = school_fixture()
+
+      assert {:error, changeset} =
+               Schools.update_school(school, %{school_email: "principal.kvrajori.edu.in"})
+
+      assert "must be a valid email address" in errors_on(changeset).school_email
+    end
+
+    test "blanks are stored as nil rather than empty strings" do
+      school = school_fixture()
+
+      assert {:ok, %School{} = school} =
+               Schools.update_school(school, %{
+                 school_email: "   ",
+                 principal_incharge_name: "",
+                 principal_incharge_contact: "  ",
+                 pmu_coordinator_name: " ",
+                 pmu_coordinator_contact: "",
+                 school_support_status: "  ",
+                 school_residential_status: "",
+                 school_notes: "   "
+               })
+
+      assert is_nil(school.school_email)
+      assert is_nil(school.principal_incharge_name)
+      assert is_nil(school.principal_incharge_contact)
+      assert is_nil(school.pmu_coordinator_name)
+      assert is_nil(school.pmu_coordinator_contact)
+      assert is_nil(school.school_support_status)
+      assert is_nil(school.school_residential_status)
+      assert is_nil(school.school_notes)
+    end
+
+    test "an estimated strength that is negative or implausible is rejected" do
+      school = school_fixture()
+
+      assert {:error, changeset} =
+               Schools.update_school(school, %{estimated_strength_grade_9: -1})
+
+      assert errors_on(changeset).estimated_strength_grade_9 != []
+
+      # A per-grade cell holding what looks like a district total.
+      assert {:error, changeset} =
+               Schools.update_school(school, %{estimated_strength_grade_11: 250_000})
+
+      assert errors_on(changeset).estimated_strength_grade_11 != []
+    end
+
+    test "a name longer than the column is rejected rather than failing on insert" do
+      school = school_fixture()
+
+      assert {:error, changeset} =
+               Schools.update_school(school, %{
+                 principal_incharge_name: String.duplicate("अ", 101)
+               })
+
+      assert errors_on(changeset).principal_incharge_name != []
+    end
+
+    test "the database refuses a bad status written around the changeset" do
+      school = school_fixture()
+
+      # ETL and one-off SQL write to this table directly, so the allowed values
+      # are a CHECK constraint and not only a changeset rule.
+      assert_raise Postgrex.Error, fn ->
+        Ecto.Adapters.SQL.query!(
+          Repo,
+          "UPDATE school SET school_support_status = 'Somewhat' WHERE id = $1",
+          [school.id]
+        )
+      end
+    end
+  end
 end
