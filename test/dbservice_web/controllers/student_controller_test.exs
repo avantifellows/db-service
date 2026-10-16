@@ -83,15 +83,18 @@ defmodule DbserviceWeb.StudentControllerTest do
       conn = post(conn, ~p"/api/student", @create_attrs)
       %{"id" => id} = json_response(conn, 200)
 
+      # Default read is the compact projection: identity and academic fields only.
       conn = get(conn, ~p"/api/student/#{id}")
 
       resp = json_response(conn, 200)
       assert resp["id"] == id
       assert resp["student_id"] == "some student id"
       assert resp["category"] == "Gen"
-      assert resp["father_name"] == "some father_name"
       assert resp["stream"] == "medical"
       assert is_integer(resp["user"]["id"])
+      # Personal fields are not exposed over a plain student read.
+      refute Map.has_key?(resp, "father_name")
+      refute Map.has_key?(resp["user"], "email")
     end
 
     test "renders PEN in the full student response", %{conn: conn} do
@@ -116,17 +119,17 @@ defmodule DbserviceWeb.StudentControllerTest do
       conn = put(conn, ~p"/api/student/#{student.id}", attrs)
       %{"id" => id} = json_response(conn, 200)
 
+      # Default read is compact.
       conn = get(conn, ~p"/api/student/#{id}")
       resp = json_response(conn, 200)
 
       assert resp["id"] == id
       assert resp["student_id"] == "some updated student id"
       assert resp["category"] == "OBC"
-      assert resp["father_name"] == "some updated father name"
       assert resp["stream"] == "pcm"
-      assert resp["family_income"] == "some updated family income"
-      assert resp["annual_family_income"] == "some updated annual family income"
       assert is_integer(resp["user"]["id"])
+      refute Map.has_key?(resp, "father_name")
+      refute Map.has_key?(resp, "family_income")
     end
 
     test "renders errors when data is invalid", %{conn: conn, student: student} do

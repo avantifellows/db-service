@@ -2,13 +2,22 @@ defmodule DbserviceWeb.StudentJSON do
   alias DbserviceWeb.UserJSON
   alias Dbservice.Repo
 
-  def index(%{student: student}) do
-    for(s <- student, do: render(s))
+  # `view` selects how much of the record to serialise. It defaults to `:full`
+  # so mutation responses (create/update/etc.) echo the whole record unchanged;
+  # the public GET read endpoints pass `:compact`, so a student fetch never
+  # spills the full personal record.
+  def index(%{student: student} = assigns) do
+    view = Map.get(assigns, :view, :full)
+    for(s <- student, do: render_student(s, view))
   end
 
-  def show(%{student: student}) do
-    render(student)
+  def show(%{student: student} = assigns) do
+    view = Map.get(assigns, :view, :full)
+    render_student(student, view)
   end
+
+  defp render_student(student, :compact), do: student_user_with_compact_fields(student)
+  defp render_student(student, _), do: render(student)
 
   def show_with_user(%{student: student}) do
     for(s <- student, do: render(s))
@@ -82,17 +91,29 @@ defmodule DbserviceWeb.StudentJSON do
     }
   end
 
+  # Projection returned for public student reads (GET /student and
+  # GET /student/:id). Identity plus the few academic fields the student-facing
+  # apps actually use; deliberately omits parent/guardian details, contact info,
+  # date of birth, income, marks, APAAR and the rest of the personal record,
+  # none of which is exposed over a plain student read.
   def student_user_with_compact_fields(student) do
+    student = Repo.preload(student, :user)
+
     %{
       id: student.id,
       student_id: student.student_id,
-      category: student.category,
+      grade_id: student.grade_id,
       stream: student.stream,
-      user: if(student.user, do: UserJSON.user_with_compact_fields(student.user), else: nil),
-      apaar_id: student.apaar_id,
-      pen_number: student.pen_number,
-      g10_board: student.g10_board,
-      g10_roll_no: student.g10_roll_no
+      category: student.category,
+      user:
+        if student.user do
+          %{
+            id: student.user.id,
+            first_name: student.user.first_name,
+            last_name: student.user.last_name,
+            gender: student.user.gender
+          }
+        end
     }
   end
 

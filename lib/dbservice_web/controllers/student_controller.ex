@@ -76,7 +76,7 @@ defmodule DbserviceWeb.StudentController do
   def index(conn, %{"id" => id, "group" => group} = _params) do
     student = Users.get_student_by_id_and_group(id, group)
     students = if student, do: [student], else: []
-    render(conn, :index, student: students)
+    render(conn, :index, student: students, view: :compact)
   end
 
   def index(conn, params) do
@@ -105,7 +105,7 @@ defmodule DbserviceWeb.StudentController do
       end)
 
     student = Repo.all(query)
-    render(conn, :index, student: student)
+    render(conn, :index, student: student, view: :compact)
   end
 
   # Removes the auth-group filter keys from params and resolves them to an auth_group id.
@@ -186,7 +186,7 @@ defmodule DbserviceWeb.StudentController do
   def show(conn, %{"id" => id}) do
     try do
       student = Users.get_student!(String.to_integer(id))
-      render(conn, :show, student: student)
+      render(conn, :show, student: student, view: :compact)
     rescue
       Ecto.NoResultsError ->
         conn
