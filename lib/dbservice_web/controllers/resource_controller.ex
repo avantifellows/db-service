@@ -1198,17 +1198,28 @@ defmodule DbserviceWeb.ResourceController do
 
   swagger_path :fetch_problems do
     get("/api/problems")
-    summary("Fetch problems by topic and curriculum (optionally a language)")
+    summary("Fetch problems by chapter, optionally filtered to one topic")
 
     description(
-      "Returns problems filtered by topic_id. When lang_code is given, results are " <>
-        "limited to that language (top-level meta_data is that language). When lang_code " <>
-        "is omitted, every problem is returned once with all languages in lang_versions " <>
-        "for client-side filtering."
+      "Returns the problems of a chapter. An optional topic_id narrows the result to " <>
+        "problems tagged with that topic; a problem may carry several topics (including " <>
+        "topics from other chapters) and is still returned once. Problems with no topic " <>
+        "at all are listed. When lang_code is given, results are limited to that language " <>
+        "(top-level meta_data is that language). When lang_code is omitted, every problem " <>
+        "is returned once with all languages in lang_versions for client-side filtering."
     )
 
     parameters do
-      topic_id(:query, :integer, "Topic ID", required: true)
+      chapter_id(:query, :integer, "Chapter ID", required: true)
+
+      topic_id(
+        :query,
+        :integer,
+        "Optional filter: only problems tagged with this topic. Sending topic_id without " <>
+          "chapter_id is deprecated and lists problems by topic instead, for the currently " <>
+          "deployed CMS only; it will be removed once that is updated.",
+        required: false
+      )
 
       curriculum_id(
         :query,
@@ -1224,8 +1235,8 @@ defmodule DbserviceWeb.ResourceController do
         :query,
         :boolean,
         "When true, also include comprehension problems that share a paragraph with any " <>
-          "comprehension problem in the result, even if they belong to a different topic " <>
-          "(curriculum_id and lang_code still apply)",
+          "comprehension problem in the result, even if they belong to a different chapter " <>
+          "or topic (curriculum_id and lang_code still apply)",
         required: false
       )
     end
@@ -1233,15 +1244,38 @@ defmodule DbserviceWeb.ResourceController do
     response(200, "OK", Schema.ref(:ProblemResource))
   end
 
-  # curriculum_id is optional and deprecated (issue #651): each problem/topic
-  # belongs to a single curriculum, so no curriculum filtering is needed. It is
-  # still accepted (and applied) for backward compatibility.
-  def fetch_problems(conn, %{"topic_id" => topic_id} = params) do
+  # curriculum_id is optional and deprecated (issue #651): each problem belongs to
+  # a single curriculum, so no curriculum filtering is needed. It is still
+  # accepted (and applied) for backward compatibility.
+  def fetch_problems(conn, params) do
     curriculum_id = param_as_integer(params, "curriculum_id")
-    fetch_problems_for_language(conn, topic_id, curriculum_id, params["lang_code"], params)
+
+    case problem_listing_scope(params) do
+      {:ok, scope} ->
+        fetch_problems_for_language(conn, scope, curriculum_id, params["lang_code"], params)
+
+      :error ->
+        conn
+        |> put_status(:unprocessable_entity)
+        |> json(%{error: "chapter_id is required"})
+    end
   end
 
-  defp fetch_problems_for_language(conn, topic_id, curriculum_id, lang_code, params)
+  # Problems are listed by chapter (issue #785); topic_id is only a filter within
+  # that chapter. The topic-only form is the shape the currently deployed CMS
+  # sends and is kept until it is updated.
+  defp problem_listing_scope(params) do
+    chapter_id = param_as_integer(params, "chapter_id")
+    topic_id = param_as_integer(params, "topic_id")
+
+    cond do
+      chapter_id -> {:ok, {:chapter, chapter_id, topic_id}}
+      topic_id -> {:ok, {:topic, topic_id}}
+      true -> :error
+    end
+  end
+
+  defp fetch_problems_for_language(conn, scope, curriculum_id, lang_code, params)
        when is_binary(lang_code) and lang_code != "" do
     case Repo.get_by(Language, code: lang_code) do
       nil ->
@@ -1251,7 +1285,7 @@ defmodule DbserviceWeb.ResourceController do
 
       _language ->
         problems =
-          topic_id
+          scope
           |> problems_query(curriculum_id, lang_code)
           |> Repo.all()
           |> preload_paragraphs()
@@ -1261,9 +1295,9 @@ defmodule DbserviceWeb.ResourceController do
     end
   end
 
-  defp fetch_problems_for_language(conn, topic_id, curriculum_id, _lang_code, params) do
+  defp fetch_problems_for_language(conn, scope, curriculum_id, _lang_code, params) do
     problems =
-      topic_id
+      scope
       |> problems_query_all_langs(curriculum_id)
       |> Repo.all()
       |> Enum.uniq_by(& &1.resource.id)
@@ -1272,14 +1306,21 @@ defmodule DbserviceWeb.ResourceController do
     render(conn, "problems.json", problems: problems)
   end
 
+  # Scoped by chapter, not topic (issue #785): a problem's chapter is the one
+  # thing it always has exactly one of, and joining resource_topic here would
+  # both hide problems with no topic and return multi-topic problems more than
+  # once. Topic is applied separately, as a filter.
+  #
+  # The chapter join is a LEFT join so that the deprecated topic-only listing
+  # keeps returning a problem that has no resource_chapter row (the backfill
+  # migration leaves none behind, but the legacy path should not depend on it).
+  # A chapter-scoped request filters on rch.chapter_id, which drops those rows.
   defp problems_base_query(curriculum_id, lang_code) do
     from(r in Resource,
       as: :resource,
-      join: rt in ResourceTopic,
-      as: :resource_topic,
-      on: rt.resource_id == r.id,
-      join: t in Topic,
-      on: t.id == rt.topic_id,
+      left_join: rch in ResourceChapter,
+      as: :resource_chapter,
+      on: rch.resource_id == r.id,
       join: rc in ResourceCurriculum,
       as: :resource_curriculum,
       on: rc.resource_id == r.id,
@@ -1293,8 +1334,7 @@ defmodule DbserviceWeb.ResourceController do
       order_by: [asc: r.code],
       select: %{
         resource: r,
-        resource_topic: rt,
-        chapter_id: t.chapter_id,
+        chapter_id: rch.chapter_id,
         resource_curriculums: [rc],
         requested_curriculum_id: rc.curriculum_id,
         problem_lang: pl
@@ -1312,9 +1352,42 @@ defmodule DbserviceWeb.ResourceController do
     from([resource_curriculum: rc] in query, where: rc.curriculum_id == ^curriculum_id)
   end
 
-  defp problems_query(topic_id, curriculum_id, lang_code) do
-    from([resource_topic: rt] in problems_base_query(curriculum_id, lang_code),
-      where: rt.topic_id == ^topic_id
+  defp problems_query(scope, curriculum_id, lang_code) do
+    curriculum_id
+    |> problems_base_query(lang_code)
+    |> apply_listing_scope(scope)
+  end
+
+  defp problems_query_all_langs(scope, curriculum_id) do
+    curriculum_id
+    |> problems_base_query_all_langs()
+    |> apply_listing_scope(scope)
+  end
+
+  defp apply_listing_scope(query, {:chapter, chapter_id, topic_id}) do
+    from([resource_chapter: rch] in query, where: rch.chapter_id == ^chapter_id)
+    |> maybe_filter_by_topic(topic_id)
+  end
+
+  # Deprecated, transition only: list by topic across chapters, as the currently
+  # deployed CMS still asks for.
+  defp apply_listing_scope(query, {:topic, topic_id}) do
+    maybe_filter_by_topic(query, topic_id)
+  end
+
+  defp maybe_filter_by_topic(query, nil), do: query
+
+  # An `exists` subquery rather than a join, so a problem tagged with several
+  # topics is not returned once per topic.
+  defp maybe_filter_by_topic(query, topic_id) do
+    from([resource: r] in query,
+      where:
+        exists(
+          from(rt in ResourceTopic,
+            where: rt.resource_id == parent_as(:resource).id and rt.topic_id == ^topic_id,
+            select: 1
+          )
+        )
     )
   end
 
@@ -1366,11 +1439,9 @@ defmodule DbserviceWeb.ResourceController do
   defp problems_base_query_all_langs(curriculum_id) do
     from(r in Resource,
       as: :resource,
-      join: rt in ResourceTopic,
-      as: :resource_topic,
-      on: rt.resource_id == r.id,
-      join: t in Topic,
-      on: t.id == rt.topic_id,
+      left_join: rch in ResourceChapter,
+      as: :resource_chapter,
+      on: rch.resource_id == r.id,
       join: rc in ResourceCurriculum,
       as: :resource_curriculum,
       on: rc.resource_id == r.id,
@@ -1378,19 +1449,12 @@ defmodule DbserviceWeb.ResourceController do
       order_by: [asc: r.code],
       select: %{
         resource: r,
-        resource_topic: rt,
-        chapter_id: t.chapter_id,
+        chapter_id: rch.chapter_id,
         resource_curriculums: [rc],
         requested_curriculum_id: rc.curriculum_id
       }
     )
     |> maybe_filter_by_curriculum(curriculum_id)
-  end
-
-  defp problems_query_all_langs(topic_id, curriculum_id) do
-    from([resource_topic: rt] in problems_base_query_all_langs(curriculum_id),
-      where: rt.topic_id == ^topic_id
-    )
   end
 
   defp maybe_add_paragraph_siblings_all_langs(problems, params, curriculum_id) do
