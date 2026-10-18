@@ -33,6 +33,24 @@ defmodule DbserviceWeb.SwaggerSchema.Resource do
             skill_ids(:array, "Skill ids associated with the resource")
             teacher_id(:integer, "Teacher id associated with the resource")
             exam_ids(:array, "Exam ids associated with the resource")
+
+            topic_ids(
+              Schema.array(:integer),
+              "Every topic the resource is mapped to. A problem belongs to one chapter " <>
+                "but may be mapped to zero or more topics, including topics from other " <>
+                "chapters. On write this is the full desired set: topics not listed are " <>
+                "unmapped, and `[]` clears them all. Omit the key to leave the mapping " <>
+                "untouched (e.g. when moving a problem to another chapter).",
+              example: [616, 712]
+            )
+
+            topic_id(
+              :integer,
+              "Deprecated single-topic form, kept for the currently deployed CMS. On write " <>
+                "it sets the mapping to exactly this topic and must belong to the given " <>
+                "chapter; on read it is the first entry of topic_ids. Use topic_ids instead."
+            )
+
             cms_status(:string, "Status name from cms_status table. Also accepts cms_status_id.")
             cms_status_id(:integer, "cms_status.id value to set status directly")
 
@@ -283,6 +301,24 @@ defmodule DbserviceWeb.SwaggerSchema.Resource do
             tag_ids(:array, "Tag ids associated with the resource")
             skill_ids(:array, "Skill ids associated with the resource")
             teacher_id(:integer, "Teacher id associated with the resource")
+
+            topic_ids(
+              Schema.array(:integer),
+              "Every topic the resource is mapped to. A problem belongs to one chapter " <>
+                "but may be mapped to zero or more topics, including topics from other " <>
+                "chapters. On write this is the full desired set: topics not listed are " <>
+                "unmapped, and `[]` clears them all. Omit the key to leave the mapping " <>
+                "untouched (e.g. when moving a problem to another chapter).",
+              example: [616, 712]
+            )
+
+            topic_id(
+              :integer,
+              "Deprecated single-topic form, kept for the currently deployed CMS. On write " <>
+                "it sets the mapping to exactly this topic and must belong to the given " <>
+                "chapter; on read it is the first entry of topic_ids. Use topic_ids instead."
+            )
+
             meta_data(:map, "Additional meta data for the session")
 
             lang_versions(
@@ -400,7 +436,21 @@ defmodule DbserviceWeb.SwaggerSchema.Resource do
 
             subject_id(:integer, "Target subject ID")
             chapter_id(:integer, "Target chapter ID")
-            topic_id(:integer, "Target topic ID")
+
+            topic_ids(
+              Schema.array(:integer),
+              "Full desired set of topics for every moved resource; `[]` clears them. " <>
+                "Topics need not belong to the target chapter. Omit the key (and topic_id) " <>
+                "to move the resources to the new chapter while keeping their current topics.",
+              example: [616, 712]
+            )
+
+            topic_id(
+              :integer,
+              "Deprecated single-topic form, kept for the currently deployed CMS. Must belong " <>
+                "to the target chapter. Use topic_ids instead."
+            )
+
             lang_code(:string, "Language code (e.g. en) for problem language")
           end
 
@@ -408,7 +458,7 @@ defmodule DbserviceWeb.SwaggerSchema.Resource do
             resource_ids: [5014, 5015],
             curriculum_grades: [%{curriculum_id: 3, grade_id: 4}],
             subject_id: 4,
-            topic_id: 616,
+            topic_ids: [616, 712],
             chapter_id: 220,
             lang_code: "en"
           })

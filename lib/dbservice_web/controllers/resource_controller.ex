@@ -827,6 +827,20 @@ defmodule DbserviceWeb.ResourceController do
 
   defp insert_resource_chapter(_, _), do: :ok
 
+  # A problem may be mapped to any number of topics, including topics outside its
+  # own chapter (issue #784), so `topic_ids` is the list of every topic to map.
+  # The singular `topic_id` is the legacy shape the currently deployed CMS sends;
+  # when both are present `topic_ids` wins. Create paths deliberately do not check
+  # that a topic sits under the problem's chapter.
+  defp insert_resource_topic(resource, %{"topic_ids" => topic_ids}) when is_list(topic_ids) do
+    Enum.each(Resources.normalize_topic_ids(topic_ids), fn topic_id ->
+      Dbservice.ResourceTopics.create_resource_topic(%{
+        resource_id: resource.id,
+        topic_id: topic_id
+      })
+    end)
+  end
+
   defp insert_resource_topic(resource, %{"topic_id" => topic_id}) when not is_nil(topic_id) do
     Dbservice.ResourceTopics.create_resource_topic(%{
       resource_id: resource.id,
