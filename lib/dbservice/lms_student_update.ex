@@ -28,20 +28,57 @@ defmodule Dbservice.LmsStudentUpdate do
   @cbse_board "CBSE"
   @enable_students_auth_group "EnableStudents"
   @nvs_program_id 64
-  @user_fields ["first_name", "last_name", "gender", "date_of_birth", "phone"]
-  @student_fields [
-    "category",
-    "physically_handicapped",
-    "board_stream",
-    "stream",
-    "father_name",
-    "annual_family_income",
-    "g10_board",
-    "pen_number",
-    "g10_roll_no",
-    "tshirt_size",
-    "track_pant_size"
+  # Contact details the Enrollment tab shows on a Student card. AF LMS #431:
+  # the card displayed them while Edit Student could not change them, so a
+  # teacher could see data they had no way to correct.
+  @contact_user_fields [
+    "email",
+    "whatsapp_phone",
+    "address",
+    "city",
+    "district",
+    "state",
+    "pincode"
   ]
+  @user_fields ["first_name", "last_name", "gender", "date_of_birth", "phone"] ++
+                 @contact_user_fields
+  # The rest of the household the card shows, same reason.
+  @family_student_fields [
+    "father_phone",
+    "father_profession",
+    "father_education_level",
+    "mother_name",
+    "mother_phone",
+    "mother_profession",
+    "mother_education_level",
+    "guardian_name",
+    "guardian_relation",
+    "guardian_phone",
+    "guardian_profession",
+    "guardian_education_level",
+    "monthly_family_income"
+  ]
+  @student_fields [
+                    "category",
+                    "physically_handicapped",
+                    "board_stream",
+                    "stream",
+                    "father_name",
+                    "annual_family_income",
+                    "g10_board",
+                    "pen_number",
+                    "g10_roll_no",
+                    "tshirt_size",
+                    "track_pant_size"
+                  ] ++ @family_student_fields
+  # Optional details a teacher clears by emptying the box. Without this an
+  # erased value would be stored as "", which reads as set-but-empty
+  # everywhere downstream. Only the fields added for #431: `last_name` is
+  # deliberately blanked by the name edit, not cleared.
+  @blankable_fields @contact_user_fields ++ @family_student_fields
+  # Ten digits, like the Student's own phone. Checked here as well as in the
+  # LMS so a direct call can't store a number nobody can ring.
+  @contact_phone_fields ["whatsapp_phone", "father_phone", "mother_phone", "guardian_phone"]
   @locked_fields [
     "apaar_id",
     "auth_group",
@@ -149,8 +186,40 @@ defmodule Dbservice.LmsStudentUpdate do
   defp validate_canonical_inputs(params) do
     with :ok <- validate_board_input(params),
          :ok <- validate_gender_input(params),
+         :ok <- validate_contact_phone_inputs(params),
+         :ok <- validate_pincode_input(params),
          do: validate_stream_input(params)
   end
+
+  # A blank clears the field, so only a value that is actually there is checked.
+  defp blank?(value), do: is_nil(value) or (is_binary(value) and String.trim(value) == "")
+
+  defp validate_contact_phone_inputs(params) do
+    params
+    |> Map.take(@contact_phone_fields)
+    |> Enum.reject(fn {_field, value} -> blank?(value) end)
+    |> Enum.find(fn {_field, value} ->
+      not (is_binary(value) and Regex.match?(~r/\A\d{10}\z/, String.trim(value)))
+    end)
+    |> case do
+      nil ->
+        :ok
+
+      {field, _value} ->
+        {:error, error("invalid_phone", "#{field} must be exactly 10 digits", 422, [field])}
+    end
+  end
+
+  defp validate_pincode_input(%{"pincode" => pincode}) when not is_nil(pincode) do
+    if blank?(pincode) or
+         (is_binary(pincode) and Regex.match?(~r/\A\d{6}\z/, String.trim(pincode))) do
+      :ok
+    else
+      {:error, error("invalid_pincode", "pincode must be exactly 6 digits", 422, ["pincode"])}
+    end
+  end
+
+  defp validate_pincode_input(_params), do: :ok
 
   defp validate_board_input(params) when not is_map_key(params, "g10_board"), do: :ok
 
@@ -1106,8 +1175,23 @@ defmodule Dbservice.LmsStudentUpdate do
 
   defp audit_value(_field, value), do: value
 
+  # An emptied optional detail is a cleared one, stored as NULL.
+  defp blank_to_nil(params) do
+    Enum.reduce(@blankable_fields, params, fn field, acc ->
+      case Map.fetch(acc, field) do
+        {:ok, value} when is_binary(value) ->
+          trimmed = String.trim(value)
+          Map.put(acc, field, if(trimmed == "", do: nil, else: trimmed))
+
+        _ ->
+          acc
+      end
+    end)
+  end
+
   defp normalize_params(params) do
     params
+    |> blank_to_nil()
     |> then(fn
       %{"gender" => "Others"} = params -> Map.put(params, "gender", "Other")
       params -> params
