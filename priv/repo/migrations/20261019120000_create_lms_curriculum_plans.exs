@@ -3,11 +3,12 @@ defmodule Dbservice.Repo.Migrations.CreateLmsCurriculumPlans do
 
   # LMS-owned Curriculum Plans (af_lms #417 / #420). Admins date each in-syllabus Chapter of
   # a Grade's served Exam Tracks and assign exactly one plan per Centre + Grade + academic
-  # year. The LMS app reads and writes these tables directly with SQL; this migration is the
-  # production schema (af_lms ADR 0001), mirrored by af_lms's e2e fixture
-  # `20261019120000_add_lms_curriculum_plans.sql`. Keep the two in step, including the
-  # constraint names: af_lms relies on the plan-chapter unique key for ON CONFLICT and maps
-  # a unique violation on the assignment key to 409.
+  # year. The LMS app reads and writes these tables directly, so there is no
+  # schema/context/controller here. This migration is the production schema (af_lms ADR
+  # 0001), mirrored by af_lms's e2e fixture `20261019120000_add_lms_curriculum_plans.sql`;
+  # keep the two in step. af_lms relies on the plan-chapter unique key for
+  # ON CONFLICT (plan_id, chapter_id) and maps a unique violation on the assignment key to
+  # 409. It does not use constraint names; they match the fixture only for parity.
   #
   # "Closed" is derived from closure_date and never stored, so status is draft | active.
   def change do

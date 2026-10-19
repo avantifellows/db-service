@@ -2,15 +2,13 @@ defmodule Dbservice.LmsCurriculumPlansSchemaTest do
   use Dbservice.DataCase, async: true
 
   alias Dbservice.Chapters.Chapter
-  alias Dbservice.LmsCurriculum.CurriculumPlan
-  alias Dbservice.LmsCurriculum.CurriculumPlanAssignment
-  alias Dbservice.LmsCurriculum.CurriculumPlanChapter
 
   import Dbservice.GradesFixtures
 
   describe "lms_curriculum_plans" do
-    test "defaults status to draft and stamps UTC timestamps" do
+    test "defaults status to draft and stamps timestamps in UTC" do
       grade = grade_fixture(%{number: 11})
+      now = NaiveDateTime.utc_now()
 
       {:ok, %{rows: [["draft", inserted_at, updated_at, nil]]}} =
         Repo.query(
@@ -22,8 +20,9 @@ defmodule Dbservice.LmsCurriculumPlansSchemaTest do
           [grade.id]
         )
 
-      assert %NaiveDateTime{} = inserted_at
-      assert %NaiveDateTime{} = updated_at
+      # The test DB runs in Asia/Kolkata, so a plain now() default would be ~5.5h off.
+      assert abs(NaiveDateTime.diff(inserted_at, now)) < 60
+      assert abs(NaiveDateTime.diff(updated_at, now)) < 60
     end
 
     test "rejects statuses other than draft and active" do
@@ -62,53 +61,20 @@ defmodule Dbservice.LmsCurriculumPlansSchemaTest do
         insert_plan(grade.id, academic_year: "2026-2025")
       end)
 
+      # Both pass the consecutive-years arithmetic, so only the format regex rejects them.
+      assert_constraint(:check_violation, fn ->
+        insert_plan(grade.id, academic_year: " 2026-2027")
+      end)
+
+      assert_constraint(:check_violation, fn ->
+        insert_plan(grade.id, academic_year: "02026-02027")
+      end)
+
       assert_constraint(:check_violation, fn -> insert_plan(grade.id, title: "   ") end)
     end
 
     test "rejects an unknown Grade" do
       assert_constraint(:foreign_key_violation, fn -> insert_plan(-1) end)
-    end
-
-    test "changeset mirrors the database rules" do
-      grade = grade_fixture(%{number: 11})
-
-      valid = %{
-        title: "G12",
-        academic_year: "2026-2027",
-        grade_id: grade.id,
-        exam_tracks: ["jee_main"],
-        closure_date: ~D[2027-03-31]
-      }
-
-      assert CurriculumPlan.changeset(%CurriculumPlan{}, valid).valid?
-
-      errors =
-        %CurriculumPlan{}
-        |> CurriculumPlan.changeset(%{
-          valid
-          | academic_year: "2026-2028",
-            exam_tracks: ["cet"]
-        })
-        |> Map.put(:action, :insert)
-        |> errors_on()
-
-      assert errors.academic_year == ["must be two consecutive years, e.g. 2026-2027"]
-      assert [_] = errors.exam_tracks
-
-      assert %{status: [_]} =
-               errors_on(
-                 CurriculumPlan.changeset(%CurriculumPlan{}, Map.put(valid, :status, "closed"))
-               )
-
-      assert %{exam_tracks: [_]} =
-               errors_on(CurriculumPlan.changeset(%CurriculumPlan{}, %{valid | exam_tracks: []}))
-
-      assert {:error, changeset} =
-               %CurriculumPlan{}
-               |> CurriculumPlan.changeset(%{valid | grade_id: -1})
-               |> Repo.insert()
-
-      assert %{grade_id: ["does not exist"]} = errors_on(changeset)
     end
   end
 
@@ -165,28 +131,6 @@ defmodule Dbservice.LmsCurriculumPlansSchemaTest do
         insert_plan_chapter(plan_id, -1, nil, nil)
       end)
     end
-
-    test "changeset maps the test-date and unique rules" do
-      %{plan_id: plan_id, chapter_id: chapter_id} = plan_with_chapter()
-      attrs = %{plan_id: plan_id, chapter_id: chapter_id, test_date: ~D[2026-08-10]}
-
-      assert %{test_date: ["requires a due date"]} =
-               errors_on(CurriculumPlanChapter.changeset(%CurriculumPlanChapter{}, attrs))
-
-      attrs = Map.put(attrs, :due_date, ~D[2026-08-01])
-
-      assert {:ok, _} =
-               %CurriculumPlanChapter{}
-               |> CurriculumPlanChapter.changeset(attrs)
-               |> Repo.insert()
-
-      assert {:error, changeset} =
-               %CurriculumPlanChapter{}
-               |> CurriculumPlanChapter.changeset(attrs)
-               |> Repo.insert()
-
-      assert %{plan_id: ["has already been taken"]} = errors_on(changeset)
-    end
   end
 
   describe "lms_curriculum_plan_assignments" do
@@ -223,38 +167,6 @@ defmodule Dbservice.LmsCurriculumPlansSchemaTest do
       assert_constraint(:foreign_key_violation, fn ->
         insert_assignment(plan_id, centre_id, -1, "2026-2027")
       end)
-    end
-
-    test "changeset maps the unique and Centre foreign key rules" do
-      grade = grade_fixture(%{number: 11})
-      centre_id = insert_centre()
-      {:ok, %{rows: [[plan_id]]}} = insert_plan(grade.id)
-
-      attrs = %{
-        plan_id: plan_id,
-        centre_id: centre_id,
-        grade_id: grade.id,
-        academic_year: "2026-2027"
-      }
-
-      assert {:ok, _} =
-               %CurriculumPlanAssignment{}
-               |> CurriculumPlanAssignment.changeset(attrs)
-               |> Repo.insert()
-
-      assert {:error, changeset} =
-               %CurriculumPlanAssignment{}
-               |> CurriculumPlanAssignment.changeset(attrs)
-               |> Repo.insert()
-
-      assert %{centre_id: ["has already been taken"]} = errors_on(changeset)
-
-      assert {:error, changeset} =
-               %CurriculumPlanAssignment{}
-               |> CurriculumPlanAssignment.changeset(%{attrs | centre_id: -1})
-               |> Repo.insert()
-
-      assert %{centre_id: ["does not exist"]} = errors_on(changeset)
     end
   end
 
@@ -318,30 +230,33 @@ defmodule Dbservice.LmsCurriculumPlansSchemaTest do
     end
   end
 
-  test "constraint names and delete rules match the af_lms e2e fixture" do
+  # Not a behaviour test: the names are not used by af_lms. They are kept identical to the
+  # af_lms e2e fixture (20261019120000_add_lms_curriculum_plans.sql) so the two schemas stay
+  # comparable; the tests above cover what each constraint enforces.
+  test "keeps the af_lms e2e fixture's constraint and index names" do
     assert db_constraints("lms_curriculum_plans") == [
-             {"lms_curriculum_plans_academic_year_check", "c", nil},
-             {"lms_curriculum_plans_exam_tracks_check", "c", nil},
-             {"lms_curriculum_plans_grade_id_fkey", "f", "a"},
-             {"lms_curriculum_plans_pkey", "p", nil},
-             {"lms_curriculum_plans_status_check", "c", nil},
-             {"lms_curriculum_plans_title_check", "c", nil}
+             "lms_curriculum_plans_academic_year_check",
+             "lms_curriculum_plans_exam_tracks_check",
+             "lms_curriculum_plans_grade_id_fkey",
+             "lms_curriculum_plans_pkey",
+             "lms_curriculum_plans_status_check",
+             "lms_curriculum_plans_title_check"
            ]
 
     assert db_constraints("lms_curriculum_plan_chapters") == [
-             {"lms_curriculum_plan_chapters_chapter_id_fkey", "f", "a"},
-             {"lms_curriculum_plan_chapters_pkey", "p", nil},
-             {"lms_curriculum_plan_chapters_plan_id_chapter_id_index", "u", nil},
-             {"lms_curriculum_plan_chapters_plan_id_fkey", "f", "c"},
-             {"lms_curriculum_plan_chapters_test_date_requires_due_date", "c", nil}
+             "lms_curriculum_plan_chapters_chapter_id_fkey",
+             "lms_curriculum_plan_chapters_pkey",
+             "lms_curriculum_plan_chapters_plan_id_chapter_id_index",
+             "lms_curriculum_plan_chapters_plan_id_fkey",
+             "lms_curriculum_plan_chapters_test_date_requires_due_date"
            ]
 
     assert db_constraints("lms_curriculum_plan_assignments") == [
-             {"lms_curriculum_plan_assignments_centre_grade_year_index", "u", nil},
-             {"lms_curriculum_plan_assignments_centre_id_fkey", "f", "a"},
-             {"lms_curriculum_plan_assignments_grade_id_fkey", "f", "a"},
-             {"lms_curriculum_plan_assignments_pkey", "p", nil},
-             {"lms_curriculum_plan_assignments_plan_id_fkey", "f", "c"}
+             "lms_curriculum_plan_assignments_centre_grade_year_index",
+             "lms_curriculum_plan_assignments_centre_id_fkey",
+             "lms_curriculum_plan_assignments_grade_id_fkey",
+             "lms_curriculum_plan_assignments_pkey",
+             "lms_curriculum_plan_assignments_plan_id_fkey"
            ]
 
     assert %{rows: rows} =
@@ -363,15 +278,10 @@ defmodule Dbservice.LmsCurriculumPlansSchemaTest do
 
   defp db_constraints(table) do
     Repo.query!(
-      """
-      SELECT conname, contype::text, NULLIF(confdeltype::text, ' ')
-      FROM pg_constraint
-      WHERE conrelid = $1::text::regclass
-      ORDER BY conname
-      """,
+      "SELECT conname FROM pg_constraint WHERE conrelid = $1::text::regclass ORDER BY conname",
       [table]
     ).rows
-    |> Enum.map(&List.to_tuple/1)
+    |> List.flatten()
   end
 
   defp plan_with_chapter do
