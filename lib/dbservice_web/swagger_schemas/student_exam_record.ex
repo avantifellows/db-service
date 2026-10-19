@@ -15,13 +15,19 @@ defmodule DbserviceWeb.SwaggerSchema.StudentExamRecord do
             student_id(:integer, "Student ID", required: true)
             exam_id(:integer, "Exam ID", required: true)
             marks(:integer, "Marks obtained", required: true)
+
+            sessions_applied(
+              Schema.array(:integer),
+              "Session numbers the student applied for, for an exam that runs more than once a year"
+            )
           end
 
           example(%{
             id: 1,
             student_id: 123,
             exam_id: 456,
-            marks: 90
+            marks: 90,
+            sessions_applied: [1, 2]
           })
         end
     }

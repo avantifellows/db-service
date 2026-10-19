@@ -18,7 +18,8 @@ defmodule DbserviceWeb.StudentExamRecordJSON do
       score: student_exam_record.score,
       percentile: student_exam_record.percentile,
       all_india_rank: student_exam_record.all_india_rank,
-      category_rank: student_exam_record.category_rank
+      category_rank: student_exam_record.category_rank,
+      sessions_applied: student_exam_record.sessions_applied
     }
   end
 end
