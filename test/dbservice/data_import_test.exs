@@ -148,11 +148,18 @@ defmodule Dbservice.DataImportTest do
           "school_support_status",
           "school_residential_status",
           "grades_offered",
+          "school_stream",
           "school_notes"
-        ] ++ Enum.map(6..12, &"estimated_strength_grade_#{&1}")
+        ] ++ Enum.map(11..12, &"estimated_strength_grade_#{&1}")
 
       for column <- profile_columns do
         assert column in headers
+      end
+
+      # Strength is asked for 11 and 12 only; the other grades are covered by
+      # grades_offered.
+      for grade <- 6..10 do
+        refute "estimated_strength_grade_#{grade}" in headers
       end
 
       # They are optional, so a sheet that predates them still validates.

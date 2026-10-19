@@ -3,7 +3,11 @@ defmodule Dbservice.Repo.Migrations.AddProfileDetailsToSchool do
 
   @support_statuses "'Supportive', 'Non-Supportive', 'Neutral'"
   @residential_statuses "'Residential', 'Non-Residential'"
-  @grades 6..12
+  @streams "'Science', 'Commerce', 'Arts (Humanities)'"
+  # Only the two grades the programs actually size for. The other grades are
+  # recorded as offered or not in `grades_offered`; nobody estimates their
+  # strength, and a column nobody fills reads as "none" to anyone querying it.
+  @strength_grades 11..12
 
   def up do
     # `school` holds what identifies a school - code, UDISE, where it is, which
@@ -20,13 +24,13 @@ defmodule Dbservice.Repo.Migrations.AddProfileDetailsToSchool do
     # column is NULL so the scan cannot fail and the migration stays in one
     # transaction.
     alter table(:school) do
-      add :school_email, :string, size: 255
-      add :principal_incharge_name, :string, size: 100
-      add :principal_incharge_contact, :string, size: 15
-      add :pmu_coordinator_name, :string, size: 100
-      add :pmu_coordinator_contact, :string, size: 15
-      add :school_support_status, :string, size: 15
-      add :school_residential_status, :string, size: 20
+      add(:school_email, :string, size: 255)
+      add(:principal_incharge_name, :string, size: 100)
+      add(:principal_incharge_contact, :string, size: 15)
+      add(:pmu_coordinator_name, :string, size: 100)
+      add(:pmu_coordinator_contact, :string, size: 15)
+      add(:school_support_status, :string, size: 15)
+      add(:school_residential_status, :string, size: 20)
 
       # The grades the school runs, as an integer array rather than one flag per
       # grade band: ops fills a single comma-separated cell, and an array stays
@@ -37,27 +41,32 @@ defmodule Dbservice.Repo.Migrations.AddProfileDetailsToSchool do
       # No default: NULL is "not surveyed yet", and an empty array is a surveyed
       # school that runs none of these grades. A default of {} would erase that
       # difference across the whole table the moment the column lands.
-      add :grades_offered, {:array, :integer}
+      add(:grades_offered, {:array, :integer})
+
+      # The streams the school runs at senior secondary, same shape and same
+      # reasoning as `grades_offered` - a school commonly runs more than one.
+      add(:school_stream, {:array, :string})
 
       # One column per grade rather than a JSON map: the estimate is filled in
       # from a sheet and read back by analytics, and both want a plain integer
-      # column. Grades 6 to 12 are the span the availability flags above cover.
-      for grade <- @grades do
-        add :"estimated_strength_grade_#{grade}", :integer
+      # column.
+      for grade <- @strength_grades do
+        add(:"estimated_strength_grade_#{grade}", :integer)
       end
 
       # Free text, so `:text` rather than a capped varchar - a remark that runs
       # long should be stored, not truncated or rejected.
-      add :school_notes, :text
+      add(:school_notes, :text)
     end
 
     # One ALTER for every constraint, so `school` is scanned once rather than
-    # nine times, and a bounded lock_timeout so this queues behind live traffic
-    # instead of blocking it. SET LOCAL is scoped to the migration transaction.
+    # several times, and a bounded lock_timeout so this queues behind live
+    # traffic instead of blocking it. SET LOCAL is scoped to the migration
+    # transaction.
     execute("SET LOCAL lock_timeout = '5s'")
 
     strength_checks =
-      @grades
+      @strength_grades
       |> Enum.map_join(
         " AND\n          ",
         &"(estimated_strength_grade_#{&1} IS NULL OR estimated_strength_grade_#{&1} >= 0)"
@@ -82,31 +91,38 @@ defmodule Dbservice.Repo.Migrations.AddProfileDetailsToSchool do
           -- Duplicates are deduped by the changeset rather than rejected here.
           grades_offered IS NULL OR
           grades_offered <@ ARRAY[1,2,3,4,5,6,7,8,9,10,11,12]
+        ),
+      ADD CONSTRAINT school_stream_check
+        CHECK (
+          school_stream IS NULL OR
+          school_stream <@ ARRAY[#{@streams}]::varchar[]
         )
     """)
   end
 
   def down do
-    drop constraint(:school, :school_grades_offered_check)
-    drop constraint(:school, :school_estimated_strength_check)
-    drop constraint(:school, :school_residential_status_check)
-    drop constraint(:school, :school_support_status_check)
+    drop(constraint(:school, :school_stream_check))
+    drop(constraint(:school, :school_grades_offered_check))
+    drop(constraint(:school, :school_estimated_strength_check))
+    drop(constraint(:school, :school_residential_status_check))
+    drop(constraint(:school, :school_support_status_check))
 
     alter table(:school) do
-      remove :school_notes
+      remove(:school_notes)
 
-      for grade <- @grades do
-        remove :"estimated_strength_grade_#{grade}"
+      for grade <- @strength_grades do
+        remove(:"estimated_strength_grade_#{grade}")
       end
 
-      remove :grades_offered
-      remove :school_residential_status
-      remove :school_support_status
-      remove :pmu_coordinator_contact
-      remove :pmu_coordinator_name
-      remove :principal_incharge_contact
-      remove :principal_incharge_name
-      remove :school_email
+      remove(:school_stream)
+      remove(:grades_offered)
+      remove(:school_residential_status)
+      remove(:school_support_status)
+      remove(:pmu_coordinator_contact)
+      remove(:pmu_coordinator_name)
+      remove(:principal_incharge_contact)
+      remove(:principal_incharge_name)
+      remove(:school_email)
     end
   end
 end

@@ -1476,26 +1476,8 @@ defmodule Dbservice.DataImport.ImportWorker do
     # Passed through as the sheet wrote it - "6,7,8,9,10" - and split by the
     # School changeset, so the API and the sheet take the same two forms.
     |> maybe_put_school("grades_offered", record["grades_offered"] |> trim_str())
-    |> maybe_put_school(
-      "estimated_strength_grade_6",
-      record["estimated_strength_grade_6"] |> trim_str()
-    )
-    |> maybe_put_school(
-      "estimated_strength_grade_7",
-      record["estimated_strength_grade_7"] |> trim_str()
-    )
-    |> maybe_put_school(
-      "estimated_strength_grade_8",
-      record["estimated_strength_grade_8"] |> trim_str()
-    )
-    |> maybe_put_school(
-      "estimated_strength_grade_9",
-      record["estimated_strength_grade_9"] |> trim_str()
-    )
-    |> maybe_put_school(
-      "estimated_strength_grade_10",
-      record["estimated_strength_grade_10"] |> trim_str()
-    )
+    # Likewise "Science, Commerce" in one cell, split by the School changeset.
+    |> maybe_put_school("school_stream", record["school_stream"] |> trim_str())
     |> maybe_put_school(
       "estimated_strength_grade_11",
       record["estimated_strength_grade_11"] |> trim_str()

@@ -38,6 +38,7 @@ defmodule DbserviceWeb.SchoolJSON do
       school_support_status: school.school_support_status,
       school_residential_status: school.school_residential_status,
       grades_offered: school.grades_offered,
+      school_stream: school.school_stream,
       school_notes: school.school_notes,
       user: if(school.user, do: UserJSON.render(school.user), else: nil)
     }

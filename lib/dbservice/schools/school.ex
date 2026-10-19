@@ -11,9 +11,22 @@ defmodule Dbservice.Schools.School do
 
   @support_statuses ["Supportive", "Non-Supportive", "Neutral"]
   @residential_statuses ["Residential", "Non-Residential"]
-  @grades 6..12
-  @estimated_strength_fields Enum.map(@grades, &:"estimated_strength_grade_#{&1}")
-  # Grades a school can run. Wider than the 6-12 the estimated strength covers,
+  @streams ["Science", "Commerce", "Arts (Humanities)"]
+  # What a sheet is likely to carry for each stream, beyond its canonical
+  # spelling. Matched case-insensitively, so only the shape has to be listed.
+  @stream_aliases %{
+    "arts" => "Arts (Humanities)",
+    "humanities" => "Arts (Humanities)",
+    "arts (humanities)" => "Arts (Humanities)",
+    "arts(humanities)" => "Arts (Humanities)",
+    "science" => "Science",
+    "commerce" => "Commerce"
+  }
+  # Only 11 and 12 are sized: the other grades are recorded as offered or not,
+  # and a per-grade estimate nobody fills reads as "none" rather than "unknown".
+  @strength_grades 11..12
+  @estimated_strength_fields Enum.map(@strength_grades, &:"estimated_strength_grade_#{&1}")
+  # Grades a school can run. Wider than the 11-12 the estimated strength covers,
   # so a school that also runs primary grades can say so.
   @offerable_grades 1..12
   # No school grade holds more than a few thousand students; a larger number is
@@ -22,6 +35,7 @@ defmodule Dbservice.Schools.School do
 
   def support_statuses, do: @support_statuses
   def residential_statuses, do: @residential_statuses
+  def streams, do: @streams
   def estimated_strength_fields, do: @estimated_strength_fields
   def offerable_grades, do: @offerable_grades
 
@@ -51,8 +65,11 @@ defmodule Dbservice.Schools.School do
     # The grades the school runs, e.g. [6, 7, 8, 9, 10]. No default: nil is
     # "not surveyed yet", [] is a surveyed school that runs none of them.
     field :grades_offered, {:array, :integer}
+    # The streams the school runs at senior secondary, e.g. ["Science",
+    # "Commerce"]. Same reading of nil and [] as grades_offered.
+    field :school_stream, {:array, :string}
 
-    for grade <- @grades do
+    for grade <- @strength_grades do
       field :"estimated_strength_grade_#{grade}", :integer
     end
 
@@ -73,7 +90,7 @@ defmodule Dbservice.Schools.School do
   def changeset(school, attrs) do
     school
     |> cast(
-      normalize_grades_offered(attrs),
+      attrs |> normalize_grades_offered() |> normalize_school_stream(),
       [
         :code,
         :name,
@@ -99,6 +116,7 @@ defmodule Dbservice.Schools.School do
         :school_support_status,
         :school_residential_status,
         :grades_offered,
+        :school_stream,
         :school_notes
       ] ++ @estimated_strength_fields
     )
@@ -115,37 +133,48 @@ defmodule Dbservice.Schools.School do
     |> validate_statuses()
     |> validate_estimated_strength()
     |> validate_grades_offered()
+    |> validate_school_stream()
     |> trim_to_nil(:school_notes)
     |> check_constraint(:school_support_status, name: :school_support_status_check)
     |> check_constraint(:school_residential_status, name: :school_residential_status_check)
     |> check_constraint(:grades_offered, name: :school_grades_offered_check)
+    |> check_constraint(:school_stream, name: :school_stream_check)
   end
 
   # Ops fills one comma-separated cell - "6,7,8,9,10" - and the API sends a JSON
   # array. Ecto would reject the string before any validation could explain why,
   # so the string form is turned into a list here, ahead of the cast. Anything
   # that is not a list of grades is left alone for `cast` to reject.
-  defp normalize_grades_offered(attrs) when is_map(attrs) do
-    case fetch_grades_offered(attrs) do
+  defp normalize_grades_offered(attrs), do: split_cell(attrs, :grades_offered, &parse_grade/1)
+
+  # Same deal for the streams - "Science, Commerce" in one cell, a JSON array
+  # over the API. Entries are left as written here; `validate_school_stream`
+  # matches them against the allowed list.
+  defp normalize_school_stream(attrs), do: split_cell(attrs, :school_stream, & &1)
+
+  defp split_cell(attrs, field, parse) when is_map(attrs) do
+    case fetch_field_value(attrs, field) do
       {key, value} when is_binary(value) ->
-        Map.put(attrs, key, split_grades(value))
+        Map.put(attrs, key, split_values(value, parse))
 
       _ ->
         attrs
     end
   end
 
-  defp normalize_grades_offered(attrs), do: attrs
+  defp split_cell(attrs, _field, _parse), do: attrs
 
-  defp fetch_grades_offered(attrs) do
+  defp fetch_field_value(attrs, field) do
+    string_key = Atom.to_string(field)
+
     cond do
-      Map.has_key?(attrs, :grades_offered) -> {:grades_offered, attrs[:grades_offered]}
-      Map.has_key?(attrs, "grades_offered") -> {"grades_offered", attrs["grades_offered"]}
+      Map.has_key?(attrs, field) -> {field, attrs[field]}
+      Map.has_key?(attrs, string_key) -> {string_key, attrs[string_key]}
       true -> nil
     end
   end
 
-  defp split_grades(value) do
+  defp split_values(value, parse) do
     case String.trim(value) do
       # Left for `cast`, which treats a blank string as an explicit nil, the
       # same as every other column here. A blank cell never reaches this: the
@@ -158,7 +187,7 @@ defmodule Dbservice.Schools.School do
         |> String.split(",")
         |> Enum.map(&String.trim/1)
         |> Enum.reject(&(&1 == ""))
-        |> Enum.map(&parse_grade/1)
+        |> Enum.map(parse)
     end
   end
 
@@ -190,6 +219,46 @@ defmodule Dbservice.Schools.School do
       end
     end)
   end
+
+  # Streams arrive from the same sheets as the statuses do, so "science" and
+  # "Arts" are the same answers as their canonical spellings. Anything that is
+  # not one of the three still fails, naming what was wrong.
+  defp validate_school_stream(changeset) do
+    changeset
+    |> update_change(:school_stream, fn
+      streams when is_list(streams) ->
+        streams
+        |> Enum.map(&canonicalize_stream/1)
+        |> Enum.uniq()
+        # Sorted by the canonical order rather than alphabetically, so two
+        # sheets listing the same streams differently read as one answer and an
+        # unrecognised entry keeps its place for the error message.
+        |> Enum.sort_by(fn stream ->
+          Enum.find_index(@streams, &(&1 == stream)) || length(@streams)
+        end)
+
+      streams ->
+        streams
+    end)
+    |> validate_change(:school_stream, fn :school_stream, streams ->
+      case Enum.reject(streams, &(&1 in @streams)) do
+        [] ->
+          []
+
+        invalid ->
+          [
+            school_stream:
+              "must be one of #{Enum.join(@streams, ", ")}, got: #{Enum.join(invalid, ", ")}"
+          ]
+      end
+    end)
+  end
+
+  defp canonicalize_stream(stream) when is_binary(stream) do
+    Map.get(@stream_aliases, stream |> String.trim() |> String.downcase(), String.trim(stream))
+  end
+
+  defp canonicalize_stream(stream), do: stream
 
   defp validate_contact_details(changeset) do
     changeset

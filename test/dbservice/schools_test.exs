@@ -405,14 +405,10 @@ defmodule Dbservice.SchoolsTest do
       pmu_coordinator_contact: "9123456780",
       school_support_status: "Supportive",
       school_residential_status: "Non-Residential",
-      grades_offered: [6, 7, 8, 9, 10],
-      estimated_strength_grade_6: 60,
-      estimated_strength_grade_7: 58,
-      estimated_strength_grade_8: 55,
-      estimated_strength_grade_9: 50,
-      estimated_strength_grade_10: 48,
-      estimated_strength_grade_11: 0,
-      estimated_strength_grade_12: 0,
+      grades_offered: [6, 7, 8, 9, 10, 11, 12],
+      school_stream: ["Science", "Commerce"],
+      estimated_strength_grade_11: 48,
+      estimated_strength_grade_12: 45,
       school_notes: "Principal has offered two rooms for after-school sessions."
     }
 
@@ -479,6 +475,65 @@ defmodule Dbservice.SchoolsTest do
 
       assert {:error, changeset} = Schools.update_school(school, %{grades_offered: "six,seven"})
       assert errors_on(changeset).grades_offered != []
+    end
+
+    test "streams are taken as a comma-separated cell or a list" do
+      school = school_fixture()
+
+      assert {:ok, %School{} = school} =
+               Schools.update_school(school, %{school_stream: " Commerce , Science "})
+
+      # Sorted into the canonical order, so two sheets listing the same streams
+      # in a different order read as one answer.
+      assert school.school_stream == ["Science", "Commerce"]
+
+      assert {:ok, %School{} = school} =
+               Schools.update_school(school, %{school_stream: ["Arts (Humanities)", "Science"]})
+
+      assert school.school_stream == ["Science", "Arts (Humanities)"]
+    end
+
+    test "a stream typed loosely is stored in its canonical spelling" do
+      school = school_fixture()
+
+      assert {:ok, %School{} = school} =
+               Schools.update_school(school, %{school_stream: "science,ARTS,humanities"})
+
+      # "Arts" and "Humanities" are the same stream, so the duplicate collapses.
+      assert school.school_stream == ["Science", "Arts (Humanities)"]
+    end
+
+    test "a stream outside the allowed set is rejected" do
+      school = school_fixture()
+
+      assert {:error, changeset} =
+               Schools.update_school(school, %{school_stream: "Science,Vocational"})
+
+      assert errors_on(changeset).school_stream != []
+    end
+
+    test "a blank value clears the streams, and an empty list is its own answer" do
+      school = school_fixture()
+      {:ok, school} = Schools.update_school(school, %{school_stream: "Science"})
+      assert school.school_stream == ["Science"]
+
+      assert {:ok, %School{} = cleared} = Schools.update_school(school, %{school_stream: "  "})
+      assert is_nil(cleared.school_stream)
+
+      assert {:ok, %School{} = none} = Schools.update_school(school, %{school_stream: []})
+      assert none.school_stream == []
+    end
+
+    test "the database refuses a stream written around the changeset" do
+      school = school_fixture()
+
+      assert_raise Postgrex.Error, fn ->
+        Ecto.Adapters.SQL.query!(
+          Repo,
+          "UPDATE school SET school_stream = ARRAY['Vocational'] WHERE id = $1",
+          [school.id]
+        )
+      end
     end
 
     test "a status typed in any case is stored in its canonical spelling" do
@@ -562,9 +617,9 @@ defmodule Dbservice.SchoolsTest do
       school = school_fixture()
 
       assert {:error, changeset} =
-               Schools.update_school(school, %{estimated_strength_grade_9: -1})
+               Schools.update_school(school, %{estimated_strength_grade_12: -1})
 
-      assert errors_on(changeset).estimated_strength_grade_9 != []
+      assert errors_on(changeset).estimated_strength_grade_12 != []
 
       # A per-grade cell holding what looks like a district total.
       assert {:error, changeset} =

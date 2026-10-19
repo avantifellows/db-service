@@ -50,11 +50,11 @@ defmodule DbserviceWeb.SwaggerSchema.School do
               "Grades the school runs, 1 to 12, e.g. [6, 7, 8]; null when not surveyed yet"
             )
 
-            estimated_strength_grade_6(:integer, "Estimated number of students in Grade 6")
-            estimated_strength_grade_7(:integer, "Estimated number of students in Grade 7")
-            estimated_strength_grade_8(:integer, "Estimated number of students in Grade 8")
-            estimated_strength_grade_9(:integer, "Estimated number of students in Grade 9")
-            estimated_strength_grade_10(:integer, "Estimated number of students in Grade 10")
+            school_stream(
+              :array,
+              "Streams the school runs - Science, Commerce, Arts (Humanities); null when not surveyed yet"
+            )
+
             estimated_strength_grade_11(:integer, "Estimated number of students in Grade 11")
             estimated_strength_grade_12(:integer, "Estimated number of students in Grade 12")
             school_notes(:string, "Free-text remarks or observations about the school")
@@ -83,14 +83,10 @@ defmodule DbserviceWeb.SwaggerSchema.School do
             pmu_coordinator_contact: "9123456780",
             school_support_status: "Supportive",
             school_residential_status: "Non-Residential",
-            grades_offered: [6, 7, 8, 9, 10],
-            estimated_strength_grade_6: 60,
-            estimated_strength_grade_7: 58,
-            estimated_strength_grade_8: 55,
-            estimated_strength_grade_9: 50,
-            estimated_strength_grade_10: 48,
-            estimated_strength_grade_11: nil,
-            estimated_strength_grade_12: nil,
+            grades_offered: [6, 7, 8, 9, 10, 11, 12],
+            school_stream: ["Science", "Commerce"],
+            estimated_strength_grade_11: 48,
+            estimated_strength_grade_12: 45,
             school_notes: "Principal has offered two rooms for after-school sessions."
           })
         end

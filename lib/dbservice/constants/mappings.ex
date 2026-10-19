@@ -597,35 +597,13 @@ defmodule Dbservice.Constants.Mappings do
       optional: ["school_addition"],
       type: :string
     },
-    "estimated_strength_grade_6" => %{
-      db_field: "estimated_strength_grade_6",
+    # One cell listing the streams the school runs - "Science, Commerce".
+    # String for the same reason as grades_offered: the changeset splits it.
+    "school_stream" => %{
+      db_field: "school_stream",
       required: [],
       optional: ["school_addition"],
-      type: :integer
-    },
-    "estimated_strength_grade_7" => %{
-      db_field: "estimated_strength_grade_7",
-      required: [],
-      optional: ["school_addition"],
-      type: :integer
-    },
-    "estimated_strength_grade_8" => %{
-      db_field: "estimated_strength_grade_8",
-      required: [],
-      optional: ["school_addition"],
-      type: :integer
-    },
-    "estimated_strength_grade_9" => %{
-      db_field: "estimated_strength_grade_9",
-      required: [],
-      optional: ["school_addition"],
-      type: :integer
-    },
-    "estimated_strength_grade_10" => %{
-      db_field: "estimated_strength_grade_10",
-      required: [],
-      optional: ["school_addition"],
-      type: :integer
+      type: :string
     },
     "estimated_strength_grade_11" => %{
       db_field: "estimated_strength_grade_11",
