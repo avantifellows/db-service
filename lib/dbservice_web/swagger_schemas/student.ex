@@ -385,7 +385,14 @@ defmodule DbserviceWeb.SwaggerSchema.Student do
       LmsStudentUpdateRequest:
         swagger_schema do
           title("LMS student update request")
-          description("LMS student update fields, including the registration-mode handshake")
+
+          description(
+            "LMS student update fields, including the registration-mode handshake. " <>
+              "The contact and household details (email through monthly_family_income) " <>
+              "are collected for physical-centre programs only: sending one for a JNV " <>
+              "NVS edit (program 64) answers 422. A string field sent blank is stored " <>
+              "as NULL."
+          )
 
           properties do
             registration_mode(
@@ -420,6 +427,47 @@ defmodule DbserviceWeb.SwaggerSchema.Student do
             tshirt_size(:string, "T-shirt size (XXS to XXXL); blank clears it")
             track_pant_size(:string, "Track pant size (XXS to XXXL); blank clears it")
             grade(:integer, "Grade number")
+
+            email(:string, "Email address; blank clears it")
+
+            whatsapp_phone(
+              :string,
+              "WhatsApp number, 10 digits with no leading zero; blank clears it"
+            )
+
+            address(:string, "Street address; blank clears it")
+            city(:string, "City; blank clears it")
+            district(:string, "District; blank clears it")
+            state(:string, "State; blank clears it")
+            pincode(:string, "Pincode, 6 digits with no leading zero; blank clears it")
+
+            father_phone(
+              :string,
+              "Father's phone, 10 digits with no leading zero; blank clears it"
+            )
+
+            father_profession(:string, "Father's profession; blank clears it")
+            father_education_level(:string, "Father's education level; blank clears it")
+            mother_name(:string, "Mother's name; blank clears it")
+
+            mother_phone(
+              :string,
+              "Mother's phone, 10 digits with no leading zero; blank clears it"
+            )
+
+            mother_profession(:string, "Mother's profession; blank clears it")
+            mother_education_level(:string, "Mother's education level; blank clears it")
+            guardian_name(:string, "Guardian's name; blank clears it")
+            guardian_relation(:string, "Guardian's relation to the Student; blank clears it")
+
+            guardian_phone(
+              :string,
+              "Guardian's phone, 10 digits with no leading zero; blank clears it"
+            )
+
+            guardian_profession(:string, "Guardian's profession; blank clears it")
+            guardian_education_level(:string, "Guardian's education level; blank clears it")
+            monthly_family_income(:string, "Monthly family income band; blank clears it")
           end
 
           example(%{

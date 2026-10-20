@@ -88,6 +88,37 @@ defmodule Dbservice.LmsStudentUpdate do
   @length_capped_fields (@contact_user_fields -- ["address"]) ++
                           @family_student_fields ++ ["father_name"]
   @max_text_length 255
+  # Contact and household details are collected for physical centres only.
+  # JNV NVS PMU did not ask for them, and HQ has not approved collecting
+  # family income for the Phone-mode cohort (AF LMS #296), every member of
+  # which is an NVS Student. The LMS hides them under that program; this
+  # refuses them, so a direct call cannot write them either.
+  @centre_only_fields @contact_user_fields ++ @family_student_fields
+  # What a teacher calls these fields, so a message that does reach one reads
+  # like the rest of them rather than like a column name.
+  @field_labels %{
+    "email" => "Email",
+    "whatsapp_phone" => "WhatsApp Number",
+    "address" => "Address",
+    "city" => "City",
+    "district" => "District",
+    "state" => "State",
+    "pincode" => "Pincode",
+    "father_name" => "Father Name",
+    "father_phone" => "Father Phone",
+    "father_profession" => "Father Profession",
+    "father_education_level" => "Father Education Level",
+    "mother_name" => "Mother Name",
+    "mother_phone" => "Mother Phone",
+    "mother_profession" => "Mother Profession",
+    "mother_education_level" => "Mother Education Level",
+    "guardian_name" => "Guardian Name",
+    "guardian_relation" => "Guardian Relation",
+    "guardian_phone" => "Guardian Phone",
+    "guardian_profession" => "Guardian Profession",
+    "guardian_education_level" => "Guardian Education Level",
+    "monthly_family_income" => "Monthly Family Income"
+  }
   @locked_fields [
     "apaar_id",
     "auth_group",
@@ -130,6 +161,7 @@ defmodule Dbservice.LmsStudentUpdate do
            {:ok, student} <- fetch_student(student_pk_id),
            {:ok, school} <- fetch_school(params),
            :ok <- validate_school_scope(student, school, params["program_id"]),
+           :ok <- reject_centre_only_fields(params),
            {:ok, user} <- fetch_user(student),
            cohort? = phone_cohort?(student, user, school),
            :ok <- reject_locked_fields(params, active_mode, cohort?),
@@ -143,12 +175,15 @@ defmodule Dbservice.LmsStudentUpdate do
            {:ok, user} <- update_user(user, params),
            {:ok, student} <- update_student(student, params, plan, cohort?),
            {:ok, _enrollments} <- replace_enrollments(student.user_id, plan, params),
-           {:ok, audit} <- insert_audit(user, student, school, params, changed_values) do
+           # An edit that changes nothing is not an edit: re-sending the same
+           # payload used to add an audit row with an empty change set.
+           {:ok, audit_id} <-
+             maybe_insert_audit(user, student, school, params, changed_values) do
         %{
           "status" => "updated",
           "student_pk_id" => student.id,
           "changed_fields" => changed_values |> Map.keys() |> Enum.sort(),
-          "audit_id" => audit.id
+          "audit_id" => audit_id
         }
       else
         {:error, reason} -> Repo.rollback(reason)
@@ -205,6 +240,28 @@ defmodule Dbservice.LmsStudentUpdate do
   # A blank clears the field, so only a value that is actually there is checked.
   defp blank?(value), do: is_nil(value) or (is_binary(value) and String.trim(value) == "")
 
+  defp label(field), do: Map.get(@field_labels, field, field)
+
+  defp reject_centre_only_fields(params) do
+    if to_int(params["program_id"]) == @nvs_program_id do
+      case params |> Map.keys() |> Enum.filter(&(&1 in @centre_only_fields)) |> Enum.sort() do
+        [] ->
+          :ok
+
+        fields ->
+          {:error,
+           error(
+             "unsupported_for_nvs",
+             "These details are not collected for JNV NVS Students",
+             422,
+             fields
+           )}
+      end
+    else
+      :ok
+    end
+  end
+
   # Codepoints, not graphemes: Postgres counts characters, so a name in a
   # script with combining marks can pass a grapheme count and still overflow.
   defp validate_text_lengths(params) do
@@ -221,7 +278,7 @@ defmodule Dbservice.LmsStudentUpdate do
         {:error,
          error(
            "field_too_long",
-           "#{field} must be #{@max_text_length} characters or fewer",
+           "#{label(field)} must be #{@max_text_length} characters or fewer",
            422,
            [field]
          )}
@@ -243,7 +300,7 @@ defmodule Dbservice.LmsStudentUpdate do
         {:error,
          error(
            "invalid_phone",
-           "#{field} must be exactly 10 digits and cannot start with zero",
+           "#{label(field)} must be exactly 10 digits and cannot start with zero",
            422,
            [field]
          )}
@@ -258,7 +315,7 @@ defmodule Dbservice.LmsStudentUpdate do
             Regex.match?(~r/\A[^\s@]+@[^\s@]+\.[^\s@]+\z/, String.trim(email))) do
       :ok
     else
-      {:error, error("invalid_email", "email is not valid", 422, ["email"])}
+      {:error, error("invalid_email", "Email is not valid", 422, ["email"])}
     end
   end
 
@@ -272,7 +329,7 @@ defmodule Dbservice.LmsStudentUpdate do
       {:error,
        error(
          "invalid_pincode",
-         "pincode must be exactly 6 digits and cannot start with zero",
+         "Pincode must be exactly 6 digits and cannot start with zero",
          422,
          ["pincode"]
        )}
@@ -1170,6 +1227,17 @@ defmodule Dbservice.LmsStudentUpdate do
       {:ok, keep}
     else
       GroupUsers.update_group_user(keep, %{group_id: new_group_id})
+    end
+  end
+
+  defp maybe_insert_audit(_user, _student, _school, _params, changed_values)
+       when map_size(changed_values) == 0,
+       do: {:ok, nil}
+
+  defp maybe_insert_audit(user, student, school, params, changed_values) do
+    case insert_audit(user, student, school, params, changed_values) do
+      {:ok, audit} -> {:ok, audit.id}
+      other -> other
     end
   end
 

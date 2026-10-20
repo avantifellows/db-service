@@ -2989,7 +2989,9 @@ defmodule DbserviceWeb.LmsStudentUpdateControllerTest do
 
       response = json_response(conn, 200)
       assert response["changed_fields"] == []
-      assert only_audit_changed_values() == %{}
+      # Nothing changed, so there is nothing to audit.
+      assert is_nil(response["audit_id"])
+      assert Repo.aggregate(Dbservice.LmsStudentWriteAudit, :count, :id) == 0
     end
 
     test "duplicate generated Student ID on grade edit leaves profile and enrollments unchanged",
@@ -3190,11 +3192,14 @@ defmodule DbserviceWeb.LmsStudentUpdateControllerTest do
   end
 
   describe "contact and family details (AF LMS #431)" do
+    # A physical-centre program: these details are not collected for JNV NVS.
+    @centre_program_id 1
+
     setup do
       use_test_registration_mode!("approved")
       school = insert_school!()
       grade = insert_grade!(11)
-      batch = insert_nvs_batch!(11, "engineering")
+      batch = insert_program_batch!(@centre_program_id, 11, "engineering")
 
       {user, student} =
         insert_enrolled_student!(school, grade, batch, %{
@@ -3205,12 +3210,12 @@ defmodule DbserviceWeb.LmsStudentUpdateControllerTest do
       %{school: school, user: user, student: student}
     end
 
-    defp details_params(school, extra) do
+    defp details_params(school, extra, program_id \\ 1) do
       Map.merge(
         %{
           "actor" => actor(),
           "school" => %{"code" => school.code, "udise_code" => school.udise_code},
-          "program_id" => 64,
+          "program_id" => program_id,
           "academic_year" => "2026-2027",
           "start_date" => "2026-07-01"
         },
@@ -3302,7 +3307,57 @@ defmodule DbserviceWeb.LmsStudentUpdateControllerTest do
       response = json_response(conn, 422)
       assert response["error"]["code"] == "invalid_phone"
       assert response["error"]["fields"] == ["father_phone"]
+
+      assert response["error"]["message"] ==
+               "Father Phone must be exactly 10 digits and cannot start with zero"
+
       assert Repo.get!(Student, student.id).father_phone == stored
+      assert Repo.aggregate(Dbservice.LmsStudentWriteAudit, :count, :id) == 0
+    end
+
+    test "refuses the details for a JNV NVS edit, in either service", %{conn: conn} do
+      use_test_registration_mode!("approved")
+      school = insert_school!(%{code: "JNV777", udise_code: "99999999999"})
+      grade = insert_grade!(11)
+      batch = insert_nvs_batch!(11, "engineering")
+
+      {_user, student} =
+        insert_enrolled_student!(school, grade, batch, %{
+          student_id: "202812345679",
+          apaar_id: "123456789013",
+          mother_name: nil
+        })
+
+      conn =
+        lms_update(
+          conn,
+          student.id,
+          details_params(school, %{"mother_name" => "Sunita Devi", "city" => "Jaipur"}, 64)
+        )
+
+      response = json_response(conn, 422)
+      assert response["error"]["code"] == "unsupported_for_nvs"
+      assert response["error"]["fields"] == ["city", "mother_name"]
+      assert is_nil(Repo.get!(Student, student.id).mother_name)
+      assert Repo.aggregate(Dbservice.LmsStudentWriteAudit, :count, :id) == 0
+    end
+
+    test "writes no audit row when the edit changes nothing", %{
+      conn: conn,
+      school: school,
+      student: student
+    } do
+      conn =
+        lms_update(
+          conn,
+          student.id,
+          details_params(school, %{"mother_name" => Repo.get!(Student, student.id).mother_name})
+        )
+
+      response = json_response(conn, 200)
+      assert response["status"] == "updated"
+      assert response["changed_fields"] == []
+      assert is_nil(response["audit_id"])
       assert Repo.aggregate(Dbservice.LmsStudentWriteAudit, :count, :id) == 0
     end
 
