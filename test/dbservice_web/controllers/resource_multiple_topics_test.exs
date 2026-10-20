@@ -387,6 +387,30 @@ defmodule DbserviceWeb.ResourceMultipleTopicsTest do
     end
   end
 
+  describe "a failing sync" do
+    # None of the callers of update_resource_and_associations/2 opens a
+    # transaction, so without one inside the sync the deletes would commit and
+    # the problem would come out of a failed update with fewer topics than it
+    # started with.
+    test "rolls the deletes back when an insert fails" do
+      chapter = chapter_fixture()
+      kept = topic_fixture(chapter)
+      dropped = topic_fixture(chapter)
+      problem = problem_fixture()
+      map_topics(problem, [kept, dropped])
+
+      missing_topic_id = 2_147_483_600
+
+      assert_raise Ecto.ConstraintError, fn ->
+        Resources.update_resource_and_associations(problem, %{
+          "topic_ids" => [kept.id, missing_topic_id]
+        })
+      end
+
+      assert mapped_topic_ids(problem.id) == Enum.sort([kept.id, dropped.id])
+    end
+  end
+
   describe "repeated updates" do
     test "re-sending the same set is a no-op on the mapping rows", %{conn: conn} do
       chapter = chapter_fixture()

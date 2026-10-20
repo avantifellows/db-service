@@ -94,6 +94,23 @@ defmodule Dbservice.ResourceTopics do
   end
 
   @doc """
+  Same as `create_resource_topic/1` but raises on a failed insert. Use it where
+  a swallowed `{:error, changeset}` would silently drop a mapping — inside the
+  sync in `Dbservice.Resources`, the raise aborts the surrounding transaction
+  rather than committing a half-applied set of topics.
+  ## Examples
+      iex> create_resource_topic!(%{field: value})
+      %ResourceTopic{}
+      iex> create_resource_topic!(%{field: bad_value})
+      ** (Ecto.InvalidChangesetError)
+  """
+  def create_resource_topic!(attrs \\ %{}) do
+    %ResourceTopic{}
+    |> ResourceTopic.changeset(attrs)
+    |> Repo.insert!()
+  end
+
+  @doc """
   Updates a resource_topic.
   ## Examples
       iex> update_resource_topic(resource_topic, %{field: new_value})

@@ -1293,7 +1293,6 @@ defmodule DbserviceWeb.ResourceController do
       order_by: [asc: r.code],
       select: %{
         resource: r,
-        resource_topic: rt,
         chapter_id: t.chapter_id,
         resource_curriculums: [rc],
         requested_curriculum_id: rc.curriculum_id,
@@ -1378,7 +1377,6 @@ defmodule DbserviceWeb.ResourceController do
       order_by: [asc: r.code],
       select: %{
         resource: r,
-        resource_topic: rt,
         chapter_id: t.chapter_id,
         resource_curriculums: [rc],
         requested_curriculum_id: rc.curriculum_id
