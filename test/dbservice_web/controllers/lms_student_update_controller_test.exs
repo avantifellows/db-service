@@ -3306,6 +3306,76 @@ defmodule DbserviceWeb.LmsStudentUpdateControllerTest do
       assert Repo.aggregate(Dbservice.LmsStudentWriteAudit, :count, :id) == 0
     end
 
+    test "rejects a value too long for its column with a 422, not a crash", %{
+      conn: conn,
+      school: school,
+      user: user,
+      student: student
+    } do
+      stored = Users.get_user!(user.id).city
+
+      conn =
+        lms_update(
+          conn,
+          student.id,
+          details_params(school, %{"city" => String.duplicate("a", 300)})
+        )
+
+      response = json_response(conn, 422)
+      assert response["error"]["code"] == "field_too_long"
+      assert response["error"]["fields"] == ["city"]
+      assert Users.get_user!(user.id).city == stored
+      assert Repo.aggregate(Dbservice.LmsStudentWriteAudit, :count, :id) == 0
+    end
+
+    test "accepts a value that exactly fills its column", %{
+      conn: conn,
+      school: school,
+      student: student
+    } do
+      name = String.duplicate("a", 255)
+
+      conn = lms_update(conn, student.id, details_params(school, %{"mother_name" => name}))
+
+      assert json_response(conn, 200)["status"] == "updated"
+      assert Repo.get!(Student, student.id).mother_name == name
+    end
+
+    test "rejects an email that could not reach a mailbox", %{
+      conn: conn,
+      school: school,
+      user: user,
+      student: student
+    } do
+      stored = Users.get_user!(user.id).email
+
+      conn = lms_update(conn, student.id, details_params(school, %{"email" => "ravi@"}))
+
+      response = json_response(conn, 422)
+      assert response["error"]["code"] == "invalid_email"
+      assert Users.get_user!(user.id).email == stored
+      assert Repo.aggregate(Dbservice.LmsStudentWriteAudit, :count, :id) == 0
+    end
+
+    test "rejects a contact phone or pincode that starts with zero", %{
+      conn: conn,
+      school: school,
+      student: student
+    } do
+      for {field, value, code} <- [
+            {"mother_phone", "0123456789", "invalid_phone"},
+            {"pincode", "012345", "invalid_pincode"}
+          ] do
+        conn = lms_update(recycle(conn), student.id, details_params(school, %{field => value}))
+
+        response = json_response(conn, 422)
+        assert response["error"]["code"] == code
+        assert response["error"]["fields"] == [field]
+      end
+
+      assert Repo.aggregate(Dbservice.LmsStudentWriteAudit, :count, :id) == 0
+    end
+
     test "rejects a pincode that is not six digits, before any write", %{
       conn: conn,
       school: school,

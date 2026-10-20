@@ -76,9 +76,18 @@ defmodule Dbservice.LmsStudentUpdate do
   # everywhere downstream. Only the fields added for #431: `last_name` is
   # deliberately blanked by the name edit, not cleared.
   @blankable_fields @contact_user_fields ++ @family_student_fields
-  # Ten digits, like the Student's own phone. Checked here as well as in the
-  # LMS so a direct call can't store a number nobody can ring.
+  # Ten digits and no leading zero, like the Student's own phone. Checked here
+  # as well as in the LMS so a direct call can't store a number nobody can
+  # ring. Not narrowed to [6-9]: a parent's number may still be a landline.
   @contact_phone_fields ["whatsapp_phone", "father_phone", "mother_phone", "guardian_phone"]
+  # The varchar(255) columns among the editable fields. Postgres raises 22001
+  # for an over-long value, which would surface as a 500, so the length is
+  # checked here instead. `address` is a TEXT column and needs no cap;
+  # `father_name` predates this change but has the same column and the same
+  # problem.
+  @length_capped_fields (@contact_user_fields -- ["address"]) ++
+                          @family_student_fields ++ ["father_name"]
+  @max_text_length 255
   @locked_fields [
     "apaar_id",
     "auth_group",
@@ -186,36 +195,87 @@ defmodule Dbservice.LmsStudentUpdate do
   defp validate_canonical_inputs(params) do
     with :ok <- validate_board_input(params),
          :ok <- validate_gender_input(params),
+         :ok <- validate_text_lengths(params),
          :ok <- validate_contact_phone_inputs(params),
          :ok <- validate_pincode_input(params),
+         :ok <- validate_email_input(params),
          do: validate_stream_input(params)
   end
 
   # A blank clears the field, so only a value that is actually there is checked.
   defp blank?(value), do: is_nil(value) or (is_binary(value) and String.trim(value) == "")
 
-  defp validate_contact_phone_inputs(params) do
+  # Codepoints, not graphemes: Postgres counts characters, so a name in a
+  # script with combining marks can pass a grapheme count and still overflow.
+  defp validate_text_lengths(params) do
     params
-    |> Map.take(@contact_phone_fields)
-    |> Enum.reject(fn {_field, value} -> blank?(value) end)
+    |> Map.take(@length_capped_fields)
     |> Enum.find(fn {_field, value} ->
-      not (is_binary(value) and Regex.match?(~r/\A\d{10}\z/, String.trim(value)))
+      is_binary(value) and length(String.codepoints(value)) > @max_text_length
     end)
     |> case do
       nil ->
         :ok
 
       {field, _value} ->
-        {:error, error("invalid_phone", "#{field} must be exactly 10 digits", 422, [field])}
+        {:error,
+         error(
+           "field_too_long",
+           "#{field} must be #{@max_text_length} characters or fewer",
+           422,
+           [field]
+         )}
     end
   end
 
-  defp validate_pincode_input(%{"pincode" => pincode}) when not is_nil(pincode) do
-    if blank?(pincode) or
-         (is_binary(pincode) and Regex.match?(~r/\A\d{6}\z/, String.trim(pincode))) do
+  defp validate_contact_phone_inputs(params) do
+    params
+    |> Map.take(@contact_phone_fields)
+    |> Enum.reject(fn {_field, value} -> blank?(value) end)
+    |> Enum.find(fn {_field, value} ->
+      not (is_binary(value) and Regex.match?(~r/\A[1-9]\d{9}\z/, String.trim(value)))
+    end)
+    |> case do
+      nil ->
+        :ok
+
+      {field, _value} ->
+        {:error,
+         error(
+           "invalid_phone",
+           "#{field} must be exactly 10 digits and cannot start with zero",
+           422,
+           [field]
+         )}
+    end
+  end
+
+  # Same shape the LMS checks, so the two sides agree on what can reach a
+  # mailbox.
+  defp validate_email_input(%{"email" => email}) when not is_nil(email) do
+    if blank?(email) or
+         (is_binary(email) and
+            Regex.match?(~r/\A[^\s@]+@[^\s@]+\.[^\s@]+\z/, String.trim(email))) do
       :ok
     else
-      {:error, error("invalid_pincode", "pincode must be exactly 6 digits", 422, ["pincode"])}
+      {:error, error("invalid_email", "email is not valid", 422, ["email"])}
+    end
+  end
+
+  defp validate_email_input(_params), do: :ok
+
+  defp validate_pincode_input(%{"pincode" => pincode}) when not is_nil(pincode) do
+    if blank?(pincode) or
+         (is_binary(pincode) and Regex.match?(~r/\A[1-9]\d{5}\z/, String.trim(pincode))) do
+      :ok
+    else
+      {:error,
+       error(
+         "invalid_pincode",
+         "pincode must be exactly 6 digits and cannot start with zero",
+         422,
+         ["pincode"]
+       )}
     end
   end
 
