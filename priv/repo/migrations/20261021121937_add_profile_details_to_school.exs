@@ -23,6 +23,13 @@ defmodule Dbservice.Repo.Migrations.AddProfileDetailsToSchool do
     # not scan the table. The CHECK constraints below do scan it, but every new
     # column is NULL so the scan cannot fail and the migration stays in one
     # transaction.
+    #
+    # A bounded lock_timeout, set first so it covers both the ALTER TABLE
+    # below and the CHECK constraints after it: each queues behind live
+    # traffic instead of blocking it. SET LOCAL is scoped to the migration
+    # transaction.
+    execute("SET LOCAL lock_timeout = '5s'")
+
     alter table(:school) do
       add(:school_email, :string, size: 255)
       add(:principal_incharge_name, :string, size: 100)
@@ -60,11 +67,7 @@ defmodule Dbservice.Repo.Migrations.AddProfileDetailsToSchool do
     end
 
     # One ALTER for every constraint, so `school` is scanned once rather than
-    # several times, and a bounded lock_timeout so this queues behind live
-    # traffic instead of blocking it. SET LOCAL is scoped to the migration
-    # transaction.
-    execute("SET LOCAL lock_timeout = '5s'")
-
+    # several times.
     strength_checks =
       @strength_grades
       |> Enum.map_join(
