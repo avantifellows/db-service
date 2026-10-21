@@ -24,7 +24,7 @@ defmodule Dbservice.BlendedLearning.TranscriptionRequests do
            JOIN blended_learning_conversation_drafts AS draft
              ON draft.id = request.draft_id AND draft.student_id = request.student_id
            JOIN student ON student.id = request.student_id
-           JOIN "user" ON "user".id = student.user_id
+           LEFT JOIN "user" ON "user".id = student.user_id
            WHERE request.request_key = $1
            """,
            [request_key],
@@ -363,7 +363,10 @@ defmodule Dbservice.BlendedLearning.TranscriptionRequests do
 
   defp run_id?(value), do: bounded_string?(value, 255)
 
-  defp nonblank_string?(value), do: is_binary(value) and String.trim(value) != ""
+  # Postgres rejects NUL in text and jsonb, so refuse it here as a 422 rather
+  # than letting the write fail as a 500.
+  defp nonblank_string?(value),
+    do: is_binary(value) and String.trim(value) != "" and not String.contains?(value, <<0>>)
 
   defp bounded_string?(value, maximum),
     do: nonblank_string?(value) and byte_size(value) <= maximum

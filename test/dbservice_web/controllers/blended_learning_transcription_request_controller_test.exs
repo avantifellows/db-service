@@ -70,6 +70,17 @@ defmodule DbserviceWeb.BlendedLearningTranscriptionRequestControllerTest do
            |> Map.fetch!("student") == %{"id" => scope.student_id, "gender" => nil}
   end
 
+  test "returns a null gender when the Student has no linked user", %{conn: conn} do
+    scope = insert_scope("Female")
+    insert_request!(scope, insert_draft!(scope), "no-user-801")
+    Repo.query!("UPDATE student SET user_id = NULL WHERE id = $1", [scope.student_id])
+
+    assert conn
+           |> get("/api/blended-learning/transcription-requests/no-user-801")
+           |> json_response(200)
+           |> Map.fetch!("student") == %{"id" => scope.student_id, "gender" => nil}
+  end
+
   test "requires the existing Bearer token" do
     for authorization <- [nil, "Token malformed", "Bearer wrong-environment-secret"] do
       conn =
@@ -826,7 +837,12 @@ defmodule DbserviceWeb.BlendedLearningTranscriptionRequestControllerTest do
           %{"model_id" => String.duplicate("m", 256)},
           %{"detected_language" => String.duplicate("l", 256)},
           %{"detected_language" => " "},
-          %{"summary" => " "}
+          %{"summary" => " "},
+          %{"summary" => "Asha is revising\u0000 kinematics."},
+          %{"summary_tags" => ["kine\u0000matics"]},
+          %{"action_items" => [%{action_item | "text" => "Call\u0000 the parent"}]},
+          %{"notes" => [%{note | "points" => ["Finds graphs\u0000 hard"]}]},
+          %{"items_to_verify" => ["Coaching\u0000 centre"]}
         ]
         |> Enum.map(&draft_params/1)
         |> Kernel.++(for field <- required, do: Map.delete(draft_params(), field))
