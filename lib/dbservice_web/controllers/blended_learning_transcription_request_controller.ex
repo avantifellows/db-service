@@ -19,9 +19,21 @@ defmodule DbserviceWeb.BlendedLearningTranscriptionRequestController do
   end
 
   def update_status(conn, %{"request_key" => request_key} = params) do
-    case TranscriptionRequests.update_transcription_request_status(request_key, params) do
-      {:ok, request} ->
-        json(conn, request)
+    request_key
+    |> TranscriptionRequests.update_transcription_request_status(params)
+    |> render_machine_result(conn, "Status fields are missing or invalid")
+  end
+
+  def submit_draft(conn, %{"request_key" => request_key} = params) do
+    request_key
+    |> TranscriptionRequests.submit_conversation_draft(params)
+    |> render_machine_result(conn, "Draft fields are missing or invalid")
+  end
+
+  defp render_machine_result(result, conn, invalid_request_message) do
+    case result do
+      {:ok, response} ->
+        json(conn, response)
 
       {:error, :transcription_request_not_found} ->
         error(
@@ -36,7 +48,7 @@ defmodule DbserviceWeb.BlendedLearningTranscriptionRequestController do
           conn,
           :unprocessable_entity,
           "invalid_request",
-          "Status fields are missing or invalid"
+          invalid_request_message
         )
 
       {:error, :invalid_transition} ->

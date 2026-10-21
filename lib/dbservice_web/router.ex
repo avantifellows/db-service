@@ -130,6 +130,13 @@ defmodule DbserviceWeb.Router do
       log: false
     )
 
+    post(
+      "/blended-learning/transcription-requests/:request_key/draft",
+      BlendedLearningTranscriptionRequestController,
+      :submit_draft,
+      log: false
+    )
+
     resources("/auth-group", AuthGroupController, except: [:new, :edit])
     post("/group/:id/update-users", GroupController, :update_users)
     post("/group/:id/update-sessions", GroupController, :update_sessions)

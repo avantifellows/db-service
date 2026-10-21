@@ -446,6 +446,452 @@ defmodule DbserviceWeb.BlendedLearningTranscriptionRequestControllerTest do
     end
   end
 
+  describe "POST /api/blended-learning/transcription-requests/:request_key/draft" do
+    test "applies the drafted content to a transcribing draft and completes the request", %{
+      conn: conn
+    } do
+      scope = insert_scope("Female")
+      draft_id = insert_draft!(scope)
+      insert_request!(scope, draft_id, "submit-803")
+      post_status(conn, "submit-803", %{"etl_run_id" => "run-803", "state" => "running"})
+      age_draft!(draft_id)
+
+      assert submit_draft(conn, "submit-803", draft_params()) == %{
+               "request_state" => "completed",
+               "draft_state" => "ready",
+               "applied" => true
+             }
+
+      assert Repo.query!(
+               """
+               SELECT state, draft_summary, draft_summary_tags, draft_action_items, draft_notes,
+                      draft_items_to_verify, transcript_s3_key, detected_language,
+                      prompt_version, model_id, ready_at IS NOT NULL,
+                      updated_at > '2026-10-20 08:00:00'
+               FROM blended_learning_conversation_drafts
+               WHERE id = $1
+               """,
+               [draft_id]
+             ).rows == [
+               [
+                 "ready",
+                 "Asha is revising kinematics and wants weekly check-ins.",
+                 ["kinematics", "weekly check-in"],
+                 [
+                   %{
+                     "text" => "Solve 20 kinematics problems",
+                     "owner" => "student",
+                     "due_on" => "2026-10-27"
+                   },
+                   %{
+                     "text" => "Share the revision timetable",
+                     "owner" => "mentor",
+                     "due_on" => nil
+                   }
+                 ],
+                 [
+                   %{
+                     "heading" => "Physics",
+                     "points" => ["Finds graphs hard", "Wants more practice"]
+                   }
+                 ],
+                 ["Name of the coaching centre"],
+                 "blended-learning/transcripts/803.json",
+                 "hi-IN",
+                 "bl-draft-v1",
+                 "model-803",
+                 true,
+                 true
+               ]
+             ]
+
+      assert [["completed", "run-803", nil, nil, _]] = request_row("submit-803")
+    end
+
+    test "accepts empty lists and a null detected language", %{conn: conn} do
+      scope = insert_scope("Female")
+      draft_id = insert_draft!(scope)
+      insert_request!(scope, draft_id, "empty-803")
+      post_status(conn, "empty-803", %{"etl_run_id" => "run-803", "state" => "running"})
+
+      params =
+        draft_params(%{
+          "summary_tags" => [],
+          "action_items" => [],
+          "notes" => [],
+          "items_to_verify" => [],
+          "detected_language" => nil
+        })
+
+      assert submit_draft(conn, "empty-803", params)["applied"] == true
+
+      assert Repo.query!(
+               """
+               SELECT state, draft_summary_tags, draft_action_items, draft_notes,
+                      draft_items_to_verify, detected_language
+               FROM blended_learning_conversation_drafts
+               WHERE id = $1
+               """,
+               [draft_id]
+             ).rows == [["ready", [], [], [], [], nil]]
+    end
+
+    test "leaves a discarded draft unchanged and still completes the request", %{conn: conn} do
+      scope = insert_scope("Female")
+      draft_id = insert_draft!(scope)
+      insert_request!(scope, draft_id, "discarded-803")
+      post_status(conn, "discarded-803", %{"etl_run_id" => "run-803", "state" => "running"})
+
+      Repo.query!(
+        """
+        UPDATE blended_learning_conversation_drafts
+        SET state = 'discarded', discarded_at = '2026-10-20 09:00:00'
+        WHERE id = $1
+        """,
+        [draft_id]
+      )
+
+      age_draft!(draft_id)
+      draft = full_draft_row(draft_id)
+
+      assert submit_draft(conn, "discarded-803", draft_params()) == %{
+               "request_state" => "completed",
+               "draft_state" => "discarded",
+               "applied" => false
+             }
+
+      assert full_draft_row(draft_id) == draft
+      assert [["completed", "run-803", nil, nil, _]] = request_row("discarded-803")
+    end
+
+    test "leaves a saved draft and its Conversation unchanged and still completes the request",
+         %{conn: conn} do
+      scope = insert_scope("Female")
+      draft_id = insert_draft!(scope)
+      insert_request!(scope, draft_id, "saved-803")
+      post_status(conn, "saved-803", %{"etl_run_id" => "run-803", "state" => "running"})
+      conversation_id = save_draft!(scope, draft_id)
+      age_draft!(draft_id)
+      draft = full_draft_row(draft_id)
+      conversation = conversation_row(conversation_id)
+
+      assert submit_draft(conn, "saved-803", draft_params()) == %{
+               "request_state" => "completed",
+               "draft_state" => "saved",
+               "applied" => false
+             }
+
+      assert full_draft_row(draft_id) == draft
+      assert conversation_row(conversation_id) == conversation
+      assert [["completed", "run-803", nil, nil, _]] = request_row("saved-803")
+    end
+
+    test "a replay by the same run after success writes nothing and reports applied false", %{
+      conn: conn
+    } do
+      scope = insert_scope("Female")
+      draft_id = insert_draft!(scope)
+      insert_request!(scope, draft_id, "replay-803")
+      post_status(conn, "replay-803", %{"etl_run_id" => "run-803", "state" => "running"})
+      submit_draft(conn, "replay-803", draft_params())
+
+      Repo.query!(
+        """
+        UPDATE blended_learning_conversation_drafts
+        SET ready_at = '2026-10-20 10:00:00', updated_at = '2026-10-20 08:00:00'
+        WHERE id = $1
+        """,
+        [draft_id]
+      )
+
+      draft = full_draft_row(draft_id)
+      request = request_row("replay-803")
+
+      replay = draft_params(%{"summary" => "A different late summary", "summary_tags" => []})
+
+      assert submit_draft(conn, "replay-803", replay) == %{
+               "request_state" => "completed",
+               "draft_state" => "ready",
+               "applied" => false
+             }
+
+      assert full_draft_row(draft_id) == draft
+      assert request_row("replay-803") == request
+
+      assert Repo.query!(
+               "SELECT ready_at, draft_summary FROM blended_learning_conversation_drafts WHERE id = $1",
+               [draft_id]
+             ).rows == [
+               [
+                 ~N[2026-10-20 10:00:00],
+                 "Asha is revising kinematics and wants weekly check-ins."
+               ]
+             ]
+    end
+
+    test "rejects queued, failed and differently bound requests with 409 and no write", %{
+      conn: conn
+    } do
+      queued_scope = insert_scope("Female")
+      queued_draft = insert_draft!(queued_scope)
+      insert_request!(queued_scope, queued_draft, "queued-803")
+      post_status(conn, "queued-803", %{"etl_run_id" => "run-803", "state" => "queued"})
+
+      failed_scope = insert_scope("Female")
+      failed_draft = insert_draft!(failed_scope)
+      insert_request!(failed_scope, failed_draft, "failed-803")
+      post_status(conn, "failed-803", %{"etl_run_id" => "run-803", "state" => "running"})
+      post_status(conn, "failed-803", %{"etl_run_id" => "run-803", "state" => "failed"})
+
+      other_scope = insert_scope("Female")
+      other_draft = insert_draft!(other_scope)
+      insert_request!(other_scope, other_draft, "other-run-803")
+      post_status(conn, "other-run-803", %{"etl_run_id" => "other-run", "state" => "running"})
+
+      for {request_key, draft_id, code, message} <- [
+            {"queued-803", queued_draft, "invalid_status_transition",
+             "Status transition is invalid"},
+            {"failed-803", failed_draft, "terminal_status_conflict",
+             "Transcription Request is terminal"},
+            {"other-run-803", other_draft, "etl_run_conflict",
+             "ETL run conflicts with this request"}
+          ] do
+        request = request_row(request_key)
+        draft = full_draft_row(draft_id)
+        response_conn = post_draft(conn, request_key, draft_params())
+
+        assert {response_conn.status, json_response(response_conn, response_conn.status)} ==
+                 {409, %{"error" => %{"code" => code, "message" => message}}}
+
+        assert request_row(request_key) == request
+        assert full_draft_row(draft_id) == draft
+      end
+    end
+
+    test "a retry after a failed request runs, completes and applies", %{conn: conn} do
+      scope = insert_scope("Female")
+      draft_id = insert_draft!(scope)
+      insert_request!(scope, draft_id, "first-try-803")
+      post_status(conn, "first-try-803", %{"etl_run_id" => "run-803-a", "state" => "running"})
+      post_status(conn, "first-try-803", %{"etl_run_id" => "run-803-a", "state" => "failed"})
+
+      assert [["failed"]] =
+               Repo.query!(
+                 "SELECT state FROM blended_learning_conversation_drafts WHERE id = $1",
+                 [draft_id]
+               ).rows
+
+      # af_lms resets the draft to transcribing in the same transaction that inserts the retry.
+      Repo.query!(
+        "UPDATE blended_learning_conversation_drafts SET state = 'transcribing' WHERE id = $1",
+        [draft_id]
+      )
+
+      insert_request!(scope, draft_id, "retry-803")
+      post_status(conn, "retry-803", %{"etl_run_id" => "run-803-b", "state" => "running"})
+
+      assert submit_draft(conn, "retry-803", draft_params(%{"etl_run_id" => "run-803-b"})) == %{
+               "request_state" => "completed",
+               "draft_state" => "ready",
+               "applied" => true
+             }
+
+      assert [["completed", "run-803-b", nil, nil, _]] = request_row("retry-803")
+      assert [["failed", "run-803-a", nil, nil, _]] = request_row("first-try-803")
+
+      assert Repo.query!(
+               "SELECT state, draft_summary FROM blended_learning_conversation_drafts WHERE id = $1",
+               [draft_id]
+             ).rows == [["ready", "Asha is revising kinematics and wants weekly check-ins."]]
+    end
+
+    test "returns 404 for an unknown request key", %{conn: conn} do
+      response_conn = post_draft(conn, "unknown-803", draft_params())
+
+      assert {response_conn.status, json_response(response_conn, 404)} ==
+               {404,
+                %{
+                  "error" => %{
+                    "code" => "transcription_request_not_found",
+                    "message" => "Transcription Request not found"
+                  }
+                }}
+    end
+
+    test "requires the existing Bearer token" do
+      for authorization <- [nil, "Token malformed", "Bearer wrong-environment-secret"] do
+        conn =
+          if authorization,
+            do: put_req_header(build_conn(), "authorization", authorization),
+            else: build_conn()
+
+        assert conn
+               |> post_draft("submit-803", draft_params())
+               |> response(401) == "Not Authorized"
+      end
+    end
+
+    test "keeps the request key, run id and drafted content out of debug logs", %{conn: conn} do
+      scope = insert_scope("Female")
+      insert_request!(scope, insert_draft!(scope), "secret-draft-803")
+
+      post_status(conn, "secret-draft-803", %{
+        "etl_run_id" => "secret-run-803",
+        "state" => "running"
+      })
+
+      params =
+        draft_params(%{
+          "etl_run_id" => "secret-run-803",
+          "transcript_s3_key" => "secret/transcripts/803.json",
+          "summary" => "Secret summary 803",
+          "summary_tags" => ["secret-tag-803"],
+          "action_items" => [
+            %{"text" => "Secret action 803", "owner" => "parent", "due_on" => "2026-11-03"}
+          ],
+          "notes" => [%{"heading" => "Secret heading 803", "points" => ["Secret point 803"]}],
+          "items_to_verify" => ["Secret verify 803"],
+          "prompt_version" => "secret-prompt-803",
+          "model_id" => "secret-model-803"
+        })
+
+      {response_conn, log} =
+        with_debug_log(fn ->
+          post_draft(conn, "secret-draft-803", params)
+          post_draft(conn, "secret-draft-803", params)
+        end)
+
+      assert json_response(response_conn, 200)["applied"] == false
+
+      for sensitive <- [
+            "secret-draft-803",
+            "secret-run-803",
+            "secret/transcripts/803.json",
+            "Secret summary 803",
+            "secret-tag-803",
+            "Secret action 803",
+            "Secret heading 803",
+            "Secret point 803",
+            "Secret verify 803",
+            "secret-prompt-803",
+            "secret-model-803"
+          ] do
+        refute log =~ sensitive
+      end
+    end
+  end
+
+  describe "POST /api/blended-learning/transcription-requests/:request_key/draft shape rules" do
+    test "rejects each malformed draft with 422 and changes neither the request nor the draft",
+         %{conn: conn} do
+      scope = insert_scope("Female")
+      draft_id = insert_draft!(scope)
+      insert_request!(scope, draft_id, "shape-803")
+      post_status(conn, "shape-803", %{"etl_run_id" => "run-803", "state" => "running"})
+      age_draft!(draft_id)
+      request = request_row("shape-803")
+      draft = full_draft_row(draft_id)
+
+      action_item = %{"text" => "Call the parent", "owner" => "mentor", "due_on" => nil}
+      note = %{"heading" => "Physics", "points" => ["Finds graphs hard"]}
+
+      required =
+        ~w(etl_run_id transcript_s3_key summary summary_tags action_items notes items_to_verify
+           prompt_version model_id)
+
+      invalid =
+        [
+          %{"summary_tags" => ["a", "b", "c", "d", "e"]},
+          %{"summary_tags" => ["a", " "]},
+          %{"summary_tags" => "kinematics"},
+          %{"action_items" => [%{action_item | "owner" => "teacher"}]},
+          %{"action_items" => [%{action_item | "owner" => nil}]},
+          %{"action_items" => [%{action_item | "due_on" => "27/10/2026"}]},
+          %{"action_items" => [%{action_item | "due_on" => "2026-02-30"}]},
+          %{"action_items" => [%{action_item | "due_on" => "20261027"}]},
+          %{"action_items" => [%{action_item | "text" => "  "}]},
+          %{"action_items" => [Map.delete(action_item, "due_on")]},
+          %{"action_items" => [Map.put(action_item, "priority", "high")]},
+          %{"action_items" => ["Call the parent"]},
+          %{"notes" => [%{note | "heading" => " "}]},
+          %{"notes" => [%{note | "points" => ["Finds graphs hard", ""]}]},
+          %{"notes" => [%{note | "points" => "Finds graphs hard"}]},
+          %{"notes" => [Map.delete(note, "points")]},
+          %{"notes" => [Map.put(note, "source", "transcript")]},
+          %{"items_to_verify" => ["Coaching centre", " "]},
+          %{"items_to_verify" => [%{"text" => "Coaching centre"}]},
+          %{"etl_run_id" => String.duplicate("r", 256)},
+          %{"transcript_s3_key" => String.duplicate("k", 256)},
+          %{"prompt_version" => String.duplicate("p", 256)},
+          %{"model_id" => String.duplicate("m", 256)},
+          %{"detected_language" => String.duplicate("l", 256)},
+          %{"detected_language" => " "},
+          %{"summary" => " "}
+        ]
+        |> Enum.map(&draft_params/1)
+        |> Kernel.++(for field <- required, do: Map.delete(draft_params(), field))
+
+      for params <- invalid do
+        response_conn = post_draft(conn, "shape-803", params)
+
+        assert {response_conn.status, json_response(response_conn, response_conn.status)} ==
+                 {422,
+                  %{
+                    "error" => %{
+                      "code" => "invalid_request",
+                      "message" => "Draft fields are missing or invalid"
+                    }
+                  }},
+               "expected 422 for #{inspect(params)}"
+      end
+
+      assert request_row("shape-803") == request
+      assert full_draft_row(draft_id) == draft
+    end
+  end
+
+  # A complete, valid etl-next draft submission.
+  defp draft_params(overrides \\ %{}) do
+    Map.merge(
+      %{
+        "etl_run_id" => "run-803",
+        "transcript_s3_key" => "blended-learning/transcripts/803.json",
+        "summary" => "Asha is revising kinematics and wants weekly check-ins.",
+        "summary_tags" => ["kinematics", "weekly check-in"],
+        "action_items" => [
+          %{
+            "text" => "Solve 20 kinematics problems",
+            "owner" => "student",
+            "due_on" => "2026-10-27"
+          },
+          %{"text" => "Share the revision timetable", "owner" => "mentor", "due_on" => nil}
+        ],
+        "notes" => [
+          %{"heading" => "Physics", "points" => ["Finds graphs hard", "Wants more practice"]}
+        ],
+        "items_to_verify" => ["Name of the coaching centre"],
+        "detected_language" => "hi-IN",
+        "prompt_version" => "bl-draft-v1",
+        "model_id" => "model-803"
+      },
+      overrides
+    )
+  end
+
+  # etl-next posts JSON, so nulls and empty lists reach the controller as they would in production.
+  defp post_draft(conn, request_key, params) do
+    conn
+    |> put_req_header("content-type", "application/json")
+    |> post(
+      "/api/blended-learning/transcription-requests/#{request_key}/draft",
+      Jason.encode!(params)
+    )
+  end
+
+  defp submit_draft(conn, request_key, params) do
+    conn |> post_draft(request_key, params) |> json_response(200)
+  end
+
   defp post_status(conn, request_key, params) do
     conn
     |> post("/api/blended-learning/transcription-requests/#{request_key}/status", params)
@@ -463,6 +909,39 @@ defmodule DbserviceWeb.BlendedLearningTranscriptionRequestControllerTest do
     Repo.query!(
       "SELECT * FROM blended_learning_conversations WHERE id = $1",
       [conversation_id]
+    ).rows
+  end
+
+  defp save_draft!(scope, draft_id) do
+    [[conversation_id]] =
+      Repo.query!(
+        """
+        INSERT INTO blended_learning_conversations
+          (student_id, program_id, academic_year, mentor_user_id, logged_by_email, kind,
+           occurred_on, mode, spoke_with, duration_minutes, summary, source_draft_id)
+        VALUES ($1, $2, '2026-2027', $3, 'mentor.private@example.org', 'conversation',
+                '2026-10-20', 'call', 'student', 25, 'Saved summary', $4)
+        RETURNING id
+        """,
+        [scope.student_id, scope.program_id, scope.mentor_user_id, draft_id]
+      ).rows
+
+    Repo.query!(
+      """
+      UPDATE blended_learning_conversation_drafts
+      SET state = 'saved', saved_conversation_id = $2
+      WHERE id = $1
+      """,
+      [draft_id, conversation_id]
+    )
+
+    conversation_id
+  end
+
+  defp full_draft_row(draft_id) do
+    Repo.query!(
+      "SELECT * FROM blended_learning_conversation_drafts WHERE id = $1",
+      [draft_id]
     ).rows
   end
 
