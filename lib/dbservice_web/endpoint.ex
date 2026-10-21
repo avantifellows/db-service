@@ -34,7 +34,7 @@ defmodule DbserviceWeb.Endpoint do
     cookie_key: "request_logger"
 
   plug Plug.RequestId
-  plug Plug.Telemetry, event_prefix: [:phoenix, :endpoint]
+  plug Plug.Telemetry, event_prefix: [:phoenix, :endpoint], log: {__MODULE__, :log_level, []}
 
   plug Plug.Parsers,
     parsers: [:urlencoded, :multipart, :json],
@@ -48,4 +48,11 @@ defmodule DbserviceWeb.Endpoint do
   plug DbserviceWeb.AuthenticationMiddleware
 
   plug DbserviceWeb.Router
+
+  # Machine endpoints keyed by a Transcription Request key must not log the path,
+  # which carries the key; the route's `log: false` covers only the router log.
+  def log_level(%{path_info: ["api", "blended-learning", "transcription-requests" | _]}),
+    do: false
+
+  def log_level(_conn), do: :info
 end
