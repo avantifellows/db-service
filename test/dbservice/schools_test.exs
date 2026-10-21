@@ -563,20 +563,29 @@ defmodule Dbservice.SchoolsTest do
       assert "is invalid" in errors_on(changeset).school_residential_status
     end
 
-    test "a contact number carrying anything but digits is rejected" do
+    test "a contact number that is not ten plain digits is rejected" do
       school = school_fixture()
 
-      for value <- ["+91 98765 43210", "98765-43210", "not a number"] do
+      # The last three are the same number as the fixture's, written three other ways. If
+      # any of them were stored, a search for 9876543210 would no longer find this school.
+      for value <- [
+            "+91 98765 43210",
+            "98765-43210",
+            "not a number",
+            "1",
+            "09876543210",
+            "919876543210"
+          ] do
         assert {:error, changeset} =
                  Schools.update_school(school, %{principal_incharge_contact: value})
 
-        assert "must contain only digits" in errors_on(changeset).principal_incharge_contact
+        assert errors_on(changeset).principal_incharge_contact != []
       end
 
       assert {:error, changeset} =
                Schools.update_school(school, %{pmu_coordinator_contact: "+919876543210"})
 
-      assert "must contain only digits" in errors_on(changeset).pmu_coordinator_contact
+      assert errors_on(changeset).pmu_coordinator_contact != []
     end
 
     test "an email that could not reach a mailbox is rejected" do

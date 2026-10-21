@@ -22,7 +22,13 @@ defmodule DbserviceWeb.SwaggerSchema.StudentExamRecord do
             all_india_rank(:integer, "All India rank")
             category_rank(:integer, "Rank within the student's category")
             exam_email(:string, "Email ID the student registered for the exam with")
-            exam_phone(:string, "Contact number the student registered for the exam with")
+
+            exam_phone(
+              :string,
+              "Contact number the student registered for the exam with - 10 digits, " <>
+                "no leading 0 or country code"
+            )
+
             exam_roll_no(:string, "Roll number issued for the exam")
             exam_year(:integer, "Year in which the exam took place")
           end

@@ -50,21 +50,13 @@ defmodule Dbservice.Exams.StudentExamRecord do
       :exam_year
     ])
     |> validate_required([:student_id, :application_number, :exam_id])
-    |> trim_to_nil(:exam_email)
-    |> trim_to_nil(:exam_phone)
     |> trim_to_nil(:exam_roll_no)
-    # Deliberately loose - the only thing worth rejecting is a value that could
-    # not reach a mailbox. The exam portal is the authority on what it accepts.
-    |> validate_format(:exam_email, ~r/\A[^\s@]+@[^\s@]+\.[^\s@]+\z/,
-      message: "must be a valid email address"
-    )
-    # Digits only, as on `user.phone` - a value carrying "+91" or spaces has not
-    # been normalized, and storing both forms makes the column unsearchable.
-    |> validate_format(:exam_phone, ~r/\A\d+\z/, message: "must contain only digits")
-    # The columns are varchar, which counts codepoints, so cap on codepoints -
+    # The shared rules, so the number a student gives an exam portal is stored in the
+    # same form as the one the LMS holds for her and the one a school gives us.
+    |> validate_email(:exam_email)
+    |> validate_phone(:exam_phone)
+    # The column is varchar, which counts codepoints, so cap on codepoints -
     # otherwise a value in a non-Latin script passes here and fails on insert.
-    |> validate_length(:exam_email, max: 255, count: :codepoints)
-    |> validate_length(:exam_phone, max: 15, count: :codepoints)
     |> validate_length(:exam_roll_no, max: 50, count: :codepoints)
     # Registration for next year's exam opens in this one, so allow one year
     # ahead; the range exists to catch a mistyped or truncated year.
