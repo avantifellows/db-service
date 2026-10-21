@@ -99,6 +99,407 @@ defmodule DbserviceWeb.BlendedLearningTranscriptionRequestControllerTest do
     end
   end
 
+  describe "POST /api/blended-learning/transcription-requests/:request_key/status" do
+    test "binds a queued request, then runs and completes it, replaying each step", %{
+      conn: conn
+    } do
+      scope = insert_scope("Female")
+      insert_request!(scope, insert_draft!(scope), "status-802")
+
+      steps = [
+        {%{"etl_run_id" => "run-802", "state" => "queued"},
+         %{
+           "state" => "queued",
+           "etl_run_id" => "run-802",
+           "error_code" => nil,
+           "error_message" => nil
+         }},
+        {%{"etl_run_id" => "run-802", "state" => "running"},
+         %{
+           "state" => "running",
+           "etl_run_id" => "run-802",
+           "error_code" => nil,
+           "error_message" => nil
+         }},
+        {%{"etl_run_id" => "run-802", "state" => "completed"},
+         %{
+           "state" => "completed",
+           "etl_run_id" => "run-802",
+           "error_code" => nil,
+           "error_message" => nil
+         }}
+      ]
+
+      for {params, expected} <- steps do
+        assert post_status(conn, "status-802", params) == expected
+        row = request_row("status-802")
+
+        assert post_status(conn, "status-802", params) == expected
+        assert request_row("status-802") == row
+      end
+
+      assert [["completed", "run-802", nil, nil, _updated_at]] = request_row("status-802")
+    end
+
+    test "failure marks a transcribing draft failed and bumps its updated_at", %{conn: conn} do
+      scope = insert_scope("Female")
+      draft_id = insert_draft!(scope)
+      insert_request!(scope, draft_id, "draft-failure-802")
+      age_draft!(draft_id)
+
+      post_status(conn, "draft-failure-802", %{"etl_run_id" => "run-802", "state" => "running"})
+
+      assert post_status(conn, "draft-failure-802", %{
+               "etl_run_id" => "run-802",
+               "state" => "failed",
+               "error_code" => "transcription_failed",
+               "error_message" => "Audio could not be decoded"
+             }) == %{
+               "state" => "failed",
+               "etl_run_id" => "run-802",
+               "error_code" => "transcription_failed",
+               "error_message" => "Audio could not be decoded"
+             }
+
+      assert draft_row(draft_id) == [["failed", false]]
+    end
+
+    test "failure leaves a discarded draft unchanged", %{conn: conn} do
+      scope = insert_scope("Female")
+      draft_id = insert_draft!(scope)
+      insert_request!(scope, draft_id, "discarded-802")
+
+      Repo.query!(
+        """
+        UPDATE blended_learning_conversation_drafts
+        SET state = 'discarded', discarded_at = '2026-10-20 09:00:00'
+        WHERE id = $1
+        """,
+        [draft_id]
+      )
+
+      age_draft!(draft_id)
+      post_status(conn, "discarded-802", %{"etl_run_id" => "run-802", "state" => "running"})
+      post_status(conn, "discarded-802", %{"etl_run_id" => "run-802", "state" => "failed"})
+
+      assert draft_row(draft_id) == [["discarded", true]]
+    end
+
+    test "failure leaves a saved draft and its Conversation unchanged", %{conn: conn} do
+      scope = insert_scope("Female")
+      draft_id = insert_draft!(scope)
+      insert_request!(scope, draft_id, "saved-802")
+
+      [[conversation_id]] =
+        Repo.query!(
+          """
+          INSERT INTO blended_learning_conversations
+            (student_id, program_id, academic_year, mentor_user_id, logged_by_email, kind,
+             occurred_on, mode, spoke_with, duration_minutes, summary, source_draft_id)
+          VALUES ($1, $2, '2026-2027', $3, 'mentor.private@example.org', 'conversation',
+                  '2026-10-20', 'call', 'student', 25, 'Saved summary', $4)
+          RETURNING id
+          """,
+          [scope.student_id, scope.program_id, scope.mentor_user_id, draft_id]
+        ).rows
+
+      Repo.query!(
+        """
+        UPDATE blended_learning_conversation_drafts
+        SET state = 'saved', saved_conversation_id = $2
+        WHERE id = $1
+        """,
+        [draft_id, conversation_id]
+      )
+
+      age_draft!(draft_id)
+      conversation = conversation_row(conversation_id)
+      post_status(conn, "saved-802", %{"etl_run_id" => "run-802", "state" => "running"})
+      post_status(conn, "saved-802", %{"etl_run_id" => "run-802", "state" => "failed"})
+
+      assert draft_row(draft_id) == [["saved", true]]
+
+      assert Repo.query!(
+               "SELECT saved_conversation_id FROM blended_learning_conversation_drafts WHERE id = $1",
+               [draft_id]
+             ).rows == [[conversation_id]]
+
+      assert conversation_row(conversation_id) == conversation
+    end
+
+    test "a bound queued request fails before running and leaves the draft failed", %{
+      conn: conn
+    } do
+      scope = insert_scope("Female")
+      draft_id = insert_draft!(scope)
+      insert_request!(scope, draft_id, "bound-failure-802")
+
+      post_status(conn, "bound-failure-802", %{"etl_run_id" => "run-802", "state" => "queued"})
+
+      assert post_status(conn, "bound-failure-802", %{
+               "etl_run_id" => "run-802",
+               "state" => "failed",
+               "error_code" => "audio_missing"
+             }) == %{
+               "state" => "failed",
+               "etl_run_id" => "run-802",
+               "error_code" => "audio_missing",
+               "error_message" => nil
+             }
+
+      assert [["failed"]] =
+               Repo.query!(
+                 "SELECT state FROM blended_learning_conversation_drafts WHERE id = $1",
+                 [draft_id]
+               ).rows
+    end
+
+    test "rejects a different run id once one is bound", %{conn: conn} do
+      scope = insert_scope("Female")
+      insert_request!(scope, insert_draft!(scope), "conflict-802")
+
+      post_status(conn, "conflict-802", %{"etl_run_id" => "run-802", "state" => "queued"})
+      row = request_row("conflict-802")
+
+      for state <- ["queued", "running"] do
+        assert status_error(conn, "conflict-802", %{"etl_run_id" => "other-run", "state" => state}) ==
+                 {409,
+                  %{
+                    "error" => %{
+                      "code" => "etl_run_conflict",
+                      "message" => "ETL run conflicts with this request"
+                    }
+                  }}
+      end
+
+      assert request_row("conflict-802") == row
+    end
+
+    test "rejects an unbound queued request moving straight to completed", %{conn: conn} do
+      scope = insert_scope("Female")
+      insert_request!(scope, insert_draft!(scope), "skip-802")
+
+      assert status_error(conn, "skip-802", %{"etl_run_id" => "run-802", "state" => "completed"}) ==
+               {409,
+                %{
+                  "error" => %{
+                    "code" => "invalid_status_transition",
+                    "message" => "Status transition is invalid"
+                  }
+                }}
+
+      assert [["queued", nil, nil, nil, _]] = request_row("skip-802")
+    end
+
+    test "rejects regressions from completed or failed as terminal", %{conn: conn} do
+      scope = insert_scope("Female")
+      insert_request!(scope, insert_draft!(scope), "completed-802")
+      post_status(conn, "completed-802", %{"etl_run_id" => "run-802", "state" => "running"})
+      post_status(conn, "completed-802", %{"etl_run_id" => "run-802", "state" => "completed"})
+
+      other_scope = insert_scope("Female")
+      insert_request!(other_scope, insert_draft!(other_scope), "failed-802")
+      post_status(conn, "failed-802", %{"etl_run_id" => "run-802", "state" => "running"})
+      post_status(conn, "failed-802", %{"etl_run_id" => "run-802", "state" => "failed"})
+
+      terminal =
+        {409,
+         %{
+           "error" => %{
+             "code" => "terminal_status_conflict",
+             "message" => "Transcription Request is terminal"
+           }
+         }}
+
+      for {request_key, states} <- [
+            {"completed-802", ["queued", "running", "failed"]},
+            {"failed-802", ["queued", "running", "completed"]}
+          ] do
+        row = request_row(request_key)
+
+        for state <- states do
+          assert status_error(conn, request_key, %{"etl_run_id" => "run-802", "state" => state}) ==
+                   terminal
+        end
+
+        assert request_row(request_key) == row
+      end
+    end
+
+    test "rejects missing, blank, unbounded or misplaced status fields without a write", %{
+      conn: conn
+    } do
+      scope = insert_scope("Female")
+      insert_request!(scope, insert_draft!(scope), "invalid-802")
+      post_status(conn, "invalid-802", %{"etl_run_id" => "run-802", "state" => "running"})
+      row = request_row("invalid-802")
+
+      for params <- [
+            %{"etl_run_id" => "run-802", "state" => "failed", "error_code" => ""},
+            %{"etl_run_id" => "run-802", "state" => "failed", "error_code" => "   "},
+            %{"etl_run_id" => "run-802", "state" => "failed", "error_message" => " "},
+            %{
+              "etl_run_id" => "run-802",
+              "state" => "failed",
+              "error_code" => String.duplicate("x", 65)
+            },
+            %{
+              "etl_run_id" => "run-802",
+              "state" => "failed",
+              "error_message" => String.duplicate("x", 501)
+            },
+            %{"etl_run_id" => "run-802", "state" => "completed", "error_code" => "oops"},
+            %{"etl_run_id" => "run-802", "state" => "running", "error_message" => "oops"},
+            %{"state" => "completed"},
+            %{"etl_run_id" => "", "state" => "completed"},
+            %{"etl_run_id" => "   ", "state" => "completed"},
+            %{"etl_run_id" => String.duplicate("x", 256), "state" => "completed"},
+            %{"etl_run_id" => "run-802"},
+            %{"etl_run_id" => "run-802", "state" => ""},
+            %{"etl_run_id" => "run-802", "state" => "cancelled"}
+          ] do
+        assert status_error(conn, "invalid-802", params) ==
+                 {422,
+                  %{
+                    "error" => %{
+                      "code" => "invalid_request",
+                      "message" => "Status fields are missing or invalid"
+                    }
+                  }}
+      end
+
+      assert request_row("invalid-802") == row
+    end
+
+    test "accepts error metadata at the table's length bounds", %{conn: conn} do
+      scope = insert_scope("Female")
+      insert_request!(scope, insert_draft!(scope), "bounds-802")
+      post_status(conn, "bounds-802", %{"etl_run_id" => "run-802", "state" => "running"})
+
+      error_code = String.duplicate("c", 64)
+      error_message = String.duplicate("m", 500)
+
+      assert post_status(conn, "bounds-802", %{
+               "etl_run_id" => "run-802",
+               "state" => "failed",
+               "error_code" => error_code,
+               "error_message" => error_message
+             })["state"] == "failed"
+    end
+
+    test "returns 404 for an unknown request key", %{conn: conn} do
+      assert status_error(conn, "unknown-802", %{"etl_run_id" => "run-802", "state" => "running"}) ==
+               {404,
+                %{
+                  "error" => %{
+                    "code" => "transcription_request_not_found",
+                    "message" => "Transcription Request not found"
+                  }
+                }}
+    end
+
+    test "requires the existing Bearer token" do
+      for authorization <- [nil, "Token malformed", "Bearer wrong-environment-secret"] do
+        conn =
+          if authorization,
+            do: put_req_header(build_conn(), "authorization", authorization),
+            else: build_conn()
+
+        assert conn
+               |> post("/api/blended-learning/transcription-requests/status-802/status", %{
+                 "etl_run_id" => "run-802",
+                 "state" => "running"
+               })
+               |> response(401) == "Not Authorized"
+      end
+    end
+
+    test "keeps the request key, run id and error metadata out of debug logs", %{conn: conn} do
+      scope = insert_scope("Female")
+      insert_request!(scope, insert_draft!(scope), "secret-status-802")
+
+      {response_conn, log} =
+        with_debug_log(fn ->
+          post(conn, "/api/blended-learning/transcription-requests/secret-status-802/status", %{
+            "etl_run_id" => "secret-run-802",
+            "state" => "running"
+          })
+
+          post(conn, "/api/blended-learning/transcription-requests/secret-status-802/status", %{
+            "etl_run_id" => "secret-run-802",
+            "state" => "failed",
+            "error_code" => "secret_code_802",
+            "error_message" => "secret message 802"
+          })
+        end)
+
+      assert json_response(response_conn, 200)["state"] == "failed"
+
+      for sensitive <- [
+            "secret-status-802",
+            "secret-run-802",
+            "secret_code_802",
+            "secret message 802"
+          ] do
+        refute log =~ sensitive
+      end
+    end
+  end
+
+  defp post_status(conn, request_key, params) do
+    conn
+    |> post("/api/blended-learning/transcription-requests/#{request_key}/status", params)
+    |> json_response(200)
+  end
+
+  defp status_error(conn, request_key, params) do
+    response_conn =
+      post(conn, "/api/blended-learning/transcription-requests/#{request_key}/status", params)
+
+    {response_conn.status, json_response(response_conn, response_conn.status)}
+  end
+
+  defp conversation_row(conversation_id) do
+    Repo.query!(
+      "SELECT * FROM blended_learning_conversations WHERE id = $1",
+      [conversation_id]
+    ).rows
+  end
+
+  defp age_draft!(draft_id) do
+    Repo.query!(
+      """
+      UPDATE blended_learning_conversation_drafts
+      SET inserted_at = '2026-10-20 08:00:00', updated_at = '2026-10-20 08:00:00'
+      WHERE id = $1
+      """,
+      [draft_id]
+    )
+  end
+
+  # The state and whether updated_at is still the aged literal from age_draft!/1.
+  defp draft_row(draft_id) do
+    Repo.query!(
+      """
+      SELECT state, updated_at = '2026-10-20 08:00:00'
+      FROM blended_learning_conversation_drafts
+      WHERE id = $1
+      """,
+      [draft_id]
+    ).rows
+  end
+
+  defp request_row(request_key) do
+    Repo.query!(
+      """
+      SELECT state, etl_run_id, error_code, error_message, updated_at
+      FROM blended_learning_transcription_requests
+      WHERE request_key = $1
+      """,
+      [request_key]
+    ).rows
+  end
+
   defp collect_keys(map) when is_map(map) do
     Enum.reduce(map, MapSet.new(), fn {key, value}, keys ->
       keys |> MapSet.put(key) |> MapSet.union(collect_keys(value))

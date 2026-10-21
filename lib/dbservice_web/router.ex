@@ -123,6 +123,13 @@ defmodule DbserviceWeb.Router do
       log: false
     )
 
+    post(
+      "/blended-learning/transcription-requests/:request_key/status",
+      BlendedLearningTranscriptionRequestController,
+      :update_status,
+      log: false
+    )
+
     resources("/auth-group", AuthGroupController, except: [:new, :edit])
     post("/group/:id/update-users", GroupController, :update_users)
     post("/group/:id/update-sessions", GroupController, :update_sessions)
