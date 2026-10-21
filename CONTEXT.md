@@ -154,6 +154,78 @@ A bounded machine check that resolves a source User ID to one canonical Student
 and verifies approved Form, entry Grade, Program, School, and current eligibility.
 _Avoid_: best-effort identity matching
 
+### Blended Learning Mentoring
+
+**Blended Learning Mentoring**:
+A mentorship domain for STP Voucher and STP Dropper Students, independent of
+Academic and Holistic Mentorship, in which Blended Learning Mentors log
+Conversations and Attempts and raise Mentor Flags. db-service owns the schema;
+`af_lms` reads and writes the records directly; `etl-next` only drafts
+write-ups from Call Recordings.
+_Avoid_: reusing Holistic Mentorship or Intervention Flag records
+
+**Blended Learning Mentor-Mentee Mapping**:
+An Academic Year assignment of one Student to one Blended Learning Mentor
+(`mentor_user_id`) in one Program, loaded by the
+`blended_learning_mentor_assignment` import. Active means `ended_at IS NULL`.
+_Avoid_: Holistic Mentor-Mentee Mapping, is_active
+
+**Conversation**:
+An immutable saved record of one contact between a Blended Learning Mentor and
+a Student, the parent or sibling, or both, by call or in person, with a
+summary, Action Items and sanitised notes. Its kind is `conversation`.
+_Avoid_: Session, Post-Session Notes, Follow-up Note
+
+**Attempt**:
+An immutable logged contact that did not connect: a date and an optional note.
+Stored with the Conversations as kind `attempt`; it never counts as contact.
+_Avoid_: missed call, failed Conversation
+
+**Conversation Draft**:
+A mutable, unsaved write-up for one Student, created when a Mentor uploads a
+Call Recording and filled by `etl-next`. It becomes a Conversation only when the
+Mentor saves it. A Student has at most one open Conversation Draft.
+_Avoid_: pending Conversation
+
+**Transcription Request**:
+The queued, running, completed or failed record asking `etl-next` to transcribe
+one Conversation Draft's Call Recording and draft its write-up. It follows the
+Holistic Regeneration Request state machine and run binding.
+_Avoid_: Regeneration Request, transcription job
+
+**Call Recording**:
+An audio file in the private documents bucket, referenced by S3 key, kept for
+six months and playable only by Blended Learning Admins. Its raw transcript is
+a separate S3 object with the same retention.
+_Avoid_: storing audio or transcripts in Postgres
+
+**Action Item**:
+A follow-up agreed in a Conversation, owned by the Student, the Mentor or the
+Parent, with an optional due date. Its only permitted change is open to done,
+recording the later Conversation that closed it.
+_Avoid_: Action (a School Visit term), task
+
+**Mentor Flag**:
+A concern raised on one Conversation for one Flag Recipient
+(`emotional_wellbeing`, `physics`, `chemistry` or `maths`) with an optional
+comment; at most one per Recipient per Conversation, with no resolution status.
+_Avoid_: Intervention Flag, escalation
+
+**Summary Tag**:
+One of up to four short labels the drafting model appends to a Conversation
+Draft's summary. It is text, not a Mentor Flag.
+_Avoid_: flag
+
+**Items to Verify**:
+Names, numbers or phrases the drafting model could not make out with
+confidence, listed on the Conversation Draft for the Mentor to check.
+_Avoid_: errors, warnings
+
+**Student Links**:
+A Student's Profile Doc URL, Screener Link URL and optional legacy last-contact
+month, loaded from the Profile Dashboard Sheet by an LMS script.
+_Avoid_: Student Profile, Holistic questionnaire links
+
 ## Relationships
 
 - A Program has one Phase Plan per Academic Year; a Phase Plan has ordered Phases.
@@ -174,6 +246,14 @@ _Avoid_: best-effort identity matching
   Academic Year identities but never Academic Mentorship-owned records.
 - `db-service` owns schema, constraints, Profile machine APIs, and Student-side
   Mapping cleanup. `af_lms` owns product reads/writes; `etl-next` owns generation.
+- A Student has at most one active Blended Learning Mentor-Mentee Mapping per
+  Academic Year; a Conversation, Attempt or Conversation Draft records the
+  mapped Mentor at the time and, separately, the email of whoever logged it.
+- A Conversation has many Action Items, Photos and Mentor Flags; a Conversation
+  saved from a Conversation Draft keeps the Draft's Call Recording and transcript
+  keys.
+- A Conversation Draft has many Transcription Requests over time but at most one
+  queued or running.
 
 ## Invariants
 
@@ -199,6 +279,13 @@ _Avoid_: best-effort identity matching
 - Profile publication is atomic per Student and revalidates identity and scope.
 - Student eligibility mutations end affected active Mappings atomically.
 - Database sync includes all Holistic data for local and staging targets, including privacy-deletion markers. Oban job data is excluded from both targets.
+- Blended Learning Conversations, Attempts, Mentor Flags and Photos are
+  append-only; the only later write is an Action Item moving from open to done.
+- `etl-next` reads Transcription Requests and writes Conversation Draft content
+  only through the db-service API; it receives the Student's gender and the
+  session details, never names or phone numbers.
+- Call Recording audio and raw transcripts live only in S3; Postgres keeps their
+  keys.
 
 ### Follow-up privacy erasure (LMS #412)
 
@@ -242,6 +329,8 @@ restore erased text. Exercise rollback only on disposable databases.
   invariants above are fixed.
 - The live staging deployment path may change, so release work must verify the
   currently active path rather than encode one historical workflow name.
+- "flag": a Blended Learning **Mentor Flag** is unrelated to Intervention
+  Flags and to Summary Tags.
 
 ### Missing initial enrolled status utility (2026-09-17)
 
