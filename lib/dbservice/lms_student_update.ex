@@ -264,11 +264,15 @@ defmodule Dbservice.LmsStudentUpdate do
 
   # Codepoints, not graphemes: Postgres counts characters, so a name in a
   # script with combining marks can pass a grapheme count and still overflow.
+  # Measured as it will be stored: a blank clears the field, and the fields
+  # `blank_to_nil/1` trims are measured trimmed. `father_name` is stored as
+  # sent, so its padding still counts.
   defp validate_text_lengths(params) do
     params
     |> Map.take(@length_capped_fields)
-    |> Enum.find(fn {_field, value} ->
-      is_binary(value) and length(String.codepoints(value)) > @max_text_length
+    |> Enum.reject(fn {_field, value} -> blank?(value) end)
+    |> Enum.find(fn {field, value} ->
+      is_binary(value) and length(String.codepoints(stored_text(field, value))) > @max_text_length
     end)
     |> case do
       nil ->
@@ -284,6 +288,9 @@ defmodule Dbservice.LmsStudentUpdate do
          )}
     end
   end
+
+  defp stored_text(field, value) when field in @blankable_fields, do: String.trim(value)
+  defp stored_text(_field, value), do: value
 
   defp validate_contact_phone_inputs(params) do
     params

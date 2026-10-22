@@ -3396,6 +3396,43 @@ defmodule DbserviceWeb.LmsStudentUpdateControllerTest do
       assert Repo.get!(Student, student.id).mother_name == name
     end
 
+    test "clears a blank longer than its column instead of refusing it", %{
+      conn: conn,
+      school: school,
+      user: user,
+      student: student
+    } do
+      {:ok, _user} = Users.update_user(Users.get_user!(user.id), %{city: "Jaipur"})
+
+      conn =
+        lms_update(
+          conn,
+          student.id,
+          details_params(school, %{"city" => String.duplicate(" ", 256)})
+        )
+
+      assert json_response(conn, 200)["changed_fields"] == ["city"]
+      assert is_nil(Users.get_user!(user.id).city)
+    end
+
+    test "saves a value that fits once trimmed, though padding takes it past the column", %{
+      conn: conn,
+      school: school,
+      student: student
+    } do
+      name = String.duplicate("a", 255)
+
+      conn =
+        lms_update(
+          conn,
+          student.id,
+          details_params(school, %{"mother_name" => "  " <> name <> "  "})
+        )
+
+      assert json_response(conn, 200)["status"] == "updated"
+      assert Repo.get!(Student, student.id).mother_name == name
+    end
+
     test "rejects an email that could not reach a mailbox", %{
       conn: conn,
       school: school,
