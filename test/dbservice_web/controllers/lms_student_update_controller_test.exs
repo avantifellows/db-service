@@ -862,6 +862,47 @@ defmodule DbserviceWeb.LmsStudentUpdateControllerTest do
       assert Users.get_user!(user.id).phone == user.phone
     end
 
+    test "rejects monthly family income for a phone-mode cohort edit under a centre program", %{
+      conn: conn
+    } do
+      use_test_registration_mode!("phone")
+
+      school = insert_school!()
+      grade = insert_grade!(11)
+      batch = insert_nvs_batch!(11, "engineering")
+      coe_batch = insert_program_batch!(1, 11, "engineering")
+
+      {user, student} =
+        insert_enrolled_student!(school, grade, batch, %{
+          student_id: "9456591269",
+          g10_roll_no: nil,
+          monthly_family_income: nil
+        })
+
+      insert_enrollment!(user.id, coe_batch.id, "batch")
+      ensure_group_user!(user.id, "batch", coe_batch.id)
+      enable_students = insert_auth_group!("EnableStudents")
+      ensure_group_user!(user.id, "auth_group", enable_students.id)
+      insert_enrollment!(user.id, enable_students.id, "auth_group")
+
+      conn =
+        lms_update(conn, student.id, %{
+          "registration_mode" => "phone",
+          "actor" => actor(),
+          "school" => %{"code" => school.code, "udise_code" => school.udise_code},
+          "program_id" => 1,
+          "academic_year" => "2026-2027",
+          "start_date" => "2026-07-01",
+          "monthly_family_income" => "Rs. 10,000-20,000"
+        })
+
+      response = json_response(conn, 422)
+      assert response["error"]["code"] == "locked_fields"
+      assert response["error"]["fields"] == ["monthly_family_income"]
+      assert is_nil(Repo.get!(Student, student.id).monthly_family_income)
+      assert Repo.aggregate(Dbservice.LmsStudentWriteAudit, :count, :id) == 0
+    end
+
     test "fills a null cohort PEN once in approved mode and preserves phone identity", %{
       conn: conn
     } do

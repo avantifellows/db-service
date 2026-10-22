@@ -143,6 +143,11 @@ defmodule Dbservice.LmsStudentUpdate do
   @editable_fields @user_fields ++ @student_fields ++ ["grade"]
   @backfill_fields ["pen_number", "g10_roll_no"]
   @deferred_identifier_fields @backfill_fields ++ ["annual_family_income"]
+  # Monthly income is family income too (AF LMS #296). The NVS gate keys on
+  # the program, so a cohort Student also in a centre program could otherwise
+  # have it written under that program. Not a backfill field, so it stays out
+  # of the approved-mode backfill trigger.
+  @phone_mode_locked_fields @deferred_identifier_fields ++ ["monthly_family_income"]
 
   def update(student_pk_id, params) do
     with :ok <- LmsStudentRegistrationMode.validate(params) do
@@ -199,7 +204,7 @@ defmodule Dbservice.LmsStudentUpdate do
     deferred_locked_fields =
       case {cohort?, mode} do
         {false, _mode} -> @backfill_fields
-        {true, "phone"} -> @deferred_identifier_fields
+        {true, "phone"} -> @phone_mode_locked_fields
         _ -> []
       end
 
