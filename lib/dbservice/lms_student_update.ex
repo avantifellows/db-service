@@ -28,20 +28,97 @@ defmodule Dbservice.LmsStudentUpdate do
   @cbse_board "CBSE"
   @enable_students_auth_group "EnableStudents"
   @nvs_program_id 64
-  @user_fields ["first_name", "last_name", "gender", "date_of_birth", "phone"]
-  @student_fields [
-    "category",
-    "physically_handicapped",
-    "board_stream",
-    "stream",
-    "father_name",
-    "annual_family_income",
-    "g10_board",
-    "pen_number",
-    "g10_roll_no",
-    "tshirt_size",
-    "track_pant_size"
+  # Contact details the Enrollment tab shows on a Student card. AF LMS #431:
+  # the card displayed them while Edit Student could not change them, so a
+  # teacher could see data they had no way to correct.
+  @contact_user_fields [
+    "email",
+    "whatsapp_phone",
+    "address",
+    "city",
+    "district",
+    "state",
+    "pincode"
   ]
+  @user_fields ["first_name", "last_name", "gender", "date_of_birth", "phone"] ++
+                 @contact_user_fields
+  # The rest of the household the card shows, same reason.
+  @family_student_fields [
+    "father_phone",
+    "father_profession",
+    "father_education_level",
+    "mother_name",
+    "mother_phone",
+    "mother_profession",
+    "mother_education_level",
+    "guardian_name",
+    "guardian_relation",
+    "guardian_phone",
+    "guardian_profession",
+    "guardian_education_level",
+    "monthly_family_income"
+  ]
+  @student_fields [
+                    "category",
+                    "physically_handicapped",
+                    "board_stream",
+                    "stream",
+                    "father_name",
+                    "annual_family_income",
+                    "g10_board",
+                    "pen_number",
+                    "g10_roll_no",
+                    "tshirt_size",
+                    "track_pant_size"
+                  ] ++ @family_student_fields
+  # Optional details a teacher clears by emptying the box. Without this an
+  # erased value would be stored as "", which reads as set-but-empty
+  # everywhere downstream. Only the fields added for #431: `last_name` is
+  # deliberately blanked by the name edit, not cleared.
+  @blankable_fields @contact_user_fields ++ @family_student_fields
+  # Ten digits and no leading zero, like the Student's own phone. Checked here
+  # as well as in the LMS so a direct call can't store a number nobody can
+  # ring. Not narrowed to [6-9]: a parent's number may still be a landline.
+  @contact_phone_fields ["whatsapp_phone", "father_phone", "mother_phone", "guardian_phone"]
+  # The varchar(255) columns among the editable fields. Postgres raises 22001
+  # for an over-long value, which would surface as a 500, so the length is
+  # checked here instead. `address` is a TEXT column and needs no cap;
+  # `father_name` predates this change but has the same column and the same
+  # problem.
+  @length_capped_fields (@contact_user_fields -- ["address"]) ++
+                          @family_student_fields ++ ["father_name"]
+  @max_text_length 255
+  # Contact and household details are collected for physical centres only.
+  # JNV NVS PMU did not ask for them, and HQ has not approved collecting
+  # family income for the Phone-mode cohort (AF LMS #296), every member of
+  # which is an NVS Student. The LMS hides them under that program; this
+  # refuses them, so a direct call cannot write them either.
+  @centre_only_fields @contact_user_fields ++ @family_student_fields
+  # What a teacher calls these fields, so a message that does reach one reads
+  # like the rest of them rather than like a column name.
+  @field_labels %{
+    "email" => "Email",
+    "whatsapp_phone" => "WhatsApp Number",
+    "address" => "Address",
+    "city" => "City",
+    "district" => "District",
+    "state" => "State",
+    "pincode" => "Pincode",
+    "father_name" => "Father Name",
+    "father_phone" => "Father Phone",
+    "father_profession" => "Father Profession",
+    "father_education_level" => "Father Education Level",
+    "mother_name" => "Mother Name",
+    "mother_phone" => "Mother Phone",
+    "mother_profession" => "Mother Profession",
+    "mother_education_level" => "Mother Education Level",
+    "guardian_name" => "Guardian Name",
+    "guardian_relation" => "Guardian Relation",
+    "guardian_phone" => "Guardian Phone",
+    "guardian_profession" => "Guardian Profession",
+    "guardian_education_level" => "Guardian Education Level",
+    "monthly_family_income" => "Monthly Family Income"
+  }
   @locked_fields [
     "apaar_id",
     "auth_group",
@@ -66,6 +143,11 @@ defmodule Dbservice.LmsStudentUpdate do
   @editable_fields @user_fields ++ @student_fields ++ ["grade"]
   @backfill_fields ["pen_number", "g10_roll_no"]
   @deferred_identifier_fields @backfill_fields ++ ["annual_family_income"]
+  # Monthly income is family income too (AF LMS #296). The NVS gate keys on
+  # the program, so a cohort Student also in a centre program could otherwise
+  # have it written under that program. Not a backfill field, so it stays out
+  # of the approved-mode backfill trigger.
+  @phone_mode_locked_fields @deferred_identifier_fields ++ ["monthly_family_income"]
 
   def update(student_pk_id, params) do
     with :ok <- LmsStudentRegistrationMode.validate(params) do
@@ -84,6 +166,7 @@ defmodule Dbservice.LmsStudentUpdate do
            {:ok, student} <- fetch_student(student_pk_id),
            {:ok, school} <- fetch_school(params),
            :ok <- validate_school_scope(student, school, params["program_id"]),
+           :ok <- reject_centre_only_fields(params),
            {:ok, user} <- fetch_user(student),
            cohort? = phone_cohort?(student, user, school),
            :ok <- reject_locked_fields(params, active_mode, cohort?),
@@ -97,12 +180,15 @@ defmodule Dbservice.LmsStudentUpdate do
            {:ok, user} <- update_user(user, params),
            {:ok, student} <- update_student(student, params, plan, cohort?),
            {:ok, _enrollments} <- replace_enrollments(student.user_id, plan, params),
-           {:ok, audit} <- insert_audit(user, student, school, params, changed_values) do
+           # An edit that changes nothing is not an edit: re-sending the same
+           # payload used to add an audit row with an empty change set.
+           {:ok, audit_id} <-
+             maybe_insert_audit(user, student, school, params, changed_values) do
         %{
           "status" => "updated",
           "student_pk_id" => student.id,
           "changed_fields" => changed_values |> Map.keys() |> Enum.sort(),
-          "audit_id" => audit.id
+          "audit_id" => audit_id
         }
       else
         {:error, reason} -> Repo.rollback(reason)
@@ -118,7 +204,7 @@ defmodule Dbservice.LmsStudentUpdate do
     deferred_locked_fields =
       case {cohort?, mode} do
         {false, _mode} -> @backfill_fields
-        {true, "phone"} -> @deferred_identifier_fields
+        {true, "phone"} -> @phone_mode_locked_fields
         _ -> []
       end
 
@@ -149,8 +235,121 @@ defmodule Dbservice.LmsStudentUpdate do
   defp validate_canonical_inputs(params) do
     with :ok <- validate_board_input(params),
          :ok <- validate_gender_input(params),
+         :ok <- validate_text_lengths(params),
+         :ok <- validate_contact_phone_inputs(params),
+         :ok <- validate_pincode_input(params),
+         :ok <- validate_email_input(params),
          do: validate_stream_input(params)
   end
+
+  # A blank clears the field, so only a value that is actually there is checked.
+  defp blank?(value), do: is_nil(value) or (is_binary(value) and String.trim(value) == "")
+
+  defp label(field), do: Map.get(@field_labels, field, field)
+
+  defp reject_centre_only_fields(params) do
+    if to_int(params["program_id"]) == @nvs_program_id do
+      case params |> Map.keys() |> Enum.filter(&(&1 in @centre_only_fields)) |> Enum.sort() do
+        [] ->
+          :ok
+
+        fields ->
+          {:error,
+           error(
+             "unsupported_for_nvs",
+             "These details are not collected for JNV NVS Students",
+             422,
+             fields
+           )}
+      end
+    else
+      :ok
+    end
+  end
+
+  # Codepoints, not graphemes: Postgres counts characters, so a name in a
+  # script with combining marks can pass a grapheme count and still overflow.
+  # Measured as it will be stored: a blank clears the field, and the fields
+  # `blank_to_nil/1` trims are measured trimmed. `father_name` is stored as
+  # sent, so its padding still counts.
+  defp validate_text_lengths(params) do
+    params
+    |> Map.take(@length_capped_fields)
+    |> Enum.reject(fn {_field, value} -> blank?(value) end)
+    |> Enum.find(fn {field, value} ->
+      is_binary(value) and length(String.codepoints(stored_text(field, value))) > @max_text_length
+    end)
+    |> case do
+      nil ->
+        :ok
+
+      {field, _value} ->
+        {:error,
+         error(
+           "field_too_long",
+           "#{label(field)} must be #{@max_text_length} characters or fewer",
+           422,
+           [field]
+         )}
+    end
+  end
+
+  defp stored_text(field, value) when field in @blankable_fields, do: String.trim(value)
+  defp stored_text(_field, value), do: value
+
+  defp validate_contact_phone_inputs(params) do
+    params
+    |> Map.take(@contact_phone_fields)
+    |> Enum.reject(fn {_field, value} -> blank?(value) end)
+    |> Enum.find(fn {_field, value} ->
+      not (is_binary(value) and Regex.match?(~r/\A[1-9]\d{9}\z/, String.trim(value)))
+    end)
+    |> case do
+      nil ->
+        :ok
+
+      {field, _value} ->
+        {:error,
+         error(
+           "invalid_phone",
+           "#{label(field)} must be exactly 10 digits and cannot start with zero",
+           422,
+           [field]
+         )}
+    end
+  end
+
+  # Same shape the LMS checks, so the two sides agree on what can reach a
+  # mailbox. The `u` flag makes `\s` match Unicode spaces such as NBSP, as the
+  # LMS's JavaScript `\s` does; it raises on invalid UTF-8, hence the guard.
+  defp validate_email_input(%{"email" => email}) when not is_nil(email) do
+    if blank?(email) or
+         (is_binary(email) and String.valid?(email) and
+            Regex.match?(~r/\A[^\s@]+@[^\s@]+\.[^\s@]+\z/u, String.trim(email))) do
+      :ok
+    else
+      {:error, error("invalid_email", "Email is not valid", 422, ["email"])}
+    end
+  end
+
+  defp validate_email_input(_params), do: :ok
+
+  defp validate_pincode_input(%{"pincode" => pincode}) when not is_nil(pincode) do
+    if blank?(pincode) or
+         (is_binary(pincode) and Regex.match?(~r/\A[1-9]\d{5}\z/, String.trim(pincode))) do
+      :ok
+    else
+      {:error,
+       error(
+         "invalid_pincode",
+         "Pincode must be exactly 6 digits and cannot start with zero",
+         422,
+         ["pincode"]
+       )}
+    end
+  end
+
+  defp validate_pincode_input(_params), do: :ok
 
   defp validate_board_input(params) when not is_map_key(params, "g10_board"), do: :ok
 
@@ -1044,6 +1243,17 @@ defmodule Dbservice.LmsStudentUpdate do
     end
   end
 
+  defp maybe_insert_audit(_user, _student, _school, _params, changed_values)
+       when map_size(changed_values) == 0,
+       do: {:ok, nil}
+
+  defp maybe_insert_audit(user, student, school, params, changed_values) do
+    case insert_audit(user, student, school, params, changed_values) do
+      {:ok, audit} -> {:ok, audit.id}
+      other -> other
+    end
+  end
+
   defp insert_audit(user, student, school, params, changed_values) do
     result =
       %LmsStudentWriteAudit{}
@@ -1106,8 +1316,23 @@ defmodule Dbservice.LmsStudentUpdate do
 
   defp audit_value(_field, value), do: value
 
+  # An emptied optional detail is a cleared one, stored as NULL.
+  defp blank_to_nil(params) do
+    Enum.reduce(@blankable_fields, params, fn field, acc ->
+      case Map.fetch(acc, field) do
+        {:ok, value} when is_binary(value) ->
+          trimmed = String.trim(value)
+          Map.put(acc, field, if(trimmed == "", do: nil, else: trimmed))
+
+        _ ->
+          acc
+      end
+    end)
+  end
+
   defp normalize_params(params) do
     params
+    |> blank_to_nil()
     |> then(fn
       %{"gender" => "Others"} = params -> Map.put(params, "gender", "Other")
       params -> params
