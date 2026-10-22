@@ -7,13 +7,17 @@ defmodule DbserviceWeb.ProblemsByChapterTest do
   """
   use DbserviceWeb.ConnCase
 
+  import Ecto.Query, only: [from: 2]
+
   alias Dbservice.Chapters
   alias Dbservice.Curriculums
   alias Dbservice.Languages
   alias Dbservice.Paragraphs
   alias Dbservice.ProblemLanguages
+  alias Dbservice.Repo
   alias Dbservice.ResourceChapters
   alias Dbservice.ResourceCurriculums
+  alias Dbservice.Resources.ProblemLanguage
   alias Dbservice.ResourceTopics
   alias Dbservice.Resources
   alias Dbservice.Topics
@@ -101,6 +105,29 @@ defmodule DbserviceWeb.ProblemsByChapterTest do
       })
 
     resource
+  end
+
+  # Gives an already-created problem a second curriculum mapping, so the
+  # resource_curriculum join emits two rows for it.
+  defp add_extra_curriculum(problem) do
+    {:ok, _} =
+      ResourceCurriculums.create_resource_curriculum(%{
+        resource_id: problem.id,
+        curriculum_id: curriculum_fixture().id,
+        difficulty_level: "medium"
+      })
+
+    :ok
+  end
+
+  # Makes an already-created problem part of a comprehension passage.
+  defp share_paragraph(problem, paragraph) do
+    {1, _} =
+      Repo.update_all(from(pl in ProblemLanguage, where: pl.res_id == ^problem.id),
+        set: [paragraph_id: paragraph.id]
+      )
+
+    :ok
   end
 
   defp list(conn, params) do
@@ -313,6 +340,226 @@ defmodule DbserviceWeb.ProblemsByChapterTest do
       assert listed["chapter_id"] == ctx.chapter.id
       assert Enum.sort(listed["topic_ids"]) == Enum.sort([own_topic.id, foreign_topic.id])
       assert listed["topic_id"] in [own_topic.id, foreign_topic.id]
+    end
+  end
+
+  # Paging is opt-in (issue #785 review): only a request that sends `limit` is
+  # paged. `limit` counts matching problems, so an out-of-filter paragraph
+  # sibling can push a page past it, and x-total-count never counts siblings.
+  describe "pagination" do
+    setup ctx do
+      %{problems: Enum.map(1..5, &problem_fixture(ctx, attrs: %{"code" => "P#{&1}"}))}
+    end
+
+    defp list_with_total(conn, params) do
+      response = get(conn, ~p"/api/problems", params)
+      ids = response |> json_response(200) |> Enum.map(& &1["id"])
+      {ids, get_resp_header(response, "x-total-count")}
+    end
+
+    defp list_both_with_total(conn, ctx, params) do
+      {list_with_total(conn, Map.put(params, "lang_code", ctx.language.code)),
+       list_with_total(conn, params)}
+    end
+
+    defp ids(problems), do: Enum.map(problems, & &1.id)
+
+    test "with no limit returns every matching problem, as before",
+         %{conn: conn, problems: problems} = ctx do
+      {single, all} = list_both(conn, ctx, %{"chapter_id" => ctx.chapter.id})
+
+      assert single == ids(problems)
+      assert all == ids(problems)
+    end
+
+    test "cuts consecutive pages in code order", %{conn: conn, problems: problems} = ctx do
+      [p1, p2, p3, p4, p5] = problems
+
+      for {offset, expected} <- [{"0", [p1, p2]}, {"2", [p3, p4]}, {"4", [p5]}, {"5", []}] do
+        {{single, _}, {all, _}} =
+          list_both_with_total(conn, ctx, %{
+            "chapter_id" => ctx.chapter.id,
+            "limit" => "2",
+            "offset" => offset
+          })
+
+        assert single == ids(expected)
+        assert all == ids(expected)
+      end
+    end
+
+    test "breaks a tie on code by id", %{conn: conn} = ctx do
+      first = problem_fixture(ctx, attrs: %{"code" => "SAME"})
+      second = problem_fixture(ctx, attrs: %{"code" => "SAME"})
+
+      {{single, _}, {all, _}} =
+        list_both_with_total(conn, ctx, %{
+          "chapter_id" => ctx.chapter.id,
+          "limit" => "1",
+          "offset" => "5"
+        })
+
+      assert single == [first.id]
+      assert all == [first.id]
+
+      {{single, _}, {all, _}} =
+        list_both_with_total(conn, ctx, %{
+          "chapter_id" => ctx.chapter.id,
+          "limit" => "1",
+          "offset" => "6"
+        })
+
+      assert single == [second.id]
+      assert all == [second.id]
+    end
+
+    test "reports the total number of matching problems in x-total-count",
+         %{conn: conn} = ctx do
+      topic = topic_fixture(ctx.chapter)
+      problem_fixture(ctx, attrs: %{"code" => "P6"}, topics: [topic])
+
+      for params <- [%{}, %{"limit" => "2"}, %{"limit" => "2", "offset" => "4"}] do
+        {{_, single_total}, {_, all_total}} =
+          list_both_with_total(conn, ctx, Map.put(params, "chapter_id", ctx.chapter.id))
+
+        assert single_total == ["6"]
+        assert all_total == ["6"]
+      end
+
+      {{single, single_total}, {all, all_total}} =
+        list_both_with_total(conn, ctx, %{
+          "chapter_id" => ctx.chapter.id,
+          "topic_id" => topic.id,
+          "limit" => "2"
+        })
+
+      assert length(single) == 1
+      assert length(all) == 1
+      assert single_total == ["1"]
+      assert all_total == ["1"]
+    end
+
+    # The resource_curriculum join emits one row per curriculum, so paging on the
+    # joined rows would spend two of this page's slots on one problem.
+    test "a problem in several curriculums does not shorten a page", %{conn: conn} = ctx do
+      [p1, p2 | _] = Enum.map(1..3, &problem_fixture(ctx, attrs: %{"code" => "Q#{&1}"}))
+      add_extra_curriculum(p1)
+
+      {{single, single_total}, {all, all_total}} =
+        list_both_with_total(conn, ctx, %{
+          "chapter_id" => ctx.chapter.id,
+          "limit" => "2",
+          "offset" => "5"
+        })
+
+      assert single == [p1.id, p2.id]
+      assert all == [p1.id, p2.id]
+      assert single_total == ["8"]
+      assert all_total == ["8"]
+    end
+
+    test "an offset past the end returns an empty page, not an error",
+         %{conn: conn} = ctx do
+      {{single, single_total}, {all, all_total}} =
+        list_both_with_total(conn, ctx, %{
+          "chapter_id" => ctx.chapter.id,
+          "limit" => "2",
+          "offset" => "500"
+        })
+
+      assert single == []
+      assert all == []
+      assert single_total == ["5"]
+      assert all_total == ["5"]
+    end
+
+    test "appends an out-of-filter paragraph sibling to one page only",
+         %{conn: conn, problems: problems} = ctx do
+      [p1, p2, p3, p4, _p5] = problems
+      {:ok, paragraph} = Paragraphs.create_paragraph(%{"body" => "shared passage"})
+
+      # P2 and P4 share the passage with a problem in another chapter, which the
+      # chapter filter leaves out; P2 is the passage's first matching problem.
+      share_paragraph(p2, paragraph)
+      share_paragraph(p4, paragraph)
+
+      outsider =
+        problem_fixture(ctx,
+          attrs: %{"code" => "Z1", "subtype" => "comprehension"},
+          chapter: chapter_fixture(),
+          paragraph_id: paragraph.id
+        )
+
+      params = %{
+        "chapter_id" => ctx.chapter.id,
+        "include_paragraph_siblings" => "true",
+        "limit" => "2"
+      }
+
+      {{single, single_total}, {all, all_total}} = list_both_with_total(conn, ctx, params)
+
+      assert single == [p1.id, p2.id, outsider.id]
+      assert all == [p1.id, p2.id, outsider.id]
+      assert single_total == ["5"]
+      assert all_total == ["5"]
+
+      {{single, _}, {all, _}} =
+        list_both_with_total(conn, ctx, Map.put(params, "offset", "2"))
+
+      assert single == [p3.id, p4.id]
+      assert all == [p3.id, p4.id]
+    end
+
+    test "leaves a sibling that matches the filter to its own page",
+         %{conn: conn, problems: problems} = ctx do
+      [p1, p2, p3, p4, _p5] = problems
+      {:ok, paragraph} = Paragraphs.create_paragraph(%{"body" => "shared passage"})
+
+      share_paragraph(p1, paragraph)
+      share_paragraph(p3, paragraph)
+
+      params = %{
+        "chapter_id" => ctx.chapter.id,
+        "include_paragraph_siblings" => "true",
+        "limit" => "2"
+      }
+
+      {{single, _}, {all, _}} = list_both_with_total(conn, ctx, params)
+
+      assert single == [p1.id, p2.id]
+      assert all == [p1.id, p2.id]
+
+      {{single, _}, {all, _}} =
+        list_both_with_total(conn, ctx, Map.put(params, "offset", "2"))
+
+      assert single == [p3.id, p4.id]
+      assert all == [p3.id, p4.id]
+    end
+
+    test "still appends every sibling when no limit is sent",
+         %{conn: conn, problems: problems} = ctx do
+      [p1, _p2, _p3, _p4, _p5] = problems
+      {:ok, paragraph} = Paragraphs.create_paragraph(%{"body" => "shared passage"})
+
+      share_paragraph(p1, paragraph)
+
+      outsider =
+        problem_fixture(ctx,
+          attrs: %{"code" => "Z1", "subtype" => "comprehension"},
+          chapter: chapter_fixture(),
+          paragraph_id: paragraph.id
+        )
+
+      {{single, single_total}, {all, all_total}} =
+        list_both_with_total(conn, ctx, %{
+          "chapter_id" => ctx.chapter.id,
+          "include_paragraph_siblings" => "true"
+        })
+
+      assert outsider.id in single
+      assert outsider.id in all
+      assert single_total == ["5"]
+      assert all_total == ["5"]
     end
   end
 end
