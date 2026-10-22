@@ -113,6 +113,15 @@ locals {
   ci_ecs_services = "arn:aws:ecs:${var.aws_region}:${local._acct}:service/db-service-*/db-service-*"
   ci_ecs_taskdefs = "arn:aws:ecs:${var.aws_region}:${local._acct}:task-definition/db-service-*:*"
   ci_ecs_tasks    = "arn:aws:ecs:${var.aws_region}:${local._acct}:task/db-service-*/*"
+
+  # The CI user is shared, but this config is applied once per environment — so
+  # these can't be the current env's aws_iam_role/aws_cloudwatch_log_group
+  # attributes, or whichever env happens to create the user locks the other one
+  # out. (Prod's first deploy failed exactly this way: iam:PassRole denied on
+  # db-service-prod-task-role, because the policy had been rendered by staging.)
+  ci_task_roles = "arn:aws:iam::${local._acct}:role/db-service-*-task-role"
+  ci_exec_roles = "arn:aws:iam::${local._acct}:role/db-service-*-execution-role"
+  ci_log_groups = "arn:aws:logs:${var.aws_region}:${local._acct}:log-group:/ecs/db-service-*:*"
 }
 
 data "aws_iam_policy_document" "ci_policy" {
@@ -203,8 +212,8 @@ data "aws_iam_policy_document" "ci_policy" {
       "iam:PassRole",
     ]
     resources = [
-      aws_iam_role.task_execution.arn,
-      aws_iam_role.task.arn,
+      local.ci_exec_roles,
+      local.ci_task_roles,
     ]
   }
 
@@ -215,7 +224,7 @@ data "aws_iam_policy_document" "ci_policy" {
       "logs:CreateLogStream",
       "logs:PutLogEvents",
     ]
-    resources = ["${aws_cloudwatch_log_group.app.arn}:*"]
+    resources = [local.ci_log_groups]
   }
 }
 
