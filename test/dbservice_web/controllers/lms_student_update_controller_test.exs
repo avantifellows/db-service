@@ -3449,6 +3449,24 @@ defmodule DbserviceWeb.LmsStudentUpdateControllerTest do
       assert Repo.aggregate(Dbservice.LmsStudentWriteAudit, :count, :id) == 0
     end
 
+    test "rejects an email with a non-breaking space inside it", %{
+      conn: conn,
+      school: school,
+      user: user,
+      student: student
+    } do
+      stored = Users.get_user!(user.id).email
+
+      conn =
+        lms_update(conn, student.id, details_params(school, %{"email" => "ra vi@x.org"}))
+
+      response = json_response(conn, 422)
+      assert response["error"]["code"] == "invalid_email"
+      assert response["error"]["fields"] == ["email"]
+      assert Users.get_user!(user.id).email == stored
+      assert Repo.aggregate(Dbservice.LmsStudentWriteAudit, :count, :id) == 0
+    end
+
     test "rejects a contact phone or pincode that starts with zero", %{
       conn: conn,
       school: school,

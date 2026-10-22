@@ -315,11 +315,12 @@ defmodule Dbservice.LmsStudentUpdate do
   end
 
   # Same shape the LMS checks, so the two sides agree on what can reach a
-  # mailbox.
+  # mailbox. The `u` flag makes `\s` match Unicode spaces such as NBSP, as the
+  # LMS's JavaScript `\s` does; it raises on invalid UTF-8, hence the guard.
   defp validate_email_input(%{"email" => email}) when not is_nil(email) do
     if blank?(email) or
-         (is_binary(email) and
-            Regex.match?(~r/\A[^\s@]+@[^\s@]+\.[^\s@]+\z/, String.trim(email))) do
+         (is_binary(email) and String.valid?(email) and
+            Regex.match?(~r/\A[^\s@]+@[^\s@]+\.[^\s@]+\z/u, String.trim(email))) do
       :ok
     else
       {:error, error("invalid_email", "Email is not valid", 422, ["email"])}
