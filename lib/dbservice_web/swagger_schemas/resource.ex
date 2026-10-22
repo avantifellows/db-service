@@ -560,7 +560,11 @@ defmodule DbserviceWeb.SwaggerSchema.Resource do
           properties do
             languages(
               Schema.array(:object),
-              "One entry per language: {lang_code, text}. text is raw meta_data.text (HTML/LaTeX)"
+              "One entry per language: {lang_code, text, options}. text is raw " <>
+                "meta_data.text (HTML/LaTeX). options is the optional list of raw " <>
+                "meta_data.options strings, in their original order; supply it and the " <>
+                "options are scored alongside the question, omit it and only the " <>
+                "question is scored"
             )
 
             curriculum_id(
@@ -574,8 +578,16 @@ defmodule DbserviceWeb.SwaggerSchema.Resource do
           example(%{
             curriculum_id: 9,
             languages: [
-              %{lang_code: "en", text: "<div>What is the value of \\(2+2\\)?</div>"},
-              %{lang_code: "hi", text: "<div>\\(2+2\\) का मान क्या है?</div>"}
+              %{
+                lang_code: "en",
+                text: "<div>What is the value of \\(2+2\\)?</div>",
+                options: ["<div>3</div>", "<div>4</div>", "<div>5</div>", "<div>6</div>"]
+              },
+              %{
+                lang_code: "hi",
+                text: "<div>\\(2+2\\) का मान क्या है?</div>",
+                options: ["<div>3</div>", "<div>4</div>", "<div>5</div>", "<div>6</div>"]
+              }
             ]
           })
         end,
@@ -585,8 +597,10 @@ defmodule DbserviceWeb.SwaggerSchema.Resource do
 
           description(
             "Near-duplicate matches (> 0.75), per language, sorted by score desc. " <>
-              "Scoped to curriculum_id when the request supplies it; archived " <>
-              "problems are always excluded"
+              "match_score is the question similarity, or the lower of the question " <>
+              "and options similarity when the request supplied options. Scoped to " <>
+              "curriculum_id when the request supplies it; archived problems are " <>
+              "always excluded"
           )
 
           properties do
