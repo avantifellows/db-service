@@ -28,6 +28,21 @@ defmodule Dbservice.Repo.Migrations.ScholarshipPhase4CohortImport do
       add :imported_by, references(:scholarship_reviewers, on_delete: :nilify_all)
     end
 
+    # The same question about a bill.
+    #
+    # An imported scholar arrives with a figure for how much of her money is
+    # already accounted for (confirmed 21-22 Oct: the team holds it, and
+    # without it she would read as 0% utilised and be blocked from a top-up
+    # she is entitled to). That figure is recorded as an approved bill rather
+    # than as a column of its own, so that "Amount Utilised = what Accounts
+    # approved" stays the ONE definition of utilisation, with nothing added to
+    # it afterwards. This column is how that bill says what it is, on her Bills
+    # page and to the next re-import, which updates it rather than adding a
+    # second one.
+    alter table(:scholarship_bills) do
+      add :imported_at, :utc_datetime
+    end
+
     # Small and highly selective: every imported row, none of the portal's own.
     # The Finance Dashboard reads "the imported cohorts" as a set, and the
     # Application Review queue has to be able to say "not these".
