@@ -123,6 +123,13 @@ least one usable actor identity: a canonical `actor_user_id`, a nonblank
 ID-only system and legacy writers remain valid.
 _Avoid_: editable audit row, content snapshot
 
+**Challenge Category**:
+One fixed, coded Academic or Non-academic classification a Mentor selects for a
+Mentee in Post-Session Notes, stored as a stable `category_code` row in
+`holistic_mentorship_post_session_note_challenges`. LMS owns the code list,
+labels and validation; the database stores any nonblank code.
+_Avoid_: tag, challenge tag, issue type, free-text category
+
 **Follow-up Note**:
 An immutable answer set for one Student and stable Phase, added by its author
 after that Phase's Post-Session Notes are submitted, answering up to three fixed
@@ -159,6 +166,8 @@ _Avoid_: best-effort identity matching
 - A Program has one Phase Plan per Academic Year; a Phase Plan has ordered Phases.
 - A Student has at most one active Mentor-Mentee Mapping per Academic Year.
 - Post-Session Notes belong to one Student, one stable Phase, and their author.
+- Post-Session Notes have zero or more distinct Challenge Categories; Follow-up
+  Notes and Historical Holistic Notes have none.
 - Follow-up Notes belong to one Student, one stable Phase, and their author;
   a Student and Phase may have many.
 - Mapping and Post-Session Note audit events retain immutable actor snapshots;
@@ -193,6 +202,10 @@ _Avoid_: best-effort identity matching
   every nonnull answer becomes `Content erased under approved privacy request`,
   and null answers and all metadata (including timestamps) stay unchanged.
   Deletion, other edits and no-op updates remain forbidden.
+- Challenge Category rows are unique per Notes and code, nonblank, and at most
+  100 characters. Like Post-Session answers, inserts and updates take the Student
+  advisory lock and are blocked after privacy deletion; deletes stay allowed so
+  draft erasure and privacy erasure can remove them.
 - Raw questionnaire answers and rendered per-Student prompts are not persisted.
 - Profile Program eligibility comes from the Student's one current School and
   that School's canonical Program IDs; it does not require a Program enrollment.
@@ -220,6 +233,20 @@ existing data or complete that operational rollout. Deploy schema before LMS.
 Production should use forward fixes: `down` restores unconditional Follow-up
 immutability and drops the companion table, losing its audit history, and cannot
 restore erased text. Exercise rollback only on disposable databases.
+
+### Post-Session Note Challenge Categories (LMS #457)
+
+last_updated: 2026-10-22
+
+`20261022140000_create_holistic_mentorship_post_session_note_challenges` adds the
+table and a `holistic_mentorship_post_session_note_challenges` branch to
+`holistic_mentorship_reject_erased_student_content`; `down` restores the prior
+function body. There is no CHECK on code values, no API and no backfill. The
+privacy tombstone gains no Challenge Category count: tombstones are immutable,
+the LMS privacy erasure path is disabled, and LMS #457 makes it delete these rows
+before inserting the tombstone, as it does for Post-Session answers. A count can
+be added later as an additive defaulted column if that path needs one. Deploy
+schema before the LMS release.
 
 ## Example Dialogue
 
