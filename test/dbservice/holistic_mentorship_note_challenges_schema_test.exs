@@ -157,8 +157,42 @@ defmodule Dbservice.HolisticMentorshipNoteChallengesSchemaTest do
     end)
 
     # Other Students are unaffected, and erasure deletes rows as it does for answers.
-    assert {:ok, _} = insert_challenge(other_notes_id, "non_academic.financial")
+    assert {:ok, %{rows: [[other_challenge_id]]}} =
+             insert_challenge(other_notes_id, "non_academic.financial")
+
+    # The guard resolves the Student from NEW, so moving a row onto erased Notes fails.
+    assert_constraint(:check_violation, fn ->
+      Repo.query("UPDATE #{@table} SET notes_id = $1 WHERE id = $2", [
+        notes_id,
+        other_challenge_id
+      ])
+    end)
+
     assert Repo.query!("DELETE FROM #{@table} WHERE notes_id = $1", [notes_id]).num_rows == 1
+  end
+
+  test "takes the per-Student privacy advisory lock on write" do
+    scope = insert_scope()
+    notes_id = insert_notes(scope)
+
+    assert student_advisory_locks(scope.student_id) == 0
+    assert {:ok, _} = insert_challenge(notes_id, "academic.exam_related")
+    assert student_advisory_locks(scope.student_id) == 1
+  end
+
+  # pg_advisory_xact_lock(int4, int4) stores key1 in classid, key2 in objid, objsubid 2.
+  defp student_advisory_locks(student_id) do
+    [[count]] =
+      Repo.query!(
+        """
+        SELECT count(*) FROM pg_locks
+        WHERE locktype = 'advisory' AND pid = pg_backend_pid() AND granted
+          AND classid::bigint = $1 AND objid::bigint = 0 AND objsubid = 2
+        """,
+        [student_id]
+      ).rows
+
+    count
   end
 
   defp insert_scope do

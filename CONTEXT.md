@@ -125,9 +125,8 @@ _Avoid_: editable audit row, content snapshot
 
 **Challenge Category**:
 One fixed, coded Academic or Non-academic classification a Mentor selects for a
-Mentee in Post-Session Notes, stored as a stable `category_code` row in
-`holistic_mentorship_post_session_note_challenges`. LMS owns the code list,
-labels and validation; the database stores any nonblank code.
+Mentee in Post-Session Notes, identified by a stable code. LMS owns the code
+list, labels and validation.
 _Avoid_: tag, challenge tag, issue type, free-text category
 
 **Follow-up Note**:
@@ -202,8 +201,10 @@ _Avoid_: best-effort identity matching
   every nonnull answer becomes `Content erased under approved privacy request`,
   and null answers and all metadata (including timestamps) stay unchanged.
   Deletion, other edits and no-op updates remain forbidden.
-- Challenge Category rows are unique per Notes and code, nonblank, and at most
-  100 characters. Like Post-Session answers, inserts and updates take the Student
+- Challenge Categories are stored as `category_code` rows in
+  `holistic_mentorship_post_session_note_challenges`, unique per Notes and code,
+  nonblank, and at most 100 characters; the database does not restrict code
+  values. Like Post-Session answers, inserts and updates take the Student
   advisory lock and are blocked after privacy deletion; deletes stay allowed so
   draft erasure and privacy erasure can remove them.
 - Raw questionnaire answers and rendered per-Student prompts are not persisted.
