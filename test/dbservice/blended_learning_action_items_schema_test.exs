@@ -4,71 +4,6 @@ defmodule Dbservice.BlendedLearningActionItemsSchemaTest do
   @action_items "blended_learning_action_items"
   @conversations "blended_learning_conversations"
 
-  test "defines the Action Item contract" do
-    assert column_types(@action_items) == %{
-             "completed_at" => "timestamp without time zone",
-             "completed_by_conversation_id" => "bigint",
-             "completed_by_email" => "character varying",
-             "conversation_id" => "bigint",
-             "due_on" => "date",
-             "id" => "bigint",
-             "inserted_at" => "timestamp without time zone",
-             "owner" => "character varying",
-             "position" => "integer",
-             "status" => "character varying",
-             "student_id" => "bigint",
-             "text" => "text",
-             "updated_at" => "timestamp without time zone"
-           }
-
-    assert nullable_columns(@action_items) == [
-             "completed_at",
-             "completed_by_conversation_id",
-             "completed_by_email",
-             "due_on"
-           ]
-
-    assert column_lengths(@action_items)["completed_by_email"] == 255
-
-    assert foreign_keys(@action_items) == [
-             {"blended_learning_action_items_completed_by_conversation_id_fkey",
-              ["completed_by_conversation_id", "student_id"], "blended_learning_conversations",
-              ["id", "student_id"], "NO ACTION"},
-             {"blended_learning_action_items_conversation_id_fkey",
-              ["conversation_id", "student_id"], "blended_learning_conversations",
-              ["id", "student_id"], "NO ACTION"},
-             {"blended_learning_action_items_student_id_fkey", ["student_id"], "student", ["id"],
-              "NO ACTION"}
-           ]
-  end
-
-  test "names the Action Item CHECKs, indexes and triggers" do
-    assert check_names(@action_items) == [
-             "bl_action_items_completed_by_email_check",
-             "bl_action_items_completion_check",
-             "bl_action_items_owner_check",
-             "bl_action_items_position_check",
-             "bl_action_items_status_check",
-             "bl_action_items_text_check"
-           ]
-
-    assert indexes(@action_items) == [
-             "CREATE UNIQUE INDEX bl_action_items_conversation_position_unique ON public.blended_learning_action_items USING btree (conversation_id, \"position\")",
-             "CREATE INDEX bl_action_items_open_student_idx ON public.blended_learning_action_items USING btree (student_id) WHERE ((status)::text = 'open'::text)",
-             "CREATE UNIQUE INDEX blended_learning_action_items_pkey ON public.blended_learning_action_items USING btree (id)"
-           ]
-
-    assert triggers(@action_items) == [
-             {"bl_action_items_conversation_kind", "blended_learning_reject_attempt_reference"},
-             {"bl_action_items_immutable", "blended_learning_protect_action_item"}
-           ]
-
-    assert Repo.query!(
-             "SELECT column_default FROM information_schema.columns WHERE table_name = $1 AND column_name = 'status'",
-             [@action_items]
-           ).rows == [["'open'::character varying"]]
-  end
-
   test "rejects a Student that does not own the creating or closing Conversation" do
     scope = insert_scope()
     {:ok, %{rows: [[conversation_id]]}} = insert_conversation(scope, %{})
@@ -191,7 +126,7 @@ defmodule Dbservice.BlendedLearningActionItemsSchemaTest do
     {:ok, %{rows: [[closing_id]]}} = insert_conversation(scope, %{occurred_on: ~D[2026-10-27]})
 
     {:ok, %{rows: [[item_id]]}} =
-      insert_action_item(scope, conversation_id, %{owner: "parent", due_on: ~D[2026-10-25]})
+      insert_action_item(scope, conversation_id, %{owner: "parent"})
 
     assert %{num_rows: 1} =
              Repo.query!(
@@ -207,7 +142,7 @@ defmodule Dbservice.BlendedLearningActionItemsSchemaTest do
 
     assert Repo.query!(
              """
-             SELECT conversation_id, student_id, position, text, owner, due_on, status,
+             SELECT conversation_id, student_id, position, text, owner, status,
                     completed_by_conversation_id, completed_at, completed_by_email
              FROM #{@action_items} WHERE id = $1
              """,
@@ -219,100 +154,12 @@ defmodule Dbservice.BlendedLearningActionItemsSchemaTest do
                1,
                "Finish the chapter 3 worksheet.",
                "parent",
-               ~D[2026-10-25],
                "done",
                closing_id,
                ~N[2026-10-27 11:00:00],
                "mentor@example.org"
              ]
            ]
-  end
-
-  test "rejects every Action Item update other than open to done, and every delete" do
-    scope = insert_scope()
-    {:ok, %{rows: [[conversation_id]]}} = insert_conversation(scope, %{})
-    {:ok, %{rows: [[closing_id]]}} = insert_conversation(scope, %{occurred_on: ~D[2026-10-27]})
-    {:ok, %{rows: [[open_id]]}} = insert_action_item(scope, conversation_id, %{position: 1})
-
-    {:ok, %{rows: [[done_id]]}} =
-      insert_action_item(scope, conversation_id, %{
-        position: 2,
-        status: "done",
-        completed_by_conversation_id: closing_id,
-        completed_at: ~N[2026-10-27 11:00:00],
-        completed_by_email: "mentor@example.org"
-      })
-
-    close = """
-    status = 'done', completed_by_conversation_id = #{closing_id},
-    completed_at = '2026-10-27 11:00:00', completed_by_email = 'mentor@example.org'
-    """
-
-    for {id, set} <- [
-          {done_id,
-           "status = 'open', completed_by_conversation_id = NULL, completed_at = NULL, completed_by_email = NULL"},
-          {done_id, "completed_by_email = 'ops@example.org'"},
-          {done_id, "text = 'Rewritten after closing.'"},
-          {open_id, "text = 'Rewritten while open.'"},
-          {open_id, "owner = 'mentor'"},
-          {open_id, "updated_at = '2026-10-27 11:00:00'"},
-          {open_id, close <> ", due_on = '2026-11-01'"},
-          {open_id, close <> ", position = 3"}
-        ] do
-      assert_constraint(:check_violation, fn ->
-        Repo.query("UPDATE #{@action_items} SET #{set} WHERE id = $1", [id])
-      end)
-    end
-
-    for id <- [open_id, done_id] do
-      assert_constraint(:check_violation, fn ->
-        Repo.query("DELETE FROM #{@action_items} WHERE id = $1", [id])
-      end)
-    end
-
-    assert Repo.query!(
-             "SELECT id, status, text, due_on FROM #{@action_items} WHERE conversation_id = $1 ORDER BY id",
-             [conversation_id]
-           ).rows == [
-             [open_id, "open", "Finish the chapter 3 worksheet.", nil],
-             [done_id, "done", "Finish the chapter 3 worksheet.", nil]
-           ]
-  end
-
-  test "rejects creating or closing an Action Item with an Attempt" do
-    scope = insert_scope()
-    {:ok, %{rows: [[conversation_id]]}} = insert_conversation(scope, %{})
-    {:ok, %{rows: [[attempt_id]]}} = insert_attempt(scope)
-    {:ok, %{rows: [[item_id]]}} = insert_action_item(scope, conversation_id, %{position: 1})
-
-    assert_constraint(:check_violation, fn ->
-      insert_action_item(scope, attempt_id, %{position: 1})
-    end)
-
-    assert_constraint(:check_violation, fn ->
-      insert_action_item(scope, conversation_id, %{
-        position: 2,
-        status: "done",
-        completed_by_conversation_id: attempt_id,
-        completed_at: ~N[2026-10-27 11:00:00],
-        completed_by_email: "mentor@example.org"
-      })
-    end)
-
-    assert_constraint(:check_violation, fn ->
-      Repo.query(
-        """
-        UPDATE #{@action_items}
-        SET status = 'done', completed_by_conversation_id = $2,
-            completed_at = '2026-10-27 11:00:00', completed_by_email = 'mentor@example.org'
-        WHERE id = $1
-        """,
-        [item_id, attempt_id]
-      )
-    end)
-
-    assert Repo.query!("SELECT status FROM #{@action_items} WHERE id = $1", [item_id]).rows ==
-             [["open"]]
   end
 
   defp insert_scope do
@@ -374,18 +221,6 @@ defmodule Dbservice.BlendedLearningActionItemsSchemaTest do
     )
   end
 
-  defp insert_attempt(scope) do
-    insert_row(@conversations, %{
-      student_id: scope.student_id,
-      program_id: scope.program_id,
-      mentor_user_id: scope.mentor_user_id,
-      kind: "attempt",
-      academic_year: "2026-2027",
-      logged_by_email: "ops@example.org",
-      occurred_on: ~D[2026-10-26]
-    })
-  end
-
   defp insert_action_item(scope, conversation_id, attrs) do
     insert_row(
       @action_items,
@@ -415,130 +250,5 @@ defmodule Dbservice.BlendedLearningActionItemsSchemaTest do
   defp assert_constraint(code, query) do
     assert {:error, {:error, %Postgrex.Error{postgres: %{code: ^code}}}} =
              Repo.transaction(fn -> Repo.rollback(query.()) end, mode: :savepoint)
-  end
-
-  defp column_types(table) do
-    Repo.query!(
-      """
-      SELECT column_name, data_type
-      FROM information_schema.columns
-      WHERE table_schema = 'public' AND table_name = $1
-      """,
-      [table]
-    ).rows
-    |> Map.new(fn [name, type] -> {name, type} end)
-  end
-
-  defp nullable_columns(table) do
-    Repo.query!(
-      """
-      SELECT column_name
-      FROM information_schema.columns
-      WHERE table_schema = 'public' AND table_name = $1 AND is_nullable = 'YES'
-      ORDER BY column_name
-      """,
-      [table]
-    ).rows
-    |> Enum.map(fn [name] -> name end)
-  end
-
-  defp column_lengths(table) do
-    Repo.query!(
-      """
-      SELECT column_name, character_maximum_length
-      FROM information_schema.columns
-      WHERE table_schema = 'public' AND table_name = $1
-        AND character_maximum_length IS NOT NULL
-      """,
-      [table]
-    ).rows
-    |> Map.new(fn [name, length] -> {name, length} end)
-  end
-
-  defp check_names(table) do
-    Repo.query!(
-      """
-      SELECT constraint_record.conname
-      FROM pg_constraint AS constraint_record
-      JOIN pg_class AS relation ON relation.oid = constraint_record.conrelid
-      JOIN pg_namespace AS namespace ON namespace.oid = relation.relnamespace
-      WHERE namespace.nspname = 'public'
-        AND relation.relname = $1
-        AND constraint_record.contype = 'c'
-      ORDER BY constraint_record.conname
-      """,
-      [table]
-    ).rows
-    |> Enum.map(fn [name] -> name end)
-  end
-
-  defp indexes(table) do
-    Repo.query!(
-      """
-      SELECT indexdef
-      FROM pg_indexes
-      WHERE schemaname = 'public' AND tablename = $1
-      ORDER BY indexname
-      """,
-      [table]
-    ).rows
-    |> Enum.map(fn [definition] -> definition end)
-  end
-
-  defp triggers(table) do
-    Repo.query!(
-      """
-      SELECT trigger_record.tgname, procedure.proname
-      FROM pg_trigger AS trigger_record
-      JOIN pg_class AS relation ON relation.oid = trigger_record.tgrelid
-      JOIN pg_proc AS procedure ON procedure.oid = trigger_record.tgfoid
-      WHERE relation.relname = $1 AND NOT trigger_record.tgisinternal
-      ORDER BY trigger_record.tgname
-      """,
-      [table]
-    ).rows
-    |> Enum.map(&List.to_tuple/1)
-  end
-
-  defp foreign_keys(table) do
-    Repo.query!(
-      """
-      SELECT constraint_record.conname,
-             ARRAY(
-               SELECT attribute.attname
-               FROM unnest(constraint_record.conkey) WITH ORDINALITY AS key(attnum, ordinality)
-               JOIN pg_attribute AS attribute
-                 ON attribute.attrelid = constraint_record.conrelid
-                AND attribute.attnum = key.attnum
-               ORDER BY key.ordinality
-             ),
-             referenced.relname,
-             ARRAY(
-               SELECT attribute.attname
-               FROM unnest(constraint_record.confkey) WITH ORDINALITY AS key(attnum, ordinality)
-               JOIN pg_attribute AS attribute
-                 ON attribute.attrelid = constraint_record.confrelid
-                AND attribute.attnum = key.attnum
-               ORDER BY key.ordinality
-             ),
-             CASE constraint_record.confdeltype
-               WHEN 'a' THEN 'NO ACTION'
-               WHEN 'r' THEN 'RESTRICT'
-               WHEN 'c' THEN 'CASCADE'
-               WHEN 'n' THEN 'SET NULL'
-               WHEN 'd' THEN 'SET DEFAULT'
-             END
-      FROM pg_constraint AS constraint_record
-      JOIN pg_class AS relation ON relation.oid = constraint_record.conrelid
-      JOIN pg_class AS referenced ON referenced.oid = constraint_record.confrelid
-      JOIN pg_namespace AS namespace ON namespace.oid = relation.relnamespace
-      WHERE namespace.nspname = 'public'
-        AND relation.relname = $1
-        AND constraint_record.contype = 'f'
-      ORDER BY constraint_record.conname
-      """,
-      [table]
-    ).rows
-    |> Enum.map(&List.to_tuple/1)
   end
 end

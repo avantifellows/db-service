@@ -6,9 +6,6 @@ defmodule Dbservice.Repo.Migrations.CreateBlendedLearningConversationDrafts do
   # drafted content only through the db-service machine API. The table is mutable; af_lms
   # owns state transitions, so there is no state-transition trigger.
   #
-  # `saved_conversation_id` is added by the next migration, which creates
-  # blended_learning_conversations and closes the draft <-> conversation FK cycle.
-  #
   # Blended Learning migration 2 of 8.
 
   @table :blended_learning_conversation_drafts
@@ -19,7 +16,6 @@ defmodule Dbservice.Repo.Migrations.CreateBlendedLearningConversationDrafts do
       add :program_id, references(:program, on_delete: :nothing), null: false
       add :academic_year, :string, null: false
       add :mentor_user_id, references(:user, on_delete: :nothing), null: false
-      add :created_by_user_id, references(:user, on_delete: :nothing)
       add :created_by_email, :string, size: 255, null: false
       add :state, :string, null: false
       add :occurred_on, :date
@@ -28,17 +24,12 @@ defmodule Dbservice.Repo.Migrations.CreateBlendedLearningConversationDrafts do
       add :duration_minutes, :integer
       add :call_recording_s3_key, :text, null: false
       add :recording_content_type, :string, null: false
-      add :recording_byte_size, :bigint, null: false
       add :transcript_s3_key, :text
       add :draft_summary, :text
-      add :draft_summary_tags, {:array, :text}
       add :draft_action_items, :jsonb
       add :draft_notes, :jsonb
-      add :draft_items_to_verify, :jsonb
-      add :detected_language, :string
       add :prompt_version, :string
       add :model_id, :string
-      add :ready_at, :utc_datetime
       add :discarded_at, :utc_datetime
 
       timestamps(default: fragment("now()"), null: false)
@@ -81,14 +72,6 @@ defmodule Dbservice.Repo.Migrations.CreateBlendedLearningConversationDrafts do
              check: "recording_content_type ~ '^audio/'"
            )
 
-    create constraint(@table, :bl_conversation_drafts_recording_byte_size_check,
-             check: "recording_byte_size > 0"
-           )
-
-    create constraint(@table, :bl_conversation_drafts_draft_summary_tags_check,
-             check: "draft_summary_tags IS NULL OR cardinality(draft_summary_tags) <= 4"
-           )
-
     create constraint(@table, :bl_conversation_drafts_draft_action_items_check,
              check: "draft_action_items IS NULL OR jsonb_typeof(draft_action_items) = 'array'"
            )
@@ -97,17 +80,11 @@ defmodule Dbservice.Repo.Migrations.CreateBlendedLearningConversationDrafts do
              check: "draft_notes IS NULL OR jsonb_typeof(draft_notes) = 'array'"
            )
 
-    create constraint(@table, :bl_conversation_drafts_draft_items_to_verify_check,
-             check:
-               "draft_items_to_verify IS NULL OR jsonb_typeof(draft_items_to_verify) = 'array'"
-           )
-
     create constraint(@table, :bl_conversation_drafts_state_check,
              check: "state IN ('transcribing', 'ready', 'failed', 'discarded', 'saved')"
            )
 
-    # State CHECKs are one-way implications; the `saved` one is added with
-    # saved_conversation_id in the next migration.
+    # State CHECKs are one-way implications.
     create constraint(@table, :bl_conversation_drafts_ready_check,
              check: """
              state <> 'ready'
@@ -117,7 +94,6 @@ defmodule Dbservice.Repo.Migrations.CreateBlendedLearningConversationDrafts do
                AND transcript_s3_key IS NOT NULL
                AND prompt_version IS NOT NULL
                AND model_id IS NOT NULL
-               AND ready_at IS NOT NULL
              )
              """
            )

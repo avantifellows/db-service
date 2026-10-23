@@ -189,8 +189,9 @@ _Avoid_: pending Conversation
 
 **Transcription Request**:
 The queued, running, completed or failed record asking `etl-next` to transcribe
-one Conversation Draft's Call Recording and draft its write-up. It follows the
-Holistic Regeneration Request state machine and run binding.
+one Conversation Draft's Call Recording and draft its write-up. `etl-next`
+binds its run id with its first status post; the run id is derived from the
+request key.
 _Avoid_: Regeneration Request, transcription job
 
 **Call Recording**:
@@ -201,8 +202,8 @@ _Avoid_: storing audio or transcripts in Postgres
 
 **Action Item**:
 A follow-up agreed in a Conversation, owned by the Student, the Mentor or the
-Parent, with an optional due date. Its only permitted change is open to done,
-recording the later Conversation that closed it.
+Parent, with no due date. Its only permitted change is open to done, recording
+the later Conversation that closed it.
 _Avoid_: Action (a School Visit term), task
 
 **Mentor Flag**:
@@ -211,20 +212,10 @@ A concern raised on one Conversation for one Flag Recipient
 comment; at most one per Recipient per Conversation, with no resolution status.
 _Avoid_: Intervention Flag, escalation
 
-**Summary Tag**:
-One of up to four short labels the drafting model appends to a Conversation
-Draft's summary. It is text, not a Mentor Flag.
-_Avoid_: flag
-
-**Items to Verify**:
-Names, numbers or phrases the drafting model could not make out with
-confidence, listed on the Conversation Draft for the Mentor to check.
-_Avoid_: errors, warnings
-
 **Student Links**:
-A Student's Profile Doc URL, Screener Link URL and optional legacy last-contact
-month, loaded from the Profile Dashboard Sheet by an LMS script, and an exact
-legacy last-contact date: the latest dated conversation in the Profile Doc.
+A Student's Profile Doc URL and Screener Link URL, loaded from the Profile
+Dashboard Sheet by an LMS script, and an exact legacy last-contact date from
+the Profile Doc: its latest dated conversation.
 _Avoid_: Student Profile, Holistic questionnaire links
 
 ## Relationships
@@ -280,8 +271,8 @@ _Avoid_: Student Profile, Holistic questionnaire links
 - Profile publication is atomic per Student and revalidates identity and scope.
 - Student eligibility mutations end affected active Mappings atomically.
 - Database sync includes all Holistic data for local and staging targets, including privacy-deletion markers. Oban job data is excluded from both targets.
-- Blended Learning Conversations, Attempts, Mentor Flags and Photos are
-  append-only; the only later write is an Action Item moving from open to done.
+- Blended Learning Conversations and Attempts are append-only (trigger); af_lms
+  only inserts Photos and Mentor Flags and only moves Action Items open to done.
 - `etl-next` reads Transcription Requests and writes Conversation Draft content
   only through the db-service API; it receives the Student's gender and the
   session details, never names or phone numbers.
@@ -331,7 +322,7 @@ restore erased text. Exercise rollback only on disposable databases.
 - The live staging deployment path may change, so release work must verify the
   currently active path rather than encode one historical workflow name.
 - "flag": a Blended Learning **Mentor Flag** is unrelated to Intervention
-  Flags and to Summary Tags.
+  Flags.
 
 ### Missing initial enrolled status utility (2026-09-17)
 

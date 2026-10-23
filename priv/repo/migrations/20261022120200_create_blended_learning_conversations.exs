@@ -4,9 +4,7 @@ defmodule Dbservice.Repo.Migrations.CreateBlendedLearningConversations do
   # LMS-owned: af_lms owns product reads and writes of Blended Learning Conversations and
   # Attempts directly over SQL, so there is no schema/context/controller here. An Attempt
   # is a row of kind `attempt`. Rows are append-only.
-  #
-  # This migration also adds blended_learning_conversation_drafts.saved_conversation_id,
-  # closing the draft <-> conversation FK cycle.
+  # A Conversation saved from a draft points back at it through source_draft_id.
   #
   # Blended Learning migration 3 of 8.
 
@@ -19,7 +17,6 @@ defmodule Dbservice.Repo.Migrations.CreateBlendedLearningConversations do
       add :program_id, references(:program, on_delete: :nothing), null: false
       add :academic_year, :string, null: false
       add :mentor_user_id, references(:user, on_delete: :nothing), null: false
-      add :logged_by_user_id, references(:user, on_delete: :nothing)
       add :logged_by_email, :string, size: 255, null: false
       add :kind, :string, null: false
       add :occurred_on, :date, null: false
@@ -136,63 +133,6 @@ defmodule Dbservice.Repo.Migrations.CreateBlendedLearningConversations do
       FOR EACH ROW EXECUTE FUNCTION blended_learning_protect_conversation()
       """,
       "DROP TRIGGER bl_conversations_immutable ON blended_learning_conversations"
-    )
-
-    alter table(@drafts) do
-      add :saved_conversation_id,
-          references(@table, with: [student_id: :student_id], on_delete: :nothing)
-    end
-
-    create constraint(@drafts, :bl_conversation_drafts_saved_check,
-             check: "state <> 'saved' OR saved_conversation_id IS NOT NULL"
-           )
-
-    # Shared kind rule for records attached to a Conversation (Action Items, Photos and
-    # Mentor Flags): they may reference only kind `conversation`, never `attempt`.
-    #
-    # Calling convention: attach as a BEFORE INSERT OR UPDATE ... FOR EACH ROW trigger and
-    # pass the name of each bigint column that references blended_learning_conversations(id)
-    # as a trigger argument. NULL references are skipped; a reference to an `attempt`
-    # raises SQLSTATE 23514. At least one argument is required. For example:
-    #
-    #   CREATE TRIGGER bl_action_items_conversation_kind
-    #   BEFORE INSERT OR UPDATE ON blended_learning_action_items
-    #   FOR EACH ROW EXECUTE FUNCTION
-    #     blended_learning_reject_attempt_reference('conversation_id', 'completed_by_conversation_id')
-    execute(
-      """
-      CREATE FUNCTION blended_learning_reject_attempt_reference()
-      RETURNS trigger
-      LANGUAGE plpgsql
-      AS $$
-      DECLARE
-        reference_column text;
-        referenced_id bigint;
-      BEGIN
-        IF TG_NARGS = 0 THEN
-          RAISE EXCEPTION 'blended_learning_reject_attempt_reference needs at least one column name';
-        END IF;
-
-        FOR argument_index IN 0 .. TG_NARGS - 1 LOOP
-          reference_column := TG_ARGV[argument_index];
-          EXECUTE format('SELECT ($1).%I::bigint', reference_column) INTO referenced_id USING NEW;
-
-          IF referenced_id IS NOT NULL AND EXISTS (
-            SELECT 1
-            FROM blended_learning_conversations
-            WHERE id = referenced_id AND kind = 'attempt'
-          ) THEN
-            RAISE EXCEPTION '% must reference a Blended Learning Conversation, not an Attempt',
-              reference_column
-              USING ERRCODE = '23514';
-          END IF;
-        END LOOP;
-
-        RETURN NEW;
-      END;
-      $$;
-      """,
-      "DROP FUNCTION blended_learning_reject_attempt_reference()"
     )
   end
 end

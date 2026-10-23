@@ -13,7 +13,6 @@ defmodule Dbservice.Repo.Migrations.CreateBlendedLearningFlagViews do
   def change do
     create table(@table) do
       add :viewer_email, :string, size: 255, null: false
-      add :viewer_user_id, references(:user, on_delete: :nothing)
       add :last_seen_at, :utc_datetime, null: false
 
       timestamps(default: fragment("now()"), null: false)

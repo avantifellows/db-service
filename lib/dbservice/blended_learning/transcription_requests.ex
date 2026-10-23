@@ -75,11 +75,11 @@ defmodule Dbservice.BlendedLearning.TranscriptionRequests do
   def get_transcription_request(_request_key), do: {:error, :transcription_request_not_found}
 
   @doc """
-  Moves a Transcription Request through `queued -> running -> completed | failed`,
-  following `Dbservice.HolisticMentorship.update_regeneration_request_status/2`.
+  Moves a Transcription Request from `queued` to `running` or `failed`, and from
+  `running` to `failed`. Completion happens only through `/draft`.
 
-  The first etl-next run to report binds its `etl_run_id`; identical replays return
-  the current state without writing.
+  The first status post binds the run id; identical replays return the current state
+  without writing.
   """
   def update_transcription_request_status(request_key, params) when is_binary(request_key) do
     with {:ok, fields} <- status_fields(params) do
@@ -110,18 +110,16 @@ defmodule Dbservice.BlendedLearning.TranscriptionRequests do
       run_id: params["etl_run_id"],
       transcript_s3_key: params["transcript_s3_key"],
       summary: params["summary"],
-      summary_tags: params["summary_tags"],
       action_items: params["action_items"],
       notes: params["notes"],
-      items_to_verify: params["items_to_verify"],
-      detected_language: params["detected_language"],
       prompt_version: params["prompt_version"],
       model_id: params["model_id"]
     }
 
-    if draft_text?(draft) and draft_content?(draft),
-      do: {:ok, draft},
-      else: {:error, :invalid_request}
+    if draft_text?(draft) and list_of?(draft.action_items, &action_item?/1) and
+         list_of?(draft.notes, &note?/1),
+       do: {:ok, draft},
+       else: {:error, :invalid_request}
   end
 
   defp draft_fields(_params), do: {:error, :invalid_request}
@@ -129,41 +127,24 @@ defmodule Dbservice.BlendedLearning.TranscriptionRequests do
   defp draft_text?(draft) do
     run_id?(draft.run_id) and bounded_string?(draft.transcript_s3_key, 255) and
       nonblank_string?(draft.summary) and bounded_string?(draft.prompt_version, 255) and
-      bounded_string?(draft.model_id, 255) and
-      bounded_optional_string?(draft.detected_language, 255)
-  end
-
-  defp draft_content?(draft) do
-    nonblank_strings?(draft.summary_tags) and length(draft.summary_tags) <= 4 and
-      list_of?(draft.action_items, &action_item?/1) and list_of?(draft.notes, &note?/1) and
-      nonblank_strings?(draft.items_to_verify)
+      bounded_string?(draft.model_id, 255)
   end
 
   # Element shapes are validated here, not by the database; unknown keys are rejected.
-  defp action_item?(%{"text" => text, "owner" => owner, "due_on" => due_on} = item)
-       when map_size(item) == 3,
-       do: nonblank_string?(text) and owner in ["student", "mentor", "parent"] and due_on?(due_on)
+  defp action_item?(%{"text" => text, "owner" => owner} = item) when map_size(item) == 2,
+    do: nonblank_string?(text) and owner in ["student", "mentor", "parent"]
 
   defp action_item?(_item), do: false
 
   defp note?(%{"heading" => heading, "points" => points} = note) when map_size(note) == 2,
-    do: nonblank_string?(heading) and nonblank_strings?(points)
+    do: nonblank_string?(heading) and list_of?(points, &nonblank_string?/1)
 
   defp note?(_note), do: false
-
-  defp due_on?(nil), do: true
-
-  defp due_on?(due_on) when is_binary(due_on),
-    do: due_on =~ ~r/\A\d{4}-\d{2}-\d{2}\z/ and match?({:ok, _date}, Date.from_iso8601(due_on))
-
-  defp due_on?(_due_on), do: false
-
-  defp nonblank_strings?(values), do: list_of?(values, &nonblank_string?/1)
 
   defp list_of?(values, valid?), do: is_list(values) and Enum.all?(values, valid?)
 
   defp submit_draft!(request_key, draft) do
-    {request_id, state, bound_run_id, _error_code, _error_message} = lock_request!(request_key)
+    {request_id, state, bound_run_id, _error_code} = lock_request!(request_key)
     {draft_id, draft_state} = lock_draft!(request_id)
 
     case {state, bound_run_id} do
@@ -178,7 +159,7 @@ defmodule Dbservice.BlendedLearning.TranscriptionRequests do
 
       {"running", _run_id} ->
         response = apply_draft!(draft_id, draft_state, draft)
-        update_request!(request_id, "completed", draft.run_id, nil, nil)
+        update_request!(request_id, "completed", draft.run_id, nil)
         response
 
       _queued ->
@@ -190,21 +171,16 @@ defmodule Dbservice.BlendedLearning.TranscriptionRequests do
     Repo.query!(
       """
       UPDATE blended_learning_conversation_drafts
-      SET state = 'ready', draft_summary = $2, draft_summary_tags = $3,
-          draft_action_items = $4, draft_notes = $5, draft_items_to_verify = $6,
-          transcript_s3_key = $7, detected_language = $8, prompt_version = $9,
-          model_id = $10, ready_at = now(), updated_at = now()
+      SET state = 'ready', draft_summary = $2, draft_action_items = $3, draft_notes = $4,
+          transcript_s3_key = $5, prompt_version = $6, model_id = $7, updated_at = now()
       WHERE id = $1
       """,
       [
         draft_id,
         draft.summary,
-        draft.summary_tags,
         draft.action_items,
         draft.notes,
-        draft.items_to_verify,
         draft.transcript_s3_key,
-        draft.detected_language,
         draft.prompt_version,
         draft.model_id
       ],
@@ -221,23 +197,16 @@ defmodule Dbservice.BlendedLearning.TranscriptionRequests do
 
   defp status_fields(%{"etl_run_id" => run_id, "state" => state} = params) do
     error_code = params["error_code"]
-    error_message = params["error_message"]
 
     valid_result =
       case state do
-        state when state in ["queued", "running", "completed"] ->
-          is_nil(error_code) and is_nil(error_message)
-
-        "failed" ->
-          bounded_optional_string?(error_code, 64) and
-            bounded_optional_string?(error_message, 500)
-
-        _ ->
-          false
+        "running" -> is_nil(error_code)
+        "failed" -> bounded_optional_string?(error_code, 64)
+        _ -> false
       end
 
     if run_id?(run_id) and valid_result,
-      do: {:ok, {run_id, state, error_code, error_message}},
+      do: {:ok, {run_id, state, error_code}},
       else: {:error, :invalid_request}
   end
 
@@ -246,55 +215,39 @@ defmodule Dbservice.BlendedLearning.TranscriptionRequests do
   defp transition!(request_key, fields) when is_binary(request_key),
     do: request_key |> lock_request!() |> transition!(fields)
 
-  defp transition!(
-         {_id, state, run_id, error_code, error_message},
-         {run_id, state, error_code, error_message}
-       ),
-       do: status_response(state, run_id, error_code, error_message)
+  defp transition!({_id, state, run_id, error_code}, {run_id, state, error_code}),
+    do: status_response(state, run_id, error_code)
 
-  defp transition!({_id, _state, run_id, _, _}, {other_run_id, _, _, _})
+  defp transition!({_id, _state, run_id, _}, {other_run_id, _, _})
        when not is_nil(run_id) and run_id != other_run_id,
        do: Repo.rollback(:etl_run_conflict)
 
-  defp transition!({id, "queued", nil, nil, nil}, {run_id, "queued", nil, nil}),
-    do: update_request!(id, "queued", run_id, nil, nil)
+  defp transition!({id, "queued", nil, nil}, {run_id, state, error_code})
+       when state in ["running", "failed"],
+       do: update_request!(id, state, run_id, error_code)
 
-  defp transition!({id, "queued", nil, nil, nil}, {run_id, "running", nil, nil}),
-    do: update_request!(id, "running", run_id, nil, nil)
+  defp transition!({id, "running", run_id, nil}, {run_id, "failed", error_code}),
+    do: update_request!(id, "failed", run_id, error_code)
 
-  defp transition!({id, "queued", run_id, nil, nil}, {run_id, "running", nil, nil}),
-    do: update_request!(id, "running", run_id, nil, nil)
-
-  defp transition!(
-         {id, "queued", run_id, nil, nil},
-         {run_id, "failed", error_code, error_message}
-       ),
-       do: update_request!(id, "failed", run_id, error_code, error_message)
-
-  defp transition!({id, "running", run_id, nil, nil}, {run_id, state, error_code, error_message})
-       when state in ["completed", "failed"],
-       do: update_request!(id, state, run_id, error_code, error_message)
-
-  defp transition!({_, state, _, _, _}, _fields) when state in ["completed", "failed"],
+  defp transition!({_, state, _, _}, _fields) when state in ["completed", "failed"],
     do: Repo.rollback(:terminal_status_conflict)
 
   defp transition!(_request, _fields), do: Repo.rollback(:invalid_transition)
 
-  defp update_request!(id, state, run_id, error_code, error_message) do
+  defp update_request!(id, state, run_id, error_code) do
     case Repo.query!(
            """
            UPDATE blended_learning_transcription_requests
-           SET state = $2, etl_run_id = $3, error_code = $4, error_message = $5,
-               updated_at = now()
+           SET state = $2, etl_run_id = $3, error_code = $4, updated_at = now()
            WHERE id = $1
-           RETURNING state, etl_run_id, error_code, error_message
+           RETURNING state, etl_run_id, error_code
            """,
-           [id, state, run_id, error_code, error_message],
+           [id, state, run_id, error_code],
            log: false
          ).rows do
-      [[state, run_id, error_code, error_message]] ->
+      [[state, run_id, error_code]] ->
         if state == "failed", do: fail_transcribing_draft!(id)
-        status_response(state, run_id, error_code, error_message)
+        status_response(state, run_id, error_code)
 
       _ ->
         Repo.rollback(:invalid_request)
@@ -323,7 +276,7 @@ defmodule Dbservice.BlendedLearning.TranscriptionRequests do
   defp lock_request!(request_key) do
     case Repo.query!(
            """
-           SELECT id, state, etl_run_id, error_code, error_message
+           SELECT id, state, etl_run_id, error_code
            FROM blended_learning_transcription_requests
            WHERE request_key = $1
            FOR UPDATE
@@ -331,8 +284,8 @@ defmodule Dbservice.BlendedLearning.TranscriptionRequests do
            [request_key],
            log: false
          ).rows do
-      [[id, state, run_id, error_code, error_message]] ->
-        {id, state, run_id, error_code, error_message}
+      [[id, state, run_id, error_code]] ->
+        {id, state, run_id, error_code}
 
       [] ->
         Repo.rollback(:transcription_request_not_found)
@@ -357,9 +310,8 @@ defmodule Dbservice.BlendedLearning.TranscriptionRequests do
     {draft_id, draft_state}
   end
 
-  defp status_response(state, run_id, error_code, error_message) do
-    %{state: state, etl_run_id: run_id, error_code: error_code, error_message: error_message}
-  end
+  defp status_response(state, run_id, error_code),
+    do: %{state: state, etl_run_id: run_id, error_code: error_code}
 
   defp run_id?(value), do: bounded_string?(value, 255)
 

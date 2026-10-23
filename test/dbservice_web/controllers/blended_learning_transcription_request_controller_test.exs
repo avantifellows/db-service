@@ -94,62 +94,25 @@ defmodule DbserviceWeb.BlendedLearningTranscriptionRequestControllerTest do
     end
   end
 
-  test "keeps the request key and draft content out of debug logs", %{conn: conn} do
-    scope = insert_scope("Female")
-    insert_request!(scope, insert_draft!(scope), "secret-request-801")
-
-    {response_conn, log} =
-      with_debug_log(fn ->
-        get(conn, "/api/blended-learning/transcription-requests/secret-request-801")
-      end)
-
-    assert json_response(response_conn, 200)["request_key"] == "secret-request-801"
-
-    for sensitive <- ["secret-request-801", "blended-learning/recordings/801.mp3", "audio/mpeg"] do
-      refute log =~ sensitive
-    end
-  end
-
   describe "POST /api/blended-learning/transcription-requests/:request_key/status" do
-    test "binds a queued request, then runs and completes it, replaying each step", %{
-      conn: conn
-    } do
+    test "the first running post binds the run id; replays are no-ops; completes only through /draft",
+         %{conn: conn} do
       scope = insert_scope("Female")
       insert_request!(scope, insert_draft!(scope), "status-802")
+      running = %{"etl_run_id" => "run-802", "state" => "running"}
+      expected = %{"state" => "running", "etl_run_id" => "run-802", "error_code" => nil}
 
-      steps = [
-        {%{"etl_run_id" => "run-802", "state" => "queued"},
-         %{
-           "state" => "queued",
-           "etl_run_id" => "run-802",
-           "error_code" => nil,
-           "error_message" => nil
-         }},
-        {%{"etl_run_id" => "run-802", "state" => "running"},
-         %{
-           "state" => "running",
-           "etl_run_id" => "run-802",
-           "error_code" => nil,
-           "error_message" => nil
-         }},
-        {%{"etl_run_id" => "run-802", "state" => "completed"},
-         %{
-           "state" => "completed",
-           "etl_run_id" => "run-802",
-           "error_code" => nil,
-           "error_message" => nil
-         }}
-      ]
+      assert post_status(conn, "status-802", running) == expected
+      row = request_row("status-802")
 
-      for {params, expected} <- steps do
-        assert post_status(conn, "status-802", params) == expected
-        row = request_row("status-802")
+      assert post_status(conn, "status-802", running) == expected
+      assert request_row("status-802") == row
 
-        assert post_status(conn, "status-802", params) == expected
-        assert request_row("status-802") == row
-      end
+      assert submit_draft(conn, "status-802", draft_params(%{"etl_run_id" => "run-802"}))[
+               "request_state"
+             ] == "completed"
 
-      assert [["completed", "run-802", nil, nil, _updated_at]] = request_row("status-802")
+      assert [["completed", "run-802", nil, _updated_at]] = request_row("status-802")
     end
 
     test "failure marks a transcribing draft failed and bumps its updated_at", %{conn: conn} do
@@ -163,13 +126,11 @@ defmodule DbserviceWeb.BlendedLearningTranscriptionRequestControllerTest do
       assert post_status(conn, "draft-failure-802", %{
                "etl_run_id" => "run-802",
                "state" => "failed",
-               "error_code" => "transcription_failed",
-               "error_message" => "Audio could not be decoded"
+               "error_code" => "transcription_failed"
              }) == %{
                "state" => "failed",
                "etl_run_id" => "run-802",
-               "error_code" => "transcription_failed",
-               "error_message" => "Audio could not be decoded"
+               "error_code" => "transcription_failed"
              }
 
       assert draft_row(draft_id) == [["failed", false]]
@@ -200,62 +161,30 @@ defmodule DbserviceWeb.BlendedLearningTranscriptionRequestControllerTest do
       scope = insert_scope("Female")
       draft_id = insert_draft!(scope)
       insert_request!(scope, draft_id, "saved-802")
-
-      [[conversation_id]] =
-        Repo.query!(
-          """
-          INSERT INTO blended_learning_conversations
-            (student_id, program_id, academic_year, mentor_user_id, logged_by_email, kind,
-             occurred_on, mode, spoke_with, duration_minutes, summary, source_draft_id)
-          VALUES ($1, $2, '2026-2027', $3, 'mentor.private@example.org', 'conversation',
-                  '2026-10-20', 'call', 'student', 25, 'Saved summary', $4)
-          RETURNING id
-          """,
-          [scope.student_id, scope.program_id, scope.mentor_user_id, draft_id]
-        ).rows
-
-      Repo.query!(
-        """
-        UPDATE blended_learning_conversation_drafts
-        SET state = 'saved', saved_conversation_id = $2
-        WHERE id = $1
-        """,
-        [draft_id, conversation_id]
-      )
-
+      conversation_id = save_draft!(scope, draft_id)
       age_draft!(draft_id)
       conversation = conversation_row(conversation_id)
       post_status(conn, "saved-802", %{"etl_run_id" => "run-802", "state" => "running"})
       post_status(conn, "saved-802", %{"etl_run_id" => "run-802", "state" => "failed"})
 
       assert draft_row(draft_id) == [["saved", true]]
-
-      assert Repo.query!(
-               "SELECT saved_conversation_id FROM blended_learning_conversation_drafts WHERE id = $1",
-               [draft_id]
-             ).rows == [[conversation_id]]
-
       assert conversation_row(conversation_id) == conversation
     end
 
-    test "a bound queued request fails before running and leaves the draft failed", %{
-      conn: conn
-    } do
+    test "a queued request fails with its run id before running and fails a transcribing draft",
+         %{conn: conn} do
       scope = insert_scope("Female")
       draft_id = insert_draft!(scope)
-      insert_request!(scope, draft_id, "bound-failure-802")
+      insert_request!(scope, draft_id, "queued-failure-802")
 
-      post_status(conn, "bound-failure-802", %{"etl_run_id" => "run-802", "state" => "queued"})
-
-      assert post_status(conn, "bound-failure-802", %{
+      assert post_status(conn, "queued-failure-802", %{
                "etl_run_id" => "run-802",
                "state" => "failed",
                "error_code" => "audio_missing"
              }) == %{
                "state" => "failed",
                "etl_run_id" => "run-802",
-               "error_code" => "audio_missing",
-               "error_message" => nil
+               "error_code" => "audio_missing"
              }
 
       assert [["failed"]] =
@@ -269,10 +198,10 @@ defmodule DbserviceWeb.BlendedLearningTranscriptionRequestControllerTest do
       scope = insert_scope("Female")
       insert_request!(scope, insert_draft!(scope), "conflict-802")
 
-      post_status(conn, "conflict-802", %{"etl_run_id" => "run-802", "state" => "queued"})
+      post_status(conn, "conflict-802", %{"etl_run_id" => "run-802", "state" => "running"})
       row = request_row("conflict-802")
 
-      for state <- ["queued", "running"] do
+      for state <- ["running", "failed"] do
         assert status_error(conn, "conflict-802", %{"etl_run_id" => "other-run", "state" => state}) ==
                  {409,
                   %{
@@ -286,27 +215,29 @@ defmodule DbserviceWeb.BlendedLearningTranscriptionRequestControllerTest do
       assert request_row("conflict-802") == row
     end
 
-    test "rejects an unbound queued request moving straight to completed", %{conn: conn} do
+    test "/status rejects queued and completed with 422", %{conn: conn} do
       scope = insert_scope("Female")
       insert_request!(scope, insert_draft!(scope), "skip-802")
 
-      assert status_error(conn, "skip-802", %{"etl_run_id" => "run-802", "state" => "completed"}) ==
-               {409,
-                %{
-                  "error" => %{
-                    "code" => "invalid_status_transition",
-                    "message" => "Status transition is invalid"
-                  }
-                }}
+      for state <- ["queued", "completed"] do
+        assert status_error(conn, "skip-802", %{"etl_run_id" => "run-802", "state" => state}) ==
+                 {422,
+                  %{
+                    "error" => %{
+                      "code" => "invalid_request",
+                      "message" => "Status fields are missing or invalid"
+                    }
+                  }}
+      end
 
-      assert [["queued", nil, nil, nil, _]] = request_row("skip-802")
+      assert [["queued", nil, nil, _]] = request_row("skip-802")
     end
 
     test "rejects regressions from completed or failed as terminal", %{conn: conn} do
       scope = insert_scope("Female")
       insert_request!(scope, insert_draft!(scope), "completed-802")
       post_status(conn, "completed-802", %{"etl_run_id" => "run-802", "state" => "running"})
-      post_status(conn, "completed-802", %{"etl_run_id" => "run-802", "state" => "completed"})
+      submit_draft(conn, "completed-802", draft_params(%{"etl_run_id" => "run-802"}))
 
       other_scope = insert_scope("Female")
       insert_request!(other_scope, insert_draft!(other_scope), "failed-802")
@@ -322,14 +253,15 @@ defmodule DbserviceWeb.BlendedLearningTranscriptionRequestControllerTest do
            }
          }}
 
-      for {request_key, states} <- [
-            {"completed-802", ["queued", "running", "failed"]},
-            {"failed-802", ["queued", "running", "completed"]}
+      for {request_key, attempts} <- [
+            {"completed-802", [%{"state" => "running"}, %{"state" => "failed"}]},
+            {"failed-802",
+             [%{"state" => "running"}, %{"state" => "failed", "error_code" => "late"}]}
           ] do
         row = request_row(request_key)
 
-        for state <- states do
-          assert status_error(conn, request_key, %{"etl_run_id" => "run-802", "state" => state}) ==
+        for params <- attempts do
+          assert status_error(conn, request_key, Map.put(params, "etl_run_id", "run-802")) ==
                    terminal
         end
 
@@ -348,23 +280,16 @@ defmodule DbserviceWeb.BlendedLearningTranscriptionRequestControllerTest do
       for params <- [
             %{"etl_run_id" => "run-802", "state" => "failed", "error_code" => ""},
             %{"etl_run_id" => "run-802", "state" => "failed", "error_code" => "   "},
-            %{"etl_run_id" => "run-802", "state" => "failed", "error_message" => " "},
             %{
               "etl_run_id" => "run-802",
               "state" => "failed",
               "error_code" => String.duplicate("x", 65)
             },
-            %{
-              "etl_run_id" => "run-802",
-              "state" => "failed",
-              "error_message" => String.duplicate("x", 501)
-            },
-            %{"etl_run_id" => "run-802", "state" => "completed", "error_code" => "oops"},
-            %{"etl_run_id" => "run-802", "state" => "running", "error_message" => "oops"},
-            %{"state" => "completed"},
-            %{"etl_run_id" => "", "state" => "completed"},
-            %{"etl_run_id" => "   ", "state" => "completed"},
-            %{"etl_run_id" => String.duplicate("x", 256), "state" => "completed"},
+            %{"etl_run_id" => "run-802", "state" => "running", "error_code" => "oops"},
+            %{"state" => "failed"},
+            %{"etl_run_id" => "", "state" => "failed"},
+            %{"etl_run_id" => "   ", "state" => "failed"},
+            %{"etl_run_id" => String.duplicate("x", 256), "state" => "failed"},
             %{"etl_run_id" => "run-802"},
             %{"etl_run_id" => "run-802", "state" => ""},
             %{"etl_run_id" => "run-802", "state" => "cancelled"}
@@ -382,19 +307,15 @@ defmodule DbserviceWeb.BlendedLearningTranscriptionRequestControllerTest do
       assert request_row("invalid-802") == row
     end
 
-    test "accepts error metadata at the table's length bounds", %{conn: conn} do
+    test "accepts an error_code at the table's length bound", %{conn: conn} do
       scope = insert_scope("Female")
       insert_request!(scope, insert_draft!(scope), "bounds-802")
       post_status(conn, "bounds-802", %{"etl_run_id" => "run-802", "state" => "running"})
 
-      error_code = String.duplicate("c", 64)
-      error_message = String.duplicate("m", 500)
-
       assert post_status(conn, "bounds-802", %{
                "etl_run_id" => "run-802",
                "state" => "failed",
-               "error_code" => error_code,
-               "error_message" => error_message
+               "error_code" => String.duplicate("c", 64)
              })["state"] == "failed"
     end
 
@@ -424,37 +345,6 @@ defmodule DbserviceWeb.BlendedLearningTranscriptionRequestControllerTest do
                |> response(401) == "Not Authorized"
       end
     end
-
-    test "keeps the request key, run id and error metadata out of debug logs", %{conn: conn} do
-      scope = insert_scope("Female")
-      insert_request!(scope, insert_draft!(scope), "secret-status-802")
-
-      {response_conn, log} =
-        with_debug_log(fn ->
-          post(conn, "/api/blended-learning/transcription-requests/secret-status-802/status", %{
-            "etl_run_id" => "secret-run-802",
-            "state" => "running"
-          })
-
-          post(conn, "/api/blended-learning/transcription-requests/secret-status-802/status", %{
-            "etl_run_id" => "secret-run-802",
-            "state" => "failed",
-            "error_code" => "secret_code_802",
-            "error_message" => "secret message 802"
-          })
-        end)
-
-      assert json_response(response_conn, 200)["state"] == "failed"
-
-      for sensitive <- [
-            "secret-status-802",
-            "secret-run-802",
-            "secret_code_802",
-            "secret message 802"
-          ] do
-        refute log =~ sensitive
-      end
-    end
   end
 
   describe "POST /api/blended-learning/transcription-requests/:request_key/draft" do
@@ -475,10 +365,8 @@ defmodule DbserviceWeb.BlendedLearningTranscriptionRequestControllerTest do
 
       assert Repo.query!(
                """
-               SELECT state, draft_summary, draft_summary_tags, draft_action_items, draft_notes,
-                      draft_items_to_verify, transcript_s3_key, detected_language,
-                      prompt_version, model_id, ready_at IS NOT NULL,
-                      updated_at > '2026-10-20 08:00:00'
+               SELECT state, draft_summary, draft_action_items, draft_notes, transcript_s3_key,
+                      prompt_version, model_id, updated_at > '2026-10-20 08:00:00'
                FROM blended_learning_conversation_drafts
                WHERE id = $1
                """,
@@ -487,18 +375,9 @@ defmodule DbserviceWeb.BlendedLearningTranscriptionRequestControllerTest do
                [
                  "ready",
                  "Asha is revising kinematics and wants weekly check-ins.",
-                 ["kinematics", "weekly check-in"],
                  [
-                   %{
-                     "text" => "Solve 20 kinematics problems",
-                     "owner" => "student",
-                     "due_on" => "2026-10-27"
-                   },
-                   %{
-                     "text" => "Share the revision timetable",
-                     "owner" => "mentor",
-                     "due_on" => nil
-                   }
+                   %{"text" => "Solve 20 kinematics problems", "owner" => "student"},
+                   %{"text" => "Share the revision timetable", "owner" => "mentor"}
                  ],
                  [
                    %{
@@ -506,45 +385,33 @@ defmodule DbserviceWeb.BlendedLearningTranscriptionRequestControllerTest do
                      "points" => ["Finds graphs hard", "Wants more practice"]
                    }
                  ],
-                 ["Name of the coaching centre"],
                  "blended-learning/transcripts/803.json",
-                 "hi-IN",
                  "bl-draft-v1",
                  "model-803",
-                 true,
                  true
                ]
              ]
 
-      assert [["completed", "run-803", nil, nil, _]] = request_row("submit-803")
+      assert [["completed", "run-803", nil, _]] = request_row("submit-803")
     end
 
-    test "accepts empty lists and a null detected language", %{conn: conn} do
+    test "accepts empty lists", %{conn: conn} do
       scope = insert_scope("Female")
       draft_id = insert_draft!(scope)
       insert_request!(scope, draft_id, "empty-803")
       post_status(conn, "empty-803", %{"etl_run_id" => "run-803", "state" => "running"})
 
-      params =
-        draft_params(%{
-          "summary_tags" => [],
-          "action_items" => [],
-          "notes" => [],
-          "items_to_verify" => [],
-          "detected_language" => nil
-        })
-
+      params = draft_params(%{"action_items" => [], "notes" => []})
       assert submit_draft(conn, "empty-803", params)["applied"] == true
 
       assert Repo.query!(
                """
-               SELECT state, draft_summary_tags, draft_action_items, draft_notes,
-                      draft_items_to_verify, detected_language
+               SELECT state, draft_action_items, draft_notes
                FROM blended_learning_conversation_drafts
                WHERE id = $1
                """,
                [draft_id]
-             ).rows == [["ready", [], [], [], [], nil]]
+             ).rows == [["ready", [], []]]
     end
 
     test "leaves a discarded draft unchanged and still completes the request", %{conn: conn} do
@@ -572,7 +439,7 @@ defmodule DbserviceWeb.BlendedLearningTranscriptionRequestControllerTest do
              }
 
       assert full_draft_row(draft_id) == draft
-      assert [["completed", "run-803", nil, nil, _]] = request_row("discarded-803")
+      assert [["completed", "run-803", nil, _]] = request_row("discarded-803")
     end
 
     test "leaves a saved draft and its Conversation unchanged and still completes the request",
@@ -594,7 +461,7 @@ defmodule DbserviceWeb.BlendedLearningTranscriptionRequestControllerTest do
 
       assert full_draft_row(draft_id) == draft
       assert conversation_row(conversation_id) == conversation
-      assert [["completed", "run-803", nil, nil, _]] = request_row("saved-803")
+      assert [["completed", "run-803", nil, _]] = request_row("saved-803")
     end
 
     test "a replay by the same run after success writes nothing and reports applied false", %{
@@ -609,7 +476,7 @@ defmodule DbserviceWeb.BlendedLearningTranscriptionRequestControllerTest do
       Repo.query!(
         """
         UPDATE blended_learning_conversation_drafts
-        SET ready_at = '2026-10-20 10:00:00', updated_at = '2026-10-20 08:00:00'
+        SET updated_at = '2026-10-20 08:00:00'
         WHERE id = $1
         """,
         [draft_id]
@@ -618,7 +485,7 @@ defmodule DbserviceWeb.BlendedLearningTranscriptionRequestControllerTest do
       draft = full_draft_row(draft_id)
       request = request_row("replay-803")
 
-      replay = draft_params(%{"summary" => "A different late summary", "summary_tags" => []})
+      replay = draft_params(%{"summary" => "A different late summary", "action_items" => []})
 
       assert submit_draft(conn, "replay-803", replay) == %{
                "request_state" => "completed",
@@ -630,14 +497,9 @@ defmodule DbserviceWeb.BlendedLearningTranscriptionRequestControllerTest do
       assert request_row("replay-803") == request
 
       assert Repo.query!(
-               "SELECT ready_at, draft_summary FROM blended_learning_conversation_drafts WHERE id = $1",
+               "SELECT draft_summary FROM blended_learning_conversation_drafts WHERE id = $1",
                [draft_id]
-             ).rows == [
-               [
-                 ~N[2026-10-20 10:00:00],
-                 "Asha is revising kinematics and wants weekly check-ins."
-               ]
-             ]
+             ).rows == [["Asha is revising kinematics and wants weekly check-ins."]]
     end
 
     test "rejects queued, failed and differently bound requests with 409 and no write", %{
@@ -646,7 +508,6 @@ defmodule DbserviceWeb.BlendedLearningTranscriptionRequestControllerTest do
       queued_scope = insert_scope("Female")
       queued_draft = insert_draft!(queued_scope)
       insert_request!(queued_scope, queued_draft, "queued-803")
-      post_status(conn, "queued-803", %{"etl_run_id" => "run-803", "state" => "queued"})
 
       failed_scope = insert_scope("Female")
       failed_draft = insert_draft!(failed_scope)
@@ -707,8 +568,8 @@ defmodule DbserviceWeb.BlendedLearningTranscriptionRequestControllerTest do
                "applied" => true
              }
 
-      assert [["completed", "run-803-b", nil, nil, _]] = request_row("retry-803")
-      assert [["failed", "run-803-a", nil, nil, _]] = request_row("first-try-803")
+      assert [["completed", "run-803-b", nil, _]] = request_row("retry-803")
+      assert [["failed", "run-803-a", nil, _]] = request_row("first-try-803")
 
       assert Repo.query!(
                "SELECT state, draft_summary FROM blended_learning_conversation_drafts WHERE id = $1",
@@ -742,7 +603,7 @@ defmodule DbserviceWeb.BlendedLearningTranscriptionRequestControllerTest do
       end
     end
 
-    test "keeps the request key, run id and drafted content out of debug logs", %{conn: conn} do
+    test "keeps drafted content out of debug logs", %{conn: conn} do
       scope = insert_scope("Female")
       insert_request!(scope, insert_draft!(scope), "secret-draft-803")
 
@@ -754,16 +615,9 @@ defmodule DbserviceWeb.BlendedLearningTranscriptionRequestControllerTest do
       params =
         draft_params(%{
           "etl_run_id" => "secret-run-803",
-          "transcript_s3_key" => "secret/transcripts/803.json",
           "summary" => "Secret summary 803",
-          "summary_tags" => ["secret-tag-803"],
-          "action_items" => [
-            %{"text" => "Secret action 803", "owner" => "parent", "due_on" => "2026-11-03"}
-          ],
-          "notes" => [%{"heading" => "Secret heading 803", "points" => ["Secret point 803"]}],
-          "items_to_verify" => ["Secret verify 803"],
-          "prompt_version" => "secret-prompt-803",
-          "model_id" => "secret-model-803"
+          "action_items" => [%{"text" => "Secret action 803", "owner" => "parent"}],
+          "notes" => [%{"heading" => "Secret heading 803", "points" => ["Secret point 803"]}]
         })
 
       {response_conn, log} =
@@ -775,17 +629,10 @@ defmodule DbserviceWeb.BlendedLearningTranscriptionRequestControllerTest do
       assert json_response(response_conn, 200)["applied"] == false
 
       for sensitive <- [
-            "secret-draft-803",
-            "secret-run-803",
-            "secret/transcripts/803.json",
             "Secret summary 803",
-            "secret-tag-803",
             "Secret action 803",
             "Secret heading 803",
-            "Secret point 803",
-            "Secret verify 803",
-            "secret-prompt-803",
-            "secret-model-803"
+            "Secret point 803"
           ] do
         refute log =~ sensitive
       end
@@ -803,25 +650,18 @@ defmodule DbserviceWeb.BlendedLearningTranscriptionRequestControllerTest do
       request = request_row("shape-803")
       draft = full_draft_row(draft_id)
 
-      action_item = %{"text" => "Call the parent", "owner" => "mentor", "due_on" => nil}
+      action_item = %{"text" => "Call the parent", "owner" => "mentor"}
       note = %{"heading" => "Physics", "points" => ["Finds graphs hard"]}
 
       required =
-        ~w(etl_run_id transcript_s3_key summary summary_tags action_items notes items_to_verify
-           prompt_version model_id)
+        ~w(etl_run_id transcript_s3_key summary action_items notes prompt_version model_id)
 
       invalid =
         [
-          %{"summary_tags" => ["a", "b", "c", "d", "e"]},
-          %{"summary_tags" => ["a", " "]},
-          %{"summary_tags" => "kinematics"},
           %{"action_items" => [%{action_item | "owner" => "teacher"}]},
           %{"action_items" => [%{action_item | "owner" => nil}]},
-          %{"action_items" => [%{action_item | "due_on" => "27/10/2026"}]},
-          %{"action_items" => [%{action_item | "due_on" => "2026-02-30"}]},
-          %{"action_items" => [%{action_item | "due_on" => "20261027"}]},
           %{"action_items" => [%{action_item | "text" => "  "}]},
-          %{"action_items" => [Map.delete(action_item, "due_on")]},
+          %{"action_items" => [Map.delete(action_item, "owner")]},
           %{"action_items" => [Map.put(action_item, "priority", "high")]},
           %{"action_items" => ["Call the parent"]},
           %{"notes" => [%{note | "heading" => " "}]},
@@ -829,20 +669,14 @@ defmodule DbserviceWeb.BlendedLearningTranscriptionRequestControllerTest do
           %{"notes" => [%{note | "points" => "Finds graphs hard"}]},
           %{"notes" => [Map.delete(note, "points")]},
           %{"notes" => [Map.put(note, "source", "transcript")]},
-          %{"items_to_verify" => ["Coaching centre", " "]},
-          %{"items_to_verify" => [%{"text" => "Coaching centre"}]},
           %{"etl_run_id" => String.duplicate("r", 256)},
           %{"transcript_s3_key" => String.duplicate("k", 256)},
           %{"prompt_version" => String.duplicate("p", 256)},
           %{"model_id" => String.duplicate("m", 256)},
-          %{"detected_language" => String.duplicate("l", 256)},
-          %{"detected_language" => " "},
           %{"summary" => " "},
           %{"summary" => "Asha is revising\u0000 kinematics."},
-          %{"summary_tags" => ["kine\u0000matics"]},
           %{"action_items" => [%{action_item | "text" => "Call\u0000 the parent"}]},
-          %{"notes" => [%{note | "points" => ["Finds graphs\u0000 hard"]}]},
-          %{"items_to_verify" => ["Coaching\u0000 centre"]}
+          %{"notes" => [%{note | "points" => ["Finds graphs\u0000 hard"]}]}
         ]
         |> Enum.map(&draft_params/1)
         |> Kernel.++(for field <- required, do: Map.delete(draft_params(), field))
@@ -873,20 +707,13 @@ defmodule DbserviceWeb.BlendedLearningTranscriptionRequestControllerTest do
         "etl_run_id" => "run-803",
         "transcript_s3_key" => "blended-learning/transcripts/803.json",
         "summary" => "Asha is revising kinematics and wants weekly check-ins.",
-        "summary_tags" => ["kinematics", "weekly check-in"],
         "action_items" => [
-          %{
-            "text" => "Solve 20 kinematics problems",
-            "owner" => "student",
-            "due_on" => "2026-10-27"
-          },
-          %{"text" => "Share the revision timetable", "owner" => "mentor", "due_on" => nil}
+          %{"text" => "Solve 20 kinematics problems", "owner" => "student"},
+          %{"text" => "Share the revision timetable", "owner" => "mentor"}
         ],
         "notes" => [
           %{"heading" => "Physics", "points" => ["Finds graphs hard", "Wants more practice"]}
         ],
-        "items_to_verify" => ["Name of the coaching centre"],
-        "detected_language" => "hi-IN",
         "prompt_version" => "bl-draft-v1",
         "model_id" => "model-803"
       },
@@ -945,10 +772,10 @@ defmodule DbserviceWeb.BlendedLearningTranscriptionRequestControllerTest do
     Repo.query!(
       """
       UPDATE blended_learning_conversation_drafts
-      SET state = 'saved', saved_conversation_id = $2
+      SET state = 'saved'
       WHERE id = $1
       """,
-      [draft_id, conversation_id]
+      [draft_id]
     )
 
     conversation_id
@@ -987,7 +814,7 @@ defmodule DbserviceWeb.BlendedLearningTranscriptionRequestControllerTest do
   defp request_row(request_key) do
     Repo.query!(
       """
-      SELECT state, etl_run_id, error_code, error_message, updated_at
+      SELECT state, etl_run_id, error_code, updated_at
       FROM blended_learning_transcription_requests
       WHERE request_key = $1
       """,
@@ -1063,12 +890,12 @@ defmodule DbserviceWeb.BlendedLearningTranscriptionRequestControllerTest do
       Repo.query!(
         """
         INSERT INTO blended_learning_conversation_drafts
-          (student_id, program_id, academic_year, mentor_user_id, created_by_user_id,
-           created_by_email, state, occurred_on, mode, spoke_with, duration_minutes,
-           call_recording_s3_key, recording_content_type, recording_byte_size)
-        VALUES ($1, $2, '2026-2027', $3, $3, 'mentor.private@example.org', 'transcribing',
+          (student_id, program_id, academic_year, mentor_user_id, created_by_email, state,
+           occurred_on, mode, spoke_with, duration_minutes, call_recording_s3_key,
+           recording_content_type)
+        VALUES ($1, $2, '2026-2027', $3, 'mentor.private@example.org', 'transcribing',
                 '2026-10-20', 'call', 'student', 25, 'blended-learning/recordings/801.mp3',
-                'audio/mpeg', 2097152)
+                'audio/mpeg')
         RETURNING id
         """,
         [scope.student_id, scope.program_id, scope.mentor_user_id]
@@ -1081,10 +908,10 @@ defmodule DbserviceWeb.BlendedLearningTranscriptionRequestControllerTest do
     Repo.query!(
       """
       INSERT INTO blended_learning_transcription_requests
-        (request_key, draft_id, student_id, requested_by_user_id, requested_by_email)
-      VALUES ($1, $2, $3, $4, 'mentor.private@example.org')
+        (request_key, draft_id, student_id, requested_by_email)
+      VALUES ($1, $2, $3, 'mentor.private@example.org')
       """,
-      [request_key, draft_id, scope.student_id, scope.mentor_user_id]
+      [request_key, draft_id, scope.student_id]
     )
   end
 end

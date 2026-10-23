@@ -4,7 +4,7 @@ defmodule Dbservice.Repo.Migrations.CreateBlendedLearningConversationPhotos do
   # LMS-owned: af_lms owns product reads and writes of Blended Learning Conversation
   # Photos directly over SQL, so there is no schema/context/controller here. A Mentor may
   # attach up to five images of at most 10 MiB each to a Conversation as evidence of an
-  # in-person meeting. Rows are append-only; the image itself lives in S3.
+  # in-person meeting. af_lms only inserts rows; the image itself lives in S3.
   #
   # Blended Learning migration 5 of 8.
 
@@ -41,38 +41,5 @@ defmodule Dbservice.Repo.Migrations.CreateBlendedLearningConversationPhotos do
     create constraint(@table, :bl_conversation_photos_byte_size_check,
              check: "byte_size BETWEEN 1 AND 10485760"
            )
-
-    execute(
-      """
-      CREATE FUNCTION blended_learning_protect_conversation_photo()
-      RETURNS trigger
-      LANGUAGE plpgsql
-      AS $$
-      BEGIN
-        RAISE EXCEPTION 'Blended Learning Conversation Photos are append-only'
-          USING ERRCODE = '23514';
-      END;
-      $$;
-      """,
-      "DROP FUNCTION blended_learning_protect_conversation_photo()"
-    )
-
-    execute(
-      """
-      CREATE TRIGGER bl_conversation_photos_immutable
-      BEFORE UPDATE OR DELETE ON blended_learning_conversation_photos
-      FOR EACH ROW EXECUTE FUNCTION blended_learning_protect_conversation_photo()
-      """,
-      "DROP TRIGGER bl_conversation_photos_immutable ON blended_learning_conversation_photos"
-    )
-
-    execute(
-      """
-      CREATE TRIGGER bl_conversation_photos_conversation_kind
-      BEFORE INSERT OR UPDATE ON blended_learning_conversation_photos
-      FOR EACH ROW EXECUTE FUNCTION blended_learning_reject_attempt_reference('conversation_id')
-      """,
-      "DROP TRIGGER bl_conversation_photos_conversation_kind ON blended_learning_conversation_photos"
-    )
   end
 end

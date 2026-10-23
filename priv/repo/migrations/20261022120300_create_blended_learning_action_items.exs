@@ -4,7 +4,8 @@ defmodule Dbservice.Repo.Migrations.CreateBlendedLearningActionItems do
   # LMS-owned: af_lms owns product reads and writes of Blended Learning Action Items
   # directly over SQL, so there is no schema/context/controller here. An Action Item is
   # created on a Conversation and may change only once, from open to done, by linking the
-  # later Conversation that closed it.
+  # later Conversation that closed it. Open to done is enforced by af_lms and
+  # `bl_action_items_completion_check`.
   #
   # Blended Learning migration 4 of 8.
 
@@ -21,7 +22,6 @@ defmodule Dbservice.Repo.Migrations.CreateBlendedLearningActionItems do
       add :position, :integer, null: false
       add :text, :text, null: false
       add :owner, :string, null: false
-      add :due_on, :date
       add :status, :string, null: false, default: "open"
 
       add :completed_by_conversation_id,
@@ -71,65 +71,5 @@ defmodule Dbservice.Repo.Migrations.CreateBlendedLearningActionItems do
              )
              """
            )
-
-    execute(
-      """
-      CREATE FUNCTION blended_learning_protect_action_item()
-      RETURNS trigger
-      LANGUAGE plpgsql
-      AS $$
-      BEGIN
-        IF TG_OP = 'UPDATE'
-          AND OLD.status = 'open'
-          AND NEW.status = 'done'
-          AND (
-            NEW.id,
-            NEW.conversation_id,
-            NEW.student_id,
-            NEW.position,
-            NEW.text,
-            NEW.owner,
-            NEW.due_on,
-            NEW.inserted_at
-          ) IS NOT DISTINCT FROM (
-            OLD.id,
-            OLD.conversation_id,
-            OLD.student_id,
-            OLD.position,
-            OLD.text,
-            OLD.owner,
-            OLD.due_on,
-            OLD.inserted_at
-          )
-        THEN
-          RETURN NEW;
-        END IF;
-
-        RAISE EXCEPTION 'Blended Learning Action Items may change only from open to done'
-          USING ERRCODE = '23514';
-      END;
-      $$;
-      """,
-      "DROP FUNCTION blended_learning_protect_action_item()"
-    )
-
-    execute(
-      """
-      CREATE TRIGGER bl_action_items_immutable
-      BEFORE UPDATE OR DELETE ON blended_learning_action_items
-      FOR EACH ROW EXECUTE FUNCTION blended_learning_protect_action_item()
-      """,
-      "DROP TRIGGER bl_action_items_immutable ON blended_learning_action_items"
-    )
-
-    execute(
-      """
-      CREATE TRIGGER bl_action_items_conversation_kind
-      BEFORE INSERT OR UPDATE ON blended_learning_action_items
-      FOR EACH ROW EXECUTE FUNCTION
-        blended_learning_reject_attempt_reference('conversation_id', 'completed_by_conversation_id')
-      """,
-      "DROP TRIGGER bl_action_items_conversation_kind ON blended_learning_action_items"
-    )
   end
 end
