@@ -33,16 +33,18 @@ defmodule Dbservice.LmsCurriculumPlansSchemaTest do
       assert_constraint(:check_violation, fn -> insert_plan(grade.id, status: "archived") end)
     end
 
-    test "requires a non-empty subset of the three content Exam Tracks" do
+    test "requires a non-empty subset of JEE Main, JEE Advanced, NEET and CET" do
       grade = grade_fixture(%{number: 11})
 
       assert {:ok, _} =
-               insert_plan(grade.id, exam_tracks: ["jee_main", "jee_advanced", "neet"])
+               insert_plan(grade.id, exam_tracks: ["jee_main", "jee_advanced", "neet", "cet"])
+
+      assert {:ok, _} = insert_plan(grade.id, exam_tracks: ["cet"])
 
       assert_constraint(:check_violation, fn -> insert_plan(grade.id, exam_tracks: []) end)
 
       assert_constraint(:check_violation, fn ->
-        insert_plan(grade.id, exam_tracks: ["jee_main", "cet"])
+        insert_plan(grade.id, exam_tracks: ["jee_main", "math_foundation"])
       end)
 
       assert_constraint(:check_violation, fn ->
@@ -231,7 +233,8 @@ defmodule Dbservice.LmsCurriculumPlansSchemaTest do
   end
 
   # Not a behaviour test: the names are not used by af_lms. They are kept identical to the
-  # af_lms e2e fixture (20261019120000_add_lms_curriculum_plans.sql) so the two schemas stay
+  # af_lms e2e fixtures (20261019120000_add_lms_curriculum_plans.sql and
+  # 20261023091700_widen_lms_curriculum_plan_exam_tracks.sql) so the two schemas stay
   # comparable; the tests above cover what each constraint enforces.
   test "keeps the af_lms e2e fixture's constraint and index names" do
     assert db_constraints("lms_curriculum_plans") == [
@@ -262,17 +265,23 @@ defmodule Dbservice.LmsCurriculumPlansSchemaTest do
     assert %{rows: rows} =
              Repo.query!("""
              SELECT indexname FROM pg_indexes
-             WHERE tablename IN ('lms_curriculum_plans', 'lms_curriculum_plan_assignments')
-               AND indexname IN (
-                 'lms_curriculum_plans_academic_year_grade_index',
-                 'lms_curriculum_plan_assignments_plan_id_index'
-               )
+             WHERE tablename IN (
+                     'lms_curriculum_plans',
+                     'lms_curriculum_plan_chapters',
+                     'lms_curriculum_plan_assignments'
+                   )
+               AND indexname NOT LIKE '%_pkey'
              ORDER BY indexname
              """)
 
     assert rows == [
+             ["lms_curriculum_plan_assignments_centre_grade_year_index"],
+             ["lms_curriculum_plan_assignments_grade_id_index"],
              ["lms_curriculum_plan_assignments_plan_id_index"],
-             ["lms_curriculum_plans_academic_year_grade_index"]
+             ["lms_curriculum_plan_chapters_chapter_id_index"],
+             ["lms_curriculum_plan_chapters_plan_id_chapter_id_index"],
+             ["lms_curriculum_plans_academic_year_grade_index"],
+             ["lms_curriculum_plans_grade_id_index"]
            ]
   end
 
