@@ -231,12 +231,12 @@ restore erased text. Exercise rollback only on disposable databases.
 
 ### Post-Session Note Challenge Categories (LMS #457)
 
-last_updated: 2026-10-22
+last_updated: 2026-10-24
 
 Challenge Categories are `category_code` rows in
 `holistic_mentorship_post_session_note_challenges`, unique per Notes and code,
-nonblank and at most 100 characters. No CHECK restricts code values: LMS owns
-the code list. Writes are guarded like Post-Session answers (blocked after
+nonblank and at most 100 characters. No CHECK restricts the code list: LMS owns
+it. Writes are guarded like Post-Session answers (blocked after
 privacy deletion; deletes stay allowed for draft and privacy erasure).
 
 The privacy tombstone has no Challenge Category count: tombstones are immutable,
