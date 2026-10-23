@@ -8,6 +8,7 @@ defmodule Dbservice.BlendedLearningStudentLinksSchemaTest do
              "id" => "bigint",
              "inserted_at" => "timestamp without time zone",
              "legacy_last_contact_month" => "date",
+             "legacy_last_contact_on" => "date",
              "profile_doc_url" => "text",
              "screener_url" => "text",
              "student_id" => "bigint",
@@ -16,6 +17,7 @@ defmodule Dbservice.BlendedLearningStudentLinksSchemaTest do
 
     assert nullable_columns() == [
              "legacy_last_contact_month",
+             "legacy_last_contact_on",
              "profile_doc_url",
              "screener_url"
            ]
@@ -131,6 +133,36 @@ defmodule Dbservice.BlendedLearningStudentLinksSchemaTest do
              "SELECT legacy_last_contact_month FROM #{@table} WHERE id = $1",
              [link_id]
            ).rows == [[~D[2026-09-01]]]
+  end
+
+  test "stores any day, or NULL, as the exact legacy last-contact date" do
+    student_id = insert_student!()
+    assert {:ok, %{rows: [[link_id]]}} = insert_link(student_id, %{})
+
+    assert Repo.query!("SELECT legacy_last_contact_on FROM #{@table} WHERE id = $1", [link_id]).rows ==
+             [[nil]]
+
+    for date <- [~D[2026-09-17], ~D[2026-10-01], ~D[2026-08-31]] do
+      Repo.query!(
+        "UPDATE #{@table} SET legacy_last_contact_on = $1 WHERE id = $2",
+        [date, link_id]
+      )
+
+      assert Repo.query!(
+               "SELECT legacy_last_contact_on FROM #{@table} WHERE id = $1",
+               [link_id]
+             ).rows == [[date]]
+    end
+
+    Repo.query!(
+      "UPDATE #{@table} SET legacy_last_contact_on = NULL, legacy_last_contact_month = '2026-09-01' WHERE id = $1",
+      [link_id]
+    )
+
+    assert Repo.query!(
+             "SELECT legacy_last_contact_on, legacy_last_contact_month FROM #{@table} WHERE id = $1",
+             [link_id]
+           ).rows == [[nil, ~D[2026-09-01]]]
   end
 
   test "restricts deleting a Student that has Student Links" do

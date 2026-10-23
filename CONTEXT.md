@@ -223,7 +223,8 @@ _Avoid_: errors, warnings
 
 **Student Links**:
 A Student's Profile Doc URL, Screener Link URL and optional legacy last-contact
-month, loaded from the Profile Dashboard Sheet by an LMS script.
+month, loaded from the Profile Dashboard Sheet by an LMS script, and an exact
+legacy last-contact date: the latest dated conversation in the Profile Doc.
 _Avoid_: Student Profile, Holistic questionnaire links
 
 ## Relationships
