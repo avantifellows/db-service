@@ -201,12 +201,6 @@ _Avoid_: best-effort identity matching
   every nonnull answer becomes `Content erased under approved privacy request`,
   and null answers and all metadata (including timestamps) stay unchanged.
   Deletion, other edits and no-op updates remain forbidden.
-- Challenge Categories are stored as `category_code` rows in
-  `holistic_mentorship_post_session_note_challenges`, unique per Notes and code,
-  nonblank, and at most 100 characters; the database does not restrict code
-  values. Like Post-Session answers, inserts and updates take the Student
-  advisory lock and are blocked after privacy deletion; deletes stay allowed so
-  draft erasure and privacy erasure can remove them.
 - Raw questionnaire answers and rendered per-Student prompts are not persisted.
 - Profile Program eligibility comes from the Student's one current School and
   that School's canonical Program IDs; it does not require a Program enrollment.
@@ -239,15 +233,16 @@ restore erased text. Exercise rollback only on disposable databases.
 
 last_updated: 2026-10-22
 
-`20261022140000_create_holistic_mentorship_post_session_note_challenges` adds the
-table and a `holistic_mentorship_post_session_note_challenges` branch to
-`holistic_mentorship_reject_erased_student_content`; `down` restores the prior
-function body. There is no CHECK on code values, no API and no backfill. The
-privacy tombstone gains no Challenge Category count: tombstones are immutable,
-the LMS privacy erasure path is disabled, and LMS #457 makes it delete these rows
-before inserting the tombstone, as it does for Post-Session answers. A count can
-be added later as an additive defaulted column if that path needs one. Deploy
-schema before the LMS release.
+Challenge Categories are `category_code` rows in
+`holistic_mentorship_post_session_note_challenges`, unique per Notes and code,
+nonblank and at most 100 characters. No CHECK restricts code values: LMS owns
+the code list. Writes are guarded like Post-Session answers (blocked after
+privacy deletion; deletes stay allowed for draft and privacy erasure).
+
+The privacy tombstone has no Challenge Category count: tombstones are immutable,
+and LMS deletes these rows before inserting the tombstone, as it does for
+Post-Session answers. A count can be added later as a defaulted column if
+needed. There is no backfill. Deploy schema before the LMS release.
 
 ## Example Dialogue
 
