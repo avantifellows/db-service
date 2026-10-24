@@ -54,13 +54,17 @@ defmodule Dbservice.StudentExamRecordsTest do
       assert {"must be a valid email address", _} = changeset.errors[:exam_email]
     end
 
-    test "create_student_exam_record/1 rejects a phone that is not plain digits", %{attrs: attrs} do
-      assert {:error, changeset} =
-               StudentExamRecords.create_student_exam_record(
-                 Map.put(attrs, :exam_phone, "+91 98765 43210")
-               )
+    test "create_student_exam_record/1 rejects a phone that is not ten plain digits", %{
+      attrs: attrs
+    } do
+      # The last three are one number written three ways. Storing any of them would mean a
+      # search for 9876543210 no longer finds this record.
+      for value <- ["+91 98765 43210", "98765 43210", "1", "09876543210", "919876543210"] do
+        assert {:error, changeset} =
+                 StudentExamRecords.create_student_exam_record(Map.put(attrs, :exam_phone, value))
 
-      assert {"must contain only digits", _} = changeset.errors[:exam_phone]
+        assert changeset.errors[:exam_phone]
+      end
     end
 
     test "create_student_exam_record/1 rejects a roll number longer than the column", %{
@@ -83,6 +87,21 @@ defmodule Dbservice.StudentExamRecordsTest do
                  StudentExamRecords.create_student_exam_record(Map.put(attrs, :exam_year, year))
 
         assert changeset.errors[:exam_year]
+      end
+    end
+
+    test "create_student_exam_record/1 accepts the ends of the plausible year range", %{
+      attrs: attrs
+    } do
+      # The two boundaries themselves: the oldest attempt we would hold a record for, and
+      # next year's exam, whose registration opens in this one.
+      for year <- [1990, Date.utc_today().year + 1] do
+        assert {:ok, %StudentExamRecord{exam_year: ^year}} =
+                 StudentExamRecords.create_student_exam_record(
+                   attrs
+                   |> Map.put(:exam_year, year)
+                   |> Map.put(:application_number, "APP#{System.unique_integer([:positive])}")
+                 )
       end
     end
 

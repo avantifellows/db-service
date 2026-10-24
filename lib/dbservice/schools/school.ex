@@ -262,31 +262,18 @@ defmodule Dbservice.Schools.School do
 
   defp validate_contact_details(changeset) do
     changeset
-    |> trim_to_nil(:school_email)
     |> trim_to_nil(:principal_incharge_name)
-    |> trim_to_nil(:principal_incharge_contact)
     |> trim_to_nil(:pmu_coordinator_name)
-    |> trim_to_nil(:pmu_coordinator_contact)
-    # Deliberately loose - the only thing worth rejecting is a value that could
-    # not reach a mailbox.
-    |> validate_format(:school_email, ~r/\A[^\s@]+@[^\s@]+\.[^\s@]+\z/,
-      message: "must be a valid email address"
-    )
-    # Digits only, as on `user.phone` - a value carrying "+91" or spaces has not
-    # been normalized, and storing both forms makes the column unsearchable.
-    |> validate_contact_number(:principal_incharge_contact)
-    |> validate_contact_number(:pmu_coordinator_contact)
+    # One shared rule per kind of contact detail, in `Util`, so a school's numbers are
+    # held to the same shape as a student's and an exam record's and stay searchable
+    # across all three.
+    |> validate_email(:school_email)
+    |> validate_phone(:principal_incharge_contact)
+    |> validate_phone(:pmu_coordinator_contact)
     # The columns are varchar, which counts codepoints, so cap on codepoints -
     # otherwise a name in a non-Latin script passes here and fails on insert.
-    |> validate_length(:school_email, max: 255, count: :codepoints)
     |> validate_length(:principal_incharge_name, max: 100, count: :codepoints)
     |> validate_length(:pmu_coordinator_name, max: 100, count: :codepoints)
-  end
-
-  defp validate_contact_number(changeset, field) do
-    changeset
-    |> validate_format(field, ~r/\A\d+\z/, message: "must contain only digits")
-    |> validate_length(field, max: 15, count: :codepoints)
   end
 
   defp validate_statuses(changeset) do

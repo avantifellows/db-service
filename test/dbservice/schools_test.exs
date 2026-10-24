@@ -391,6 +391,48 @@ defmodule Dbservice.SchoolsTest do
 
       assert updated.user_id == created.user_id
     end
+
+    test "a row the school rejects leaves no user behind" do
+      user_count = Repo.aggregate(User, :count)
+
+      assert {:error, %Ecto.Changeset{}} =
+               Schools.create_or_update_school_with_user(
+                 Map.put(@with_user_attrs, "principal_incharge_contact", "+91 98765 43210")
+               )
+
+      assert Repo.aggregate(User, :count) == user_count
+      assert is_nil(Schools.get_school_by_code("SCH_WU_001"))
+    end
+
+    test "a rejected row leaves no user behind for a legacy school either" do
+      {:ok, legacy} = Schools.create_school(@with_user_attrs)
+      assert is_nil(legacy.user_id)
+      user_count = Repo.aggregate(User, :count)
+
+      assert {:error, %Ecto.Changeset{}} =
+               Schools.create_or_update_school_with_user(
+                 Map.put(@with_user_attrs, "school_email", "principal.example.com")
+               )
+
+      assert Repo.aggregate(User, :count) == user_count
+      assert is_nil(Schools.get_school_by_code("SCH_WU_001").user_id)
+    end
+
+    test "a rejected update leaves the linked user as it was" do
+      {:ok, created} = Schools.create_school_with_user(@with_user_attrs)
+      user = Users.get_user!(created.user_id)
+
+      assert {:error, %Ecto.Changeset{}} =
+               Schools.create_or_update_school_with_user(
+                 Map.merge(@with_user_attrs, %{
+                   "first_name" => "Renamed",
+                   "grades_offered" => "11,12,13"
+                 })
+               )
+
+      assert Users.get_user!(created.user_id).first_name == user.first_name
+      assert Schools.get_school_by_code("SCH_WU_001").name == "WU School"
+    end
   end
 
   describe "school profile details" do
@@ -563,20 +605,29 @@ defmodule Dbservice.SchoolsTest do
       assert "is invalid" in errors_on(changeset).school_residential_status
     end
 
-    test "a contact number carrying anything but digits is rejected" do
+    test "a contact number that is not ten plain digits is rejected" do
       school = school_fixture()
 
-      for value <- ["+91 98765 43210", "98765-43210", "not a number"] do
+      # The last three are the same number as the fixture's, written three other ways. If
+      # any of them were stored, a search for 9876543210 would no longer find this school.
+      for value <- [
+            "+91 98765 43210",
+            "98765-43210",
+            "not a number",
+            "1",
+            "09876543210",
+            "919876543210"
+          ] do
         assert {:error, changeset} =
                  Schools.update_school(school, %{principal_incharge_contact: value})
 
-        assert "must contain only digits" in errors_on(changeset).principal_incharge_contact
+        assert errors_on(changeset).principal_incharge_contact != []
       end
 
       assert {:error, changeset} =
                Schools.update_school(school, %{pmu_coordinator_contact: "+919876543210"})
 
-      assert "must contain only digits" in errors_on(changeset).pmu_coordinator_contact
+      assert errors_on(changeset).pmu_coordinator_contact != []
     end
 
     test "an email that could not reach a mailbox is rejected" do
