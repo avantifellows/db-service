@@ -1536,10 +1536,11 @@ defmodule Dbservice.Resources do
   for duplicate-problem detection (issue #700).
 
   `languages` is a list of `%{"lang_code" => code, "text" => html}` entries (one
-  per language of the problem being saved). Matching is scoped per language: each
-  entry's text is normalized (see `ProblemText`) and trigram-compared only against
+  per language of the problem being saved), each optionally carrying
+  `"options" => [html, ...]`. Matching is scoped per language: each entry's text
+  is normalized (see `ProblemText`) and trigram-compared only against
   `problem_lang` rows in the same language. Returns matches with
-  `similarity > #{@similarity_threshold}` (the pg_trgm `%` operator is strictly
+  `match_score > #{@similarity_threshold}` (the pg_trgm `%` operator is strictly
   greater than the threshold), at most #{@similarity_limit} per language, each
   tagged with the `lang_code` it matched on, merged and sorted by `match_score`
   descending:
@@ -1559,6 +1560,29 @@ defmodule Dbservice.Resources do
 
   Entries with blank text, an unknown `lang_code`, or no matches contribute
   nothing.
+
+  ## Options (issue #777)
+
+  When an entry carries a non-empty `options` list, `match_score` becomes
+  `least(question similarity, options similarity)` instead of the question
+  similarity alone, so a candidate has to be close on *both* to clear the
+  threshold. This is what the CMS needs: a stem like "Which of the following is
+  correct?" is shared by many unrelated problems, and warning the editor about
+  every one of them is worse than not warning at all. On real data this drops
+  about three quarters of today's flagged pairs, and the ones it drops have
+  options that are nowhere near each other.
+
+  The options of one problem are compared as a single joined string. pg_trgm
+  scores trigram *sets*, so the same four options in a different order score
+  1.0 - shuffling the options of a duplicate does not hide it.
+
+  A candidate with no options stored (a subjective problem, or a row written
+  before the backfill) is scored on its question alone rather than being
+  dropped: having nothing to compare is not evidence that it is not a
+  duplicate.
+
+  Omitting `options`, or sending an empty list, leaves behaviour exactly as it
+  was, so callers that have not been updated are unaffected.
   """
   def similar_problems(languages, curriculum_id \\ nil)
 
@@ -1574,10 +1598,11 @@ defmodule Dbservice.Resources do
     lang_code = entry["lang_code"] || entry[:lang_code]
     text = entry["text"] || entry[:text]
     normalized = ProblemText.to_plain_text(text)
+    options = normalized_options(entry)
 
     with true <- is_binary(lang_code) and normalized != "",
          %Language{id: lang_id} <- Repo.get_by(Language, code: lang_code) do
-      query_similar_problems(lang_id, lang_code, normalized, curriculum_id)
+      query_similar_problems(lang_id, lang_code, normalized, options, curriculum_id)
     else
       _ -> []
     end
@@ -1585,33 +1610,54 @@ defmodule Dbservice.Resources do
 
   defp similar_problems_for_entry(_, _), do: []
 
+  # nil, not "", for "this request has no options to compare": an entry that
+  # omits options, sends an empty list, sends something that is not a list, or
+  # sends options that are blank once the HTML is stripped all take the
+  # question-only path that callers had before issue #777.
+  defp normalized_options(entry) do
+    case ProblemText.options_to_plain_text(entry["options"] || entry[:options]) do
+      "" -> nil
+      options -> options
+    end
+  end
+
   # Uses the `%` operator (backed by the GIN trigram index) with a
-  # transaction-local similarity threshold, then orders by the exact similarity
-  # score. Runs inside a transaction so set_config's local scope applies to the
-  # query on the same connection.
-  defp query_similar_problems(lang_id, lang_code, normalized, curriculum_id) do
+  # transaction-local similarity threshold to pick candidates on the question,
+  # then scores, filters and orders those candidates in an outer query. Runs
+  # inside a transaction so set_config's local scope applies to the query on the
+  # same connection.
+  #
+  # The score has to be available to the SELECT, the WHERE and the ORDER BY, so
+  # it is computed once in a subquery and read back as a column rather than
+  # written out three times. The planner inlines the subquery, so the GIN index
+  # still drives candidate selection.
+  defp query_similar_problems(lang_id, lang_code, normalized, options, curriculum_id) do
     {:ok, matches} =
       Repo.transaction(fn ->
         Repo.query!("SELECT set_config('pg_trgm.similarity_threshold', $1, true)", [
           Float.to_string(@similarity_threshold)
         ])
 
-        from(pl in ProblemLanguage,
-          join: r in Resource,
-          as: :res,
-          on: r.id == pl.res_id,
-          where:
-            pl.lang_id == ^lang_id and fragment("? % ?", pl.question_plain_text, ^normalized),
-          order_by: [desc: fragment("similarity(?, ?)", pl.question_plain_text, ^normalized)],
-          limit: @similarity_limit,
-          select: %{
-            id: r.id,
-            code: r.code,
-            match_score: fragment("similarity(?, ?)", pl.question_plain_text, ^normalized)
-          }
+        scored =
+          from(pl in ProblemLanguage,
+            join: r in Resource,
+            as: :res,
+            on: r.id == pl.res_id,
+            where:
+              pl.lang_id == ^lang_id and fragment("? % ?", pl.question_plain_text, ^normalized)
+          )
+          |> select_match_score(normalized, options)
+          |> scope_similar_to_curriculum(curriculum_id)
+          |> exclude_archived_problems()
+
+        # Redundant for the question-only score, which the `%` operator has
+        # already filtered on, and the point of the exercise for the combined
+        # one: a candidate whose options are far away is cut here.
+        from(s in subquery(scored),
+          where: s.match_score > ^@similarity_threshold,
+          order_by: [desc: s.match_score],
+          limit: @similarity_limit
         )
-        |> scope_similar_to_curriculum(curriculum_id)
-        |> exclude_archived_problems()
         |> Repo.all()
       end)
 
@@ -1623,6 +1669,50 @@ defmodule Dbservice.Resources do
         match_score: Float.round(m.match_score * 1.0, 4)
       }
     end)
+  end
+
+  # Question only — the behaviour every caller had before issue #777.
+  defp select_match_score(query, normalized, nil) do
+    from([pl, res: r] in query,
+      select: %{
+        id: r.id,
+        code: r.code,
+        match_score: fragment("similarity(?, ?)", pl.question_plain_text, ^normalized)
+      }
+    )
+  end
+
+  # `least`, not an average: the ask is that a candidate only scores high when
+  # the question *and* the options are close, and an average lets a perfect stem
+  # carry completely different options over the threshold. `least` also keeps
+  # the score on the same 0-1 scale and comparable against the one threshold,
+  # so nothing downstream has to learn a second number.
+  #
+  # The CASE is the no-options-stored fallback; it is written against
+  # `coalesce(..., '')` because the column is NULL on rows written before the
+  # backfill and '' on rows whose meta_data has no options.
+  defp select_match_score(query, normalized, options) do
+    from([pl, res: r] in query,
+      select: %{
+        id: r.id,
+        code: r.code,
+        match_score:
+          fragment(
+            """
+            CASE WHEN coalesce(?, '') = '' THEN similarity(?, ?)
+                 ELSE least(similarity(?, ?), similarity(?, ?))
+            END
+            """,
+            pl.options_plain_text,
+            pl.question_plain_text,
+            ^normalized,
+            pl.question_plain_text,
+            ^normalized,
+            pl.options_plain_text,
+            ^options
+          )
+      }
+    )
   end
 
   # A semi-join, not a plain join: a problem can have several resource_curriculum

@@ -19,6 +19,12 @@ defmodule DbserviceWeb.ProblemSimilarSearchTest do
   @electric_air "the electric field associated with an electromagnetic wave travelling in air"
   @unrelated "photosynthesis converts carbon dioxide and water into glucose using sunlight"
 
+  # The pattern issue #777 is about: a stem that is shared verbatim by problems
+  # which are only told apart by their options.
+  @shared_stem "which of the following statements is correct about the given system"
+  @metal_options ["copper", "silver", "gold", "all of the above"]
+  @planet_options ["mercury", "venus", "jupiter", "none of the above"]
+
   defp language_fixture(code) do
     {:ok, language} = Languages.create_language(%{"name" => code, "code" => code})
     language
@@ -76,9 +82,40 @@ defmodule DbserviceWeb.ProblemSimilarSearchTest do
     pl
   end
 
+  # Same, with answer options. options_plain_text is derived automatically from
+  # meta_data["options"] by the changeset, as question_plain_text is from
+  # meta_data["text"].
+  defp problem_lang_fixture(resource, language, text, options) do
+    {:ok, pl} =
+      ProblemLanguages.create_problem_language(%{
+        res_id: resource.id,
+        lang_id: language.id,
+        meta_data: %{
+          "text" => "<div>#{text}</div>",
+          "options" => Enum.map(options, &"<div>#{&1}</div>")
+        }
+      })
+
+    pl
+  end
+
   defp similar(conn, languages) do
     conn
     |> post(~p"/api/problems/similar-search", %{"languages" => languages})
+    |> json_response(200)
+  end
+
+  defp similar_with_options(conn, lang_code, text, options) do
+    conn
+    |> post(~p"/api/problems/similar-search", %{
+      "languages" => [
+        %{
+          "lang_code" => lang_code,
+          "text" => "<div>#{text}</div>",
+          "options" => Enum.map(options, &"<div>#{&1}</div>")
+        }
+      ]
+    })
     |> json_response(200)
   end
 
@@ -346,6 +383,155 @@ defmodule DbserviceWeb.ProblemSimilarSearchTest do
 
       assert [%{"id" => id}] = body["problems"]
       assert id == problem.id
+    end
+
+    # --- answer options (issue #777) -------------------------------------
+    #
+    # The case the CMS complained about: a stem shared by many problems that are
+    # told apart only by their options. Question similarity alone scores these
+    # 1.0 and warns the editor about a problem that is not a duplicate.
+
+    test "a shared stem with different options is no longer a match", %{conn: conn} do
+      en = language_fixture("o1e")
+      stored = problem_fixture()
+      problem_lang_fixture(stored, en, @shared_stem, @metal_options)
+
+      body = similar_with_options(conn, "o1e", @shared_stem, @planet_options)
+
+      assert body == %{"problems" => []}
+    end
+
+    test "the same stem with the same options is still a match", %{conn: conn} do
+      en = language_fixture("o2e")
+      stored = problem_fixture()
+      problem_lang_fixture(stored, en, @shared_stem, @metal_options)
+
+      body = similar_with_options(conn, "o2e", @shared_stem, @metal_options)
+
+      assert [match] = body["problems"]
+      assert match["id"] == stored.id
+      assert match["match_score"] == 1.0
+    end
+
+    test "options in a different order still match - trigrams are a set", %{conn: conn} do
+      en = language_fixture("o3e")
+      stored = problem_fixture()
+      problem_lang_fixture(stored, en, @shared_stem, @metal_options)
+
+      body = similar_with_options(conn, "o3e", @shared_stem, Enum.reverse(@metal_options))
+
+      assert [match] = body["problems"]
+      assert match["id"] == stored.id
+      assert match["match_score"] > 0.75
+    end
+
+    test "match_score is the lower of the question and options similarity", %{conn: conn} do
+      en = language_fixture("o4e")
+      stored = problem_fixture()
+      problem_lang_fixture(stored, en, @electric_vacuum, @metal_options)
+
+      # Identical options (1.0), question only near-identical, so the question
+      # score is the binding one and the result equals the options-free score.
+      with_options = similar_with_options(conn, "o4e", @electric_air, @metal_options)
+
+      question_only =
+        similar(conn, [%{"lang_code" => "o4e", "text" => "<div>#{@electric_air}</div>"}])
+
+      assert [%{"match_score" => combined}] = with_options["problems"]
+      assert [%{"match_score" => question_score}] = question_only["problems"]
+      assert combined == question_score
+      assert combined < 1.0
+    end
+
+    test "sending options does not change results for callers that omit them", %{conn: conn} do
+      en = language_fixture("o5e")
+      stored = problem_fixture()
+      problem_lang_fixture(stored, en, @shared_stem, @metal_options)
+
+      # The pre-#777 request shape: the shared stem matches on the question
+      # alone, options and all.
+      body = similar(conn, [%{"lang_code" => "o5e", "text" => "<div>#{@shared_stem}</div>"}])
+
+      assert [match] = body["problems"]
+      assert match["id"] == stored.id
+      assert match["match_score"] == 1.0
+    end
+
+    test "an empty options list behaves as if options were omitted", %{conn: conn} do
+      en = language_fixture("o6e")
+      stored = problem_fixture()
+      problem_lang_fixture(stored, en, @shared_stem, @metal_options)
+
+      body = similar_with_options(conn, "o6e", @shared_stem, [])
+
+      assert [match] = body["problems"]
+      assert match["id"] == stored.id
+      assert match["match_score"] == 1.0
+    end
+
+    test "a candidate with no options stored is scored on its question alone", %{conn: conn} do
+      en = language_fixture("o7e")
+      # A subjective problem, or a row written before the backfill: there is
+      # nothing to compare, which is not evidence that it is not a duplicate.
+      stored = problem_fixture()
+      problem_lang_fixture(stored, en, @shared_stem)
+
+      body = similar_with_options(conn, "o7e", @shared_stem, @planet_options)
+
+      assert [match] = body["problems"]
+      assert match["id"] == stored.id
+      assert match["match_score"] == 1.0
+    end
+
+    test "options are matched per language, like the question", %{conn: conn} do
+      en = language_fixture("o8e")
+      hi = language_fixture("o8h")
+      english = problem_fixture()
+      hindi = problem_fixture()
+      problem_lang_fixture(english, en, @shared_stem, @metal_options)
+      problem_lang_fixture(hindi, hi, @shared_stem, @metal_options)
+
+      body = similar_with_options(conn, "o8e", @shared_stem, @metal_options)
+
+      assert [match] = body["problems"]
+      assert match["id"] == english.id
+      assert match["lang_code"] == "o8e"
+    end
+
+    test "options HTML is stripped before comparing, like the question", %{conn: conn} do
+      en = language_fixture("o9e")
+      stored = problem_fixture()
+
+      {:ok, _} =
+        ProblemLanguages.create_problem_language(%{
+          res_id: stored.id,
+          lang_id: en.id,
+          meta_data: %{
+            "text" => "<div>#{@shared_stem}</div>",
+            "options" => Enum.map(@metal_options, &"<p><strong>#{&1}</strong></p>")
+          }
+        })
+
+      # Same options, wrapped in different markup: the stored and the queried
+      # options normalize to the same plain text, so this is still a 1.0 match.
+      body = similar_with_options(conn, "o9e", @shared_stem, @metal_options)
+
+      assert [match] = body["problems"]
+      assert match["id"] == stored.id
+      assert match["match_score"] == 1.0
+    end
+
+    test "the closest candidate on options wins when stems are identical", %{conn: conn} do
+      en = language_fixture("o10e")
+      same_options = problem_fixture()
+      other_options = problem_fixture()
+      problem_lang_fixture(same_options, en, @shared_stem, @metal_options)
+      problem_lang_fixture(other_options, en, @shared_stem, @planet_options)
+
+      body = similar_with_options(conn, "o10e", @shared_stem, @metal_options)
+
+      assert [match] = body["problems"]
+      assert match["id"] == same_options.id
     end
   end
 end
