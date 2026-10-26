@@ -21,6 +21,12 @@ defmodule DbserviceWeb.SwaggerSchema.StudentExamRecord do
             percentile(:number, "Percentile obtained")
             all_india_rank(:integer, "All India rank")
             category_rank(:integer, "Rank within the student's category")
+
+            sessions_applied(
+              Schema.array(:integer),
+              "Session numbers the student applied for, for an exam that runs more than once a year"
+            )
+
             exam_email(:string, "Email ID the student registered for the exam with")
             exam_phone(:string, "Contact number the student registered for the exam with")
             exam_roll_no(:string, "Roll number issued for the exam")
@@ -38,6 +44,7 @@ defmodule DbserviceWeb.SwaggerSchema.StudentExamRecord do
             percentile: 98.76,
             all_india_rank: 15_432,
             category_rank: 2301,
+            sessions_applied: [1, 2],
             exam_email: "student@example.com",
             exam_phone: "9876543210",
             exam_roll_no: "JE26010234",
