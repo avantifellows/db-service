@@ -188,6 +188,80 @@ defmodule Dbservice.DataImport.ImportWorkerTest do
     end
   end
 
+  describe "school_addition imports with profile details" do
+    @profile_headers "school_code,school_name,af_school_category,State_code,state," <>
+                       "district,district_code,school_email,principal_incharge_name," <>
+                       "principal_incharge_contact,pmu_coordinator_name," <>
+                       "pmu_coordinator_contact,school_support_status," <>
+                       "school_residential_status,grades_offered,school_stream," <>
+                       "estimated_strength_grade_11,estimated_strength_grade_12,school_notes"
+
+    setup do
+      on_exit(fn -> cleanup_test_csv("school_profile_import.csv") end)
+      :ok
+    end
+
+    defp run_school_import(row) do
+      filename =
+        create_test_csv("school_profile_import.csv", @profile_headers <> "\n" <> row <> "\n")
+
+      import_record =
+        import_fixture(%{filename: filename, type: "school_addition", status: "pending"})
+
+      assert :ok = perform_job(ImportWorker, %{"id" => import_record.id})
+
+      DataImport.get_import!(import_record.id)
+    end
+
+    test "carries the field-visit details onto the school record" do
+      row =
+        "SCHPROF1,Profile Test School,Government,DL,Delhi,NORTH WEST DELHI,0701," <>
+          "principal@profile.edu.in,Sunita Rao,9876543210,Imran Qureshi,9123456780," <>
+          "supportive,Residential,\"6,7,8,9,10,11,12\",\"Science, commerce\"," <>
+          "48,45,Two rooms offered after school"
+
+      run_school_import(row)
+
+      school = Dbservice.Schools.get_school_by_code("SCHPROF1")
+
+      # The grades arrive as one quoted cell, "6,7,8,9,10" - what a spreadsheet
+      # writes when the cell itself contains commas - and land as an array.
+      assert school.grades_offered == [6, 7, 8, 9, 10, 11, 12]
+      # Same for the streams, typed loosely and stored canonically.
+      assert school.school_stream == ["Science", "Commerce"]
+
+      assert school.school_email == "principal@profile.edu.in"
+      assert school.principal_incharge_name == "Sunita Rao"
+      assert school.principal_incharge_contact == "9876543210"
+      assert school.pmu_coordinator_name == "Imran Qureshi"
+      assert school.pmu_coordinator_contact == "9123456780"
+      # Typed lowercase in the sheet, stored in its canonical spelling.
+      assert school.school_support_status == "Supportive"
+      assert school.school_residential_status == "Residential"
+      assert school.estimated_strength_grade_11 == 48
+      assert school.estimated_strength_grade_12 == 45
+      assert school.school_notes == "Two rooms offered after school"
+    end
+
+    test "a blank profile column leaves that field unset" do
+      row =
+        "SCHPROF2,Sparse Profile School,Government,DL,Delhi,NORTH WEST DELHI,0701," <>
+          ",,,,,,,,,,,"
+
+      run_school_import(row)
+
+      school = Dbservice.Schools.get_school_by_code("SCHPROF2")
+
+      assert school.name == "Sparse Profile School"
+      assert is_nil(school.school_email)
+      assert is_nil(school.school_support_status)
+      assert is_nil(school.grades_offered)
+      assert is_nil(school.school_stream)
+      assert is_nil(school.estimated_strength_grade_11)
+      assert is_nil(school.school_notes)
+    end
+  end
+
   describe "CSV processing" do
     test "correctly counts total rows" do
       csv_content = """
