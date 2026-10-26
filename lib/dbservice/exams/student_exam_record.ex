@@ -8,6 +8,11 @@ defmodule Dbservice.Exams.StudentExamRecord do
   alias Dbservice.Exams.Exam
   alias Dbservice.Users.Student
 
+  # JEE Main has run at most four sittings in a year (2021), and no exam we
+  # hold records for runs more often. A number outside that range is a typo,
+  # not a sitting the student could have applied for.
+  @max_exam_session 4
+
   # The first exam year we would ever hold a record for; anything below this is
   # a typo rather than an old attempt.
   @earliest_exam_year 1990
@@ -20,6 +25,7 @@ defmodule Dbservice.Exams.StudentExamRecord do
     field :percentile, :float
     field :all_india_rank, :integer
     field :category_rank, :integer
+    field :sessions_applied, {:array, :integer}
     field :exam_email, :string
     field :exam_phone, :string
     field :exam_roll_no, :string
@@ -44,6 +50,7 @@ defmodule Dbservice.Exams.StudentExamRecord do
       :percentile,
       :all_india_rank,
       :category_rank,
+      :sessions_applied,
       :exam_email,
       :exam_phone,
       :exam_roll_no,
@@ -72,5 +79,28 @@ defmodule Dbservice.Exams.StudentExamRecord do
       greater_than_or_equal_to: @earliest_exam_year,
       less_than_or_equal_to: Date.utc_today().year + 1
     )
+    |> normalize_sessions_applied()
+    |> validate_sessions_applied()
+  end
+
+  # The sittings a student applied for are a set: order and repeats carry no
+  # meaning, so [2, 1, 2] and [1, 2] are stored as the same value. An empty
+  # list says no more than no answer at all, so it is stored as NULL.
+  defp normalize_sessions_applied(changeset) do
+    update_change(changeset, :sessions_applied, fn
+      nil -> nil
+      [] -> nil
+      sessions -> sessions |> Enum.uniq() |> Enum.sort()
+    end)
+  end
+
+  defp validate_sessions_applied(changeset) do
+    validate_change(changeset, :sessions_applied, fn :sessions_applied, sessions ->
+      if Enum.all?(sessions, &(&1 >= 1 and &1 <= @max_exam_session)) do
+        []
+      else
+        [sessions_applied: "must be session numbers between 1 and #{@max_exam_session}"]
+      end
+    end)
   end
 end
