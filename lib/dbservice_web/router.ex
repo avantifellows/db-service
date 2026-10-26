@@ -116,6 +116,27 @@ defmodule DbserviceWeb.Router do
       log: false
     )
 
+    get(
+      "/blended-learning/transcription-requests/:request_key",
+      BlendedLearningTranscriptionRequestController,
+      :show,
+      log: false
+    )
+
+    post(
+      "/blended-learning/transcription-requests/:request_key/status",
+      BlendedLearningTranscriptionRequestController,
+      :update_status,
+      log: false
+    )
+
+    post(
+      "/blended-learning/transcription-requests/:request_key/draft",
+      BlendedLearningTranscriptionRequestController,
+      :submit_draft,
+      log: false
+    )
+
     resources("/auth-group", AuthGroupController, except: [:new, :edit])
     post("/group/:id/update-users", GroupController, :update_users)
     post("/group/:id/update-sessions", GroupController, :update_sessions)
@@ -215,6 +236,9 @@ defmodule DbserviceWeb.Router do
     resources("/lms-student-document", LmsStudentDocumentController,
       only: [:index, :create, :show, :delete]
     )
+
+    get("/teacher-feedback-summary", TeacherFeedbackSummaryController, :index)
+    put("/teacher-feedback-summary/:session_pk", TeacherFeedbackSummaryController, :update)
 
     post(
       "/lms/students/bulk-create-with-enrollments",

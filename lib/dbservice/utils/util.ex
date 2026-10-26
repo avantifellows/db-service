@@ -156,6 +156,12 @@ defmodule Dbservice.Utils.Util do
   def valid_streams, do: @valid_streams
 
   @doc """
+  Returns list of valid uniform sizes. This can be used in portal to populate T-shirt and
+  track pant sizes in dropdown menus
+  """
+  def valid_uniform_sizes, do: @valid_uniform_sizes
+
+  @doc """
   Trims a string field and turns a blank value into nil, so stray whitespace from a sheet
   cell can't create a near-duplicate that bypasses uniqueness or format checks.
   """

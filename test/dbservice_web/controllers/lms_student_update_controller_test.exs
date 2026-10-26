@@ -862,6 +862,47 @@ defmodule DbserviceWeb.LmsStudentUpdateControllerTest do
       assert Users.get_user!(user.id).phone == user.phone
     end
 
+    test "rejects monthly family income for a phone-mode cohort edit under a centre program", %{
+      conn: conn
+    } do
+      use_test_registration_mode!("phone")
+
+      school = insert_school!()
+      grade = insert_grade!(11)
+      batch = insert_nvs_batch!(11, "engineering")
+      coe_batch = insert_program_batch!(1, 11, "engineering")
+
+      {user, student} =
+        insert_enrolled_student!(school, grade, batch, %{
+          student_id: "9456591269",
+          g10_roll_no: nil,
+          monthly_family_income: nil
+        })
+
+      insert_enrollment!(user.id, coe_batch.id, "batch")
+      ensure_group_user!(user.id, "batch", coe_batch.id)
+      enable_students = insert_auth_group!("EnableStudents")
+      ensure_group_user!(user.id, "auth_group", enable_students.id)
+      insert_enrollment!(user.id, enable_students.id, "auth_group")
+
+      conn =
+        lms_update(conn, student.id, %{
+          "registration_mode" => "phone",
+          "actor" => actor(),
+          "school" => %{"code" => school.code, "udise_code" => school.udise_code},
+          "program_id" => 1,
+          "academic_year" => "2026-2027",
+          "start_date" => "2026-07-01",
+          "monthly_family_income" => "Rs. 10,000-20,000"
+        })
+
+      response = json_response(conn, 422)
+      assert response["error"]["code"] == "locked_fields"
+      assert response["error"]["fields"] == ["monthly_family_income"]
+      assert is_nil(Repo.get!(Student, student.id).monthly_family_income)
+      assert Repo.aggregate(Dbservice.LmsStudentWriteAudit, :count, :id) == 0
+    end
+
     test "fills a null cohort PEN once in approved mode and preserves phone identity", %{
       conn: conn
     } do
@@ -2544,12 +2585,84 @@ defmodule DbserviceWeb.LmsStudentUpdateControllerTest do
           "program_id" => 64,
           "academic_year" => "2026-2027",
           "start_date" => "2026-07-01",
-          "mother_name" => "Not In Contract"
+          # The household details joined the contract in AF LMS #431;
+          # `school_medium` was deliberately left out of it.
+          "school_medium" => "Not In Contract"
         })
 
       response = json_response(conn, 422)
       assert response["error"]["code"] == "unsupported_fields"
-      assert response["error"]["fields"] == ["mother_name"]
+      assert response["error"]["fields"] == ["school_medium"]
+      assert Repo.aggregate(Dbservice.LmsStudentWriteAudit, :count, :id) == 0
+    end
+
+    test "sets and clears uniform sizes and audits both", %{conn: conn} do
+      use_test_registration_mode!("approved")
+
+      school = insert_school!()
+      grade = insert_grade!(11)
+      batch = insert_nvs_batch!(11, "engineering")
+      {_user, student} = insert_enrolled_student!(school, grade, batch)
+
+      metadata = %{
+        "actor" => actor(),
+        "school" => %{"code" => school.code, "udise_code" => school.udise_code},
+        "program_id" => 64,
+        "academic_year" => "2026-2027",
+        "start_date" => "2026-07-01"
+      }
+
+      conn =
+        lms_update(
+          conn,
+          student.id,
+          Map.merge(metadata, %{"tshirt_size" => "L", "track_pant_size" => "M"})
+        )
+
+      assert json_response(conn, 200)["changed_fields"] == ["track_pant_size", "tshirt_size"]
+      assert %{tshirt_size: "L", track_pant_size: "M"} = Repo.get!(Student, student.id)
+
+      conn =
+        lms_update(
+          recycle(conn),
+          student.id,
+          Map.merge(metadata, %{"tshirt_size" => "", "track_pant_size" => " m "})
+        )
+
+      assert json_response(conn, 200)["changed_fields"] == ["tshirt_size"]
+      assert %{tshirt_size: nil, track_pant_size: "M"} = Repo.get!(Student, student.id)
+
+      audits = Repo.all(from(a in Dbservice.LmsStudentWriteAudit, order_by: a.id))
+
+      assert Enum.map(audits, & &1.changed_values) == [
+               %{
+                 "tshirt_size" => %{"old" => nil, "new" => "L"},
+                 "track_pant_size" => %{"old" => nil, "new" => "M"}
+               },
+               %{"tshirt_size" => %{"old" => "L", "new" => nil}}
+             ]
+    end
+
+    test "rejects an unknown uniform size without writing", %{conn: conn} do
+      use_test_registration_mode!("approved")
+
+      school = insert_school!()
+      grade = insert_grade!(11)
+      batch = insert_nvs_batch!(11, "engineering")
+      {_user, student} = insert_enrolled_student!(school, grade, batch)
+
+      conn =
+        lms_update(conn, student.id, %{
+          "actor" => actor(),
+          "school" => %{"code" => school.code, "udise_code" => school.udise_code},
+          "program_id" => 64,
+          "academic_year" => "2026-2027",
+          "start_date" => "2026-07-01",
+          "tshirt_size" => "Huge"
+        })
+
+      assert json_response(conn, 422)["error"]["code"] == "invalid_student_fields"
+      assert Repo.get!(Student, student.id).tshirt_size == nil
       assert Repo.aggregate(Dbservice.LmsStudentWriteAudit, :count, :id) == 0
     end
 
@@ -2917,7 +3030,9 @@ defmodule DbserviceWeb.LmsStudentUpdateControllerTest do
 
       response = json_response(conn, 200)
       assert response["changed_fields"] == []
-      assert only_audit_changed_values() == %{}
+      # Nothing changed, so there is nothing to audit.
+      assert is_nil(response["audit_id"])
+      assert Repo.aggregate(Dbservice.LmsStudentWriteAudit, :count, :id) == 0
     end
 
     test "duplicate generated Student ID on grade edit leaves profile and enrollments unchanged",
@@ -3115,6 +3230,318 @@ defmodule DbserviceWeb.LmsStudentUpdateControllerTest do
   defp use_test_registration_mode!(mode) do
     :ok = LmsStudentRegistrationMode.put_test_active_mode(mode)
     on_exit(fn -> LmsStudentRegistrationMode.put_test_active_mode(nil) end)
+  end
+
+  describe "contact and family details (AF LMS #431)" do
+    # A physical-centre program: these details are not collected for JNV NVS.
+    @centre_program_id 1
+
+    setup do
+      use_test_registration_mode!("approved")
+      school = insert_school!()
+      grade = insert_grade!(11)
+      batch = insert_program_batch!(@centre_program_id, 11, "engineering")
+
+      {user, student} =
+        insert_enrolled_student!(school, grade, batch, %{
+          mother_name: "Old Mother",
+          guardian_phone: "9000000000"
+        })
+
+      %{school: school, user: user, student: student}
+    end
+
+    defp details_params(school, extra, program_id \\ 1) do
+      Map.merge(
+        %{
+          "actor" => actor(),
+          "school" => %{"code" => school.code, "udise_code" => school.udise_code},
+          "program_id" => program_id,
+          "academic_year" => "2026-2027",
+          "start_date" => "2026-07-01"
+        },
+        extra
+      )
+    end
+
+    test "stores the contact and household details the card shows", %{
+      conn: conn,
+      school: school,
+      user: user,
+      student: student
+    } do
+      conn =
+        lms_update(
+          conn,
+          student.id,
+          details_params(school, %{
+            "email" => "ravi@example.com",
+            "whatsapp_phone" => "9876543210",
+            "address" => "12 Main Road",
+            "city" => "Jaipur",
+            "district" => "Jaipur",
+            "state" => "Rajasthan",
+            "pincode" => "302001",
+            "father_phone" => "9876543211",
+            "father_profession" => "Farmer",
+            "father_education_level" => "Grades 6-10",
+            "mother_name" => "Sunita Devi",
+            "mother_phone" => "9876543212",
+            "mother_profession" => "Homemaker",
+            "mother_education_level" => "Grades 1-5",
+            "guardian_name" => "Ramesh",
+            "guardian_relation" => "Uncle",
+            "guardian_phone" => "9876543213",
+            "guardian_profession" => "Shopkeeper",
+            "guardian_education_level" => "Grades 11-12",
+            "monthly_family_income" => "Rs. 10,000-20,000"
+          })
+        )
+
+      assert json_response(conn, 200)["status"] == "updated"
+
+      updated_user = Users.get_user!(user.id)
+      assert updated_user.email == "ravi@example.com"
+      assert updated_user.whatsapp_phone == "9876543210"
+      assert updated_user.address == "12 Main Road"
+      assert updated_user.pincode == "302001"
+
+      updated_student = Repo.get!(Student, student.id)
+      assert updated_student.mother_name == "Sunita Devi"
+      assert updated_student.guardian_relation == "Uncle"
+      assert updated_student.monthly_family_income == "Rs. 10,000-20,000"
+      assert updated_student.father_education_level == "Grades 6-10"
+
+      changed = only_audit_changed_values()
+      assert changed["mother_name"] == %{"old" => "Old Mother", "new" => "Sunita Devi"}
+    end
+
+    test "clears a detail sent blank", %{
+      conn: conn,
+      school: school,
+      student: student
+    } do
+      conn =
+        lms_update(
+          conn,
+          student.id,
+          details_params(school, %{"guardian_phone" => "   ", "mother_name" => ""})
+        )
+
+      assert json_response(conn, 200)["status"] == "updated"
+
+      updated_student = Repo.get!(Student, student.id)
+      assert is_nil(updated_student.guardian_phone)
+      assert is_nil(updated_student.mother_name)
+    end
+
+    test "rejects a phone that is not ten digits, before any write", %{
+      conn: conn,
+      school: school,
+      student: student
+    } do
+      stored = Repo.get!(Student, student.id).father_phone
+
+      conn =
+        lms_update(conn, student.id, details_params(school, %{"father_phone" => "98765"}))
+
+      response = json_response(conn, 422)
+      assert response["error"]["code"] == "invalid_phone"
+      assert response["error"]["fields"] == ["father_phone"]
+
+      assert response["error"]["message"] ==
+               "Father Phone must be exactly 10 digits and cannot start with zero"
+
+      assert Repo.get!(Student, student.id).father_phone == stored
+      assert Repo.aggregate(Dbservice.LmsStudentWriteAudit, :count, :id) == 0
+    end
+
+    test "refuses the details for a JNV NVS edit, in either service", %{conn: conn} do
+      use_test_registration_mode!("approved")
+      school = insert_school!(%{code: "JNV777", udise_code: "99999999999"})
+      grade = insert_grade!(11)
+      batch = insert_nvs_batch!(11, "engineering")
+
+      {_user, student} =
+        insert_enrolled_student!(school, grade, batch, %{
+          student_id: "202812345679",
+          apaar_id: "123456789013",
+          mother_name: nil
+        })
+
+      conn =
+        lms_update(
+          conn,
+          student.id,
+          details_params(school, %{"mother_name" => "Sunita Devi", "city" => "Jaipur"}, 64)
+        )
+
+      response = json_response(conn, 422)
+      assert response["error"]["code"] == "unsupported_for_nvs"
+      assert response["error"]["fields"] == ["city", "mother_name"]
+      assert is_nil(Repo.get!(Student, student.id).mother_name)
+      assert Repo.aggregate(Dbservice.LmsStudentWriteAudit, :count, :id) == 0
+    end
+
+    test "writes no audit row when the edit changes nothing", %{
+      conn: conn,
+      school: school,
+      student: student
+    } do
+      conn =
+        lms_update(
+          conn,
+          student.id,
+          details_params(school, %{"mother_name" => Repo.get!(Student, student.id).mother_name})
+        )
+
+      response = json_response(conn, 200)
+      assert response["status"] == "updated"
+      assert response["changed_fields"] == []
+      assert is_nil(response["audit_id"])
+      assert Repo.aggregate(Dbservice.LmsStudentWriteAudit, :count, :id) == 0
+    end
+
+    test "rejects a value too long for its column with a 422, not a crash", %{
+      conn: conn,
+      school: school,
+      user: user,
+      student: student
+    } do
+      stored = Users.get_user!(user.id).city
+
+      conn =
+        lms_update(
+          conn,
+          student.id,
+          details_params(school, %{"city" => String.duplicate("a", 300)})
+        )
+
+      response = json_response(conn, 422)
+      assert response["error"]["code"] == "field_too_long"
+      assert response["error"]["fields"] == ["city"]
+      assert Users.get_user!(user.id).city == stored
+      assert Repo.aggregate(Dbservice.LmsStudentWriteAudit, :count, :id) == 0
+    end
+
+    test "accepts a value that exactly fills its column", %{
+      conn: conn,
+      school: school,
+      student: student
+    } do
+      name = String.duplicate("a", 255)
+
+      conn = lms_update(conn, student.id, details_params(school, %{"mother_name" => name}))
+
+      assert json_response(conn, 200)["status"] == "updated"
+      assert Repo.get!(Student, student.id).mother_name == name
+    end
+
+    test "clears a blank longer than its column instead of refusing it", %{
+      conn: conn,
+      school: school,
+      user: user,
+      student: student
+    } do
+      {:ok, _user} = Users.update_user(Users.get_user!(user.id), %{city: "Jaipur"})
+
+      conn =
+        lms_update(
+          conn,
+          student.id,
+          details_params(school, %{"city" => String.duplicate(" ", 256)})
+        )
+
+      assert json_response(conn, 200)["changed_fields"] == ["city"]
+      assert is_nil(Users.get_user!(user.id).city)
+    end
+
+    test "saves a value that fits once trimmed, though padding takes it past the column", %{
+      conn: conn,
+      school: school,
+      student: student
+    } do
+      name = String.duplicate("a", 255)
+
+      conn =
+        lms_update(
+          conn,
+          student.id,
+          details_params(school, %{"mother_name" => "  " <> name <> "  "})
+        )
+
+      assert json_response(conn, 200)["status"] == "updated"
+      assert Repo.get!(Student, student.id).mother_name == name
+    end
+
+    test "rejects an email that could not reach a mailbox", %{
+      conn: conn,
+      school: school,
+      user: user,
+      student: student
+    } do
+      stored = Users.get_user!(user.id).email
+
+      conn = lms_update(conn, student.id, details_params(school, %{"email" => "ravi@"}))
+
+      response = json_response(conn, 422)
+      assert response["error"]["code"] == "invalid_email"
+      assert Users.get_user!(user.id).email == stored
+      assert Repo.aggregate(Dbservice.LmsStudentWriteAudit, :count, :id) == 0
+    end
+
+    test "rejects an email with a non-breaking space inside it", %{
+      conn: conn,
+      school: school,
+      user: user,
+      student: student
+    } do
+      stored = Users.get_user!(user.id).email
+
+      conn =
+        lms_update(conn, student.id, details_params(school, %{"email" => "ra vi@x.org"}))
+
+      response = json_response(conn, 422)
+      assert response["error"]["code"] == "invalid_email"
+      assert response["error"]["fields"] == ["email"]
+      assert Users.get_user!(user.id).email == stored
+      assert Repo.aggregate(Dbservice.LmsStudentWriteAudit, :count, :id) == 0
+    end
+
+    test "rejects a contact phone or pincode that starts with zero", %{
+      conn: conn,
+      school: school,
+      student: student
+    } do
+      for {field, value, code} <- [
+            {"mother_phone", "0123456789", "invalid_phone"},
+            {"pincode", "012345", "invalid_pincode"}
+          ] do
+        conn = lms_update(recycle(conn), student.id, details_params(school, %{field => value}))
+
+        response = json_response(conn, 422)
+        assert response["error"]["code"] == code
+        assert response["error"]["fields"] == [field]
+      end
+
+      assert Repo.aggregate(Dbservice.LmsStudentWriteAudit, :count, :id) == 0
+    end
+
+    test "rejects a pincode that is not six digits, before any write", %{
+      conn: conn,
+      school: school,
+      user: user,
+      student: student
+    } do
+      stored = Users.get_user!(user.id).pincode
+
+      conn = lms_update(conn, student.id, details_params(school, %{"pincode" => "30200"}))
+
+      response = json_response(conn, 422)
+      assert response["error"]["code"] == "invalid_pincode"
+      assert Users.get_user!(user.id).pincode == stored
+      assert Repo.aggregate(Dbservice.LmsStudentWriteAudit, :count, :id) == 0
+    end
   end
 
   defp lms_update(conn, student_id, params) do

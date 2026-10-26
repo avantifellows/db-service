@@ -352,6 +352,18 @@ defmodule Dbservice.Constants.Mappings do
       optional: ["student", "student_update"],
       type: :string
     },
+    "student_mode_of_coaching" => %{
+      db_field: "mode_of_coaching",
+      required: [],
+      optional: ["student", "student_update"],
+      type: :string
+    },
+    "student_coaching_name" => %{
+      db_field: "coaching_name",
+      required: [],
+      optional: ["student", "student_update"],
+      type: :string
+    },
     "student_apaar_id" => %{
       db_field: "apaar_id",
       required: [],
@@ -543,6 +555,82 @@ defmodule Dbservice.Constants.Mappings do
     },
     "group" => %{
       db_field: "school_group",
+      required: [],
+      optional: ["school_addition"],
+      type: :string
+    },
+    "school_email" => %{
+      db_field: "school_email",
+      required: [],
+      optional: ["school_addition"],
+      type: :string
+    },
+    "principal_incharge_name" => %{
+      db_field: "principal_incharge_name",
+      required: [],
+      optional: ["school_addition"],
+      type: :string
+    },
+    "principal_incharge_contact" => %{
+      db_field: "principal_incharge_contact",
+      required: [],
+      optional: ["school_addition"],
+      type: :string
+    },
+    "pmu_coordinator_name" => %{
+      db_field: "pmu_coordinator_name",
+      required: [],
+      optional: ["school_addition"],
+      type: :string
+    },
+    "pmu_coordinator_contact" => %{
+      db_field: "pmu_coordinator_contact",
+      required: [],
+      optional: ["school_addition"],
+      type: :string
+    },
+    "school_support_status" => %{
+      db_field: "school_support_status",
+      required: [],
+      optional: ["school_addition"],
+      type: :string
+    },
+    "school_residential_status" => %{
+      db_field: "school_residential_status",
+      required: [],
+      optional: ["school_addition"],
+      type: :string
+    },
+    # One cell listing the grades the school runs - "6,7,8,9,10". Typed as a
+    # string so the sheet value reaches the changeset intact; it splits it.
+    "grades_offered" => %{
+      db_field: "grades_offered",
+      required: [],
+      optional: ["school_addition"],
+      type: :string
+    },
+    # One cell listing the streams the school runs - "Science, Commerce".
+    # String for the same reason as grades_offered: the changeset splits it.
+    "school_stream" => %{
+      db_field: "school_stream",
+      required: [],
+      optional: ["school_addition"],
+      type: :string
+    },
+    "estimated_strength_grade_11" => %{
+      db_field: "estimated_strength_grade_11",
+      required: [],
+      optional: ["school_addition"],
+      type: :integer
+    },
+    "estimated_strength_grade_12" => %{
+      db_field: "estimated_strength_grade_12",
+      required: [],
+      optional: ["school_addition"],
+      type: :integer
+    },
+    "school_notes" => %{
+      db_field: "school_notes",
       required: [],
       optional: ["school_addition"],
       type: :string

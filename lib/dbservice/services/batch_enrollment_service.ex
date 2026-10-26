@@ -110,6 +110,79 @@ defmodule Dbservice.Services.BatchEnrollmentService do
   end
 
   @doc """
+  Ends a user's current enrollment in one specific batch, whatever program that
+  batch belongs to, and drops the matching batch `group_user` membership.
+
+  `handle_batch_enrollment/5` deliberately only ends current batch ERs in the
+  *target* batch's program, because being added to a second program's batch does
+  not mean leaving the first. Callers that know the student is *moving* use this
+  instead, so the batch being left is ended whichever program it belongs to.
+
+  `batch_id` is `batch.id` (what `enrollment_record.group_id` holds for a batch)
+  and `batch_group_id` is the `"group"` row whose `child_id` is that batch (what
+  `group_user.group_id` holds) — the two id spaces `update_batch_user/2` also
+  straddles. Returns `:released` or `:not_enrolled`.
+  """
+  def release_batch_enrollment(user_id, batch_id, batch_group_id, end_date) do
+    {ended, _} =
+      from(e in EnrollmentRecord,
+        where:
+          e.user_id == ^user_id and e.group_type == "batch" and e.is_current == true and
+            e.group_id == ^batch_id,
+        update: [set: [is_current: false, end_date: ^end_date, updated_at: ^now()]]
+      )
+      |> Repo.update_all([])
+
+    delete_batch_group_users(user_id, batch_group_id)
+
+    if ended == 0, do: :not_enrolled, else: :released
+  end
+
+  @doc """
+  Ends every current batch enrollment the user holds *except* `keep_batch_id`,
+  across all programs, dropping each one's batch `group_user` membership.
+
+  This is what a batch movement means: the student leaves everything they were
+  in and lands in one batch. Program scoping would hide a move across programs
+  (Punjab `..._common_A001` -> `..._engg_N001`) behind what looks like a second
+  enrollment, leaving the old batch current — which is what breaks Gurukul.
+
+  Returns the batch ids it ended.
+  """
+  def release_other_batch_enrollments(user_id, keep_batch_id, end_date) do
+    batch_ids =
+      from(e in EnrollmentRecord,
+        where:
+          e.user_id == ^user_id and e.group_type == "batch" and e.is_current == true and
+            e.group_id != ^keep_batch_id,
+        select: e.group_id
+      )
+      |> Repo.all()
+      |> Enum.uniq()
+
+    Enum.each(batch_ids, fn batch_id ->
+      release_batch_enrollment(user_id, batch_id, batch_group_id(batch_id), end_date)
+    end)
+
+    batch_ids
+  end
+
+  # The "group" row standing for a batch, i.e. what group_user.group_id holds.
+  defp batch_group_id(batch_id) do
+    Repo.one(from(g in Group, where: g.child_id == ^batch_id and g.type == "batch", select: g.id))
+  end
+
+  defp delete_batch_group_users(_user_id, nil), do: :ok
+
+  defp delete_batch_group_users(user_id, batch_group_id) do
+    from(gu in GroupUser, where: gu.user_id == ^user_id and gu.group_id == ^batch_group_id)
+    |> Repo.all()
+    |> Enum.each(&GroupUsers.delete_group_user/1)
+  end
+
+  defp now, do: NaiveDateTime.utc_now() |> NaiveDateTime.truncate(:second)
+
+  @doc """
   Handles status enrollment process
   """
   def handle_status_enrollment(user_id, status_id, status_group_type, academic_year, start_date) do
