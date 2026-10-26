@@ -763,6 +763,9 @@ defmodule Dbservice.DataImport.ImportWorker do
       nil ->
         create_student_with_enrollments(record)
 
+      {:error, {:ambiguous_student, _, _} = reason} ->
+        {:error, Users.ambiguous_student_message(reason)}
+
       %Dbservice.Users.Student{} = existing_student ->
         {:error, build_student_exists_error_message(existing_student)}
     end
@@ -852,6 +855,9 @@ defmodule Dbservice.DataImport.ImportWorker do
       {:error, "Either student_id or apaar_id is required for student updates"}
     else
       case Users.get_student_by_id_or_apaar_id(record) do
+        {:error, {:ambiguous_student, _, _} = reason} ->
+          {:error, Users.ambiguous_student_message(reason)}
+
         nil ->
           {:error,
            "Student not found. student_id: #{record["student_id"]}, apaar_id: #{record["apaar_id"]}"}
@@ -879,6 +885,9 @@ defmodule Dbservice.DataImport.ImportWorker do
       {:error, "Either student_id or apaar_id is required for student enrollment"}
     else
       case Users.get_student_by_id_or_apaar_id(record) do
+        {:error, {:ambiguous_student, _, _} = reason} ->
+          {:error, Users.ambiguous_student_message(reason)}
+
         nil ->
           {:error,
            "Student not found. student_id: #{record["student_id"]}, apaar_id: #{record["apaar_id"]}"}
@@ -914,6 +923,9 @@ defmodule Dbservice.DataImport.ImportWorker do
 
   defp process_dropout_for_student(record) do
     case Users.get_student_by_id_or_apaar_id(record) do
+      {:error, {:ambiguous_student, _, _} = reason} ->
+        {:error, Users.ambiguous_student_message(reason)}
+
       nil ->
         {:error,
          "Student not found. student_id: #{record["student_id"]}, apaar_id: #{record["apaar_id"]}"}
@@ -939,6 +951,9 @@ defmodule Dbservice.DataImport.ImportWorker do
 
   defp process_re_enrollment_for_student(record) do
     case Users.get_student_by_id_or_apaar_id(record) do
+      {:error, {:ambiguous_student, _, _} = reason} ->
+        {:error, Users.ambiguous_student_message(reason)}
+
       nil ->
         {:error,
          "Student not found. student_id: #{record["student_id"]}, apaar_id: #{record["apaar_id"]}"}
@@ -1724,6 +1739,9 @@ defmodule Dbservice.DataImport.ImportWorker do
 
   defp get_or_create_student_pk(record, student_identifier) do
     case Users.get_student_by_student_id(student_identifier) do
+      {:error, {:ambiguous_student, _, _} = reason} ->
+        {:error, Users.ambiguous_student_message(reason)}
+
       nil ->
         case Users.create_student_with_user(record) do
           {:ok, %Dbservice.Users.Student{id: student_pk}} -> {:ok, student_pk}

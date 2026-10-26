@@ -22,6 +22,9 @@ defmodule Dbservice.DataImport.BatchMovement do
 
   def process_batch_movement(record) do
     case Users.get_student_by_id_or_apaar_id(record) do
+      {:error, {:ambiguous_student, _, _} = reason} ->
+        {:error, Users.ambiguous_student_message(reason)}
+
       nil ->
         {:error,
          "Student not found. student_id: #{record["student_id"]}, apaar_id: #{record["apaar_id"]}"}

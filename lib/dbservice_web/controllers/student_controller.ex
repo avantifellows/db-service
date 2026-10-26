@@ -74,9 +74,18 @@ defmodule DbserviceWeb.StudentController do
   end
 
   def index(conn, %{"id" => id, "group" => group} = _params) do
-    student = Users.get_student_by_id_and_group(id, group)
-    students = if student, do: [student], else: []
-    render(conn, :index, student: students)
+    case Users.get_student_by_id_and_group(id, group) do
+      {:error, {:ambiguous_student, _, _} = reason} ->
+        conn
+        |> put_status(:conflict)
+        |> json(%{errors: Users.ambiguous_student_message(reason)})
+
+      nil ->
+        render(conn, :index, student: [])
+
+      student ->
+        render(conn, :index, student: [student])
+    end
   end
 
   def index(conn, params) do
@@ -250,6 +259,11 @@ defmodule DbserviceWeb.StudentController do
         |> put_status(:bad_request)
         |> json(%{errors: "Conflicting student identifiers"})
 
+      {:error, {:ambiguous_student, _, _} = reason} ->
+        conn
+        |> put_status(:conflict)
+        |> json(%{errors: Users.ambiguous_student_message(reason)})
+
       nil ->
         conn
         |> put_status(:not_found)
@@ -277,6 +291,11 @@ defmodule DbserviceWeb.StudentController do
         |> put_status(:bad_request)
         |> json(%{errors: "Conflicting student identifiers"})
 
+      {:error, {:ambiguous_student, _, _} = reason} ->
+        conn
+        |> put_status(:conflict)
+        |> json(%{errors: Users.ambiguous_student_message(reason)})
+
       nil ->
         conn
         |> put_status(:not_found)
@@ -300,6 +319,11 @@ defmodule DbserviceWeb.StudentController do
     student = Users.get_student_by_id_or_apaar_id(params)
 
     case student do
+      {:error, {:ambiguous_student, _, _} = reason} ->
+        conn
+        |> put_status(:conflict)
+        |> json(%{errors: Users.ambiguous_student_message(reason)})
+
       nil ->
         conn
         |> put_status(:not_found)
@@ -320,6 +344,11 @@ defmodule DbserviceWeb.StudentController do
 
   def enrolled(conn, params) do
     case Users.get_student_by_student_id(params["student_id"], params) do
+      {:error, {:ambiguous_student, _, _} = reason} ->
+        conn
+        |> put_status(:conflict)
+        |> json(%{errors: Users.ambiguous_student_message(reason)})
+
       nil ->
         conn
         |> put_status(:not_found)
@@ -607,6 +636,9 @@ defmodule DbserviceWeb.StudentController do
 
   defp get_student_and_user(student_id, auth_group_params) do
     case Users.get_student_by_student_id(student_id, auth_group_params) do
+      {:error, {:ambiguous_student, _, _}} = error ->
+        error
+
       nil ->
         {:error, :not_found}
 
@@ -661,7 +693,7 @@ defmodule DbserviceWeb.StudentController do
   end
 
   def update_user_enrollment_records(conn, params) do
-    with student when not is_nil(student) <-
+    with %Student{} = student <-
            Users.get_student_by_student_id(params["student_id"]),
          user_id <- student.user_id,
          group_id <- params["group_id"],
@@ -685,6 +717,11 @@ defmodule DbserviceWeb.StudentController do
         updated_status_record: status_response
       })
     else
+      {:error, {:ambiguous_student, _, _} = reason} ->
+        conn
+        |> put_status(:conflict)
+        |> json(%{message: Users.ambiguous_student_message(reason)})
+
       nil ->
         conn
         |> put_status(:not_found)
@@ -765,8 +802,14 @@ defmodule DbserviceWeb.StudentController do
 
   defp get_student(student_id) do
     case Users.get_student_by_student_id(student_id) do
-      nil -> {:error, "Student not found"}
-      student -> {:ok, student}
+      {:error, {:ambiguous_student, _, _} = reason} ->
+        {:error, Users.ambiguous_student_message(reason)}
+
+      nil ->
+        {:error, "Student not found"}
+
+      student ->
+        {:ok, student}
     end
   end
 
@@ -831,6 +874,13 @@ defmodule DbserviceWeb.StudentController do
       end
 
     case Users.get_student_by_student_id(student_data["student_id"]) do
+      {:error, {:ambiguous_student, _, _} = reason} ->
+        {:error,
+         %{
+           student_id: student_data["student_id"],
+           message: Users.ambiguous_student_message(reason)
+         }}
+
       nil ->
         case Users.create_student_with_user(student_data) do
           {:ok, student} ->
@@ -896,7 +946,7 @@ defmodule DbserviceWeb.StudentController do
 
   def update_student_status(conn, params) do
     with {:ok, status} <- get_status_by_title(params["status"]),
-         student when not is_nil(student) <-
+         %Student{} = student <-
            Users.get_student_by_student_id(params["student_id"], params),
          :ok <- check_existing_status(student, status.title),
          {:ok, %Student{} = updated_student} <-
@@ -919,6 +969,11 @@ defmodule DbserviceWeb.StudentController do
         conn
         |> put_status(:ok)
         |> json(%{message: "Student already has the requested status"})
+
+      {:error, {:ambiguous_student, _, _} = reason} ->
+        conn
+        |> put_status(:conflict)
+        |> json(%{error: Users.ambiguous_student_message(reason)})
 
       {:error, changeset} ->
         conn

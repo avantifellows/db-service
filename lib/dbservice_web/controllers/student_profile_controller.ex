@@ -146,14 +146,27 @@ defmodule DbserviceWeb.StudentProfileController do
   def create(conn, params) do
     # Scope to the auth group when params carry it (student_id is unique only within an auth
     # group); falls back to unscoped lookup when no auth group is present.
-    student = Users.get_student_by_student_id(params["student_id"], params)
-    student_fk = student.id
-    user_id = student.user_id
+    case Users.get_student_by_student_id(params["student_id"], params) do
+      {:error, {:ambiguous_student, _, _} = reason} ->
+        conn
+        |> put_status(:conflict)
+        |> json(%{errors: Users.ambiguous_student_message(reason)})
 
+      nil ->
+        conn
+        |> put_status(:not_found)
+        |> json(%{errors: "Student not found with the provided identifier"})
+
+      student ->
+        upsert_profile_for_student(conn, student, params)
+    end
+  end
+
+  defp upsert_profile_for_student(conn, student, params) do
     updated_params =
       params
-      |> Map.put_new("user_id", user_id)
-      |> Map.put_new("student_fk", student_fk)
+      |> Map.put_new("user_id", student.user_id)
+      |> Map.put_new("student_fk", student.id)
 
     case Profiles.get_student_profile_by_student_id(updated_params["student_id"]) do
       nil ->

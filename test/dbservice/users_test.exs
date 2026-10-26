@@ -774,7 +774,7 @@ defmodule Dbservice.UsersTest do
       assert message =~ "APAAR ID"
     end
 
-    test "get_student_by_student_id returns earliest match without raising on duplicates" do
+    test "get_student_by_student_id reports ambiguity instead of guessing on duplicates" do
       setup_auth_group("AuthA")
       setup_auth_group("AuthB")
 
@@ -784,11 +784,52 @@ defmodule Dbservice.UsersTest do
       assert {:ok, %Student{} = second} =
                Users.create_or_update_student(student_params("S1", "AuthB"))
 
-      # Two rows now share student_id "S1"; the legacy single-id lookup must not raise
-      # Ecto.MultipleResultsError and should return the earliest-created row deterministically.
+      # Two rows now share student_id "S1". The unscoped lookup has nothing to pick between
+      # them with, so it must neither raise Ecto.MultipleResultsError nor silently return
+      # one of them - callers have to surface the ambiguity to the operator.
       assert first.id < second.id
+
+      assert {:error, {:ambiguous_student, :student_id, "S1"}} =
+               Users.get_student_by_student_id("S1")
+    end
+
+    test "get_student_by_student_id still resolves a unique id and a missing id" do
+      setup_auth_group("AuthA")
+
+      assert {:ok, %Student{} = only} =
+               Users.create_or_update_student(student_params("S1", "AuthA"))
+
       assert %Student{id: id} = Users.get_student_by_student_id("S1")
-      assert id == first.id
+      assert id == only.id
+      assert is_nil(Users.get_student_by_student_id("does-not-exist"))
+    end
+
+    test "get_student_by_id_or_apaar_id reports ambiguity and does not fall through to apaar_id" do
+      setup_auth_group("AuthA")
+      setup_auth_group("AuthB")
+
+      assert {:ok, %Student{}} =
+               Users.create_or_update_student(
+                 student_params("S1", "AuthA", %{"apaar_id" => "123456789012"})
+               )
+
+      assert {:ok, %Student{}} = Users.create_or_update_student(student_params("S1", "AuthB"))
+
+      # A shared student_id must stop the row, not quietly resolve via the apaar_id of
+      # whichever student happened to carry one.
+      assert {:error, {:ambiguous_student, :student_id, "S1"}} =
+               Users.get_student_by_id_or_apaar_id(%{
+                 "student_id" => "S1",
+                 "apaar_id" => "123456789012"
+               })
+    end
+
+    test "ambiguous_student_message names the columns that disambiguate" do
+      message = Users.ambiguous_student_message({:ambiguous_student, :student_id, "S1"})
+
+      assert message =~ "S1"
+      assert message =~ "auth_group"
+      assert message =~ "user_id"
     end
 
     test "get_student_by_student_id scopes to the auth group when one is supplied" do
