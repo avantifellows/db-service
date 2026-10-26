@@ -123,6 +123,12 @@ least one usable actor identity: a canonical `actor_user_id`, a nonblank
 ID-only system and legacy writers remain valid.
 _Avoid_: editable audit row, content snapshot
 
+**Challenge Category**:
+One fixed, coded Academic or Non-academic classification a Mentor selects for a
+Mentee in Post-Session Notes, identified by a stable code. LMS owns the code
+list, labels and validation.
+_Avoid_: tag, challenge tag, issue type, free-text category
+
 **Follow-up Note**:
 An immutable answer set for one Student and stable Phase, added by its author
 after that Phase's Post-Session Notes are submitted, answering up to three fixed
@@ -223,6 +229,8 @@ _Avoid_: Student Profile, Holistic questionnaire links
 - A Program has one Phase Plan per Academic Year; a Phase Plan has ordered Phases.
 - A Student has at most one active Mentor-Mentee Mapping per Academic Year.
 - Post-Session Notes belong to one Student, one stable Phase, and their author.
+- Post-Session Notes have zero or more distinct Challenge Categories; Follow-up
+  Notes and Historical Holistic Notes have none.
 - Follow-up Notes belong to one Student, one stable Phase, and their author;
   a Student and Phase may have many.
 - Mapping and Post-Session Note audit events retain immutable actor snapshots;
@@ -299,6 +307,23 @@ existing data or complete that operational rollout. Deploy schema before LMS.
 Production should use forward fixes: `down` restores unconditional Follow-up
 immutability and drops the companion table, losing its audit history, and cannot
 restore erased text. Exercise rollback only on disposable databases.
+
+### Post-Session Note Challenge Categories (LMS #457)
+
+last_updated: 2026-10-26
+
+Challenge Categories are `category_code` rows in
+`holistic_mentorship_post_session_note_challenges`, unique per Notes and code,
+nonblank and at most 100 characters. No CHECK restricts the code list: LMS owns
+it. Writes are guarded like Post-Session answers (blocked after
+privacy deletion; deletes stay allowed for draft and privacy erasure).
+
+The privacy tombstone records `post_session_challenges_erased`, the number of
+Challenge Category rows LMS deleted before inserting it, as it does for
+Post-Session answers. Tombstones are immutable, so the count must be written with
+the tombstone or it can never be recorded. The column is `NOT NULL DEFAULT 0`
+with a separate `>= 0` CHECK; existing tombstones predate Challenge Categories
+and keep 0. There is no backfill. Deploy schema before the LMS release.
 
 ## Example Dialogue
 
