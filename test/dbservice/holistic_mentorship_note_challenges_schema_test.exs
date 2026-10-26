@@ -116,6 +116,74 @@ defmodule Dbservice.HolisticMentorshipNoteChallengesSchemaTest do
     assert Repo.query!("DELETE FROM #{@table} WHERE notes_id = $1", [notes_id]).num_rows == 1
   end
 
+  test "records erased Challenge Categories on the privacy tombstone" do
+    assert Repo.query!(
+             """
+             SELECT data_type, is_nullable, column_default
+             FROM information_schema.columns
+             WHERE table_schema = 'public'
+               AND table_name = 'holistic_mentorship_privacy_deletions'
+               AND column_name = 'post_session_challenges_erased'
+             """,
+             []
+           ).rows == [["integer", "NO", "0"]]
+
+    assert Repo.query!(
+             """
+             SELECT pg_get_constraintdef(oid) FROM pg_constraint
+             WHERE conrelid = 'holistic_mentorship_privacy_deletions'::regclass
+               AND conname = 'hm_privacy_deletions_challenges_erased_check'
+             """,
+             []
+           ).rows == [["CHECK ((post_session_challenges_erased >= 0))"]]
+
+    scope = insert_scope()
+    counted_scope = insert_scope()
+    negative_scope = insert_scope()
+
+    # Tombstones written without the column (all erasures before #457) record 0.
+    Repo.query!(
+      """
+      INSERT INTO holistic_mentorship_privacy_deletions
+        (student_id, actor_user_id, reason, profile_summaries_erased,
+         post_session_answers_erased, historical_answers_erased, occurred_at)
+      VALUES ($1, $2, 'approved-request', 0, 0, 0, now())
+      """,
+      [scope.student_id, scope.author_user_id]
+    )
+
+    assert insert_tombstone(counted_scope, 3) == {:ok, 3}
+
+    assert_constraint(:check_violation, fn -> insert_tombstone(negative_scope, -1) end)
+
+    assert Repo.query!(
+             """
+             SELECT student_id, post_session_challenges_erased
+             FROM holistic_mentorship_privacy_deletions
+             WHERE student_id = ANY($1)
+             ORDER BY post_session_challenges_erased
+             """,
+             [[scope.student_id, counted_scope.student_id, negative_scope.student_id]]
+           ).rows == [[scope.student_id, 0], [counted_scope.student_id, 3]]
+  end
+
+  defp insert_tombstone(scope, challenges_erased) do
+    with {:ok, %{rows: [[count]]}} <-
+           Repo.query(
+             """
+             INSERT INTO holistic_mentorship_privacy_deletions
+               (student_id, actor_user_id, reason, profile_summaries_erased,
+                post_session_answers_erased, historical_answers_erased,
+                post_session_challenges_erased, occurred_at)
+             VALUES ($1, $2, 'approved-request', 0, 0, 0, $3, now())
+             RETURNING post_session_challenges_erased
+             """,
+             [scope.student_id, scope.author_user_id, challenges_erased]
+           ) do
+      {:ok, count}
+    end
+  end
+
   defp insert_scope do
     [[student_user_id], [author_user_id]] =
       Repo.query!(

@@ -231,7 +231,7 @@ restore erased text. Exercise rollback only on disposable databases.
 
 ### Post-Session Note Challenge Categories (LMS #457)
 
-last_updated: 2026-10-24
+last_updated: 2026-10-26
 
 Challenge Categories are `category_code` rows in
 `holistic_mentorship_post_session_note_challenges`, unique per Notes and code,
@@ -239,10 +239,12 @@ nonblank and at most 100 characters. No CHECK restricts the code list: LMS owns
 it. Writes are guarded like Post-Session answers (blocked after
 privacy deletion; deletes stay allowed for draft and privacy erasure).
 
-The privacy tombstone has no Challenge Category count: tombstones are immutable,
-and LMS deletes these rows before inserting the tombstone, as it does for
-Post-Session answers. A count can be added later as a defaulted column if
-needed. There is no backfill. Deploy schema before the LMS release.
+The privacy tombstone records `post_session_challenges_erased`, the number of
+Challenge Category rows LMS deleted before inserting it, as it does for
+Post-Session answers. Tombstones are immutable, so the count must be written with
+the tombstone or it can never be recorded. The column is `NOT NULL DEFAULT 0`
+with a separate `>= 0` CHECK; existing tombstones predate Challenge Categories
+and keep 0. There is no backfill. Deploy schema before the LMS release.
 
 ## Example Dialogue
 
