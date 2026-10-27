@@ -439,6 +439,368 @@ defmodule DbserviceWeb.VisitConcernControllerTest do
     end
   end
 
+  describe "PUT /api/visit-concerns/visit-summary/:visit_id" do
+    test "creates records and mentions, records the summary and returns the School's records",
+         %{conn: conn} do
+      visit_id = insert_visit(%{school_code: "70705", visit_date: ~D[2026-10-12]})
+      other_visit = insert_visit(%{school_code: "70705", visit_date: ~D[2026-10-01]})
+      existing = insert_record("70705", "concern", "Labs stay locked", "open")
+      insert_mention(existing, other_visit)
+      insert_record("99999", "concern", "Another School's record", "open")
+
+      body =
+        conn
+        |> put_summary(visit_id, %{
+          "fingerprint" => @golden_fingerprint,
+          "prompt_version" => "v1",
+          "points" => [
+            %{"existing_id" => existing, "kind" => "concern", "snippet" => " Lab still shut "},
+            %{
+              "new" => %{"kind" => "concern", "text" => "  Fans do not work "},
+              "snippet" => "Fans broken in 9A"
+            },
+            %{
+              "new" => %{"kind" => "highlight", "text" => "Students ask many doubts"},
+              "snippet" => "Many doubts asked"
+            }
+          ]
+        })
+        |> json_response(200)
+
+      assert [record_existing, %{"id" => fans} = record_fans, %{"id" => doubts} = record_doubts] =
+               body["records"]
+
+      assert record_existing == record(existing, "concern", "Labs stay locked", "open", nil)
+      assert record_fans == record(fans, "concern", "Fans do not work", "open", nil)
+      assert record_doubts == record(doubts, "highlight", "Students ask many doubts", nil, nil)
+      assert existing < fans and fans < doubts
+
+      assert mentions_of(visit_id) ==
+               MapSet.new([
+                 {existing, "Lab still shut"},
+                 {fans, "Fans broken in 9A"},
+                 {doubts, "Many doubts asked"}
+               ])
+
+      assert %{rows: [[@golden_fingerprint, "v1", %NaiveDateTime{}]]} =
+               Repo.query!(
+                 "SELECT fingerprint, prompt_version, summarised_at FROM lms_visit_note_summaries WHERE visit_id = $1",
+                 [visit_id]
+               )
+
+      assert %{rows: [[2]]} =
+               Repo.query!(
+                 "SELECT count(*) FROM lms_visit_concerns WHERE inserted_at = updated_at AND id = ANY($1)",
+                 [[fans, doubts]]
+               )
+    end
+
+    test "a summarised Visit leaves the GET until its remarks change", %{conn: conn} do
+      visit_id =
+        insert_visit(%{}, [
+          %{
+            action_type: "principal_interaction",
+            data: %{
+              "questions" => %{
+                "lab_access" => %{
+                  "answer" => "no",
+                  "score" => 2,
+                  "remark" => "Lab is locked — keys with clerk"
+                }
+              },
+              "additional_notes" => "Ask for a spare key"
+            }
+          }
+        ])
+
+      assert [%{"visit_id" => ^visit_id, "fingerprint" => fingerprint}] =
+               pending_visits(conn, "prompt_version=v1")["visits"]
+
+      conn
+      |> put_summary(visit_id, summary_body(fingerprint, []))
+      |> json_response(200)
+
+      assert pending_ids(conn, "prompt_version=v1") == []
+      assert pending_ids(conn, "prompt_version=v2") == [visit_id]
+
+      set_action_data(visit_id, %{
+        "questions" => %{
+          "lab_access" => %{
+            "answer" => "yes",
+            "score" => 5,
+            "remark" => "Lab is locked — keys with clerk"
+          }
+        },
+        "additional_notes" => "Ask for a spare key"
+      })
+
+      assert pending_ids(conn, "prompt_version=v1") == []
+
+      set_action_data(visit_id, %{
+        "questions" => %{"lab_access" => %{"remark" => "Lab is open now"}},
+        "additional_notes" => "Ask for a spare key"
+      })
+
+      assert pending_ids(conn, "prompt_version=v1") == [visit_id]
+    end
+
+    test "an identical re-PUT creates nothing new and only advances summarised_at",
+         %{conn: conn} do
+      visit_id = insert_visit(%{})
+      existing = insert_record("70705", "concern", "Labs stay locked", "open")
+
+      body =
+        summary_body(@golden_fingerprint, [
+          %{"existing_id" => existing, "kind" => "concern", "snippet" => "Lab still shut"},
+          new_point("concern", "Fans do not work", "Fans broken in 9A"),
+          new_point("highlight", "Students ask many doubts", "Many doubts asked")
+        ])
+
+      first = conn |> put_summary(visit_id, body) |> json_response(200)
+      mentions = mentions_of(visit_id)
+      counts = row_counts()
+
+      Repo.query!(
+        "UPDATE lms_visit_note_summaries SET summarised_at = '2026-01-01 00:00:00' WHERE visit_id = $1",
+        [visit_id]
+      )
+
+      second = conn |> put_summary(visit_id, body) |> json_response(200)
+
+      assert second == first
+      assert mentions_of(visit_id) == mentions
+      assert row_counts() == counts
+
+      assert %{rows: [[summarised_at]]} =
+               Repo.query!(
+                 "SELECT summarised_at FROM lms_visit_note_summaries WHERE visit_id = $1",
+                 [visit_id]
+               )
+
+      assert NaiveDateTime.compare(summarised_at, ~N[2026-01-01 00:00:00]) == :gt
+    end
+
+    test "a changed body replaces the Visit's mentions without changing dropped records' status",
+         %{conn: conn} do
+      visit_id = insert_visit(%{})
+      other_visit = insert_visit(%{visit_date: ~D[2026-10-01]})
+      open = insert_record("70705", "concern", "Labs stay locked", "open")
+      resolved = insert_record("70705", "concern", "Fans do not work", "resolved")
+      kept = insert_record("70705", "highlight", "Students ask many doubts", nil)
+      insert_mention(open, other_visit)
+
+      conn
+      |> put_summary(
+        visit_id,
+        summary_body(@golden_fingerprint, [
+          %{"existing_id" => open, "kind" => "concern", "snippet" => "Lab still shut"},
+          %{"existing_id" => resolved, "kind" => "concern", "snippet" => "Fans broken"},
+          %{"existing_id" => kept, "kind" => "highlight", "snippet" => "Many doubts"}
+        ])
+      )
+      |> json_response(200)
+
+      body =
+        conn
+        |> put_summary(
+          visit_id,
+          summary_body(@golden_fingerprint, [
+            %{"existing_id" => kept, "kind" => "highlight", "snippet" => "Doubts in every class"}
+          ])
+        )
+        |> json_response(200)
+
+      assert mentions_of(visit_id) == MapSet.new([{kept, "Doubts in every class"}])
+      assert mentions_of(other_visit) == MapSet.new([{open, "Raised again in this Visit"}])
+
+      assert body["records"] == [
+               record(open, "concern", "Labs stay locked", "open", nil),
+               record(resolved, "concern", "Fans do not work", "resolved", nil),
+               record(kept, "highlight", "Students ask many doubts", nil, nil)
+             ]
+    end
+
+    test "duplicate points collapse to one mention that keeps the first snippet", %{conn: conn} do
+      visit_id = insert_visit(%{})
+      existing = insert_record("70705", "concern", "Labs stay locked", "open")
+
+      body =
+        conn
+        |> put_summary(
+          visit_id,
+          summary_body(@golden_fingerprint, [
+            %{"existing_id" => existing, "kind" => "concern", "snippet" => "First lab remark"},
+            new_point("concern", "Fans do not work", "First fan remark"),
+            %{"existing_id" => existing, "kind" => "concern", "snippet" => "Second lab remark"},
+            new_point("concern", " Fans do not work", "Second fan remark")
+          ])
+        )
+        |> json_response(200)
+
+      assert [_existing, %{"id" => fans, "text" => "Fans do not work"}] = body["records"]
+
+      assert mentions_of(visit_id) ==
+               MapSet.new([{existing, "First lab remark"}, {fans, "First fan remark"}])
+    end
+
+    test "empty points clears the Visit's mentions and still records the summary",
+         %{conn: conn} do
+      visit_id = insert_visit(%{})
+      existing = insert_record("70705", "concern", "Labs stay locked", "open")
+      insert_mention(existing, visit_id)
+
+      body =
+        conn
+        |> put_summary(visit_id, summary_body(@empty_fingerprint, []))
+        |> json_response(200)
+
+      assert body["records"] == [record(existing, "concern", "Labs stay locked", "open", nil)]
+      assert mentions_of(visit_id) == MapSet.new()
+
+      assert %{rows: [[@empty_fingerprint, "v1"]]} =
+               Repo.query!(
+                 "SELECT fingerprint, prompt_version FROM lms_visit_note_summaries WHERE visit_id = $1",
+                 [visit_id]
+               )
+    end
+
+    test "rejects a bad body with 400 and writes nothing", %{conn: conn} do
+      visit_id = insert_visit(%{school_code: "70705"})
+      own = insert_record("70705", "concern", "Labs stay locked", "open")
+      highlight = insert_record("70705", "highlight", "Students ask many doubts", nil)
+      foreign = insert_record("99999", "concern", "Another School's record", "open")
+      insert_mention(own, visit_id)
+      insert_summary(visit_id, @empty_fingerprint, "v0")
+      valid_new = new_point("concern", "Fans do not work", "Fans broken")
+
+      bad_points = [
+        [valid_new, %{"existing_id" => foreign, "kind" => "concern", "snippet" => "Lab"}],
+        [valid_new, %{"existing_id" => highlight, "kind" => "concern", "snippet" => "Doubts"}],
+        [valid_new, %{"existing_id" => 999_999_999, "kind" => "concern", "snippet" => "Gone"}],
+        [Map.put(valid_new, "existing_id", own)],
+        [%{"kind" => "concern", "snippet" => "Neither"}],
+        [%{"existing_id" => own, "snippet" => "No kind"}],
+        [%{"existing_id" => 0, "kind" => "concern", "snippet" => "Zero id"}],
+        [%{"existing_id" => "#{own}", "kind" => "concern", "snippet" => "String id"}],
+        [new_point("issue", "Fans do not work", "Bad kind")],
+        [%{"new" => "Fans do not work", "snippet" => "New is not a map"}],
+        ["not a point"],
+        [new_point("concern", String.duplicate("t", 501), "Too long")],
+        [new_point("concern", "Fans do not work", String.duplicate("s", 301))],
+        [new_point("concern", "   ", "Blank text")],
+        [new_point("concern", "Fans do not work", "  ")],
+        List.duplicate(valid_new, 101)
+      ]
+
+      bad_bodies =
+        Enum.map(bad_points, &summary_body(@golden_fingerprint, &1)) ++
+          [
+            summary_body(String.upcase(@golden_fingerprint), [valid_new]),
+            summary_body(String.slice(@golden_fingerprint, 0, 63), [valid_new]),
+            Map.delete(summary_body(@golden_fingerprint, [valid_new]), "fingerprint"),
+            Map.put(summary_body(@golden_fingerprint, [valid_new]), "prompt_version", " "),
+            Map.put(
+              summary_body(@golden_fingerprint, [valid_new]),
+              "prompt_version",
+              String.duplicate("v", 51)
+            ),
+            Map.delete(summary_body(@golden_fingerprint, []), "points"),
+            Map.put(summary_body(@golden_fingerprint, []), "points", %{"0" => valid_new})
+          ]
+
+      counts = row_counts()
+
+      for body <- bad_bodies do
+        assert %{"error" => message} =
+                 conn |> put_summary(visit_id, body) |> json_response(400),
+               "expected 400 for #{inspect(body, limit: 5)}"
+
+        assert is_binary(message)
+        assert row_counts() == counts
+      end
+
+      assert mentions_of(visit_id) == MapSet.new([{own, "Raised again in this Visit"}])
+
+      assert %{"error" => error} =
+               conn
+               |> put_summary(
+                 visit_id,
+                 summary_body(@golden_fingerprint, [
+                   valid_new,
+                   %{"existing_id" => foreign, "kind" => "concern", "snippet" => "Lab"}
+                 ])
+               )
+               |> json_response(400)
+
+      assert error =~ "#{foreign}"
+
+      assert %{"error" => _} =
+               conn
+               |> put(
+                 "/api/visit-concerns/visit-summary/abc",
+                 summary_body(@golden_fingerprint, [])
+               )
+               |> json_response(400)
+
+      assert row_counts() == counts
+    end
+
+    test "accepts boundary lengths and stores trimmed values", %{conn: conn} do
+      visit_id = insert_visit(%{})
+      text = String.duplicate("t", 500)
+      snippet = String.duplicate("s", 300)
+
+      body =
+        conn
+        |> put_summary(
+          visit_id,
+          %{
+            "fingerprint" => @golden_fingerprint,
+            "prompt_version" => " " <> String.duplicate("v", 50) <> " ",
+            "points" => List.duplicate(new_point("concern", " #{text} ", " #{snippet} "), 100)
+          }
+        )
+        |> json_response(200)
+
+      assert [%{"id" => id, "text" => ^text}] = body["records"]
+      assert mentions_of(visit_id) == MapSet.new([{id, snippet}])
+    end
+
+    test "returns 404 for a missing, soft-deleted or in-progress Visit", %{conn: conn} do
+      deleted = insert_visit(%{deleted_at: ~N[2026-10-11 05:00:00]})
+      in_progress = insert_visit(%{status: "in_progress", completed_at: nil})
+      counts = row_counts()
+
+      for visit_id <- [deleted, in_progress, in_progress + 1_000_000] do
+        assert conn
+               |> put_summary(
+                 visit_id,
+                 summary_body(@golden_fingerprint, [
+                   new_point("concern", "Fans do not work", "Fans broken")
+                 ])
+               )
+               |> json_response(404) == %{"error" => "Visit not found or not completed"}
+      end
+
+      assert row_counts() == counts
+    end
+
+    test "rejects a request without the bearer token" do
+      visit_id = insert_visit(%{})
+
+      assert build_conn()
+             |> put_summary(visit_id, summary_body(@golden_fingerprint, []))
+             |> response(401) == "Not Authorized"
+
+      assert row_counts() == %{
+               concerns: 0,
+               mentions: 0,
+               events: 0,
+               summaries: 0
+             }
+    end
+  end
+
   defp record(id, kind, text, status, latest_resolved_on) do
     %{
       "id" => id,
@@ -462,6 +824,37 @@ defmodule DbserviceWeb.VisitConcernControllerTest do
 
   defp pending_ids(conn, query) do
     conn |> pending_visits(query) |> Map.fetch!("visits") |> Enum.map(& &1["visit_id"])
+  end
+
+  defp put_summary(conn, visit_id, body) do
+    put(conn, "/api/visit-concerns/visit-summary/#{visit_id}", body)
+  end
+
+  defp summary_body(fingerprint, points),
+    do: %{"fingerprint" => fingerprint, "prompt_version" => "v1", "points" => points}
+
+  defp new_point(kind, text, snippet),
+    do: %{"new" => %{"kind" => kind, "text" => text}, "snippet" => snippet}
+
+  defp row_counts do
+    for {key, table} <- [
+          concerns: "lms_visit_concerns",
+          mentions: "lms_visit_concern_mentions",
+          events: "lms_visit_concern_events",
+          summaries: "lms_visit_note_summaries"
+        ],
+        into: %{} do
+      %{rows: [[count]]} = Repo.query!("SELECT count(*) FROM #{table}")
+      {key, count}
+    end
+  end
+
+  defp mentions_of(visit_id) do
+    Repo.query!(
+      "SELECT concern_id, snippet FROM lms_visit_concern_mentions WHERE visit_id = $1",
+      [visit_id]
+    ).rows
+    |> MapSet.new(fn [concern_id, snippet] -> {concern_id, snippet} end)
   end
 
   defp insert_record(school_code, kind, text, status) do

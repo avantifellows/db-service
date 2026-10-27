@@ -12,6 +12,24 @@ defmodule DbserviceWeb.VisitConcernController do
     end
   end
 
+  # PUT /api/visit-concerns/visit-summary/:visit_id
+  #   {fingerprint, prompt_version, points: [{existing_id, kind, snippet} | {new: {kind, text}, snippet}]}
+  def update_summary(conn, %{"visit_id" => visit_id} = params) do
+    with {id, ""} <- Integer.parse(visit_id),
+         {:ok, records} <- VisitConcerns.put_visit_summary(id, params) do
+      json(conn, %{records: records})
+    else
+      {:error, :not_found} ->
+        conn |> put_status(:not_found) |> json(%{error: "Visit not found or not completed"})
+
+      {:error, message} ->
+        bad_request(conn, message)
+
+      _ ->
+        bad_request(conn, "visit_id must be an integer")
+    end
+  end
+
   defp parse_pending_params(params) do
     with {:ok, prompt_version} <- parse_prompt_version(params),
          {:ok, limit} <- parse_limit(params),
