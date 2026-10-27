@@ -207,10 +207,25 @@ a separate S3 object with the same retention.
 _Avoid_: storing audio or transcripts in Postgres
 
 **Action Item**:
-A follow-up agreed in a Conversation, owned by the Student, the Mentor or the
-Parent, with no due date. Its only permitted change is open to done, recording
-the later Conversation that closed it.
+A follow-up agreed in a Conversation, or pushed from a Common Action Item,
+owned by the Student, the Mentor or the Parent, with no due date. Its only
+permitted change is open to done, recording the later Conversation that closed
+it; a pushed Action Item's text and owner also follow its Common Action Item
+while open.
 _Avoid_: Action (a School Visit term), task
+
+**Common Action Item**:
+An Action Item a Blended Learning Admin pushes to a target (every Student with
+an active Mapping, one grade, or one Mentor's Students). It is materialised at
+push time as one open Action Item per targeted Student, at most one per
+Student; Students mapped later get it only when it is pushed again. Removing it
+is a soft removal that deletes its still-open Action Items and keeps done ones.
+_Avoid_: template, broadcast, recurring task
+
+**Resource**:
+A titled `https://` link on the Mentors' Resources tab, ordered by position and
+managed by Blended Learning Admins.
+_Avoid_: Mentor Toolkit (one Resource), Student Links
 
 **Mentor Flag**:
 A concern raised on one Conversation for one Flag Recipient
@@ -252,6 +267,7 @@ _Avoid_: Student Profile, Holistic questionnaire links
 - A Conversation has many Action Items, Photos and Mentor Flags; a Conversation
   saved from a Conversation Draft keeps the Draft's Call Recording and transcript
   keys.
+- An Action Item belongs to exactly one Conversation or one Common Action Item.
 - A Conversation Draft has many Transcription Requests over time but at most one
   queued or running.
 
@@ -280,7 +296,9 @@ _Avoid_: Student Profile, Holistic questionnaire links
 - Student eligibility mutations end affected active Mappings atomically.
 - Database sync includes all Holistic data for local and staging targets, including privacy-deletion markers. Oban job data is excluded from both targets.
 - Blended Learning Conversations and Attempts are append-only (trigger); af_lms
-  only inserts Photos and Mentor Flags and only moves Action Items open to done.
+  only inserts Photos and Mentor Flags and only moves Action Items open to done,
+  apart from a Common Action Item's edit or removal, which updates or deletes its
+  still-open Action Items.
 - `etl-next` reads Transcription Requests and writes Conversation Draft content
   only through the db-service API; it receives the Student's gender and the
   session details, never names or phone numbers.
