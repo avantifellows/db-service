@@ -92,6 +92,110 @@ defmodule Dbservice.BlendedLearningStudentLinksSchemaTest do
     end
   end
 
+  test "stores the latest Profile Doc conversation snapshot, or NULL" do
+    student_id = insert_student!()
+
+    action_items = [
+      %{"text" => "Revise rotational motion", "owner" => "student"},
+      %{"text" => "Call parent about attendance", "owner" => "mentor"}
+    ]
+
+    assert {:ok, %{rows: [[link_id]]}} =
+             insert_link(student_id, %{
+               legacy_last_contact_on: ~D[2026-08-17],
+               legacy_conversation_summary: "Discussed mock test results.",
+               legacy_action_items: action_items
+             })
+
+    assert Repo.query!(
+             """
+             SELECT legacy_conversation_summary, legacy_action_items
+             FROM #{@table} WHERE id = $1
+             """,
+             [link_id]
+           ).rows == [["Discussed mock test results.", action_items]]
+
+    assert {:ok, %{rows: [[summary_only_id]]}} =
+             insert_link(insert_student!(), %{legacy_conversation_summary: "Only a summary."})
+
+    assert {:ok, %{rows: [[empty_id]]}} = insert_link(insert_student!(), %{})
+
+    assert Repo.query!(
+             """
+             SELECT legacy_conversation_summary, legacy_action_items
+             FROM #{@table} WHERE id = ANY($1) ORDER BY id
+             """,
+             [[summary_only_id, empty_id]]
+           ).rows == [["Only a summary.", nil], [nil, nil]]
+
+    max_summary = String.duplicate("a", 2000)
+    ten_items = List.duplicate(%{"text" => "Practice", "owner" => "parent"}, 10)
+
+    Repo.query!(
+      """
+      UPDATE #{@table}
+      SET legacy_conversation_summary = $1, legacy_action_items = $2
+      WHERE id = $3
+      """,
+      [max_summary, ten_items, link_id]
+    )
+
+    assert Repo.query!(
+             """
+             SELECT char_length(legacy_conversation_summary),
+                    jsonb_array_length(legacy_action_items)
+             FROM #{@table} WHERE id = $1
+             """,
+             [link_id]
+           ).rows == [[2000, 10]]
+  end
+
+  test "rejects a blank or over-long legacy conversation summary" do
+    for summary <- ["", " ", "  \n\t ", String.duplicate("a", 2001)] do
+      assert_constraint(:check_violation, fn ->
+        insert_link(insert_student!(), %{legacy_conversation_summary: summary})
+      end)
+    end
+  end
+
+  test "rejects legacy action items that are not a 1 to 10 item array, or lack a summary" do
+    item = %{"text" => "Revise rotational motion", "owner" => "student"}
+
+    invalid_action_items = [
+      item,
+      "Revise rotational motion",
+      42,
+      [],
+      List.duplicate(item, 11)
+    ]
+
+    for action_items <- invalid_action_items do
+      assert_constraint(:check_violation, fn ->
+        insert_link(insert_student!(), %{
+          legacy_conversation_summary: "Discussed mock test results.",
+          legacy_action_items: action_items
+        })
+      end)
+    end
+
+    assert_constraint(:check_violation, fn ->
+      insert_link(insert_student!(), %{legacy_action_items: [item]})
+    end)
+
+    assert {:ok, %{rows: [[link_id]]}} =
+             insert_link(insert_student!(), %{
+               legacy_conversation_summary: "Discussed mock test results.",
+               legacy_action_items: [item]
+             })
+
+    assert_constraint(:check_violation, fn ->
+      Repo.query(
+        "UPDATE #{@table} SET legacy_conversation_summary = NULL WHERE id = $1",
+        [link_id]
+      )
+    end)
+  end
+
   test "restricts deleting a Student that has Student Links" do
     student_id = insert_student!()
     assert {:ok, _} = insert_link(student_id, %{})
@@ -120,15 +224,18 @@ defmodule Dbservice.BlendedLearningStudentLinksSchemaTest do
     Repo.query(
       """
       INSERT INTO #{@table}
-        (student_id, profile_doc_url, screener_url, legacy_last_contact_on)
-      VALUES ($1, $2, $3, $4)
+        (student_id, profile_doc_url, screener_url, legacy_last_contact_on,
+         legacy_conversation_summary, legacy_action_items)
+      VALUES ($1, $2, $3, $4, $5, $6)
       RETURNING id
       """,
       [
         student_id,
         attrs[:profile_doc_url],
         attrs[:screener_url],
-        attrs[:legacy_last_contact_on]
+        attrs[:legacy_last_contact_on],
+        attrs[:legacy_conversation_summary],
+        attrs[:legacy_action_items]
       ]
     )
   end
