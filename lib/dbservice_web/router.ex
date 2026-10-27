@@ -240,6 +240,8 @@ defmodule DbserviceWeb.Router do
     get("/teacher-feedback-summary", TeacherFeedbackSummaryController, :index)
     put("/teacher-feedback-summary/:session_pk", TeacherFeedbackSummaryController, :update)
 
+    get("/visit-concerns/pending-visits", VisitConcernController, :pending_visits)
+
     post(
       "/lms/students/bulk-create-with-enrollments",
       StudentController,
