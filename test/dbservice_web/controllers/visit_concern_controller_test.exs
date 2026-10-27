@@ -801,6 +801,191 @@ defmodule DbserviceWeb.VisitConcernControllerTest do
     end
   end
 
+  describe "PUT visit-summary auto-reopen" do
+    test "a Visit dated the day after the latest resolution reopens the Concern",
+         %{conn: conn} do
+      visit_id = insert_visit(%{visit_date: ~D[2026-10-12]})
+      concern = insert_record("70705", "concern", "Labs stay locked", "resolved")
+      # 2026-10-11 16:00 IST.
+      insert_event(concern, "resolved", ~N[2026-10-11 10:30:00])
+
+      body =
+        conn
+        |> put_summary(visit_id, summary_body(@golden_fingerprint, [concern_point(concern)]))
+        |> json_response(200)
+
+      assert body["records"] == [
+               record(concern, "concern", "Labs stay locked", "open", "2026-10-11")
+             ]
+
+      assert [["auto_reopened", nil, nil, ^visit_id, inserted_at]] = events_after_seed(concern)
+      assert [["open", ^inserted_at]] = concern_row(concern)
+      assert NaiveDateTime.compare(inserted_at, ~N[2026-10-20 00:00:00]) == :gt
+    end
+
+    test "a Visit on the resolution's IST day or earlier leaves the Concern resolved",
+         %{conn: conn} do
+      same_day = insert_visit(%{visit_date: ~D[2026-10-11]})
+      earlier = insert_visit(%{visit_date: ~D[2026-10-09]})
+      concern = insert_record("70705", "concern", "Labs stay locked", "resolved")
+      # 2026-10-11 16:00 IST.
+      insert_event(concern, "resolved", ~N[2026-10-11 10:30:00])
+
+      for visit_id <- [same_day, earlier] do
+        body =
+          conn
+          |> put_summary(visit_id, summary_body(@golden_fingerprint, [concern_point(concern)]))
+          |> json_response(200)
+
+        assert body["records"] == [
+                 record(concern, "concern", "Labs stay locked", "resolved", "2026-10-11")
+               ]
+      end
+
+      assert events_after_seed(concern) == []
+      assert concern_row(concern) == [["resolved", ~N[2026-10-01 06:00:00]]]
+    end
+
+    test "compares the Visit date with the resolution's IST date, not its UTC date",
+         %{conn: conn} do
+      after_midnight = insert_record("70705", "concern", "Labs stay locked", "resolved")
+      before_midnight = insert_record("70705", "concern", "Fans do not work", "resolved")
+      # 00:30 IST on the 11th.
+      insert_event(after_midnight, "resolved", ~N[2026-10-10 19:00:00])
+      # 23:30 IST on the 10th.
+      insert_event(before_midnight, "resolved", ~N[2026-10-10 18:00:00])
+      visit_id = insert_visit(%{visit_date: ~D[2026-10-11]})
+
+      body =
+        conn
+        |> put_summary(
+          visit_id,
+          summary_body(@golden_fingerprint, [
+            concern_point(after_midnight),
+            concern_point(before_midnight)
+          ])
+        )
+        |> json_response(200)
+
+      assert body["records"] == [
+               record(after_midnight, "concern", "Labs stay locked", "resolved", "2026-10-11"),
+               record(before_midnight, "concern", "Fans do not work", "open", "2026-10-10")
+             ]
+
+      assert events_after_seed(after_midnight) == []
+      assert [["auto_reopened", nil, nil, ^visit_id, _]] = events_after_seed(before_midnight)
+    end
+
+    test "only the latest of several resolutions counts", %{conn: conn} do
+      reopens = insert_record("70705", "concern", "Labs stay locked", "resolved")
+      insert_event(reopens, "resolved", ~N[2026-10-12 06:00:00])
+      insert_event(reopens, "reopened", ~N[2026-10-13 06:00:00])
+      insert_event(reopens, "comment", ~N[2026-10-16 06:00:00])
+      insert_event(reopens, "resolved", ~N[2026-10-14 06:00:00])
+
+      stays = insert_record("70705", "concern", "Fans do not work", "resolved")
+      insert_event(stays, "resolved", ~N[2026-10-02 06:00:00])
+      insert_event(stays, "reopened", ~N[2026-10-03 06:00:00])
+      insert_event(stays, "resolved", ~N[2026-10-15 06:00:00])
+
+      visit_id = insert_visit(%{visit_date: ~D[2026-10-15]})
+
+      body =
+        conn
+        |> put_summary(
+          visit_id,
+          summary_body(@golden_fingerprint, [concern_point(reopens), concern_point(stays)])
+        )
+        |> json_response(200)
+
+      assert body["records"] == [
+               record(reopens, "concern", "Labs stay locked", "open", "2026-10-14"),
+               record(stays, "concern", "Fans do not work", "resolved", "2026-10-15")
+             ]
+
+      assert [["auto_reopened", nil, nil, ^visit_id, _]] = events_after_seed(reopens)
+      assert events_after_seed(stays) == []
+    end
+
+    test "a resolved Concern with no resolved event stays resolved", %{conn: conn} do
+      visit_id = insert_visit(%{visit_date: ~D[2026-10-15]})
+      concern = insert_record("70705", "concern", "Labs stay locked", "resolved")
+      insert_event(concern, "comment", ~N[2026-10-02 06:00:00])
+
+      body =
+        conn
+        |> put_summary(visit_id, summary_body(@golden_fingerprint, [concern_point(concern)]))
+        |> json_response(200)
+
+      assert body["records"] == [record(concern, "concern", "Labs stay locked", "resolved", nil)]
+      assert events_after_seed(concern) == []
+      assert concern_row(concern) == [["resolved", ~N[2026-10-01 06:00:00]]]
+    end
+
+    test "an open Concern gets no event and a Highlight is never touched", %{conn: conn} do
+      visit_id = insert_visit(%{visit_date: ~D[2026-10-15]})
+      open = insert_record("70705", "concern", "Labs stay locked", "open")
+      insert_event(open, "resolved", ~N[2026-10-02 06:00:00])
+      insert_event(open, "reopened", ~N[2026-10-03 06:00:00])
+      highlight = insert_record("70705", "highlight", "Students ask many doubts", nil)
+
+      body =
+        conn
+        |> put_summary(
+          visit_id,
+          summary_body(@golden_fingerprint, [
+            concern_point(open),
+            %{"existing_id" => highlight, "kind" => "highlight", "snippet" => "Many doubts"}
+          ])
+        )
+        |> json_response(200)
+
+      assert body["records"] == [
+               record(open, "concern", "Labs stay locked", "open", "2026-10-02"),
+               record(highlight, "highlight", "Students ask many doubts", nil, nil)
+             ]
+
+      assert events_after_seed(open) == []
+      assert concern_row(open) == [["open", ~N[2026-10-01 06:00:00]]]
+      assert concern_row(highlight) == [[nil, ~N[2026-10-01 06:00:00]]]
+    end
+
+    test "re-PUTs never add a second event or undo the reopen", %{conn: conn} do
+      visit_id = insert_visit(%{visit_date: ~D[2026-10-12]})
+      concern = insert_record("70705", "concern", "Labs stay locked", "resolved")
+      highlight = insert_record("70705", "highlight", "Students ask many doubts", nil)
+      insert_event(concern, "resolved", ~N[2026-10-11 10:30:00])
+
+      highlight_point = %{
+        "existing_id" => highlight,
+        "kind" => "highlight",
+        "snippet" => "Doubts"
+      }
+
+      conn
+      |> put_summary(visit_id, summary_body(@golden_fingerprint, [concern_point(concern)]))
+      |> json_response(200)
+
+      assert [["auto_reopened", nil, nil, ^visit_id, reopened_at]] = events_after_seed(concern)
+
+      conn
+      |> put_summary(visit_id, summary_body(@golden_fingerprint, [concern_point(concern)]))
+      |> json_response(200)
+
+      assert [["auto_reopened", nil, nil, ^visit_id, ^reopened_at]] = events_after_seed(concern)
+
+      body =
+        conn
+        |> put_summary(visit_id, summary_body(@golden_fingerprint, [highlight_point]))
+        |> json_response(200)
+
+      assert [%{"id" => ^concern, "status" => "open"}, _highlight] = body["records"]
+      assert [["open", ^reopened_at]] = concern_row(concern)
+      assert [["auto_reopened", nil, nil, ^visit_id, ^reopened_at]] = events_after_seed(concern)
+      assert mentions_of(visit_id) == MapSet.new([{highlight, "Doubts"}])
+    end
+  end
+
   defp record(id, kind, text, status, latest_resolved_on) do
     %{
       "id" => id,
@@ -879,6 +1064,25 @@ defmodule DbserviceWeb.VisitConcernControllerTest do
       """,
       [concern_id, visit_id]
     )
+  end
+
+  defp concern_point(concern_id),
+    do: %{"existing_id" => concern_id, "kind" => "concern", "snippet" => "Lab still shut"}
+
+  # Events newer than any seeded one, oldest first.
+  defp events_after_seed(concern_id) do
+    Repo.query!(
+      """
+      SELECT kind, body, author_email, visit_id, inserted_at FROM lms_visit_concern_events
+      WHERE concern_id = $1 AND inserted_at > '2026-10-20 00:00:00'
+      ORDER BY inserted_at, id
+      """,
+      [concern_id]
+    ).rows
+  end
+
+  defp concern_row(concern_id) do
+    Repo.query!("SELECT status, updated_at FROM lms_visit_concerns WHERE id = $1", [concern_id]).rows
   end
 
   defp insert_event(concern_id, kind, inserted_at) do

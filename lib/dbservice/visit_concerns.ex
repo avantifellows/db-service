@@ -43,7 +43,8 @@ defmodule Dbservice.VisitConcerns do
 
   @doc """
   Stores one Visit's summary in a single transaction: replaces the Visit's
-  mentions, creates the `new` records and upserts its Visit Note Summary.
+  mentions, creates the `new` records, upserts its Visit Note Summary and
+  auto-reopens the mentioned Concerns resolved before the Visit's IST date.
 
   `attrs` has string keys `fingerprint`, `prompt_version` and `points`. Returns
   `{:ok, records_for_school(school_code)}`, `{:error, :not_found}` for a missing,
@@ -57,7 +58,7 @@ defmodule Dbservice.VisitConcerns do
   end
 
   defp store_summary!(visit_id, summary, now) do
-    school_code = lock_visit!(visit_id)
+    %{school_code: school_code, visit_date: visit_date} = lock_visit!(visit_id)
     check_existing_records!(summary.points, school_code)
 
     previous_ids =
@@ -94,9 +95,9 @@ defmodule Dbservice.VisitConcerns do
       conflict_target: :visit_id
     )
 
-    # AUTO-REOPEN: added by the next slice. Lock every mentioned Concern
-    # FOR UPDATE in ascending id order, then reopen the resolved ones whose
-    # latest `resolved` IST date is strictly before the Visit's visit_date.
+    mentions
+    |> Enum.map(& &1.concern_id)
+    |> auto_reopen!(visit_id, visit_date, now)
 
     records_for_school(school_code)
   end
@@ -106,14 +107,68 @@ defmodule Dbservice.VisitConcerns do
       from(v in "lms_pm_school_visits",
         where: v.id == ^visit_id,
         lock: "FOR UPDATE",
-        select: %{school_code: v.school_code, status: v.status, deleted_at: v.deleted_at}
+        select: %{
+          school_code: v.school_code,
+          visit_date: v.visit_date,
+          status: v.status,
+          deleted_at: v.deleted_at
+        }
       )
       |> Repo.one()
 
     case visit do
-      %{status: "completed", deleted_at: nil, school_code: school_code} -> school_code
+      %{status: "completed", deleted_at: nil} -> visit
       _ -> Repo.rollback(:not_found)
     end
+  end
+
+  # Locks every mentioned Concern FOR UPDATE in ascending id order, after the
+  # Visit lock: af_lms locks the same rows, so one order rules out a deadlock
+  # cycle. Highlights are never locked. Events are read in a later statement so
+  # they include any resolution committed while this transaction waited.
+  defp auto_reopen!(concern_ids, visit_id, visit_date, now) do
+    resolved_ids =
+      from(c in "lms_visit_concerns",
+        where: c.id in ^concern_ids and c.kind == "concern",
+        order_by: c.id,
+        lock: "FOR UPDATE",
+        select: %{id: c.id, status: c.status}
+      )
+      |> Repo.all()
+      |> Enum.filter(&(&1.status == "resolved"))
+      |> Enum.map(& &1.id)
+
+    reopen_ids =
+      for {id, resolved_on} <- latest_resolved_on(resolved_ids),
+          Date.compare(visit_date, resolved_on) == :gt,
+          do: id
+
+    from(c in "lms_visit_concerns", where: c.id in ^reopen_ids)
+    |> Repo.update_all(set: [status: "open", updated_at: now])
+
+    Repo.insert_all(
+      "lms_visit_concern_events",
+      Enum.map(
+        reopen_ids,
+        &%{concern_id: &1, kind: "auto_reopened", visit_id: visit_id, inserted_at: now}
+      )
+    )
+  end
+
+  # `{concern_id, IST date of its latest resolved event}`; Concerns with no
+  # `resolved` event are absent.
+  defp latest_resolved_on([]), do: []
+
+  defp latest_resolved_on(concern_ids) do
+    from(e in "lms_visit_concern_events",
+      where: e.concern_id in ^concern_ids and e.kind == "resolved",
+      distinct: e.concern_id,
+      order_by: [e.concern_id, desc: e.inserted_at, desc: e.id],
+      select:
+        {e.concern_id,
+         fragment("(? AT TIME ZONE 'UTC' AT TIME ZONE 'Asia/Kolkata')::date", e.inserted_at)}
+    )
+    |> Repo.all()
   end
 
   defp check_existing_records!(points, school_code) do

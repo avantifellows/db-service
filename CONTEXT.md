@@ -363,6 +363,16 @@ non-blank body of at most 2000 characters after trimming, a non-blank author, an
 Visit. Labels on the free text sent to `etl-next` come from stable keys and
 positions, never from teacher or Student names.
 
+**Auto-reopen**: when PUT visit-summary mentions a resolved Concern and the Visit's
+`visit_date` is strictly after the IST date of the Concern's latest `resolved` event
+(latest by `inserted_at`, then id), the same transaction sets it `open` and appends
+one `auto_reopened` event naming that Visit. A same-day or older Visit never undoes
+a resolution, and a resolved Concern with no `resolved` event stays resolved.
+Re-summarising a Visit never changes a status or erases history; Highlights are
+never touched. Lock order: the Visit row, then every mentioned Concern `FOR UPDATE`
+in ascending id order (all of them, not only resolved ones). af_lms must lock
+Concern rows in the same ascending order so the two writers cannot deadlock.
+
 There is no data migration: the flow's first run is the backfill. Rollback drops the
 trigger, the function and the tables; the LMS treats missing rows as "not summarised
 yet". Deploy schema before LMS.
