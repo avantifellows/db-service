@@ -47,7 +47,45 @@ defmodule Dbservice.VisitConcerns.Extraction do
   defp sources(type, data) when type in @question_types,
     do: keyed_remarks(data, "questions", "remark")
 
+  defp sources("individual_af_teacher_interaction", data) do
+    positioned_remarks(data, "teachers", fn position, _teacher -> "Teacher #{position}" end)
+  end
+
+  defp sources("individual_student_discussion", data) do
+    positioned_remarks(data, "entries", fn
+      position, %{"grade" => grade} when is_integer(grade) ->
+        "Student entry #{position} (grade #{grade})"
+
+      position, _entry ->
+        "Student entry #{position}"
+    end)
+  end
+
   defp sources(_type, _data), do: []
+
+  # `{"<prefix>: <key>", remark}` for each map element of the `data[field]` list.
+  # Positions count the raw stored list, so a skipped element still uses one up.
+  defp positioned_remarks(data, field, prefix) do
+    case Map.get(data, field) do
+      elements when is_list(elements) ->
+        elements
+        |> Enum.with_index(1)
+        |> Enum.flat_map(fn
+          {%{} = element, position} ->
+            label = prefix.(position, element)
+
+            element
+            |> keyed_remarks("questions", "remark")
+            |> Enum.map(fn {key, remark} -> {"#{label}: #{key}", remark} end)
+
+          _ ->
+            []
+        end)
+
+      _ ->
+        []
+    end
+  end
 
   # `{key, remark}` for each map element of `data[field]`, keys in byte order.
   defp keyed_remarks(data, field, remark_key) do

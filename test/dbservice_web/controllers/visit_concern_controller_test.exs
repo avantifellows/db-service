@@ -142,8 +142,7 @@ defmodule DbserviceWeb.VisitConcernControllerTest do
              ]
     end
 
-    test "unknown and not-yet-extracted action types contribute only additional_notes",
-         %{conn: conn} do
+    test "unknown action types contribute only additional_notes", %{conn: conn} do
       insert_visit(%{}, [
         %{
           action_type: "lab_inspection",
@@ -151,26 +150,12 @@ defmodule DbserviceWeb.VisitConcernControllerTest do
             "questions" => %{"lab" => %{"remark" => "Not read for unknown types"}},
             "additional_notes" => "Microscopes are missing"
           }
-        },
-        %{
-          action_type: "individual_af_teacher_interaction",
-          data: %{
-            "teachers" => [%{"questions" => %{"q1" => %{"remark" => "Covered in a later slice"}}}],
-            "additional_notes" => "Two teachers were on leave"
-          }
         }
       ])
 
       assert [%{"items" => items}] = pending_visits(conn, "prompt_version=v1")["visits"]
 
-      assert items == [
-               item("lab_inspection", "additional_notes", "Microscopes are missing"),
-               item(
-                 "individual_af_teacher_interaction",
-                 "additional_notes",
-                 "Two teachers were on leave"
-               )
-             ]
+      assert items == [item("lab_inspection", "additional_notes", "Microscopes are missing")]
     end
 
     test "drops blank and non-string remarks and never reads checkbox or score fields",
