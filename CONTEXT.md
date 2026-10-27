@@ -254,6 +254,8 @@ _Avoid_: Student Profile, Holistic questionnaire links
   keys.
 - A Conversation Draft has many Transcription Requests over time but at most one
   queued or running.
+- A Visit Concern or Visit Highlight belongs to one School code and has Mentions
+  from many Visits; a Visit has at most one Visit Note Summary.
 
 ## Invariants
 
@@ -286,6 +288,8 @@ _Avoid_: Student Profile, Holistic questionnaire links
   session details, never names or phone numbers.
 - Call Recording audio and raw transcripts live only in S3; Postgres keeps their
   keys.
+- Visit Concern events are append-only (trigger) and records with events are never
+  deleted; `etl-next` reaches Visit Concerns only through the db-service API.
 
 ### Follow-up privacy erasure (LMS #412)
 
@@ -324,6 +328,44 @@ Post-Session answers. Tombstones are immutable, so the count must be written wit
 the tombstone or it can never be recorded. The column is `NOT NULL DEFAULT 0`
 with a separate `>= 0` CHECK; existing tombstones predate Challenge Categories
 and keep 0. There is no backfill. Deploy schema before the LMS release.
+
+### Visit Concerns (LMS #470)
+
+last_updated: 2026-10-28
+
+`20261028120000_create_lms_visit_concerns` owns `lms_visit_concerns`,
+`lms_visit_concern_mentions`, `lms_visit_concern_events` and
+`lms_visit_note_summaries`, with no Ecto schemas. db-service owns the schema and the
+machine APIs; `etl-next` groups Visit free text with an LLM and only calls those
+APIs, never Postgres; `af_lms` reads the tables directly and writes the human
+events. Names, types, defaults and the trigger match the af_lms e2e mirror
+`20261027140000_add_lms_visit_concerns.sql`, plus the two event guard CHECKs below.
+Timestamps are `timestamp(0)` without time zone holding UTC.
+
+- **Visit Concern**: a durable per-School record (`kind = 'concern'`) of a problem
+  PMs raise in Visit free text; `open` or `resolved`.
+- **Visit Highlight**: the same kind of record for something going well
+  (`kind = 'highlight'`); it has no status.
+- **Mention**: a link from a record to one Visit that raised it, with a short
+  snippet; at most one per record and Visit.
+- **Live mention**: a Mention whose Visit is completed and not soft-deleted.
+  Soft-deleting a Visit makes its Mentions non-live without any write.
+- **Hidden record**: a record with no live mention. It is kept, never deleted.
+- **Visit Note Summary**: one row per Visit with the fingerprint and prompt version
+  it was last summarised with, and `summarised_at`.
+
+Events (`resolved`, `reopened`, `comment`, `auto_reopened`) are append-only: a trigger
+rejects every UPDATE and DELETE with SQLSTATE 23514, and the non-cascading FK means a
+record with events cannot be deleted. Only `auto_reopened` names a Visit and has no
+author or body. The guard CHECKs `lms_visit_concern_events_body_check` and
+`lms_visit_concern_events_author_check` require every other event to have a
+non-blank body of at most 2000 characters after trimming, a non-blank author, and no
+Visit. Labels on the free text sent to `etl-next` come from stable keys and
+positions, never from teacher or Student names.
+
+There is no data migration: the flow's first run is the backfill. Rollback drops the
+trigger, the function and the tables; the LMS treats missing rows as "not summarised
+yet". Deploy schema before LMS.
 
 ## Example Dialogue
 
