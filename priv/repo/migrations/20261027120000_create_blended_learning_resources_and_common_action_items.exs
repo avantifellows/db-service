@@ -12,9 +12,11 @@ defmodule Dbservice.Repo.Migrations.CreateBlendedLearningResourcesAndCommonActio
   # A Common Action Item is pushed by an admin to a target (every Student with an active
   # Mapping, one grade, one Mentor's Students, or specific Students by their `student_id`,
   # kept in target_student_ids so a later push can reach them again) and materialised, at
-  # push time, as one open Action Item per targeted Student: an Action Item now belongs to
-  # exactly one Conversation or one Common Action Item. A Student gets a Common Action Item at most
-  # once, so a repeated push only adds it to targeted Students who don't have it yet.
+  # push time, as one open Action Item per targeted Student: an Action Item now has exactly
+  # one source, a Conversation, a Common Action Item or the Student's Profile Doc
+  # (20261027100000 made conversation_id nullable for the Profile Doc). A Student gets a
+  # Common Action Item at most once, so a repeated push only adds it to targeted Students
+  # who don't have it yet.
   # Removing a Common Action Item soft-removes it (removed_at / removed_by_email); af_lms
   # deletes its still-open Action Items and keeps the done ones as history.
 
@@ -131,20 +133,15 @@ defmodule Dbservice.Repo.Migrations.CreateBlendedLearningResourcesAndCommonActio
              """
            )
 
-    # A pushed Action Item has no Conversation; the (conversation_id, student_id) FK is not
-    # checked while conversation_id is NULL. Rolling back deletes the pushed Action Items.
-    execute(
-      "ALTER TABLE blended_learning_action_items ALTER COLUMN conversation_id DROP NOT NULL",
-      &restore_conversation_id_not_null/0
-    )
-
+    # A pushed Action Item has no Conversation, like a Profile Doc one; the
+    # (conversation_id, student_id) FK is not checked while conversation_id is NULL.
     alter table(@action_items) do
       add :common_action_item_id, references(@common, on_delete: :nothing)
     end
 
-    create constraint(@action_items, :bl_action_items_source_check,
-             check: "(conversation_id IS NULL) <> (common_action_item_id IS NULL)"
-           )
+    # Replaces 20261027100000's two-source check. Rolling back deletes the pushed Action
+    # Items, then restores it.
+    execute(&three_source_check/0, &restore_two_source_check/0)
 
     create unique_index(@action_items, [:common_action_item_id, :student_id],
              name: :bl_action_items_common_student_unique,
@@ -152,11 +149,29 @@ defmodule Dbservice.Repo.Migrations.CreateBlendedLearningResourcesAndCommonActio
            )
   end
 
-  defp restore_conversation_id_not_null do
-    repo().query!("DELETE FROM blended_learning_action_items WHERE conversation_id IS NULL")
+  defp three_source_check do
+    replace_source_check("""
+    (conversation_id IS NOT NULL)::integer
+      + (common_action_item_id IS NOT NULL)::integer
+      + from_profile_doc::integer = 1
+    """)
+  end
+
+  defp restore_two_source_check do
+    repo().query!(
+      "DELETE FROM blended_learning_action_items WHERE common_action_item_id IS NOT NULL"
+    )
+
+    replace_source_check("(conversation_id IS NOT NULL) <> from_profile_doc")
+  end
+
+  defp replace_source_check(check) do
+    repo().query!(
+      "ALTER TABLE blended_learning_action_items DROP CONSTRAINT bl_action_items_source_check"
+    )
 
     repo().query!(
-      "ALTER TABLE blended_learning_action_items ALTER COLUMN conversation_id SET NOT NULL"
+      "ALTER TABLE blended_learning_action_items ADD CONSTRAINT bl_action_items_source_check CHECK (#{check})"
     )
   end
 end

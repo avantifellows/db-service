@@ -172,7 +172,7 @@ defmodule Dbservice.BlendedLearningManageSchemaTest do
   end
 
   describe "Action Items from a Common Action Item" do
-    test "belong to exactly one Conversation or one Common Action Item" do
+    test "have exactly one source: a Conversation, a Common Action Item or the Profile Doc" do
       scope = insert_scope()
       {:ok, %{rows: [[conversation_id]]}} = insert_conversation(scope, %{})
       {:ok, %{rows: [[common_id]]}} = insert_common(%{})
@@ -180,15 +180,18 @@ defmodule Dbservice.BlendedLearningManageSchemaTest do
       assert {:ok, _} = insert_action_item(scope, %{conversation_id: conversation_id})
       assert {:ok, _} = insert_action_item(scope, %{common_action_item_id: common_id})
 
+      assert {:ok, _} =
+               insert_action_item(scope, %{from_profile_doc: true, text: "From the Profile Doc."})
+
       assert_constraint(:check_violation, fn -> insert_action_item(scope, %{}) end)
 
-      assert_constraint(:check_violation, fn ->
-        insert_action_item(scope, %{
-          conversation_id: conversation_id,
-          common_action_item_id: common_id,
-          position: 2
-        })
-      end)
+      for two_sources <- [
+            %{conversation_id: conversation_id, common_action_item_id: common_id, position: 2},
+            %{conversation_id: conversation_id, from_profile_doc: true, position: 2},
+            %{common_action_item_id: common_id, from_profile_doc: true, text: "Both."}
+          ] do
+        assert_constraint(:check_violation, fn -> insert_action_item(scope, two_sources) end)
+      end
 
       assert_constraint(:foreign_key_violation, fn ->
         insert_action_item(scope, %{common_action_item_id: -1})
