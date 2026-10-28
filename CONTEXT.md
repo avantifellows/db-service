@@ -369,9 +369,23 @@ positions, never from teacher or Student names.
 one `auto_reopened` event naming that Visit. A same-day or older Visit never undoes
 a resolution, and a resolved Concern with no `resolved` event stays resolved.
 Re-summarising a Visit never changes a status or erases history; Highlights are
-never touched. Lock order: the Visit row, then every mentioned Concern `FOR UPDATE`
-in ascending id order (all of them, not only resolved ones). af_lms must lock
-Concern rows in the same ascending order so the two writers cannot deadlock.
+never touched.
+
+**Lock order** (PUT visit-summary): the Visit row `FOR UPDATE`, then, in one
+`ORDER BY id FOR UPDATE` statement, every Concern-kind record the PUT can mention:
+the body's `existing_id`s plus the Concerns the Visit mentioned before (all of them,
+not only resolved ones). Both locks come before any mention is deleted or inserted,
+because a mention insert's FK check takes `FOR KEY SHARE` on its record. Two PUTs
+for different Visits at one School that both held that on a Concern and then asked
+for `FOR UPDATE` would deadlock. Highlights and records the PUT creates are not
+locked. The operation timestamp is taken after the locks, so an `auto_reopened`
+event is never stamped before a resolution committed while the PUT waited. af_lms
+must lock Concern rows `FOR UPDATE` in ascending id order before writing their
+events, so it and db-service cannot deadlock.
+
+Record `text` and `snippet` are filtered from the Phoenix request log
+(`:filter_parameters`). A body that cannot be parsed gets a 400 `{error}` without
+the body being logged.
 
 There is no data migration: the flow's first run is the backfill. Rollback drops the
 trigger, the function and the tables; the LMS treats missing rows as "not summarised

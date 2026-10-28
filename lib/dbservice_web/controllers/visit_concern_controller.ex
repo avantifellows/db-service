@@ -1,6 +1,7 @@
 defmodule DbserviceWeb.VisitConcernController do
   use DbserviceWeb, :controller
 
+  require Dbservice.VisitConcerns
   alias Dbservice.VisitConcerns
 
   # GET /api/visit-concerns/pending-visits?prompt_version=v1
@@ -15,7 +16,7 @@ defmodule DbserviceWeb.VisitConcernController do
   # PUT /api/visit-concerns/visit-summary/:visit_id
   #   {fingerprint, prompt_version, points: [{existing_id, kind, snippet} | {new: {kind, text}, snippet}]}
   def update_summary(conn, %{"visit_id" => visit_id} = params) do
-    with {id, ""} <- Integer.parse(visit_id),
+    with {:ok, id} <- parse_id(visit_id),
          {:ok, records} <- VisitConcerns.put_visit_summary(id, params) do
       json(conn, %{records: records})
     else
@@ -26,12 +27,12 @@ defmodule DbserviceWeb.VisitConcernController do
         bad_request(conn, message)
 
       _ ->
-        bad_request(conn, "visit_id must be an integer")
+        bad_request(conn, "visit_id must be a positive integer")
     end
   end
 
   defp parse_pending_params(params) do
-    with {:ok, prompt_version} <- parse_prompt_version(params),
+    with {:ok, prompt_version} <- VisitConcerns.fetch_prompt_version(params),
          {:ok, limit} <- parse_limit(params),
          {:ok, cursor} <- parse_cursor(params),
          {:ok, visit_ids} <- parse_visit_ids(params),
@@ -47,16 +48,6 @@ defmodule DbserviceWeb.VisitConcernController do
     end
   end
 
-  defp parse_prompt_version(params) do
-    with value when is_binary(value) <- Map.get(params, "prompt_version"),
-         trimmed = String.trim(value),
-         length when length in 1..50 <- String.length(trimmed) do
-      {:ok, trimmed}
-    else
-      _ -> {:error, "prompt_version must be a non-empty string of at most 50 characters"}
-    end
-  end
-
   defp parse_limit(params) do
     with value when is_binary(value) <- Map.get(params, "limit", "50"),
          {limit, ""} when limit in 1..200 <- Integer.parse(value) do
@@ -69,10 +60,10 @@ defmodule DbserviceWeb.VisitConcernController do
   defp parse_cursor(%{"after_visit_date" => date, "after_id" => id})
        when is_binary(date) and is_binary(id) do
     with {:ok, visit_date} <- Date.from_iso8601(date),
-         {visit_id, ""} <- Integer.parse(id) do
+         {:ok, visit_id} <- parse_id(id) do
       {:ok, {visit_date, visit_id}}
     else
-      _ -> {:error, "after_visit_date must be YYYY-MM-DD and after_id an integer"}
+      _ -> {:error, "after_visit_date must be YYYY-MM-DD and after_id a positive integer"}
     end
   end
 
@@ -91,11 +82,11 @@ defmodule DbserviceWeb.VisitConcernController do
         case parse_ids(text) do
           {:ok, ids} when length(ids) <= 200 -> {:ok, ids}
           {:ok, _ids} -> {:error, "visit_ids must list at most 200 ids"}
-          :error -> {:error, "visit_ids must be comma-separated integers"}
+          :error -> {:error, "visit_ids must be comma-separated positive integers"}
         end
 
       _ ->
-        {:error, "visit_ids must be comma-separated integers"}
+        {:error, "visit_ids must be comma-separated positive integers"}
     end
   end
 
@@ -103,11 +94,20 @@ defmodule DbserviceWeb.VisitConcernController do
     text
     |> String.split(",", trim: true)
     |> Enum.reduce_while({:ok, []}, fn part, {:ok, acc} ->
-      case Integer.parse(String.trim(part)) do
-        {id, ""} -> {:cont, {:ok, [id | acc]}}
-        _ -> {:halt, :error}
+      case parse_id(String.trim(part)) do
+        {:ok, id} -> {:cont, {:ok, [id | acc]}}
+        :error -> {:halt, :error}
       end
     end)
+  end
+
+  # A decimal id that fits a Postgres bigint; larger values would make Postgrex
+  # raise (a 500) instead of a 400.
+  defp parse_id(text) do
+    case Integer.parse(text) do
+      {id, ""} when VisitConcerns.is_id(id) -> {:ok, id}
+      _ -> :error
+    end
   end
 
   defp parse_force(params) do

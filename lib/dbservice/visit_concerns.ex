@@ -13,6 +13,10 @@ defmodule Dbservice.VisitConcerns do
 
   @chunk_size 200
 
+  @doc "True for an id that fits a Postgres `bigint` primary key: 1..2^63-1."
+  defguard is_id(value)
+           when is_integer(value) and value >= 1 and value <= 9_223_372_036_854_775_807
+
   @doc """
   Completed, non-deleted Visits that still need summarising, oldest first.
 
@@ -52,24 +56,25 @@ defmodule Dbservice.VisitConcerns do
   """
   def put_visit_summary(visit_id, attrs) do
     with {:ok, summary} <- validate_summary(attrs) do
-      now = NaiveDateTime.utc_now() |> NaiveDateTime.truncate(:second)
-      Repo.transaction(fn -> store_summary!(visit_id, summary, now) end)
+      Repo.transaction(fn -> store_summary!(visit_id, summary) end)
     end
   end
 
-  defp store_summary!(visit_id, summary, now) do
+  defp store_summary!(visit_id, summary) do
     %{school_code: school_code, visit_date: visit_date} = lock_visit!(visit_id)
     check_existing_records!(summary.points, school_code)
+    lock_concerns!(visit_id, summary.points)
 
-    previous_ids =
+    # Taken after the locks, so an auto-reopen is never stamped earlier than a
+    # resolution committed while this transaction waited for them.
+    now = NaiveDateTime.utc_now() |> NaiveDateTime.truncate(:second)
+
+    {_count, previous_ids} =
       from(m in "lms_visit_concern_mentions",
         where: m.visit_id == ^visit_id,
         select: m.concern_id
       )
-      |> Repo.all()
-
-    from(m in "lms_visit_concern_mentions", where: m.visit_id == ^visit_id)
-    |> Repo.delete_all()
+      |> Repo.delete_all()
 
     mentions =
       summary.points
@@ -122,21 +127,45 @@ defmodule Dbservice.VisitConcerns do
     end
   end
 
-  # Locks every mentioned Concern FOR UPDATE in ascending id order, after the
-  # Visit lock: af_lms locks the same rows, so one order rules out a deadlock
-  # cycle. Highlights are never locked. Events are read in a later statement so
-  # they include any resolution committed while this transaction waited.
+  # Lock order: the Visit row (`lock_visit!/1`), then this. Locks FOR UPDATE, in
+  # one statement and ascending id order, every Concern this PUT can mention:
+  # the payload's `existing_id`s and the Concerns the Visit mentioned before
+  # (a `new` point may reuse one of those). It runs before any mention is deleted
+  # or inserted because a mention insert's FK check takes FOR KEY SHARE on its
+  # Concern: two PUTs at one School that both held KEY SHARE on a Concern and
+  # then asked for FOR UPDATE would wait on each other and deadlock. The
+  # previous mentions are read in a subquery; the Visit lock keeps them fixed
+  # until they are deleted. Records this PUT creates are invisible to other
+  # transactions until commit, and Highlights are never locked.
+  defp lock_concerns!(visit_id, points) do
+    existing_ids = for %{existing_id: id} <- points, do: id
+
+    previous_ids =
+      from(m in "lms_visit_concern_mentions",
+        where: m.visit_id == ^visit_id,
+        select: m.concern_id
+      )
+
+    from(c in "lms_visit_concerns",
+      where: c.kind == "concern" and (c.id in ^existing_ids or c.id in subquery(previous_ids)),
+      order_by: c.id,
+      lock: "FOR UPDATE",
+      select: c.id
+    )
+    |> Repo.all()
+  end
+
+  # Every mentioned Concern is already locked by `lock_concerns!/2` or was
+  # created by this transaction, so no resolution can land between these reads
+  # and the reopen, and the reads see any resolution committed while the lock
+  # waited.
   defp auto_reopen!(concern_ids, visit_id, visit_date, now) do
     resolved_ids =
       from(c in "lms_visit_concerns",
-        where: c.id in ^concern_ids and c.kind == "concern",
-        order_by: c.id,
-        lock: "FOR UPDATE",
-        select: %{id: c.id, status: c.status}
+        where: c.id in ^concern_ids and c.kind == "concern" and c.status == "resolved",
+        select: c.id
       )
       |> Repo.all()
-      |> Enum.filter(&(&1.status == "resolved"))
-      |> Enum.map(& &1.id)
 
     reopen_ids =
       for {id, resolved_on} <- latest_resolved_on(resolved_ids),
@@ -245,7 +274,7 @@ defmodule Dbservice.VisitConcerns do
 
   defp validate_summary(attrs) do
     with {:ok, fingerprint} <- fetch_fingerprint(attrs),
-         {:ok, prompt_version} <- fetch_text(attrs, "prompt_version", 50),
+         {:ok, prompt_version} <- fetch_prompt_version(attrs),
          {:ok, points} <- fetch_points(attrs) do
       {:ok, %{fingerprint: fingerprint, prompt_version: prompt_version, points: points}}
     end
@@ -262,6 +291,12 @@ defmodule Dbservice.VisitConcerns do
         {:error, "fingerprint must be 64 lowercase hex characters"}
     end
   end
+
+  @doc """
+  The trimmed `prompt_version` from `map` (string keys), 1..50 characters. GET
+  pending-visits and PUT visit-summary share it so they accept the same values.
+  """
+  def fetch_prompt_version(map), do: fetch_text(map, "prompt_version", 50)
 
   # Trimmed, then 1..max Unicode code points.
   defp fetch_text(map, key, max) do
@@ -298,7 +333,7 @@ defmodule Dbservice.VisitConcerns do
   defp validate_point(%{"existing_id" => _, "new" => _}),
     do: {:error, "a point needs exactly one of existing_id or new"}
 
-  defp validate_point(%{"existing_id" => id} = point) when is_integer(id) and id > 0 do
+  defp validate_point(%{"existing_id" => id} = point) when is_id(id) do
     with {:ok, kind} <- fetch_kind(point),
          {:ok, snippet} <- fetch_text(point, "snippet", 300) do
       {:ok, %{existing_id: id, kind: kind, snippet: snippet}}

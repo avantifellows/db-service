@@ -1,6 +1,8 @@
 defmodule DbserviceWeb.VisitConcernControllerTest do
   use DbserviceWeb.ConnCase
 
+  import Dbservice.VisitConcernsFixtures
+  import ExUnit.CaptureLog
   alias Dbservice.Repo
 
   # SHA-256 of the two bytes `[]`, worked out with `printf '[]' | shasum -a 256`.
@@ -414,6 +416,10 @@ defmodule DbserviceWeb.VisitConcernControllerTest do
             "prompt_version=v1&after_visit_date=10/10/2026&after_id=12",
             "prompt_version=v1&after_visit_date=2026-10-10&after_id=x",
             "prompt_version=v1&visit_ids=1,x",
+            "prompt_version=v1&visit_ids=0",
+            "prompt_version=v1&visit_ids=1,9223372036854775808",
+            "prompt_version=v1&after_visit_date=2026-10-10&after_id=0",
+            "prompt_version=v1&after_visit_date=2026-10-10&after_id=9223372036854775808",
             "prompt_version=v1&visit_ids=" <> Enum.join(1..201, ","),
             "prompt_version=v1&force=yes"
           ] do
@@ -432,7 +438,9 @@ defmodule DbserviceWeb.VisitConcernControllerTest do
             "prompt_version=" <> String.duplicate("v", 50),
             "prompt_version=v1&limit=1",
             "prompt_version=v1&limit=200",
-            "prompt_version=v1&visit_ids=" <> Enum.join(Enum.to_list(1..199) ++ [visit_id], ",")
+            "prompt_version=v1&visit_ids=" <> Enum.join(Enum.to_list(1..199) ++ [visit_id], ","),
+            "prompt_version=v1&visit_ids=#{visit_id},9223372036854775807",
+            "prompt_version=v1&after_visit_date=2026-10-09&after_id=9223372036854775807"
           ] do
         assert [^visit_id] = pending_ids(conn, query), "expected 200 for #{inspect(query)}"
       end
@@ -681,6 +689,8 @@ defmodule DbserviceWeb.VisitConcernControllerTest do
         [%{"kind" => "concern", "snippet" => "Neither"}],
         [%{"existing_id" => own, "snippet" => "No kind"}],
         [%{"existing_id" => 0, "kind" => "concern", "snippet" => "Zero id"}],
+        [%{"existing_id" => 9_223_372_036_854_775_807, "kind" => "concern", "snippet" => "Max"}],
+        [%{"existing_id" => 9_223_372_036_854_775_808, "kind" => "concern", "snippet" => "Big"}],
         [%{"existing_id" => "#{own}", "kind" => "concern", "snippet" => "String id"}],
         [new_point("issue", "Fans do not work", "Bad kind")],
         [%{"new" => "Fans do not work", "snippet" => "New is not a map"}],
@@ -734,15 +744,59 @@ defmodule DbserviceWeb.VisitConcernControllerTest do
 
       assert error =~ "#{foreign}"
 
-      assert %{"error" => _} =
-               conn
+      for path_id <- ["abc", "0", "-1", "9223372036854775808"] do
+        assert conn
                |> put(
-                 "/api/visit-concerns/visit-summary/abc",
+                 "/api/visit-concerns/visit-summary/#{path_id}",
                  summary_body(@golden_fingerprint, [])
                )
-               |> json_response(400)
+               |> json_response(400) == %{"error" => "visit_id must be a positive integer"}
+      end
 
       assert row_counts() == counts
+    end
+
+    test "a malformed body gets a JSON 400, writes nothing and is never logged",
+         %{conn: conn} do
+      visit_id = insert_visit(%{})
+      counts = row_counts()
+
+      log =
+        capture_log(fn ->
+          assert {400, _headers, body} =
+                   assert_error_sent(400, fn ->
+                     conn
+                     |> put_req_header("content-type", "application/json")
+                     |> put(
+                       "/api/visit-concerns/visit-summary/#{visit_id}",
+                       ~s({"points": [{"new": {"kind": "concern", "text": "QAMARK-TEXT)
+                     )
+                   end)
+
+          assert Jason.decode!(body) == %{"error" => "malformed request body"}
+        end)
+
+      assert log =~ "Bad Request: malformed request body"
+      refute log =~ "QAMARK"
+      assert row_counts() == counts
+    end
+
+    test "the request log filters record text and snippets but keeps the rest" do
+      params =
+        @golden_fingerprint
+        |> summary_body([new_point("concern", "QAMARK-TEXT", "QAMARK-SNIP"), concern_point(7)])
+        |> Phoenix.Logger.filter_values()
+
+      refute inspect(params) =~ "QAMARK"
+      refute inspect(params) =~ "Lab still shut"
+
+      assert params["points"] == [
+               %{
+                 "new" => %{"kind" => "concern", "text" => "[FILTERED]"},
+                 "snippet" => "[FILTERED]"
+               },
+               %{"existing_id" => 7, "kind" => "concern", "snippet" => "[FILTERED]"}
+             ]
     end
 
     test "accepts boundary lengths and stores trimmed values", %{conn: conn} do
@@ -771,7 +825,7 @@ defmodule DbserviceWeb.VisitConcernControllerTest do
       in_progress = insert_visit(%{status: "in_progress", completed_at: nil})
       counts = row_counts()
 
-      for visit_id <- [deleted, in_progress, in_progress + 1_000_000] do
+      for visit_id <- [deleted, in_progress, in_progress + 1_000_000, 9_223_372_036_854_775_807] do
         assert conn
                |> put_summary(
                  visit_id,
@@ -986,6 +1040,157 @@ defmodule DbserviceWeb.VisitConcernControllerTest do
     end
   end
 
+  describe "PUT visit-summary under concurrency" do
+    # Runs outside the sandbox so three real connections contend for one Concern
+    # row. The af_lms-style resolver holds the Concern FOR UPDATE until both PUTs
+    # are waiting on it, then resolves it. Before the PUT locked its Concerns up
+    # front, both PUTs took the mention FK's KEY SHARE on the row and then each
+    # waited for the other's to get FOR UPDATE: a deadlock (40P01) and a 500.
+    test "two Visits mentioning one locked Concern wait their turn and reopen after the resolution",
+         %{conn: conn} do
+      authorization = conn |> get_req_header("authorization") |> List.first()
+
+      Ecto.Adapters.SQL.Sandbox.unboxed_run(Repo, fn ->
+        school_code = "lock-#{System.unique_integer([:positive])}"
+        concern = insert_record(school_code, "concern", "Labs stay locked", "open")
+        # Both Visits are dated after any IST date the resolution can fall on.
+        visit_ids =
+          for days <- [2, 3],
+              do:
+                insert_visit(%{
+                  school_code: school_code,
+                  visit_date: Date.utc_today() |> Date.add(days)
+                })
+
+        try do
+          parent = self()
+          resolver = Task.async(fn -> resolve_while_locked(concern, parent) end)
+          assert_receive :locked, 5_000
+
+          puts =
+            for visit_id <- visit_ids do
+              Task.async(fn ->
+                try do
+                  Ecto.Adapters.SQL.Sandbox.unboxed_run(Repo, fn ->
+                    build_conn()
+                    |> put_req_header("authorization", authorization)
+                    |> put_req_header("accept", "application/json")
+                    |> put_summary(
+                      visit_id,
+                      summary_body(@golden_fingerprint, [concern_point(concern)])
+                    )
+                    |> Map.fetch!(:status)
+                  end)
+                rescue
+                  # A deadlock surfaces here; keep it as a value so cleanup still runs.
+                  error -> {:raised, Exception.message(error)}
+                end
+              end)
+            end
+
+          await_lock_waiters(2)
+          # The resolution commits more than a second after both PUTs started.
+          Process.sleep(1_100)
+          send(resolver.pid, :resolve)
+          assert {:ok, resolved_at} = Task.await(resolver, 10_000)
+
+          assert Enum.map(puts, &Task.await(&1, 15_000)) == [200, 200]
+
+          # The first PUT to get the lock reopens; the second sees it open.
+          assert [
+                   ["resolved", nil, ^resolved_at],
+                   ["auto_reopened", reopened_by, reopened_at]
+                 ] =
+                   Repo.query!(
+                     """
+                     SELECT kind, visit_id, inserted_at FROM lms_visit_concern_events
+                     WHERE concern_id = $1 ORDER BY id
+                     """,
+                     [concern]
+                   ).rows
+
+          assert reopened_by in visit_ids
+          assert NaiveDateTime.compare(reopened_at, resolved_at) in [:gt, :eq]
+          assert concern_row(concern) == [["open", reopened_at]]
+
+          assert Enum.map(visit_ids, &mentions_of/1) ==
+                   List.duplicate(MapSet.new([{concern, "Lab still shut"}]), 2)
+        after
+          delete_unboxed_school(school_code, visit_ids)
+        end
+      end)
+    end
+  end
+
+  # Holds `concern_id` FOR UPDATE, tells `parent` and, on `:resolve`, resolves it
+  # with a `resolved` event at the current time and commits.
+  defp resolve_while_locked(concern_id, parent) do
+    Ecto.Adapters.SQL.Sandbox.unboxed_run(Repo, fn ->
+      Repo.transaction(fn ->
+        Repo.query!("SELECT id FROM lms_visit_concerns WHERE id = $1 FOR UPDATE", [concern_id])
+        send(parent, :locked)
+
+        receive do
+          :resolve ->
+            resolved_at = NaiveDateTime.utc_now() |> NaiveDateTime.truncate(:second)
+
+            Repo.query!(
+              "UPDATE lms_visit_concerns SET status = 'resolved', updated_at = $2 WHERE id = $1",
+              [concern_id, resolved_at]
+            )
+
+            insert_event(concern_id, "resolved", resolved_at)
+            resolved_at
+        after
+          10_000 -> Repo.rollback(:timeout)
+        end
+      end)
+    end)
+  end
+
+  defp await_lock_waiters(count, attempts \\ 200) do
+    %{rows: [[waiting]]} =
+      Repo.query!("""
+      SELECT count(*) FROM pg_stat_activity
+      WHERE datname = current_database() AND wait_event_type = 'Lock'
+        AND query LIKE '%lms_visit_concern%'
+      """)
+
+    cond do
+      waiting >= count ->
+        :ok
+
+      attempts == 0 ->
+        flunk("expected #{count} PUTs waiting on the Concern lock, saw #{waiting}")
+
+      true ->
+        Process.sleep(25)
+        await_lock_waiters(count, attempts - 1)
+    end
+  end
+
+  # Unboxed rows are committed, so remove them; events are append-only, so their
+  # trigger is bypassed for this cleanup only.
+  defp delete_unboxed_school(school_code, visit_ids) do
+    Repo.transaction(fn ->
+      Repo.query!("SET LOCAL session_replication_role = replica")
+
+      Repo.query!(
+        """
+        DELETE FROM lms_visit_concern_events
+        WHERE concern_id IN (SELECT id FROM lms_visit_concerns WHERE school_code = $1)
+        """,
+        [school_code]
+      )
+
+      Repo.query!("DELETE FROM lms_visit_concern_mentions WHERE visit_id = ANY($1)", [visit_ids])
+      Repo.query!("DELETE FROM lms_visit_note_summaries WHERE visit_id = ANY($1)", [visit_ids])
+      Repo.query!("DELETE FROM lms_visit_concerns WHERE school_code = $1", [school_code])
+      Repo.query!("DELETE FROM lms_pm_school_visit_actions WHERE visit_id = ANY($1)", [visit_ids])
+      Repo.query!("DELETE FROM lms_pm_school_visits WHERE id = ANY($1)", [visit_ids])
+    end)
+  end
+
   defp record(id, kind, text, status, latest_resolved_on) do
     %{
       "id" => id,
@@ -996,19 +1201,8 @@ defmodule DbserviceWeb.VisitConcernControllerTest do
     }
   end
 
-  defp item(action_type, label, text),
-    do: %{"action_type" => action_type, "label" => label, "text" => text}
-
-  defp pending_visits(conn, query) do
-    conn |> get("/api/visit-concerns/pending-visits?" <> query) |> json_response(200)
-  end
-
   defp cursor_query(%{"next_cursor" => cursor}) do
     "after_visit_date=#{cursor["after_visit_date"]}&after_id=#{cursor["after_id"]}"
-  end
-
-  defp pending_ids(conn, query) do
-    conn |> pending_visits(query) |> Map.fetch!("visits") |> Enum.map(& &1["visit_id"])
   end
 
   defp put_summary(conn, visit_id, body) do
@@ -1093,82 +1287,5 @@ defmodule DbserviceWeb.VisitConcernControllerTest do
       """,
       [concern_id, kind, inserted_at]
     )
-  end
-
-  defp set_action_data(visit_id, data) do
-    Repo.query!("UPDATE lms_pm_school_visit_actions SET data = $1 WHERE visit_id = $2", [
-      data,
-      visit_id
-    ])
-  end
-
-  defp insert_summary(visit_id, fingerprint, prompt_version) do
-    Repo.insert_all("lms_visit_note_summaries", [
-      %{
-        visit_id: visit_id,
-        fingerprint: fingerprint,
-        prompt_version: prompt_version,
-        summarised_at: ~N[2026-10-20 07:00:00]
-      }
-    ])
-  end
-
-  # Inserts a Visit and its actions; returns the Visit id. Each action is a map
-  # with `action_type` and `data`, plus optional `status` and `deleted_at`.
-  defp insert_visit(attrs, actions \\ []) do
-    now = ~N[2026-10-20 06:00:00]
-
-    visit =
-      Map.merge(
-        %{
-          school_code: "70705",
-          pm_email: "pm@avantifellows.org",
-          visit_date: ~D[2026-10-10],
-          status: "completed",
-          completed_at: now,
-          deleted_at: nil,
-          inserted_at: now,
-          updated_at: now
-        },
-        attrs
-      )
-
-    {1, [%{id: visit_id}]} = Repo.insert_all("lms_pm_school_visits", [visit], returning: [:id])
-
-    Enum.each(actions, &insert_action(visit_id, &1))
-    visit_id
-  end
-
-  defp insert_action(visit_id, action) do
-    now = ~N[2026-10-20 06:00:00]
-    status = Map.get(action, :status, "completed")
-
-    {started_at, ended_at} =
-      case status do
-        "pending" -> {nil, nil}
-        "in_progress" -> {now, nil}
-        "completed" -> {now, now}
-      end
-
-    {1, [%{id: action_id}]} =
-      Repo.insert_all(
-        "lms_pm_school_visit_actions",
-        [
-          %{
-            visit_id: visit_id,
-            action_type: action.action_type,
-            data: action.data,
-            status: status,
-            started_at: started_at,
-            ended_at: ended_at,
-            deleted_at: Map.get(action, :deleted_at),
-            inserted_at: now,
-            updated_at: now
-          }
-        ],
-        returning: [:id]
-      )
-
-    action_id
   end
 end

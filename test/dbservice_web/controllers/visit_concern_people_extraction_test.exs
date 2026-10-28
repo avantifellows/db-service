@@ -6,7 +6,7 @@ defmodule DbserviceWeb.VisitConcernPeopleExtractionTest do
   """
   use DbserviceWeb.ConnCase
 
-  alias Dbservice.Repo
+  import Dbservice.VisitConcernsFixtures
 
   setup %{conn: conn} do
     {:ok, conn: put_req_header(conn, "accept", "application/json")}
@@ -15,7 +15,7 @@ defmodule DbserviceWeb.VisitConcernPeopleExtractionTest do
   describe "individual_af_teacher_interaction" do
     test "labels remarks by teacher position then key, with additional_notes last",
          %{conn: conn} do
-      insert_visit([
+      insert_visit(%{}, [
         %{
           action_type: "individual_af_teacher_interaction",
           data: %{
@@ -67,7 +67,7 @@ defmodule DbserviceWeb.VisitConcernPeopleExtractionTest do
   describe "individual_student_discussion" do
     test "labels remarks by entry position, with the grade only when it is an integer",
          %{conn: conn} do
-      insert_visit([
+      insert_visit(%{}, [
         %{
           action_type: "individual_student_discussion",
           data: %{
@@ -144,7 +144,7 @@ defmodule DbserviceWeb.VisitConcernPeopleExtractionTest do
 
   describe "labels and malformed data" do
     test "never put a teacher's or a Student's name in a label", %{conn: conn} do
-      insert_visit([
+      insert_visit(%{}, [
         %{
           action_type: "individual_af_teacher_interaction",
           data: %{
@@ -179,7 +179,7 @@ defmodule DbserviceWeb.VisitConcernPeopleExtractionTest do
     end
 
     test "an invalid element still uses up its position", %{conn: conn} do
-      insert_visit([
+      insert_visit(%{}, [
         %{
           action_type: "individual_af_teacher_interaction",
           data: %{
@@ -224,7 +224,7 @@ defmodule DbserviceWeb.VisitConcernPeopleExtractionTest do
 
     test "a non-list teachers or entries contributes nothing but keeps additional_notes",
          %{conn: conn} do
-      insert_visit([
+      insert_visit(%{}, [
         %{
           action_type: "individual_af_teacher_interaction",
           data: %{
@@ -255,7 +255,7 @@ defmodule DbserviceWeb.VisitConcernPeopleExtractionTest do
 
     test "drops blank remarks and never reads checkbox, attendance or score fields",
          %{conn: conn} do
-      insert_visit([
+      insert_visit(%{}, [
         %{
           action_type: "individual_af_teacher_interaction",
           data: %{
@@ -299,27 +299,27 @@ defmodule DbserviceWeb.VisitConcernPeopleExtractionTest do
   describe "fingerprint" do
     test "changes with a per-teacher or per-entry remark but not with checkboxes or scores",
          %{conn: conn} do
-      teacher_visit = insert_visit([teacher_action("yes", 3, "Behind by two chapters")])
-      entry_visit = insert_visit([entry_action("yes", 3, "Finds organic chemistry hard")])
+      teacher_visit = insert_visit(%{}, [teacher_action("yes", 3, "Behind by two chapters")])
+      entry_visit = insert_visit(%{}, [entry_action("yes", 3, "Finds organic chemistry hard")])
 
       assert [
                %{"visit_id" => ^teacher_visit, "fingerprint" => teacher_fingerprint},
                %{"visit_id" => ^entry_visit, "fingerprint" => entry_fingerprint}
-             ] = pending_visits(conn)["visits"]
+             ] = pending_visits(conn, "prompt_version=v1")["visits"]
 
-      insert_summary(teacher_visit, teacher_fingerprint)
-      insert_summary(entry_visit, entry_fingerprint)
+      insert_summary(teacher_visit, teacher_fingerprint, "v1")
+      insert_summary(entry_visit, entry_fingerprint, "v1")
 
       set_action_data(teacher_visit, teacher_action("no", 1, "Behind by two chapters").data)
       set_action_data(entry_visit, entry_action("no", 1, "Finds organic chemistry hard").data)
 
-      assert pending_ids(conn) == []
+      assert pending_ids(conn, "prompt_version=v1") == []
 
       set_action_data(teacher_visit, teacher_action("no", 1, "Caught up last week").data)
-      assert pending_ids(conn) == [teacher_visit]
+      assert pending_ids(conn, "prompt_version=v1") == [teacher_visit]
 
       set_action_data(entry_visit, entry_action("no", 1, "Now finds it easier").data)
-      assert pending_ids(conn) == [teacher_visit, entry_visit]
+      assert pending_ids(conn, "prompt_version=v1") == [teacher_visit, entry_visit]
     end
   end
 
@@ -357,77 +357,7 @@ defmodule DbserviceWeb.VisitConcernPeopleExtractionTest do
   end
 
   defp items(conn) do
-    assert [%{"items" => items}] = pending_visits(conn)["visits"]
+    assert [%{"items" => items}] = pending_visits(conn, "prompt_version=v1")["visits"]
     items
-  end
-
-  defp item(action_type, label, text),
-    do: %{"action_type" => action_type, "label" => label, "text" => text}
-
-  defp pending_visits(conn) do
-    conn
-    |> get("/api/visit-concerns/pending-visits?prompt_version=v1")
-    |> json_response(200)
-  end
-
-  defp pending_ids(conn), do: pending_visits(conn)["visits"] |> Enum.map(& &1["visit_id"])
-
-  defp set_action_data(visit_id, data) do
-    Repo.query!("UPDATE lms_pm_school_visit_actions SET data = $1 WHERE visit_id = $2", [
-      data,
-      visit_id
-    ])
-  end
-
-  defp insert_summary(visit_id, fingerprint) do
-    Repo.insert_all("lms_visit_note_summaries", [
-      %{
-        visit_id: visit_id,
-        fingerprint: fingerprint,
-        prompt_version: "v1",
-        summarised_at: ~N[2026-10-20 07:00:00]
-      }
-    ])
-  end
-
-  # Inserts a completed Visit and its completed actions; returns the Visit id.
-  # Each action is a map with `action_type` and `data`.
-  defp insert_visit(actions) do
-    now = ~N[2026-10-20 06:00:00]
-
-    {1, [%{id: visit_id}]} =
-      Repo.insert_all(
-        "lms_pm_school_visits",
-        [
-          %{
-            school_code: "70705",
-            pm_email: "pm@avantifellows.org",
-            visit_date: ~D[2026-10-10],
-            status: "completed",
-            completed_at: now,
-            inserted_at: now,
-            updated_at: now
-          }
-        ],
-        returning: [:id]
-      )
-
-    Repo.insert_all(
-      "lms_pm_school_visit_actions",
-      Enum.map(actions, fn action ->
-        %{
-          visit_id: visit_id,
-          action_type: action.action_type,
-          data: action.data,
-          status: "completed",
-          started_at: now,
-          ended_at: now,
-          inserted_at: now,
-          updated_at: now
-        }
-      end)
-    )
-
-    visit_id
   end
 end
