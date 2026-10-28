@@ -237,6 +237,15 @@ A concern raised on one Conversation for one Flag Recipient
 comment; at most one per Recipient per Conversation, with no resolution status.
 _Avoid_: Intervention Flag, escalation
 
+**Screener Feedback**:
+A Blended Learning Mentor's two 1-5 ratings of the Student's Screener form (did
+it help them understand the Student, and did the Student seem more comfortable
+talking), asked once per Student on the first Conversation where the Mentor
+ticks "Was the screener form used?" (`screener_used`). It is never asked again
+for that Student, even under a later Mentor. A Conversation's `screener_used`
+is NULL when the Student had no Screener link; Attempts never carry it.
+_Avoid_: Screener survey, per-Conversation feedback
+
 **Student Links**:
 A Student's Profile Doc URL and Screener Link URL, loaded from the Profile
 Dashboard Sheet by an LMS script, and an exact legacy last-contact date from
@@ -278,6 +287,8 @@ _Avoid_: Student Profile, Holistic questionnaire links
   text and owner).
 - A Conversation Draft has many Transcription Requests over time but at most one
   queued or running.
+- A Student has at most one Screener Feedback, saved in the same transaction as
+  the Conversation it was given on (same Student, `screener_used` true).
 
 ## Invariants
 
@@ -304,7 +315,7 @@ _Avoid_: Student Profile, Holistic questionnaire links
 - Student eligibility mutations end affected active Mappings atomically.
 - Database sync includes all Holistic data for local and staging targets, including privacy-deletion markers. Oban job data is excluded from both targets.
 - Blended Learning Conversations and Attempts are append-only (trigger); af_lms
-  only inserts Photos and Mentor Flags and only moves Action Items open to done,
+  only inserts Photos, Mentor Flags and Screener Feedback and only moves Action Items open to done,
   apart from a Common Action Item's edit or removal, which updates or deletes its
   still-open Action Items, and the Profile Doc import, which inserts Profile Doc
   Action Items and deletes still-open ones the doc no longer lists.
