@@ -457,6 +457,13 @@ defmodule Dbservice.VisitConcerns do
       |> Repo.all(log: false)
       |> Enum.group_by(& &1.visit_id)
 
+    teacher_subjects =
+      actions
+      |> Map.values()
+      |> Enum.concat()
+      |> Extraction.teacher_ids()
+      |> teacher_subjects()
+
     summaries =
       from(s in "lms_visit_note_summaries",
         where: s.visit_id in ^ids,
@@ -466,7 +473,7 @@ defmodule Dbservice.VisitConcerns do
       |> Map.new()
 
     Enum.map(visits, fn visit ->
-      items = Extraction.items(Map.get(actions, visit.id, []))
+      items = Extraction.items(Map.get(actions, visit.id, []), teacher_subjects)
 
       Map.merge(visit, %{
         visit_id: visit.id,
@@ -476,6 +483,48 @@ defmodule Dbservice.VisitConcerns do
       })
     end)
   end
+
+  # `individual_af_teacher_interaction` teacher ids are LMS `user_permission`
+  # ids (the LMS teacher picker lists those), not `teacher` ids. A subject is
+  # used only on the explicit `user_permission.user_id` link to exactly one
+  # `teacher` row whose subject has an English name: the LMS's email fallback
+  # is fragile, and a person with several teacher rows has no single subject.
+  # Every other id gets no subject. Names are never read.
+  defp teacher_subjects([]), do: %{}
+
+  defp teacher_subjects(permission_ids) do
+    from(up in "user_permission",
+      join: t in "teacher",
+      on: t.user_id == up.user_id,
+      left_join: s in "subject",
+      on: s.id == t.subject_id,
+      where: up.id in ^permission_ids,
+      select: {up.id, s.name}
+    )
+    |> Repo.all()
+    |> Enum.group_by(fn {id, _name} -> id end, fn {_id, name} -> name end)
+    |> Enum.flat_map(fn
+      {id, [names]} ->
+        case english_subject(names) do
+          nil -> []
+          subject -> [{id, subject}]
+        end
+
+      {_id, _several} ->
+        []
+    end)
+    |> Map.new()
+  end
+
+  # `subject.name` is a list of `%{"lang_code", "subject"}` translations.
+  defp english_subject(names) when is_list(names) do
+    Enum.find_value(names, fn
+      %{"lang_code" => "en", "subject" => subject} -> Extraction.subject_text(subject)
+      _ -> nil
+    end)
+  end
+
+  defp english_subject(_names), do: nil
 
   defp pending?(_visit, %{force: true}), do: true
   defp pending?(%{summary: nil}, _opts), do: true

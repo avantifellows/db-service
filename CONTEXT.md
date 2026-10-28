@@ -360,8 +360,26 @@ record with events cannot be deleted. Only `auto_reopened` names a Visit and has
 author or body. The guard CHECKs `lms_visit_concern_events_body_check` and
 `lms_visit_concern_events_author_check` require every other event to have a
 non-blank body of at most 2000 characters after trimming, a non-blank author, and no
-Visit. Labels on the free text sent to `etl-next` come from stable keys and
-positions, never from teacher or Student names.
+Visit.
+
+**Item labels** on the free text sent to `etl-next` come from stable keys and
+positions plus class context (grade and subject), never from a teacher's or a
+Student's name (`teacher_name`, `teachers[].name` and Student names are never read):
+
+- every `classroom_observation` item is `"Grade 11 Physics class observation: <key>"`,
+  or `"Grade 11 class observation: <key>"` / `"Physics class observation: <key>"`
+  when only one is valid, else just `<key>`. `grade` must be an integer or a digit
+  string from 1 to 99; `subject_name` is trimmed, whitespace-collapsed and capped
+  at 40 characters.
+- an `individual_af_teacher_interaction` teacher is `"Teacher <n> (<Subject>)"`, else
+  `"Teacher <n>"`. `teachers[].id` is an LMS `user_permission` id (not a `teacher`
+  id); the subject is the English `subject.name` of the single `teacher` row on
+  `user_permission.user_id`, looked up in one query per chunk of Visits. No
+  `user_id`, several teacher rows or no subject means no subject.
+
+Labels are part of the fingerprint, so changing them re-summarises the Visits they
+touch: adding class context did so (intended; nothing had run in production), and so
+does a teacher's subject or `user_permission.user_id` changing later.
 
 **Auto-reopen**: when PUT visit-summary mentions a resolved Concern and the Visit's
 `visit_date` is strictly after the IST date of the Concern's latest `resolved` event

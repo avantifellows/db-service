@@ -1,12 +1,13 @@
 defmodule DbserviceWeb.VisitConcernPeopleExtractionTest do
   @moduledoc """
   Per-teacher and per-student-entry Visit Concern extraction through
-  GET /api/visit-concerns/pending-visits. Labels come from positions and keys,
-  never from a teacher's or a Student's name.
+  GET /api/visit-concerns/pending-visits. Labels come from positions, keys and
+  class context (grade and subject), never from a teacher's or a Student's name.
   """
   use DbserviceWeb.ConnCase
 
   import Dbservice.VisitConcernsFixtures
+  alias Dbservice.Repo
 
   setup %{conn: conn} do
     {:ok, conn: put_req_header(conn, "accept", "application/json")}
@@ -321,6 +322,200 @@ defmodule DbserviceWeb.VisitConcernPeopleExtractionTest do
       set_action_data(entry_visit, entry_action("no", 1, "Now finds it easier").data)
       assert pending_ids(conn, "prompt_version=v1") == [teacher_visit, entry_visit]
     end
+  end
+
+  describe "class context in labels" do
+    test "prefixes every classroom observation item with its grade and subject",
+         %{conn: conn} do
+      insert_visit(%{}, [
+        %{
+          action_type: "classroom_observation",
+          data: %{
+            "grade" => "11",
+            "subject_name" => " Physics ",
+            "teacher_id" => 77,
+            "teacher_name" => "Indrani Khan",
+            "params" => %{"punctuality" => %{"score" => 1, "remarks" => "Late by 20 minutes"}},
+            "observer_summary_improvements" => "Start on time",
+            "additional_notes" => "Class started 20 minutes late"
+          }
+        },
+        %{
+          action_type: "classroom_observation",
+          data: %{
+            "grade" => 12,
+            "observer_summary_strengths" => "Clear derivations"
+          }
+        }
+      ])
+
+      assert items(conn) == [
+               item(
+                 "classroom_observation",
+                 "Grade 11 Physics class observation: punctuality",
+                 "Late by 20 minutes"
+               ),
+               item(
+                 "classroom_observation",
+                 "Grade 11 Physics class observation: observer_summary_improvements",
+                 "Start on time"
+               ),
+               item(
+                 "classroom_observation",
+                 "Grade 11 Physics class observation: additional_notes",
+                 "Class started 20 minutes late"
+               ),
+               item(
+                 "classroom_observation",
+                 "Grade 12 class observation: observer_summary_strengths",
+                 "Clear derivations"
+               )
+             ]
+    end
+
+    test "labels a teacher with the subject of the one teacher row its permission links to",
+         %{conn: conn} do
+      physics = insert_subject("Physics")
+      chemistry = insert_subject("Chemistry")
+      unnamed = insert_subject(nil)
+
+      # Ids are LMS `user_permission` ids: a `teacher` row with the same id as
+      # the permission (ids far past the sequences, so they cannot collide) is
+      # someone else and must not be used.
+      linked = insert_permission(insert_teacher_user([physics]), nil, 900_000_001)
+      insert_teacher(insert_user(), chemistry, 900_000_001)
+      email_only = insert_permission(nil, "email-only@example.com")
+      insert_teacher_user([physics], "email-only@example.com")
+      two_rows = insert_permission(insert_teacher_user([physics, chemistry]))
+      no_subject = insert_permission(insert_teacher_user([nil]))
+      no_english_name = insert_permission(insert_teacher_user([unnamed]))
+      no_teacher = insert_permission(insert_user())
+
+      teachers =
+        Enum.map(
+          [linked, email_only, two_rows, no_subject, no_english_name, no_teacher, 999_999_999],
+          &%{
+            "id" => &1,
+            "name" => "SENTINEL-NAME",
+            "questions" => %{"syllabus" => %{"remark" => "Behind by two chapters"}}
+          }
+        )
+
+      insert_visit(%{}, [
+        %{action_type: "individual_af_teacher_interaction", data: %{"teachers" => teachers}}
+      ])
+
+      assert Enum.map(items(conn), & &1["label"]) == [
+               "Teacher 1 (Physics): syllabus",
+               "Teacher 2: syllabus",
+               "Teacher 3: syllabus",
+               "Teacher 4: syllabus",
+               "Teacher 5: syllabus",
+               "Teacher 6: syllabus",
+               "Teacher 7: syllabus"
+             ]
+    end
+
+    test "a teacher's subject changing re-summarises the Visit", %{conn: conn} do
+      user_id = insert_teacher_user([insert_subject("Physics")])
+      permission_id = insert_permission(user_id)
+
+      visit_id =
+        insert_visit(%{}, [
+          %{
+            action_type: "individual_af_teacher_interaction",
+            data: %{
+              "teachers" => [
+                %{"id" => permission_id, "questions" => %{"pace" => %{"remark" => "Too fast"}}}
+              ]
+            }
+          }
+        ])
+
+      assert [%{"fingerprint" => fingerprint}] =
+               pending_visits(conn, "prompt_version=v1")["visits"]
+
+      insert_summary(visit_id, fingerprint, "v1")
+      assert pending_ids(conn, "prompt_version=v1") == []
+
+      Repo.query!("UPDATE teacher SET subject_id = $1 WHERE user_id = $2", [
+        insert_subject("Maths"),
+        user_id
+      ])
+
+      assert pending_ids(conn, "prompt_version=v1") == [visit_id]
+    end
+
+    test "never adds a classroom observation's teacher name to any label or text",
+         %{conn: conn} do
+      insert_visit(%{}, [
+        %{
+          action_type: "classroom_observation",
+          data: %{
+            "grade" => 11,
+            "subject_name" => "Physics",
+            "teacher_id" => 77,
+            "teacher_name" => "SENTINEL-NAME",
+            "params" => %{
+              "board_work" => %{"remarks" => "Board is cluttered"},
+              "rapport" => %{"remarks" => "SENTINEL-NAME knows every student"}
+            },
+            "observer_summary_strengths" => "Good rapport",
+            "additional_notes" => "Class started 20 minutes late"
+          }
+        }
+      ])
+
+      items = items(conn)
+
+      refute Enum.any?(items, &String.contains?(&1["label"], "SENTINEL-NAME"))
+
+      # Only the remark that already named the teacher carries the name.
+      assert [%{"text" => "SENTINEL-NAME knows every student"}] =
+               Enum.filter(items, &String.contains?(&1["text"], "SENTINEL-NAME"))
+    end
+  end
+
+  defp insert_subject(english_name) do
+    name =
+      if english_name,
+        do: [%{"lang_code" => "en", "subject" => english_name}],
+        else: [%{"lang_code" => "hi", "subject" => "विषय"}]
+
+    insert_row("subject", %{name: name})
+  end
+
+  defp insert_user, do: insert_row("user", %{})
+
+  defp insert_user(email), do: insert_row("user", %{email: email})
+
+  # A user with one `teacher` row per subject id (nil for no subject).
+  defp insert_teacher_user(subject_ids, email \\ nil) do
+    user_id = if email, do: insert_user(email), else: insert_user()
+    Enum.each(subject_ids, &insert_teacher(user_id, &1))
+    user_id
+  end
+
+  defp insert_teacher(user_id, subject_id, id \\ nil) do
+    attrs = %{user_id: user_id, subject_id: subject_id, is_af_teacher: true}
+    insert_row("teacher", if(id, do: Map.put(attrs, :id, id), else: attrs))
+  end
+
+  defp insert_permission(user_id, email \\ nil, id \\ nil) do
+    attrs = %{
+      user_id: user_id,
+      email: email || "teacher-#{System.unique_integer([:positive])}@example.com",
+      level: 1
+    }
+
+    insert_row("user_permission", if(id, do: Map.put(attrs, :id, id), else: attrs))
+  end
+
+  defp insert_row(table, attrs) do
+    now = ~N[2026-10-20 06:00:00]
+    row = Map.merge(%{inserted_at: now, updated_at: now}, attrs)
+    {1, [%{id: id}]} = Repo.insert_all(table, [row], returning: [:id])
+    id
   end
 
   defp teacher_action(answer, score, remark) do
