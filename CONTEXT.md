@@ -216,7 +216,9 @@ _Avoid_: Action (a School Visit term), task
 
 **Common Action Item**:
 An Action Item a Blended Learning Admin pushes to a target (every Student with
-an active Mapping, one grade, or one Mentor's Students). It is materialised at
+an active Mapping, one grade, one Mentor's Students, or specific Students listed
+by `student.student_id`, stored so a later push can reach them again). Only
+Students with an active Mapping receive it. It is materialised at
 push time as one open Action Item per targeted Student, at most one per
 Student; Students mapped later get it only when it is pushed again. Removing it
 is a soft removal that deletes its still-open Action Items and keeps done ones.

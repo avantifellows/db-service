@@ -10,9 +10,10 @@ defmodule Dbservice.Repo.Migrations.CreateBlendedLearningResourcesAndCommonActio
   # created_by_email / updated_by_email are NULL only for that seeded row.
   #
   # A Common Action Item is pushed by an admin to a target (every Student with an active
-  # Mapping, one grade, or one Mentor's Students) and materialised, at push time, as one
-  # open Action Item per targeted Student: an Action Item now belongs to exactly one
-  # Conversation or one Common Action Item. A Student gets a Common Action Item at most
+  # Mapping, one grade, one Mentor's Students, or specific Students by their `student_id`,
+  # kept in target_student_ids so a later push can reach them again) and materialised, at
+  # push time, as one open Action Item per targeted Student: an Action Item now belongs to
+  # exactly one Conversation or one Common Action Item. A Student gets a Common Action Item at most
   # once, so a repeated push only adds it to targeted Students who don't have it yet.
   # Removing a Common Action Item soft-removes it (removed_at / removed_by_email); af_lms
   # deletes its still-open Action Items and keeps the done ones as history.
@@ -69,6 +70,10 @@ defmodule Dbservice.Repo.Migrations.CreateBlendedLearningResourcesAndCommonActio
       add :removed_by_email, :string, size: 255
 
       timestamps(default: fragment("now()"), null: false)
+
+      # `student.student_id` values (sheet/program IDs, leading zeros kept) for the
+      # `students` target.
+      add :target_student_ids, {:array, :text}
     end
 
     create constraint(@common, :bl_common_action_items_text_check,
@@ -85,17 +90,28 @@ defmodule Dbservice.Repo.Migrations.CreateBlendedLearningResourcesAndCommonActio
                target_kind = 'all'
                AND target_grade IS NULL
                AND target_mentor_user_id IS NULL
+               AND target_student_ids IS NULL
              )
              OR (
                target_kind = 'grade'
                AND target_grade IS NOT NULL
                AND target_grade IN (12, 13)
                AND target_mentor_user_id IS NULL
+               AND target_student_ids IS NULL
              )
              OR (
                target_kind = 'mentor'
                AND target_grade IS NULL
                AND target_mentor_user_id IS NOT NULL
+               AND target_student_ids IS NULL
+             )
+             OR (
+               target_kind = 'students'
+               AND target_grade IS NULL
+               AND target_mentor_user_id IS NULL
+               AND target_student_ids IS NOT NULL
+               AND cardinality(target_student_ids) >= 1
+               AND array_position(target_student_ids, NULL) IS NULL
              )
              """
            )

@@ -78,10 +78,17 @@ defmodule Dbservice.BlendedLearningManageSchemaTest do
             %{target_kind: "all"},
             %{target_kind: "grade", target_grade: 12},
             %{target_kind: "grade", target_grade: 13},
-            %{target_kind: "mentor", target_mentor_user_id: scope.mentor_user_id}
+            %{target_kind: "mentor", target_mentor_user_id: scope.mentor_user_id},
+            %{target_kind: "students", target_student_ids: ["01234567890"]},
+            %{target_kind: "students", target_student_ids: ["12345678", "0098765432"]}
           ] do
         assert {:ok, _} = insert_common(attrs)
       end
+
+      # Student IDs keep their leading zeros.
+      assert Repo.query!(
+               "SELECT target_student_ids FROM #{@common} WHERE target_kind = 'students' ORDER BY id"
+             ).rows == [[["01234567890"]], [["12345678", "0098765432"]]]
 
       for attrs <- [
             %{target_kind: "everyone"},
@@ -99,6 +106,22 @@ defmodule Dbservice.BlendedLearningManageSchemaTest do
               target_kind: "mentor",
               target_mentor_user_id: scope.mentor_user_id,
               target_grade: 12
+            },
+            %{target_kind: "all", target_student_ids: ["12345678"]},
+            %{target_kind: "grade", target_grade: 12, target_student_ids: ["12345678"]},
+            %{
+              target_kind: "mentor",
+              target_mentor_user_id: scope.mentor_user_id,
+              target_student_ids: ["12345678"]
+            },
+            %{target_kind: "students"},
+            %{target_kind: "students", target_student_ids: []},
+            %{target_kind: "students", target_student_ids: ["12345678", nil]},
+            %{target_kind: "students", target_student_ids: ["12345678"], target_grade: 12},
+            %{
+              target_kind: "students",
+              target_student_ids: ["12345678"],
+              target_mentor_user_id: scope.mentor_user_id
             }
           ] do
         assert_constraint(:check_violation, fn -> insert_common(attrs) end)
