@@ -207,11 +207,13 @@ a separate S3 object with the same retention.
 _Avoid_: storing audio or transcripts in Postgres
 
 **Action Item**:
-A follow-up agreed in a Conversation, or pushed from a Common Action Item,
-owned by the Student, the Mentor or the Parent, with no due date. Its only
-permitted change is open to done, recording the later Conversation that closed
-it; a pushed Action Item's text and owner also follow its Common Action Item
-while open.
+A follow-up agreed in a Conversation, pushed from a Common Action Item, or
+loaded from the latest entry in the Student's Profile Doc, owned by the
+Student, the Mentor or the Parent, with no due date. Its only permitted change
+is open to done, recording the later Conversation that closed it; a pushed
+Action Item's text and owner also follow its Common Action Item while open, and
+a re-import of the Profile Doc may delete its still-open Profile Doc Action
+Items that the doc no longer lists.
 _Avoid_: Action (a School Visit term), task
 
 **Common Action Item**:
@@ -238,7 +240,9 @@ _Avoid_: Intervention Flag, escalation
 **Student Links**:
 A Student's Profile Doc URL and Screener Link URL, loaded from the Profile
 Dashboard Sheet by an LMS script, and an exact legacy last-contact date from
-the Profile Doc: its latest dated conversation.
+the Profile Doc: its latest dated conversation, with that conversation's
+summary. The summary shows in the conversation history at that date but is not
+a Conversation.
 _Avoid_: Student Profile, Holistic questionnaire links
 
 ## Relationships
@@ -269,7 +273,9 @@ _Avoid_: Student Profile, Holistic questionnaire links
 - A Conversation has many Action Items, Photos and Mentor Flags; a Conversation
   saved from a Conversation Draft keeps the Draft's Call Recording and transcript
   keys.
-- An Action Item belongs to exactly one Conversation or one Common Action Item.
+- An Action Item has exactly one source: a Conversation, a Common Action Item or
+  the Student's Profile Doc (at most one Profile Doc Action Item per Student,
+  text and owner).
 - A Conversation Draft has many Transcription Requests over time but at most one
   queued or running.
 
@@ -300,7 +306,8 @@ _Avoid_: Student Profile, Holistic questionnaire links
 - Blended Learning Conversations and Attempts are append-only (trigger); af_lms
   only inserts Photos and Mentor Flags and only moves Action Items open to done,
   apart from a Common Action Item's edit or removal, which updates or deletes its
-  still-open Action Items.
+  still-open Action Items, and the Profile Doc import, which inserts Profile Doc
+  Action Items and deletes still-open ones the doc no longer lists.
 - `etl-next` reads Transcription Requests and writes Conversation Draft content
   only through the db-service API; it receives the Student's gender and the
   session details, never names or phone numbers.
