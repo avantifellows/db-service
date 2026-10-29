@@ -85,6 +85,7 @@ defmodule DbserviceWeb.StudentController do
     # belong to that auth group (via their auth_group enrollment record). Remaining params
     # are treated as direct Student column filters.
     {auth_group_id, params} = pop_auth_group_filter(params)
+    {include_inactive, params} = Map.pop(params, "include_inactive")
 
     base =
       from(m in Student,
@@ -93,7 +94,7 @@ defmodule DbserviceWeb.StudentController do
         limit: ^Pagination.limit(params)
       )
 
-    base = maybe_scope_to_auth_group(base, auth_group_id)
+    base = maybe_scope_to_auth_group(base, auth_group_id, include_inactive == "true")
 
     query =
       Enum.reduce(params, base, fn {key, value}, acc ->
@@ -122,9 +123,21 @@ defmodule DbserviceWeb.StudentController do
     {resolved, params}
   end
 
-  defp maybe_scope_to_auth_group(query, nil), do: query
+  defp maybe_scope_to_auth_group(query, nil, _include_inactive), do: query
 
-  defp maybe_scope_to_auth_group(query, auth_group_id) do
+  defp maybe_scope_to_auth_group(query, auth_group_id, true) do
+    from(s in query,
+      where:
+        s.user_id in subquery(
+          from(er in EnrollmentRecord,
+            where: er.group_type == "auth_group" and er.group_id == ^auth_group_id,
+            select: er.user_id
+          )
+        )
+    )
+  end
+
+  defp maybe_scope_to_auth_group(query, auth_group_id, false) do
     from(s in query,
       join: er in EnrollmentRecord,
       on: er.user_id == s.user_id,
