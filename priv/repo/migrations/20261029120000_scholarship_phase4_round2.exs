@@ -44,9 +44,17 @@ defmodule Dbservice.Repo.Migrations.ScholarshipPhase4Round2 do
     # them apart at a glance is a reader who will eventually filter by the wrong
     # one.
     #
-    # A typed column rather than another key in `stage3_data`, because the
-    # Finance Dashboard FILTERS on it (this codebase promotes a field out of
-    # the blob exactly when it is queried on, and not before).
+    # NOT what the Finance Dashboard filters on. A year there is the year the
+    # money MOVED in, read off the payment's own date (Sanghamitra, 29 Oct,
+    # option B) -- a scholar funded across two years belongs to both, which one
+    # year on her row could never say.
+    #
+    # This column is what gives money a year when the date cannot: an imported
+    # lump the team recorded with no day against it has nothing else to go on,
+    # and the dashboard's year query COALESCEs down to it. A typed column
+    # rather than another key in `stage3_data` because that query reads it per
+    # payment (this codebase promotes a field out of the blob exactly when it
+    # is queried on, and not before), and the import writes and re-writes it.
     #
     # Nullable, and backfilled below only where the answer is already known.
     alter table(:scholarship_applications) do
@@ -56,9 +64,11 @@ defmodule Dbservice.Repo.Migrations.ScholarshipPhase4Round2 do
     create index(:scholarship_applications, [:financial_year])
 
     # Cohort 7 is the 2026-27 intake, the only one this portal has ever held,
-    # and it never comes through the CSV -- so without this every one of them
-    # falls out of the dashboard the moment the filter is used. Cohorts 1-6
-    # arrive with the column filled from their sheet.
+    # and it never comes through the CSV, so nothing else would ever fill it.
+    # Its payments are recorded in the portal with the day they were paid, so
+    # the dashboard rarely has to fall back this far -- but an undated rupee of
+    # theirs can then only be 2026-2027, and this is where that is written down.
+    # Cohorts 1-6 arrive with the column filled from their sheet.
     execute """
             UPDATE scholarship_applications a
                SET financial_year = '2026-2027'
