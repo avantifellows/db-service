@@ -309,13 +309,18 @@ defmodule Dbservice.VisitConcerns do
   """
   def fetch_prompt_version(map), do: fetch_text(map, "prompt_version", 50)
 
-  # Trimmed, then 1..max Unicode code points.
+  # Trimmed, then 1..max Unicode code points, as Postgres `char_length` counts:
+  # `String.length/1` counts graphemes, and one grapheme can hold any number of
+  # combining marks. A Postgres text value cannot hold NUL, so that is a 400 here
+  # rather than a database error. Plug has already rejected invalid UTF-8.
   defp fetch_text(map, key, max) do
     with value when is_binary(value) <- Map.get(map, key),
+         {:nul, false} <- {:nul, String.contains?(value, <<0>>)},
          trimmed = String.trim(value),
-         length when length >= 1 and length <= max <- String.length(trimmed) do
+         length when length >= 1 and length <= max <- length(String.codepoints(trimmed)) do
       {:ok, trimmed}
     else
+      {:nul, true} -> {:error, "#{key} must not contain NUL characters"}
       _ -> {:error, "#{key} must be a non-empty string of at most #{max} characters"}
     end
   end

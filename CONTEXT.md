@@ -404,6 +404,11 @@ db-service cannot deadlock, and must stamp them with `clock_timestamp()` after t
 lock, not `NOW()` (the transaction start) or an app clock, so the history (ordered
 by `inserted_at`, then id) follows lock order on both sides.
 
+PUT trims record `text`, `snippet` and `prompt_version` and caps them at 500, 300
+and 50 Unicode code points (as `char_length` counts, not graphemes); the columns
+are plain `text` with no length CHECK. A NUL in any of them is a 400 `{error}`,
+since Postgres text cannot hold one.
+
 Record `text` and `snippet` are filtered from the Phoenix request log
 (`:filter_parameters`). A body that cannot be parsed gets a 400 `{error}` without
 the body being logged.

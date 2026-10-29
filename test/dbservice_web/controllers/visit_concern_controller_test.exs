@@ -408,6 +408,9 @@ defmodule DbserviceWeb.VisitConcernControllerTest do
             "prompt_version=",
             "prompt_version=%20%20",
             "prompt_version=" <> String.duplicate("v", 51),
+            # 51 code points in one grapheme: "v" plus 50 combining acute accents.
+            "prompt_version=v" <> String.duplicate("%CC%81", 50),
+            "prompt_version=v%001",
             "prompt_version=v1&limit=0",
             "prompt_version=v1&limit=201",
             "prompt_version=v1&limit=ten",
@@ -436,6 +439,7 @@ defmodule DbserviceWeb.VisitConcernControllerTest do
 
       for query <- [
             "prompt_version=" <> String.duplicate("v", 50),
+            "prompt_version=v" <> String.duplicate("%CC%81", 49),
             "prompt_version=v1&limit=1",
             "prompt_version=v1&limit=200",
             "prompt_version=v1&visit_ids=" <> Enum.join(Enum.to_list(1..199) ++ [visit_id], ","),
@@ -818,6 +822,67 @@ defmodule DbserviceWeb.VisitConcernControllerTest do
 
       assert [%{"id" => id, "text" => ^text}] = body["records"]
       assert mentions_of(visit_id) == MapSet.new([{id, snippet}])
+    end
+
+    test "caps lengths in code points, as Postgres char_length counts, not graphemes",
+         %{conn: conn} do
+      visit_id = insert_visit(%{})
+      # A letter plus combining acute accents: one grapheme of `count` code points.
+      accented = fn letter, count -> letter <> String.duplicate("\u0301", count - 1) end
+      counts = row_counts()
+
+      for body <- [
+            summary_body(@golden_fingerprint, [new_point("concern", accented.("t", 501), "Fans")]),
+            summary_body(@golden_fingerprint, [new_point("concern", "Fans", accented.("s", 301))]),
+            Map.put(summary_body(@golden_fingerprint, []), "prompt_version", accented.("v", 51))
+          ] do
+        assert %{"error" => message} = conn |> put_summary(visit_id, body) |> json_response(400)
+        assert message =~ "at most"
+        assert row_counts() == counts
+      end
+
+      text = accented.("t", 500)
+      snippet = accented.("s", 300)
+
+      body =
+        conn
+        |> put_summary(visit_id, %{
+          "fingerprint" => @golden_fingerprint,
+          "prompt_version" => accented.("v", 50),
+          "points" => [new_point("concern", text, snippet)]
+        })
+        |> json_response(200)
+
+      assert [%{"id" => id, "text" => ^text}] = body["records"]
+      assert mentions_of(visit_id) == MapSet.new([{id, snippet}])
+    end
+
+    test "rejects a NUL in text, snippet or prompt_version with a 400 and writes nothing",
+         %{conn: conn} do
+      visit_id = insert_visit(%{})
+      counts = row_counts()
+
+      # JSON carries NUL as \u0000; a Postgres text value cannot hold it.
+      for {text, snippet, prompt_version} <- [
+            {"Fans\u0000broken", "Fans", "v1"},
+            {"Fans", "Fans\u0000", "v1"},
+            {"Fans", "Fans", "v\u00001"}
+          ] do
+        body =
+          @golden_fingerprint
+          |> summary_body([new_point("concern", text, snippet)])
+          |> Map.put("prompt_version", prompt_version)
+          |> Jason.encode!()
+
+        assert %{"error" => message} =
+                 conn
+                 |> put_req_header("content-type", "application/json")
+                 |> put("/api/visit-concerns/visit-summary/#{visit_id}", body)
+                 |> json_response(400)
+
+        assert message =~ "must not contain NUL characters"
+        assert row_counts() == counts
+      end
     end
 
     test "returns 404 for a missing, soft-deleted or in-progress Visit", %{conn: conn} do
