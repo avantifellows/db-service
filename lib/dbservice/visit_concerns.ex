@@ -67,7 +67,7 @@ defmodule Dbservice.VisitConcerns do
 
     # Taken after the locks, so an auto-reopen is never stamped earlier than a
     # resolution committed while this transaction waited for them.
-    now = NaiveDateTime.utc_now() |> NaiveDateTime.truncate(:second)
+    now = db_now()
 
     {_count, previous_ids} =
       from(m in "lms_visit_concern_mentions",
@@ -105,6 +105,17 @@ defmodule Dbservice.VisitConcerns do
     |> auto_reopen!(visit_id, visit_date, now)
 
     records_for_school(school_code)
+  end
+
+  # The DB clock, not the app's, read when called (clock_timestamp(), not the
+  # transaction start that NOW() gives) and rounded to the second as a
+  # `timestamp(0)` write rounds it. af_lms stamps its events the same way after
+  # its row lock, so stamps from both sides follow lock (commit) order.
+  defp db_now do
+    %{rows: [[now]]} =
+      Repo.query!("SELECT (clock_timestamp() AT TIME ZONE 'UTC')::timestamp(0)")
+
+    now
   end
 
   defp lock_visit!(visit_id) do

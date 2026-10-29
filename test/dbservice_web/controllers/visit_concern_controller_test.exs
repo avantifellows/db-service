@@ -1089,14 +1089,17 @@ defmodule DbserviceWeb.VisitConcernControllerTest do
             end
 
           await_lock_waiters(2)
-          # The resolution commits more than a second after both PUTs started.
+          # The resolution commits more than a second after both PUTs started,
+          # late enough in a second that its stamp rounds up to the next one.
           Process.sleep(1_100)
+          await_late_in_second()
           send(resolver.pid, :resolve)
           assert {:ok, resolved_at} = Task.await(resolver, 10_000)
 
           assert Enum.map(puts, &Task.await(&1, 15_000)) == [200, 200]
 
-          # The first PUT to get the lock reopens; the second sees it open.
+          # The first PUT to get the lock reopens; the second sees it open. The
+          # LMS history orders by inserted_at, then id.
           assert [
                    ["resolved", nil, ^resolved_at],
                    ["auto_reopened", reopened_by, reopened_at]
@@ -1104,7 +1107,7 @@ defmodule DbserviceWeb.VisitConcernControllerTest do
                    Repo.query!(
                      """
                      SELECT kind, visit_id, inserted_at FROM lms_visit_concern_events
-                     WHERE concern_id = $1 ORDER BY id
+                     WHERE concern_id = $1 ORDER BY inserted_at, id
                      """,
                      [concern]
                    ).rows
@@ -1123,7 +1126,8 @@ defmodule DbserviceWeb.VisitConcernControllerTest do
   end
 
   # Holds `concern_id` FOR UPDATE, tells `parent` and, on `:resolve`, resolves it
-  # with a `resolved` event at the current time and commits.
+  # and commits. Like af_lms, it stamps the status and the `resolved` event with
+  # the DB's clock_timestamp() after the lock; `timestamp(0)` rounds it.
   defp resolve_while_locked(concern_id, parent) do
     Ecto.Adapters.SQL.Sandbox.unboxed_run(Repo, fn ->
       Repo.transaction(fn ->
@@ -1132,20 +1136,47 @@ defmodule DbserviceWeb.VisitConcernControllerTest do
 
         receive do
           :resolve ->
-            resolved_at = NaiveDateTime.utc_now() |> NaiveDateTime.truncate(:second)
-
             Repo.query!(
-              "UPDATE lms_visit_concerns SET status = 'resolved', updated_at = $2 WHERE id = $1",
-              [concern_id, resolved_at]
+              """
+              UPDATE lms_visit_concerns
+              SET status = 'resolved', updated_at = (clock_timestamp() AT TIME ZONE 'UTC')
+              WHERE id = $1
+              """,
+              [concern_id]
             )
 
-            insert_event(concern_id, "resolved", resolved_at)
+            %{rows: [[resolved_at]]} =
+              Repo.query!(
+                """
+                INSERT INTO lms_visit_concern_events (concern_id, kind, body, author_email, inserted_at)
+                VALUES ($1, 'resolved', 'Checked with the principal', 'pm@avantifellows.org',
+                        (clock_timestamp() AT TIME ZONE 'UTC'))
+                RETURNING inserted_at
+                """,
+                [concern_id]
+              )
+
             resolved_at
         after
           10_000 -> Repo.rollback(:timeout)
         end
       end)
     end)
+  end
+
+  # Returns once the DB clock is 550-700 ms into a second. A `timestamp(0)`
+  # column rounds a stamp taken then up to the next second, so an app-clock stamp
+  # truncated to the second a moment later would sort before it.
+  defp await_late_in_second do
+    %{rows: [[ms]]} =
+      Repo.query!("SELECT (extract(milliseconds FROM clock_timestamp())::int % 1000)")
+
+    if ms in 550..700 do
+      :ok
+    else
+      Process.sleep(rem(1_600 - ms, 1_000))
+      await_late_in_second()
+    end
   end
 
   defp await_lock_waiters(count, attempts \\ 200) do

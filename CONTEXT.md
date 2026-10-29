@@ -331,7 +331,7 @@ and keep 0. There is no backfill. Deploy schema before the LMS release.
 
 ### Visit Concerns (LMS #470)
 
-last_updated: 2026-10-28
+last_updated: 2026-10-29
 
 `20261028120000_create_lms_visit_concerns` owns `lms_visit_concerns`,
 `lms_visit_concern_mentions`, `lms_visit_concern_events` and
@@ -396,10 +396,13 @@ not only resolved ones). Both locks come before any mention is deleted or insert
 because a mention insert's FK check takes `FOR KEY SHARE` on its record. Two PUTs
 for different Visits at one School that both held that on a Concern and then asked
 for `FOR UPDATE` would deadlock. Highlights and records the PUT creates are not
-locked. The operation timestamp is taken after the locks, so an `auto_reopened`
-event is never stamped before a resolution committed while the PUT waited. af_lms
-must lock Concern rows `FOR UPDATE` in ascending id order before writing their
-events, so it and db-service cannot deadlock.
+locked. The operation timestamp is the DB's `clock_timestamp()` (UTC, rounded to
+the second), read after the locks, so an `auto_reopened` event is never stamped
+before a resolution committed while the PUT waited. af_lms must lock Concern rows
+`FOR UPDATE` in ascending id order before writing their events, so it and
+db-service cannot deadlock, and must stamp them with `clock_timestamp()` after that
+lock, not `NOW()` (the transaction start) or an app clock, so the history (ordered
+by `inserted_at`, then id) follows lock order on both sides.
 
 Record `text` and `snippet` are filtered from the Phoenix request log
 (`:filter_parameters`). A body that cannot be parsed gets a 400 `{error}` without
