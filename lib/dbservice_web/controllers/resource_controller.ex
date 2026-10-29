@@ -1654,10 +1654,9 @@ defmodule DbserviceWeb.ResourceController do
       "Given a problem's language texts (as stored in meta_data.text, HTML/LaTeX " <>
         "intact), returns existing problems whose question text is a near-duplicate " <>
         "(trigram similarity > 0.75), scoped per language. db-service normalizes " <>
-        "the text internally, so the client sends it raw. Pass the optional " <>
-        "curriculum_id to restrict matches to problems in that curriculum; omit it " <>
-        "and matching falls back to all curricula (deprecated — it will become " <>
-        "required once every client sends it). Archived problems are never " <>
+        "the text internally, so the client sends it raw. curriculum_id is " <>
+        "required and restricts matches to problems in that curriculum; a missing, " <>
+        "blank or non-integer value is a 400. Archived problems are never " <>
         "returned. Results are capped per language and sorted by match_score " <>
         "descending, each tagged with the lang_code it matched on."
     )
@@ -1675,18 +1674,49 @@ defmodule DbserviceWeb.ResourceController do
   POST /api/problems/similar-search — near-duplicate detection (issue #700).
 
   Body: `%{"languages" => [%{"lang_code" => "en", "text" => "<html>"}, ...]}`,
-  plus an optional `curriculum_id` restricting matches to that curriculum
-  (issue #745). Omitting it matches across all curricula, which is the
-  pre-#745 behaviour and is deprecated.
+  plus a required `curriculum_id` restricting matches to that curriculum
+  (issue #745). The cross-curriculum fallback for a missing `curriculum_id` was
+  removed in issue #833 once every client sent it.
   """
   def similar_search(conn, %{"languages" => languages} = params) when is_list(languages) do
-    curriculum_id = param_as_integer(params, "curriculum_id")
-    json(conn, %{problems: Resources.similar_problems(languages, curriculum_id)})
+    case required_curriculum_id(params) do
+      {:ok, curriculum_id} ->
+        json(conn, %{problems: Resources.similar_problems(languages, curriculum_id)})
+
+      {:error, message} ->
+        conn
+        |> put_status(:bad_request)
+        |> json(%{error: message})
+    end
   end
 
   def similar_search(conn, _params) do
     conn
     |> put_status(:bad_request)
     |> json(%{error: "Request body must include a \"languages\" list of {lang_code, text}"})
+  end
+
+  # Parsed here rather than through param_as_integer/2 so that a non-integer
+  # value is a 400 and not the 500 that String.to_integer/1 would raise. A
+  # missing curriculum_id is a client bug, not a reason to search every
+  # curriculum: a near-duplicate in an unrelated curriculum is not this
+  # problem's duplicate (issue #833).
+  defp required_curriculum_id(params) do
+    case Map.get(params, "curriculum_id") do
+      value when value in [nil, ""] ->
+        {:error, "curriculum_id is required"}
+
+      value when is_integer(value) ->
+        {:ok, value}
+
+      value when is_binary(value) ->
+        case Integer.parse(value) do
+          {curriculum_id, ""} -> {:ok, curriculum_id}
+          _ -> {:error, "curriculum_id must be an integer"}
+        end
+
+      _ ->
+        {:error, "curriculum_id must be an integer"}
+    end
   end
 end
