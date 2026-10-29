@@ -2,6 +2,8 @@ defmodule DbserviceWeb.StudentControllerTest do
   use DbserviceWeb.ConnCase
 
   import Dbservice.UsersFixtures
+  import Dbservice.AuthGroupsFixtures
+  import Dbservice.EnrollmentRecordFixtures
 
   @create_attrs %{
     category: "Gen",
@@ -75,6 +77,66 @@ defmodule DbserviceWeb.StudentControllerTest do
       assert Enum.any?(resp, fn s -> s["id"] == student.id end)
       found_student = Enum.find(resp, fn s -> s["id"] == student.id end)
       assert found_student["student_id"] == student.student_id
+    end
+  end
+
+  describe "index scoped to an auth group" do
+    setup do
+      auth_group = auth_group_fixture(%{name: "SCOPE_TEST_GROUP"})
+      {user, student} = student_fixture()
+
+      enrollment_record_fixture(%{
+        user_id: user.id,
+        group_type: "auth_group",
+        group_id: auth_group.id,
+        is_current: false
+      })
+
+      %{auth_group: auth_group, student: student}
+    end
+
+    test "skips a student whose only enrollment in the group is not current", %{
+      conn: conn,
+      auth_group: auth_group,
+      student: student
+    } do
+      conn =
+        get(conn, ~p"/api/student", %{
+          student_id: student.student_id,
+          auth_group_id: auth_group.id
+        })
+
+      assert json_response(conn, 200) == []
+    end
+
+    test "include_inactive counts a non-current enrollment once", %{
+      conn: conn,
+      auth_group: auth_group,
+      student: student
+    } do
+      conn =
+        get(conn, ~p"/api/student", %{
+          student_id: student.student_id,
+          auth_group_id: auth_group.id,
+          include_inactive: "true"
+        })
+
+      assert [%{"id" => id}] = json_response(conn, 200)
+      assert id == student.id
+    end
+
+    test "include_inactive still excludes students enrolled in another group", %{conn: conn} do
+      other = auth_group_fixture(%{name: "SCOPE_OTHER_GROUP"})
+      {_user, outsider} = student_fixture()
+
+      conn =
+        get(conn, ~p"/api/student", %{
+          student_id: outsider.student_id,
+          auth_group_id: other.id,
+          include_inactive: "true"
+        })
+
+      assert json_response(conn, 200) == []
     end
   end
 
