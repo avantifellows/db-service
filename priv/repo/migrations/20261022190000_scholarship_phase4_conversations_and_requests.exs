@@ -20,8 +20,7 @@ defmodule Dbservice.Repo.Migrations.ScholarshipPhase4ConversationsAndRequests do
     # several, each with its own status. Bending the flag table into that shape
     # would make every existing flag query say "and not this kind".
     create table(:scholarship_scorecard_messages) do
-      add :scorecard_id, references(:scholarship_scorecards, on_delete: :delete_all),
-        null: false
+      add :scorecard_id, references(:scholarship_scorecards, on_delete: :delete_all), null: false
 
       # 'student' | 'reviewer' — who is speaking, which is what the card shows
       # on each side of the thread.
