@@ -110,7 +110,8 @@ defmodule DbserviceWeb.ResourceJSON do
       exam_ids: resource.exam_ids,
       exam_details: exam_details,
       curriculum_grades: curriculum_grades,
-      difficulty_level: difficulty_level
+      difficulty_level: difficulty_level,
+      is_active: resource.is_active
     }
 
     # Add curriculum data if it exists

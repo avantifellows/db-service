@@ -926,6 +926,13 @@ defmodule DbserviceWeb.ResourceController do
         required: false
       )
 
+      is_active(
+        :query,
+        :boolean,
+        "Only resources that are active, or only retired ones (optional - omit for both)",
+        required: false
+      )
+
       limit(
         :query,
         :integer,
@@ -956,6 +963,7 @@ defmodule DbserviceWeb.ResourceController do
       query
       |> filter_by_type(params)
       |> filter_by_subtype(params)
+      |> filter_by_is_active(params)
       |> apply_pagination(params)
 
     resources = Repo.all(query)
@@ -1096,6 +1104,19 @@ defmodule DbserviceWeb.ResourceController do
   end
 
   defp filter_by_subtype(query, _), do: query
+
+  # Opt-in: the CMS lists every resource so that a retired one can be brought
+  # back, while Gurukul asks for is_active=true and sees only what is current.
+  defp filter_by_is_active(query, %{"is_active" => is_active}) when is_active in [true, "true"] do
+    from(r in query, where: r.is_active == true)
+  end
+
+  defp filter_by_is_active(query, %{"is_active" => is_active})
+       when is_active in [false, "false"] do
+    from(r in query, where: r.is_active == false)
+  end
+
+  defp filter_by_is_active(query, _), do: query
 
   defp apply_pagination(query, params) do
     from(r in query, limit: ^Pagination.limit(params), offset: ^Pagination.offset(params))
