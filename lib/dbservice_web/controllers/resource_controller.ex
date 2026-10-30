@@ -1654,7 +1654,13 @@ defmodule DbserviceWeb.ResourceController do
       "Given a problem's language texts (as stored in meta_data.text, HTML/LaTeX " <>
         "intact), returns existing problems whose question text is a near-duplicate " <>
         "(trigram similarity > 0.75), scoped per language. db-service normalizes " <>
-        "the text internally, so the client sends it raw. Pass the optional " <>
+        "the text internally, so the client sends it raw. Each language entry may " <>
+        "also carry options, the answer options as stored in meta_data.options; " <>
+        "when it does, match_score is the lower of the question and options " <>
+        "similarity, so a shared stem with different options no longer matches. " <>
+        "Options are compared as a set, so reordering them does not change the " <>
+        "score, and a candidate with no options stored is scored on its question " <>
+        "alone. Omit options and behaviour is unchanged. Pass the optional " <>
         "curriculum_id to restrict matches to problems in that curriculum; omit it " <>
         "and matching falls back to all curricula (deprecated — it will become " <>
         "required once every client sends it). Archived problems are never " <>
@@ -1678,6 +1684,10 @@ defmodule DbserviceWeb.ResourceController do
   plus an optional `curriculum_id` restricting matches to that curriculum
   (issue #745). Omitting it matches across all curricula, which is the
   pre-#745 behaviour and is deprecated.
+
+  A language entry may also carry `"options" => ["<html>", ...]`, the answer
+  options as stored in `meta_data.options`, which are then scored alongside the
+  question (issue #777). Omitting them keeps the pre-#777 behaviour.
   """
   def similar_search(conn, %{"languages" => languages} = params) when is_list(languages) do
     curriculum_id = param_as_integer(params, "curriculum_id")
@@ -1687,6 +1697,8 @@ defmodule DbserviceWeb.ResourceController do
   def similar_search(conn, _params) do
     conn
     |> put_status(:bad_request)
-    |> json(%{error: "Request body must include a \"languages\" list of {lang_code, text}"})
+    |> json(%{
+      error: "Request body must include a \"languages\" list of {lang_code, text, options?}"
+    })
   end
 end

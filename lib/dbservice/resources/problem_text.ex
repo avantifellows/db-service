@@ -3,9 +3,10 @@ defmodule Dbservice.Resources.ProblemText do
   Shared normalization of a problem's question text into a plain-text form used
   for trigram similarity search (duplicate-problem detection, issue #700).
 
-  The same function is used both when persisting `problem_lang.question_plain_text`
-  (via the changeset) and when normalizing an incoming search query, so stored
-  candidates and queries are scored on identical text.
+  The same functions are used both when persisting
+  `problem_lang.question_plain_text` / `problem_lang.options_plain_text` (via the
+  changeset) and when normalizing an incoming search query, so stored candidates
+  and queries are scored on identical text.
 
   Rules:
     * strip HTML tags only — LaTeX/math (`\\(...\\)`, `\\hat{}`, `\\sin`, …) is left
@@ -29,6 +30,33 @@ defmodule Dbservice.Resources.ProblemText do
   end
 
   def to_plain_text(_), do: ""
+
+  @doc """
+  Normalizes a problem's answer options - the list of HTML strings stored in
+  `meta_data["options"]` - into one plain-text string for trigram comparison
+  (issue #777).
+
+  Each option is normalized with `to_plain_text/1` and the results are joined
+  with a space. Blank options are dropped so a trailing empty option does not
+  leave a double space, which would otherwise change the trigram set.
+
+  The options are joined rather than compared one by one because trigram
+  similarity is a set comparison: options in a different order score the same,
+  which is what we want - two copies of a question whose options were shuffled
+  are still the same question. The space separator keeps trigrams from spanning
+  the boundary between two options.
+
+  Returns `""` for anything that is not a list (including a missing or JSON-null
+  `options`), which the search and the scoring treat as "no options to compare".
+  """
+  def options_to_plain_text(options) when is_list(options) do
+    options
+    |> Enum.map(&to_plain_text/1)
+    |> Enum.reject(&(&1 == ""))
+    |> Enum.join(" ")
+  end
+
+  def options_to_plain_text(_), do: ""
 
   defp collapse_whitespace(string) do
     string
