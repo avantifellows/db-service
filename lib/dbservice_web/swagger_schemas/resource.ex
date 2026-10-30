@@ -565,11 +565,12 @@ defmodule DbserviceWeb.SwaggerSchema.Resource do
 
             curriculum_id(
               :integer,
-              "Optional. Restrict matches to problems in this curriculum. " <>
-                "Omit to match across all curricula (deprecated fallback)",
-              required: false
+              "Required. Restrict matches to problems in this curriculum",
+              required: true
             )
           end
+
+          required([:languages, :curriculum_id])
 
           example(%{
             curriculum_id: 9,

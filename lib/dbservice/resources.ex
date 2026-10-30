@@ -1546,12 +1546,11 @@ defmodule Dbservice.Resources do
 
       [%{id: 123, code: "P0001234", lang_code: "en", match_score: 0.83}, ...]
 
-  `curriculum_id` restricts candidates to problems mapped to that curriculum via
-  `resource_curriculum` (issue #745) — a near-duplicate in an unrelated
-  curriculum is not this problem's duplicate. It is optional for now: when it is
-  nil the search falls back to matching across all curricula, so clients that
-  have not been updated keep working. Once every client sends it, the fallback
-  goes away.
+  `curriculum_id` is required and restricts candidates to problems mapped to that
+  curriculum via `resource_curriculum` (issue #745) — a near-duplicate in an
+  unrelated curriculum is not this problem's duplicate. The cross-curriculum
+  fallback that ran when it was nil is gone (issue #833); callers are expected to
+  send it.
 
   Archived problems are never returned, with or without a curriculum: a
   near-duplicate that has already been archived should not block saving a new
@@ -1560,8 +1559,6 @@ defmodule Dbservice.Resources do
   Entries with blank text, an unknown `lang_code`, or no matches contribute
   nothing.
   """
-  def similar_problems(languages, curriculum_id \\ nil)
-
   def similar_problems(languages, curriculum_id) when is_list(languages) do
     languages
     |> Enum.flat_map(&similar_problems_for_entry(&1, curriculum_id))
@@ -1629,8 +1626,6 @@ defmodule Dbservice.Resources do
   # rows for the same curriculum (one per grade/subject), and a plain join would
   # return it once per row — duplicating matches and eating into the per-language
   # limit before ten distinct problems had been found.
-  defp scope_similar_to_curriculum(query, nil), do: query
-
   defp scope_similar_to_curriculum(query, curriculum_id) do
     from([res: r] in query,
       where:
