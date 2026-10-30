@@ -207,10 +207,29 @@ a separate S3 object with the same retention.
 _Avoid_: storing audio or transcripts in Postgres
 
 **Action Item**:
-A follow-up agreed in a Conversation, owned by the Student, the Mentor or the
-Parent, with no due date. Its only permitted change is open to done, recording
-the later Conversation that closed it.
+A follow-up agreed in a Conversation, pushed from a Common Action Item, or
+loaded from the latest entry in the Student's Profile Doc, owned by the
+Student, the Mentor or the Parent, with no due date. Its only permitted change
+is open to done, recording the later Conversation that closed it; a pushed
+Action Item's text and owner also follow its Common Action Item while open, and
+a re-import of the Profile Doc may delete its still-open Profile Doc Action
+Items that the doc no longer lists.
 _Avoid_: Action (a School Visit term), task
+
+**Common Action Item**:
+An Action Item a Blended Learning Admin pushes to a target (every Student with
+an active Mapping, one grade, one Mentor's Students, or specific Students listed
+by `student.student_id`, stored so a later push can reach them again). Only
+Students with an active Mapping receive it. It is materialised at
+push time as one open Action Item per targeted Student, at most one per
+Student; Students mapped later get it only when it is pushed again. Removing it
+is a soft removal that deletes its still-open Action Items and keeps done ones.
+_Avoid_: template, broadcast, recurring task
+
+**Resource**:
+A titled `https://` link on the Mentors' Resources tab, ordered by position and
+managed by Blended Learning Admins.
+_Avoid_: Mentor Toolkit (one Resource), Student Links
 
 **Mentor Flag**:
 A concern raised on one Conversation for one Flag Recipient
@@ -218,10 +237,21 @@ A concern raised on one Conversation for one Flag Recipient
 comment; at most one per Recipient per Conversation, with no resolution status.
 _Avoid_: Intervention Flag, escalation
 
+**Screener Feedback**:
+A Blended Learning Mentor's two 1-5 ratings of the Student's Screener form (did
+it help them understand the Student, and did the Student seem more comfortable
+talking), asked once per Student on the first Conversation where the Mentor
+ticks "Was the screener form used?" (`screener_used`). It is never asked again
+for that Student, even under a later Mentor. A Conversation's `screener_used`
+is NULL when the Student had no Screener link; Attempts never carry it.
+_Avoid_: Screener survey, per-Conversation feedback
+
 **Student Links**:
 A Student's Profile Doc URL and Screener Link URL, loaded from the Profile
 Dashboard Sheet by an LMS script, and an exact legacy last-contact date from
-the Profile Doc: its latest dated conversation.
+the Profile Doc: its latest dated conversation, with that conversation's
+summary. The summary shows in the conversation history at that date but is not
+a Conversation.
 _Avoid_: Student Profile, Holistic questionnaire links
 
 ## Relationships
@@ -252,8 +282,13 @@ _Avoid_: Student Profile, Holistic questionnaire links
 - A Conversation has many Action Items, Photos and Mentor Flags; a Conversation
   saved from a Conversation Draft keeps the Draft's Call Recording and transcript
   keys.
+- An Action Item has exactly one source: a Conversation, a Common Action Item or
+  the Student's Profile Doc (at most one Profile Doc Action Item per Student,
+  text and owner).
 - A Conversation Draft has many Transcription Requests over time but at most one
   queued or running.
+- A Student has at most one Screener Feedback, saved in the same transaction as
+  the Conversation it was given on (same Student, `screener_used` true).
 
 ## Invariants
 
@@ -280,7 +315,10 @@ _Avoid_: Student Profile, Holistic questionnaire links
 - Student eligibility mutations end affected active Mappings atomically.
 - Database sync includes all Holistic data for local and staging targets, including privacy-deletion markers. Oban job data is excluded from both targets.
 - Blended Learning Conversations and Attempts are append-only (trigger); af_lms
-  only inserts Photos and Mentor Flags and only moves Action Items open to done.
+  only inserts Photos, Mentor Flags and Screener Feedback and only moves Action Items open to done,
+  apart from a Common Action Item's edit or removal, which updates or deletes its
+  still-open Action Items, and the Profile Doc import, which inserts Profile Doc
+  Action Items and deletes still-open ones the doc no longer lists.
 - `etl-next` reads Transcription Requests and writes Conversation Draft content
   only through the db-service API; it receives the Student's gender and the
   session details, never names or phone numbers.
