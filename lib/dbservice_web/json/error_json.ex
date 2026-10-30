@@ -1,6 +1,24 @@
 defmodule DbserviceWeb.ErrorJSON do
   require Logger
 
+  @malformed_body "malformed request body"
+
+  # A body Plug.Parsers cannot parse, such as truncated JSON. The exception holds
+  # the raw body, which can carry free text, so neither the log line nor the
+  # response includes it (the exception is not JSON-encodable either). The Visit
+  # Concern API answers in its own `%{error: message}` shape.
+  def render("400.json", %{reason: %Plug.Parsers.ParseError{}} = assigns) do
+    Logger.error("Bad Request: #{@malformed_body}")
+
+    case assigns do
+      %{conn: %Plug.Conn{path_info: ["api", "visit-concerns" | _]}} ->
+        %{error: @malformed_body}
+
+      _ ->
+        %{errors: %{detail: "Bad Request", message: @malformed_body}}
+    end
+  end
+
   def render(template, assigns) do
     {detail, default_message} =
       case template do
