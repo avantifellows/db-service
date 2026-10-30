@@ -1,13 +1,13 @@
 defmodule DbserviceWeb.ResourceJSON do
   alias DbserviceWeb.ConceptJSON
   alias Dbservice.Resources.Paragraph
-  alias Dbservice.Resources.ResourceTopic
   alias Dbservice.Resources.ResourceChapter
   alias Dbservice.Concepts
   alias Dbservice.Paragraphs
   alias Dbservice.ProblemLanguages
   alias Dbservice.ResourceConcepts
   alias Dbservice.ResourceCurriculums
+  alias Dbservice.ResourceTopics
   alias Dbservice.Resources
   alias Dbservice.Repo
   import Ecto.Query
@@ -24,11 +24,17 @@ defmodule DbserviceWeb.ResourceJSON do
       ProblemLanguages.list_lang_versions_by_resource_ids(problem_res_ids)
 
     paragraphs_by_res_id = ProblemLanguages.list_paragraphs_by_resource_ids(problem_res_ids)
+    topic_ids_by_res_id = ResourceTopics.list_topic_ids_by_resource_ids(problem_res_ids)
 
     Enum.map(resources, fn resource ->
       # If resource is a map with :resource key, it's the new structure
       if Map.has_key?(resource, :resource) do
-        render_problem(resource, lang_versions_by_res_id, paragraphs_by_res_id)
+        render_problem(
+          resource,
+          lang_versions_by_res_id,
+          paragraphs_by_res_id,
+          topic_ids_by_res_id
+        )
       else
         render(resource)
       end
@@ -50,14 +56,7 @@ defmodule DbserviceWeb.ResourceJSON do
   end
 
   defp render(resource, opts \\ []) do
-    topic_id =
-      Repo.one(
-        from(rt in ResourceTopic,
-          where: rt.resource_id == ^resource.id,
-          select: rt.topic_id,
-          limit: 1
-        )
-      )
+    topic_ids = ResourceTopics.list_topic_ids_by_resource_id(resource.id)
 
     exam_details =
       Dbservice.Exams.get_exams_by_ids(resource.exam_ids)
@@ -104,7 +103,11 @@ defmodule DbserviceWeb.ResourceJSON do
       skill_ids: resource.skill_ids,
       learning_objective_ids: resource.learning_objective_ids,
       teacher_id: resource.teacher_id,
-      topic_id: topic_id,
+      topic_ids: topic_ids,
+      # Temporary backward compatibility for the currently deployed CMS, which
+      # still reads a single topic_id (issue #784). Drop once it sends and reads
+      # topic_ids only.
+      topic_id: List.first(topic_ids),
       chapter_id: chapter_id,
       cms_status_id: resource.cms_status_id,
       exam_ids: resource.exam_ids,
@@ -156,22 +159,25 @@ defmodule DbserviceWeb.ResourceJSON do
     res_ids = Enum.map(problems, & &1.resource.id)
     lang_versions_by_res_id = ProblemLanguages.list_lang_versions_by_resource_ids(res_ids)
     paragraphs_by_res_id = ProblemLanguages.list_paragraphs_by_resource_ids(res_ids)
+    topic_ids_by_res_id = ResourceTopics.list_topic_ids_by_resource_ids(res_ids)
 
     Enum.map(problems, fn problem ->
-      render_problem(problem, lang_versions_by_res_id, paragraphs_by_res_id)
+      render_problem(problem, lang_versions_by_res_id, paragraphs_by_res_id, topic_ids_by_res_id)
     end)
   end
 
-  defp render_problem(problem, lang_versions_by_res_id, paragraphs_by_res_id) do
+  defp render_problem(problem, lang_versions_by_res_id, paragraphs_by_res_id, topic_ids_by_res_id) do
     # First get the base resource
     resource = problem.resource
-    resource_topic = Map.get(problem, :resource_topic, %{})
     resource_curriculums = Map.get(problem, :resource_curriculums, [])
     requested_curriculum_id = Map.get(problem, :requested_curriculum_id)
     problem_lang = Map.get(problem, :problem_lang, %{})
 
-    # Get the base resource data using your existing pattern
-    topic_id = Map.get(resource_topic, :topic_id, nil)
+    # Every topic the problem is mapped to, from the batched map keyed by
+    # resource id (see problems/1 and index/1) to avoid an N+1 query. Read from
+    # there rather than from the listing query's own join, so a problem mapped to
+    # several topics is still listed once (issue #784).
+    topic_ids = Map.get(topic_ids_by_res_id, resource.id, [])
 
     chapter_id = Map.get(problem, :chapter_id)
 
@@ -221,7 +227,9 @@ defmodule DbserviceWeb.ResourceJSON do
       skill_ids: resource.skill_ids,
       learning_objective_ids: resource.learning_objective_ids,
       teacher_id: resource.teacher_id,
-      topic_id: topic_id,
+      topic_ids: topic_ids,
+      # Temporary backward compatibility for the currently deployed CMS (#784).
+      topic_id: List.first(topic_ids),
       chapter_id: chapter_data.chapter_id,
       chapter_code: chapter_data.chapter_code,
       chapter_name: chapter_data.chapter_name,

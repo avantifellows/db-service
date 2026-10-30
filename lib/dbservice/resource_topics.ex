@@ -43,6 +43,43 @@ defmodule Dbservice.ResourceTopics do
   end
 
   @doc """
+  Returns the ids of every topic mapped to a resource, oldest mapping first.
+  A problem may be mapped to several topics, including topics from other
+  chapters (issue #784).
+  ## Examples
+      iex> list_topic_ids_by_resource_id(1)
+      [4, 9]
+  """
+  def list_topic_ids_by_resource_id(resource_id) do
+    from(rt in ResourceTopic,
+      where: rt.resource_id == ^resource_id,
+      order_by: [asc: rt.id],
+      select: rt.topic_id
+    )
+    |> Repo.all()
+  end
+
+  @doc """
+  Batch counterpart of `list_topic_ids_by_resource_id/1`: one query for many
+  resources, returning `resource_id => [topic_id]`. Resources with no topic are
+  absent from the map. Use this on listing responses to avoid an N+1 lookup.
+  ## Examples
+      iex> list_topic_ids_by_resource_ids([1, 2])
+      %{1 => [4, 9], 2 => [7]}
+  """
+  def list_topic_ids_by_resource_ids([]), do: %{}
+
+  def list_topic_ids_by_resource_ids(resource_ids) do
+    from(rt in ResourceTopic,
+      where: rt.resource_id in ^resource_ids,
+      order_by: [asc: rt.id],
+      select: {rt.resource_id, rt.topic_id}
+    )
+    |> Repo.all()
+    |> Enum.group_by(&elem(&1, 0), &elem(&1, 1))
+  end
+
+  @doc """
   Creates a resource_topic.
   ## Examples
       iex> create_resource_topic(%{field: value})
@@ -54,6 +91,23 @@ defmodule Dbservice.ResourceTopics do
     %ResourceTopic{}
     |> ResourceTopic.changeset(attrs)
     |> Repo.insert()
+  end
+
+  @doc """
+  Same as `create_resource_topic/1` but raises on a failed insert. Use it where
+  a swallowed `{:error, changeset}` would silently drop a mapping — inside the
+  sync in `Dbservice.Resources`, the raise aborts the surrounding transaction
+  rather than committing a half-applied set of topics.
+  ## Examples
+      iex> create_resource_topic!(%{field: value})
+      %ResourceTopic{}
+      iex> create_resource_topic!(%{field: bad_value})
+      ** (Ecto.InvalidChangesetError)
+  """
+  def create_resource_topic!(attrs \\ %{}) do
+    %ResourceTopic{}
+    |> ResourceTopic.changeset(attrs)
+    |> Repo.insert!()
   end
 
   @doc """
