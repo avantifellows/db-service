@@ -289,6 +289,8 @@ _Avoid_: Student Profile, Holistic questionnaire links
   queued or running.
 - A Student has at most one Screener Feedback, saved in the same transaction as
   the Conversation it was given on (same Student, `screener_used` true).
+- A Visit Concern or Visit Highlight belongs to one School code and has Mentions
+  from many Visits; a Visit has at most one Visit Note Summary.
 
 ## Invariants
 
@@ -324,6 +326,8 @@ _Avoid_: Student Profile, Holistic questionnaire links
   session details, never names or phone numbers.
 - Call Recording audio and raw transcripts live only in S3; Postgres keeps their
   keys.
+- Visit Concern events are append-only (trigger) and records with events are never
+  deleted; `etl-next` reaches Visit Concerns only through the db-service API.
 
 ### Follow-up privacy erasure (LMS #412)
 
@@ -362,6 +366,94 @@ Post-Session answers. Tombstones are immutable, so the count must be written wit
 the tombstone or it can never be recorded. The column is `NOT NULL DEFAULT 0`
 with a separate `>= 0` CHECK; existing tombstones predate Challenge Categories
 and keep 0. There is no backfill. Deploy schema before the LMS release.
+
+### Visit Concerns (LMS #470)
+
+last_updated: 2026-10-29
+
+`20261028120000_create_lms_visit_concerns` owns `lms_visit_concerns`,
+`lms_visit_concern_mentions`, `lms_visit_concern_events` and
+`lms_visit_note_summaries`, with no Ecto schemas. db-service owns the schema and the
+machine APIs; `etl-next` groups Visit free text with an LLM and only calls those
+APIs, never Postgres; `af_lms` reads the tables directly and writes the human
+events. Names, types, defaults and the trigger match the af_lms e2e mirror
+`20261027140000_add_lms_visit_concerns.sql`, plus the two event guard CHECKs below.
+Timestamps are `timestamp(0)` without time zone holding UTC.
+
+- **Visit Concern**: a durable per-School record (`kind = 'concern'`) of a problem
+  PMs raise in Visit free text; `open` or `resolved`.
+- **Visit Highlight**: the same kind of record for something going well
+  (`kind = 'highlight'`); it has no status.
+- **Mention**: a link from a record to one Visit that raised it, with a short
+  snippet; at most one per record and Visit.
+- **Live mention**: a Mention whose Visit is completed and not soft-deleted.
+  Soft-deleting a Visit makes its Mentions non-live without any write.
+- **Hidden record**: a record with no live mention. It is kept, never deleted.
+- **Visit Note Summary**: one row per Visit with the fingerprint and prompt version
+  it was last summarised with, and `summarised_at`.
+
+Events (`resolved`, `reopened`, `comment`, `auto_reopened`) are append-only: a trigger
+rejects every UPDATE and DELETE with SQLSTATE 23514, and the non-cascading FK means a
+record with events cannot be deleted. Only `auto_reopened` names a Visit and has no
+author or body. The guard CHECKs `lms_visit_concern_events_body_check` and
+`lms_visit_concern_events_author_check` require every other event to have a
+non-blank body of at most 2000 characters after trimming, a non-blank author, and no
+Visit.
+
+**Item labels** on the free text sent to `etl-next` come from stable keys and
+positions plus class context (grade and subject), never from a teacher's or a
+Student's name (`teacher_name`, `teachers[].name` and Student names are never read):
+
+- every `classroom_observation` item is `"Grade 11 Physics class observation: <key>"`,
+  or `"Grade 11 class observation: <key>"` / `"Physics class observation: <key>"`
+  when only one is valid, else just `<key>`. `grade` must be an integer or a digit
+  string from 1 to 99; `subject_name` is trimmed, whitespace-collapsed and capped
+  at 40 characters.
+- an `individual_af_teacher_interaction` teacher is `"Teacher <n> (<Subject>)"`, else
+  `"Teacher <n>"`. `teachers[].id` is an LMS `user_permission` id (not a `teacher`
+  id); the subject is the English `subject.name` of the single `teacher` row on
+  `user_permission.user_id`, looked up in one query per chunk of Visits. No
+  `user_id`, several teacher rows or no subject means no subject.
+
+Labels are part of the fingerprint, so changing them re-summarises the Visits they
+touch: adding class context did so (intended; nothing had run in production), and so
+does a teacher's subject or `user_permission.user_id` changing later.
+
+**Auto-reopen**: when PUT visit-summary mentions a resolved Concern and the Visit's
+`visit_date` is strictly after the IST date of the Concern's latest `resolved` event
+(latest by `inserted_at`, then id), the same transaction sets it `open` and appends
+one `auto_reopened` event naming that Visit. A same-day or older Visit never undoes
+a resolution, and a resolved Concern with no `resolved` event stays resolved.
+Re-summarising a Visit never changes a status or erases history; Highlights are
+never touched.
+
+**Lock order** (PUT visit-summary): the Visit row `FOR UPDATE`, then, in one
+`ORDER BY id FOR UPDATE` statement, every Concern-kind record the PUT can mention:
+the body's `existing_id`s plus the Concerns the Visit mentioned before (all of them,
+not only resolved ones). Both locks come before any mention is deleted or inserted,
+because a mention insert's FK check takes `FOR KEY SHARE` on its record. Two PUTs
+for different Visits at one School that both held that on a Concern and then asked
+for `FOR UPDATE` would deadlock. Highlights and records the PUT creates are not
+locked. The operation timestamp is the DB's `clock_timestamp()` (UTC, rounded to
+the second), read after the locks, so an `auto_reopened` event is never stamped
+before a resolution committed while the PUT waited. af_lms must lock Concern rows
+`FOR UPDATE` in ascending id order before writing their events, so it and
+db-service cannot deadlock, and must stamp them with `clock_timestamp()` after that
+lock, not `NOW()` (the transaction start) or an app clock, so the history (ordered
+by `inserted_at`, then id) follows lock order on both sides.
+
+PUT trims record `text`, `snippet` and `prompt_version` and caps them at 500, 300
+and 50 Unicode code points (as `char_length` counts, not graphemes); the columns
+are plain `text` with no length CHECK. A NUL in any of them is a 400 `{error}`,
+since Postgres text cannot hold one.
+
+Record `text` and `snippet` are filtered from the Phoenix request log
+(`:filter_parameters`). A body that cannot be parsed gets a 400 `{error}` without
+the body being logged.
+
+There is no data migration: the flow's first run is the backfill. Rollback drops the
+trigger, the function and the tables; the LMS treats missing rows as "not summarised
+yet". Deploy schema before LMS.
 
 ## Example Dialogue
 
