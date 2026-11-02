@@ -36,6 +36,12 @@ defmodule DbserviceWeb.SwaggerSchema.Resource do
             cms_status(:string, "Status name from cms_status table. Also accepts cms_status_id.")
             cms_status_id(:integer, "cms_status.id value to set status directly")
 
+            inserted_at(
+              :string,
+              "Created timestamp. Read only: set by the server and ignored on create/update.",
+              format: "ISO-8601"
+            )
+
             paragraph(
               :string,
               "Reading passage for comprehension problems (PATCH only). Upserts the shared paragraph linked to every `problem_lang` row of this resource via `paragraph_id`; ignored for non-comprehension subtypes."
@@ -70,7 +76,8 @@ defmodule DbserviceWeb.SwaggerSchema.Resource do
             skill_ids: [1, 3, 7],
             teacher_id: 1,
             exam_ids: [1, 2, 3],
-            cms_status: "archived"
+            cms_status: "archived",
+            inserted_at: "2026-10-28T09:30:00"
           })
         end
     }
@@ -285,6 +292,13 @@ defmodule DbserviceWeb.SwaggerSchema.Resource do
             teacher_id(:integer, "Teacher id associated with the resource")
             meta_data(:map, "Additional meta data for the session")
 
+            inserted_at(
+              :string,
+              "Created timestamp of the problem. Read only: set by the server and ignored " <>
+                "on create/update.",
+              format: "ISO-8601"
+            )
+
             lang_versions(
               Schema.array(:object),
               "All language versions of the problem, each with a lang_code and meta_data. " <>
@@ -355,6 +369,7 @@ defmodule DbserviceWeb.SwaggerSchema.Resource do
             skill_ids: [1, 3, 7],
             teacher_id: 1,
             meta_data: %{difficulty: "medium"},
+            inserted_at: "2026-10-28T09:30:00",
             lang_versions: [
               %{lang_code: "en", meta_data: %{text: "What is 2+2?"}},
               %{lang_code: "hi", meta_data: %{text: "2+2 क्या है?"}}
