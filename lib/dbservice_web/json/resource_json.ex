@@ -107,6 +107,7 @@ defmodule DbserviceWeb.ResourceJSON do
       topic_id: topic_id,
       chapter_id: chapter_id,
       cms_status_id: resource.cms_status_id,
+      inserted_at: resource.inserted_at,
       exam_ids: resource.exam_ids,
       exam_details: exam_details,
       curriculum_grades: curriculum_grades,
@@ -226,6 +227,10 @@ defmodule DbserviceWeb.ResourceJSON do
       chapter_code: chapter_data.chapter_code,
       chapter_name: chapter_data.chapter_name,
       cms_status_id: resource.cms_status_id,
+      # Created date, for the CMS problem list's date filter (issue #836). The
+      # list is loaded per chapter and filtered in the browser, so the date has
+      # to travel with each problem.
+      inserted_at: resource.inserted_at,
       curriculum_grades: curriculum_grades
     }
 
