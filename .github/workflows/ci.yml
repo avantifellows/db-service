@@ -5,6 +5,34 @@ on:
     branches: [main]
 
 jobs:
+  # Two migrations with one version: a database that has run one silently skips
+  # the other (#792). Runs in seconds, separately from verify.
+  migration-versions:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    permissions:
+      contents: read
+      pull-requests: read
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          # On a PR this checks out the merge commit; HEAD^1 is the base.
+          fetch-depth: 2
+
+      - name: Test the check
+        run: .github/scripts/test_check_migration_versions.sh
+
+      - name: Check migration versions
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
+          PR_NUMBER: ${{ github.event.pull_request.number }}
+          BASE_REF: HEAD^1
+          # Staging deploys only PRs to main, so only those are compared with
+          # other open PRs. Pushes to main and PRs to other bases check the tree.
+          SKIP_OPEN_PRS: ${{ github.event_name == 'pull_request' && github.base_ref == 'main' && '0' || '1' }}
+        run: .github/scripts/check_migration_versions.sh
+
   verify:
     runs-on: ubuntu-latest
     strategy:

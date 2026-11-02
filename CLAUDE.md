@@ -117,6 +117,13 @@ psql -d dbservice_dev -c 'CREATE EXTENSION "uuid-ossp";'
 
 Dev database: `dbservice_dev` (credentials default to postgres/postgres in `config/dev.exs`)
 
+Migration versions: create migrations with `mix ecto.gen.migration`, not hand-picked
+round `...120000` timestamps. `schema_migrations` stores only the version, so when two
+files share one, a database that has run either silently skips the other (#792). The CI
+job `migration-versions` fails on a duplicate in the PR's merge tree, or on a version that
+another open PR to `main` also adds. Run it locally with
+`.github/scripts/check_migration_versions.sh`.
+
 ## Environment Variables
 
 Required in `config/.env`:
