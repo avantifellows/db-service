@@ -79,15 +79,20 @@ variable "app_port" {
 }
 
 variable "cpu" {
-  description = "Fargate task CPU units (0.5 vCPU = 512)."
+  description = "Fargate task CPU units (1 vCPU = 1024)."
   type        = number
-  default     = 512
+  # The old 512 default is the shape the 2026-06-21 load test saturated
+  # (CPU pinned ~100%, health checks timed out, the task was recycled), and
+  # prod.tfvars silently inherited it. Default to the known-good size instead.
+  default = 1024
 }
 
 variable "memory" {
   description = "Fargate task memory in MiB."
   type        = number
-  default     = 1024
+  # 2 GiB: CSV imports run in-process via Oban, so a task mid-import holds
+  # well more than request-serving needs.
+  default = 2048
 }
 
 variable "desired_count" {
