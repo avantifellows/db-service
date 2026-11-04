@@ -32,11 +32,15 @@ defmodule DbserviceWeb.SwaggerSchema.School do
 
             principal_incharge_contact(
               :string,
-              "Contact number of the principal or in-charge, digits only"
+              "Contact number of the principal or in-charge - 10 digits, no leading 0 or country code"
             )
 
             pmu_coordinator_name(:string, "Full name of the PMU school coordinator")
-            pmu_coordinator_contact(:string, "Contact number of the PMU school coordinator")
+
+            pmu_coordinator_contact(
+              :string,
+              "Contact number of the PMU school coordinator - 10 digits, no leading 0 or country code"
+            )
 
             school_support_status(
               :string,

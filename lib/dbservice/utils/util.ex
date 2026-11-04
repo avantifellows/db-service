@@ -16,6 +16,14 @@ defmodule Dbservice.Utils.Util do
   # Smallest to largest, so a dropdown built from this list is already in order.
   @valid_uniform_sizes ~w(XXS XS S M L XL XXL XXXL)
 
+  # Ten digits with no leading zero: an Indian mobile number as the exam portals, the LMS
+  # and our own sheets all write it. A value carrying "+91", a leading 0 or spaces has not
+  # been normalized, and storing both forms makes the column unsearchable.
+  @phone_regex ~r/\A[1-9]\d{9}\z/
+  @phone_message "must be a 10-digit phone number, without spaces, a leading 0 or a country code"
+  @email_regex ~r/\A[^\s@]+@[^\s@]+\.[^\s@]+\z/
+  @email_max_length 255
+
   @doc """
   Requires `field` to be present, but only when inserting a new record.
 
@@ -180,6 +188,46 @@ defmodule Dbservice.Utils.Util do
         value
     end)
   end
+
+  @doc """
+  Validates a phone number in a changeset: exactly ten digits, no leading zero.
+
+  One rule for every phone column we write, so the same number cannot be stored as
+  `9876543210` here and `09876543210` or `919876543210` there - a search for one would
+  then miss the others. It is the rule LMS ingestion has always applied to a student's own
+  phone (`valid_phone?/1`), now shared rather than copied. A blank value is nil, not an
+  error: these columns are optional, and only a value that is present has to be a number
+  we could dial.
+  """
+  def validate_phone(changeset, field) do
+    changeset
+    |> trim_to_nil(field)
+    |> validate_format(field, @phone_regex, message: @phone_message)
+  end
+
+  @doc """
+  Validates an email address in a changeset.
+
+  Deliberately loose - the only thing worth rejecting is a value that could not reach a
+  mailbox - but capped at the 255 characters every email column of ours is declared with,
+  counted in codepoints the way varchar counts them, so a value in a non-Latin script
+  fails here rather than on insert.
+  """
+  def validate_email(changeset, field) do
+    changeset
+    |> trim_to_nil(field)
+    |> validate_format(field, @email_regex, message: "must be a valid email address")
+    |> validate_length(field, max: @email_max_length, count: :codepoints)
+  end
+
+  @doc """
+  Returns true when `value` is a phone number in the one form we store.
+
+  For the callers that validate a plain map rather than a changeset, so the LMS ingestion
+  and update flows share the rule `validate_phone/2` applies.
+  """
+  def valid_phone?(value) when is_binary(value), do: Regex.match?(@phone_regex, value)
+  def valid_phone?(_value), do: false
 
   @doc """
   Left-pads a 10-digit UDISE code back to 11 digits.
