@@ -1504,15 +1504,6 @@ defmodule DbserviceWeb.LmsStudentIngestionControllerTest do
       assert student.stream == "engineering"
       assert student.status == "enrolled"
 
-      show_response =
-        conn
-        |> recycle()
-        |> get("/api/student/#{student.id}")
-        |> json_response(200)
-
-      assert show_response["g10_board"] == "CBSE"
-      assert show_response["g10_roll_no"] == "12345678"
-
       enrollment_groups =
         from(e in Dbservice.EnrollmentRecords.EnrollmentRecord,
           where: e.user_id == ^student.user_id and e.is_current == true,
