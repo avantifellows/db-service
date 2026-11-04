@@ -827,6 +827,20 @@ defmodule DbserviceWeb.ResourceController do
 
   defp insert_resource_chapter(_, _), do: :ok
 
+  # A problem may be mapped to any number of topics, including topics outside its
+  # own chapter (issue #784), so `topic_ids` is the list of every topic to map.
+  # The singular `topic_id` is the legacy shape the currently deployed CMS sends;
+  # when both are present `topic_ids` wins. Create paths deliberately do not check
+  # that a topic sits under the problem's chapter.
+  defp insert_resource_topic(resource, %{"topic_ids" => topic_ids}) when is_list(topic_ids) do
+    Enum.each(Resources.normalize_topic_ids(topic_ids), fn topic_id ->
+      Dbservice.ResourceTopics.create_resource_topic(%{
+        resource_id: resource.id,
+        topic_id: topic_id
+      })
+    end)
+  end
+
   defp insert_resource_topic(resource, %{"topic_id" => topic_id}) when not is_nil(topic_id) do
     Dbservice.ResourceTopics.create_resource_topic(%{
       resource_id: resource.id,
@@ -1184,17 +1198,32 @@ defmodule DbserviceWeb.ResourceController do
 
   swagger_path :fetch_problems do
     get("/api/problems")
-    summary("Fetch problems by topic and curriculum (optionally a language)")
+    summary("Fetch problems by chapter, optionally filtered to one topic")
 
     description(
-      "Returns problems filtered by topic_id. When lang_code is given, results are " <>
-        "limited to that language (top-level meta_data is that language). When lang_code " <>
-        "is omitted, every problem is returned once with all languages in lang_versions " <>
-        "for client-side filtering."
+      "Returns the problems of a chapter. An optional topic_id narrows the result to " <>
+        "problems tagged with that topic; a problem may carry several topics (including " <>
+        "topics from other chapters) and is still returned once. Problems with no topic " <>
+        "at all are listed. When lang_code is given, results are limited to that language " <>
+        "(top-level meta_data is that language). When lang_code is omitted, every problem " <>
+        "is returned once with all languages in lang_versions for client-side filtering. " <>
+        "Problems are ordered by code, then id. Paging is opt-in: send limit (with an " <>
+        "optional offset) for one page at a time; omit limit and every matching problem is " <>
+        "returned, as before. The x-total-count response header carries the number of " <>
+        "matching problems, which never counts paragraph siblings."
     )
 
     parameters do
-      topic_id(:query, :integer, "Topic ID", required: true)
+      chapter_id(:query, :integer, "Chapter ID", required: true)
+
+      topic_id(
+        :query,
+        :integer,
+        "Optional filter: only problems tagged with this topic. Sending topic_id without " <>
+          "chapter_id is deprecated and lists problems by topic instead, for the currently " <>
+          "deployed CMS only; it will be removed once that is updated.",
+        required: false
+      )
 
       curriculum_id(
         :query,
@@ -1206,12 +1235,30 @@ defmodule DbserviceWeb.ResourceController do
 
       lang_code(:query, :string, "Language code (omit for all languages)", required: false)
 
+      limit(
+        :query,
+        :integer,
+        "Page size, counted in matching problems. Omit it and every matching problem is " <>
+          "returned unpaged. Values above the server maximum are clamped down to it.",
+        required: false
+      )
+
+      offset(
+        :query,
+        :integer,
+        "Number of matching problems to skip. Only meaningful alongside limit.",
+        required: false
+      )
+
       include_paragraph_siblings(
         :query,
         :boolean,
         "When true, also include comprehension problems that share a paragraph with any " <>
-          "comprehension problem in the result, even if they belong to a different topic " <>
-          "(curriculum_id and lang_code still apply)",
+          "comprehension problem in the result, even if they belong to a different chapter " <>
+          "or topic (curriculum_id and lang_code still apply). A sibling that matches the " <>
+          "filter itself is listed on its own page; one that does not is appended to the " <>
+          "page holding the first matching problem of that paragraph, so a page may be " <>
+          "longer than limit. x-total-count excludes these siblings.",
         required: false
       )
     end
@@ -1219,15 +1266,50 @@ defmodule DbserviceWeb.ResourceController do
     response(200, "OK", Schema.ref(:ProblemResource))
   end
 
-  # curriculum_id is optional and deprecated (issue #651): each problem/topic
-  # belongs to a single curriculum, so no curriculum filtering is needed. It is
-  # still accepted (and applied) for backward compatibility.
-  def fetch_problems(conn, %{"topic_id" => topic_id} = params) do
+  # curriculum_id is optional and deprecated (issue #651): each problem belongs to
+  # a single curriculum, so no curriculum filtering is needed. It is still
+  # accepted (and applied) for backward compatibility.
+  def fetch_problems(conn, params) do
     curriculum_id = param_as_integer(params, "curriculum_id")
-    fetch_problems_for_language(conn, topic_id, curriculum_id, params["lang_code"], params)
+
+    case problem_listing_scope(params) do
+      {:ok, scope} ->
+        fetch_problems_for_language(conn, scope, curriculum_id, params["lang_code"], params)
+
+      :error ->
+        conn
+        |> put_status(:unprocessable_entity)
+        |> json(%{error: "chapter_id is required"})
+    end
   end
 
-  defp fetch_problems_for_language(conn, topic_id, curriculum_id, lang_code, params)
+  # Problems are listed by chapter (issue #785); topic_id is only a filter within
+  # that chapter. The topic-only form is the shape the currently deployed CMS
+  # sends and is kept until it is updated.
+  defp problem_listing_scope(params) do
+    chapter_id = param_as_integer(params, "chapter_id")
+    topic_id = param_as_integer(params, "topic_id")
+
+    cond do
+      chapter_id -> {:ok, {:chapter, chapter_id, topic_id}}
+      topic_id -> {:ok, {:topic, topic_id}}
+      true -> :error
+    end
+  end
+
+  # Paging is opt-in: only a request that sends `limit` is paged, so the Question
+  # Bank and the CMS that is live today keep getting every row. Pagination.limit/1
+  # falls back to its default page size when `limit` is absent, so it is only
+  # called once we know the caller asked for a page.
+  defp problem_page(params) do
+    if Map.has_key?(params, "limit") do
+      %{limit: Pagination.limit(params), offset: Pagination.offset(params)}
+    else
+      nil
+    end
+  end
+
+  defp fetch_problems_for_language(conn, scope, curriculum_id, lang_code, params)
        when is_binary(lang_code) and lang_code != "" do
     case Repo.get_by(Language, code: lang_code) do
       nil ->
@@ -1236,36 +1318,105 @@ defmodule DbserviceWeb.ResourceController do
         |> json(%{error: "Language not found"})
 
       _language ->
-        problems =
-          topic_id
+        {page_query, total_count} =
+          scope
           |> problems_query(curriculum_id, lang_code)
-          |> Repo.all()
-          |> preload_paragraphs()
-          |> maybe_add_paragraph_siblings(params, curriculum_id, lang_code)
+          |> page_of_problems(problem_page(params))
 
-        render(conn, "problems.json", problems: problems)
+        matching =
+          page_query
+          |> Repo.all()
+          |> Enum.uniq_by(& &1.resource.id)
+          |> preload_paragraphs()
+
+        problems = maybe_add_paragraph_siblings(matching, params, scope, curriculum_id, lang_code)
+
+        conn
+        |> put_total_count(total_count, matching)
+        |> render("problems.json", problems: problems)
     end
   end
 
-  defp fetch_problems_for_language(conn, topic_id, curriculum_id, _lang_code, params) do
-    problems =
-      topic_id
+  defp fetch_problems_for_language(conn, scope, curriculum_id, _lang_code, params) do
+    {page_query, total_count} =
+      scope
       |> problems_query_all_langs(curriculum_id)
+      |> page_of_problems(problem_page(params))
+
+    matching =
+      page_query
       |> Repo.all()
       |> Enum.uniq_by(& &1.resource.id)
-      |> maybe_add_paragraph_siblings_all_langs(params, curriculum_id)
 
-    render(conn, "problems.json", problems: problems)
+    problems = maybe_add_paragraph_siblings_all_langs(matching, params, scope, curriculum_id)
+
+    conn
+    |> put_total_count(total_count, matching)
+    |> render("problems.json", problems: problems)
   end
 
+  # Mirrors GET /api/problems/search. The count is of matching problems only;
+  # paragraph siblings are appended to a page but are not part of the result set
+  # being paged over. An unpaged request already holds every matching problem, so
+  # it needs no second query to know how many there are.
+  defp put_total_count(conn, nil, matching),
+    do: put_resp_header(conn, "x-total-count", Integer.to_string(length(matching)))
+
+  defp put_total_count(conn, total_count, _matching),
+    do: put_resp_header(conn, "x-total-count", Integer.to_string(total_count))
+
+  # A page is cut over distinct problem ids and the rows then fetched for exactly
+  # those ids: the resource_curriculum join (and problem_lang, in the
+  # single-language shape) can emit several rows for one problem, so a LIMIT on
+  # the joined query would hand back short or repeated pages.
+  #
+  # Returns the row query for this page plus the total number of matching
+  # problems, or nil for the total when nothing was paged away.
+  defp page_of_problems(query, nil), do: {query, nil}
+
+  defp page_of_problems(query, %{limit: page_limit, offset: page_offset}) do
+    ids_query = distinct_problem_ids(query)
+
+    total_count =
+      ids_query
+      |> exclude(:order_by)
+      |> subquery()
+      |> Repo.aggregate(:count)
+
+    page_ids =
+      ids_query
+      |> limit(^page_limit)
+      |> offset(^page_offset)
+      |> Repo.all()
+      |> Enum.map(& &1.id)
+
+    {from([resource: r] in query, where: r.id in ^page_ids), total_count}
+  end
+
+  # code is carried alongside the id because the pages are cut in code-then-id
+  # order, and SELECT DISTINCT needs every ORDER BY expression in its select list.
+  defp distinct_problem_ids(query) do
+    query
+    |> exclude(:select)
+    |> distinct(true)
+    |> select([resource: r], %{id: r.id, code: r.code})
+  end
+
+  # Scoped by chapter, not topic (issue #785): a problem's chapter is the one
+  # thing it always has exactly one of, and joining resource_topic here would
+  # both hide problems with no topic and return multi-topic problems more than
+  # once. Topic is applied separately, as a filter.
+  #
+  # The chapter join is a LEFT join so that the deprecated topic-only listing
+  # keeps returning a problem that has no resource_chapter row (the backfill
+  # migration leaves none behind, but the legacy path should not depend on it).
+  # A chapter-scoped request filters on rch.chapter_id, which drops those rows.
   defp problems_base_query(curriculum_id, lang_code) do
     from(r in Resource,
       as: :resource,
-      join: rt in ResourceTopic,
-      as: :resource_topic,
-      on: rt.resource_id == r.id,
-      join: t in Topic,
-      on: t.id == rt.topic_id,
+      left_join: rch in ResourceChapter,
+      as: :resource_chapter,
+      on: rch.resource_id == r.id,
       join: rc in ResourceCurriculum,
       as: :resource_curriculum,
       on: rc.resource_id == r.id,
@@ -1276,11 +1427,10 @@ defmodule DbserviceWeb.ResourceController do
       on: l.id == pl.lang_id,
       where: l.code == ^lang_code,
       where: r.type == "problem",
-      order_by: [asc: r.code],
+      order_by: [asc: r.code, asc: r.id],
       select: %{
         resource: r,
-        resource_topic: rt,
-        chapter_id: t.chapter_id,
+        chapter_id: rch.chapter_id,
         resource_curriculums: [rc],
         requested_curriculum_id: rc.curriculum_id,
         problem_lang: pl
@@ -1298,9 +1448,42 @@ defmodule DbserviceWeb.ResourceController do
     from([resource_curriculum: rc] in query, where: rc.curriculum_id == ^curriculum_id)
   end
 
-  defp problems_query(topic_id, curriculum_id, lang_code) do
-    from([resource_topic: rt] in problems_base_query(curriculum_id, lang_code),
-      where: rt.topic_id == ^topic_id
+  defp problems_query(scope, curriculum_id, lang_code) do
+    curriculum_id
+    |> problems_base_query(lang_code)
+    |> apply_listing_scope(scope)
+  end
+
+  defp problems_query_all_langs(scope, curriculum_id) do
+    curriculum_id
+    |> problems_base_query_all_langs()
+    |> apply_listing_scope(scope)
+  end
+
+  defp apply_listing_scope(query, {:chapter, chapter_id, topic_id}) do
+    from([resource_chapter: rch] in query, where: rch.chapter_id == ^chapter_id)
+    |> maybe_filter_by_topic(topic_id)
+  end
+
+  # Deprecated, transition only: list by topic across chapters, as the currently
+  # deployed CMS still asks for.
+  defp apply_listing_scope(query, {:topic, topic_id}) do
+    maybe_filter_by_topic(query, topic_id)
+  end
+
+  defp maybe_filter_by_topic(query, nil), do: query
+
+  # An `exists` subquery rather than a join, so a problem tagged with several
+  # topics is not returned once per topic.
+  defp maybe_filter_by_topic(query, topic_id) do
+    from([resource: r] in query,
+      where:
+        exists(
+          from(rt in ResourceTopic,
+            where: rt.resource_id == parent_as(:resource).id and rt.topic_id == ^topic_id,
+            select: 1
+          )
+        )
     )
   end
 
@@ -1310,7 +1493,7 @@ defmodule DbserviceWeb.ResourceController do
     end)
   end
 
-  defp maybe_add_paragraph_siblings(problems, params, curriculum_id, lang_code) do
+  defp maybe_add_paragraph_siblings(problems, params, scope, curriculum_id, lang_code) do
     if params["include_paragraph_siblings"] == "true" do
       paragraph_ids =
         problems
@@ -1318,26 +1501,65 @@ defmodule DbserviceWeb.ResourceController do
         |> Enum.reject(&is_nil/1)
         |> Enum.uniq()
 
-      add_paragraph_siblings(problems, paragraph_ids, curriculum_id, lang_code)
+      add_paragraph_siblings(problems, paragraph_ids, scope, curriculum_id, lang_code)
     else
       problems
     end
   end
 
-  defp add_paragraph_siblings(problems, [], _curriculum_id, _lang_code), do: problems
+  defp add_paragraph_siblings(problems, [], _scope, _curriculum_id, _lang_code), do: problems
 
-  defp add_paragraph_siblings(problems, paragraph_ids, curriculum_id, lang_code) do
-    existing_res_ids = MapSet.new(Enum.map(problems, & &1.resource.id))
+  defp add_paragraph_siblings(problems, paragraph_ids, scope, curriculum_id, lang_code) do
+    members =
+      scope
+      |> passage_members_query(curriculum_id, lang_code, paragraph_ids)
+      |> Repo.all()
+
+    {owned_paragraph_ids, matching_res_ids} = passage_ownership(members, problems)
 
     siblings =
-      paragraph_ids
+      owned_paragraph_ids
       |> paragraph_siblings_query(curriculum_id, lang_code)
       |> Repo.all()
-      |> Enum.reject(fn p -> MapSet.member?(existing_res_ids, p.resource.id) end)
+      |> Enum.reject(fn p -> MapSet.member?(matching_res_ids, p.resource.id) end)
       |> Enum.uniq_by(& &1.resource.id)
       |> preload_paragraphs()
 
     problems ++ siblings
+  end
+
+  # Which passages this page is responsible for, and every matching problem that
+  # belongs to them.
+  #
+  # A sibling that matches the filter itself is left out here and simply listed on
+  # its own page; only out-of-filter siblings are appended, and only once — to the
+  # page holding the passage's first matching problem. `members` comes back in
+  # code-then-id order, the order the pages are cut in, so the first row for a
+  # passage is that problem. An unpaged request is a single page holding every
+  # matching problem, so every passage on it qualifies, as before.
+  defp passage_ownership(members, problems) do
+    page_res_ids = MapSet.new(problems, & &1.resource.id)
+
+    owned_paragraph_ids =
+      members
+      |> Enum.uniq_by(& &1.paragraph_id)
+      |> Enum.filter(&MapSet.member?(page_res_ids, &1.id))
+      |> Enum.map(& &1.paragraph_id)
+
+    {owned_paragraph_ids, MapSet.new(members, & &1.id)}
+  end
+
+  defp passage_members_query(scope, curriculum_id, lang_code, paragraph_ids) do
+    scope
+    |> problems_query(curriculum_id, lang_code)
+    |> exclude(:select)
+    |> distinct(true)
+    |> where([problem_lang: pl], pl.paragraph_id in ^paragraph_ids)
+    |> select([resource: r, problem_lang: pl], %{
+      id: r.id,
+      code: r.code,
+      paragraph_id: pl.paragraph_id
+    })
   end
 
   defp paragraph_siblings_query(paragraph_ids, curriculum_id, lang_code) do
@@ -1352,20 +1574,17 @@ defmodule DbserviceWeb.ResourceController do
   defp problems_base_query_all_langs(curriculum_id) do
     from(r in Resource,
       as: :resource,
-      join: rt in ResourceTopic,
-      as: :resource_topic,
-      on: rt.resource_id == r.id,
-      join: t in Topic,
-      on: t.id == rt.topic_id,
+      left_join: rch in ResourceChapter,
+      as: :resource_chapter,
+      on: rch.resource_id == r.id,
       join: rc in ResourceCurriculum,
       as: :resource_curriculum,
       on: rc.resource_id == r.id,
       where: r.type == "problem",
-      order_by: [asc: r.code],
+      order_by: [asc: r.code, asc: r.id],
       select: %{
         resource: r,
-        resource_topic: rt,
-        chapter_id: t.chapter_id,
+        chapter_id: rch.chapter_id,
         resource_curriculums: [rc],
         requested_curriculum_id: rc.curriculum_id
       }
@@ -1373,13 +1592,7 @@ defmodule DbserviceWeb.ResourceController do
     |> maybe_filter_by_curriculum(curriculum_id)
   end
 
-  defp problems_query_all_langs(topic_id, curriculum_id) do
-    from([resource_topic: rt] in problems_base_query_all_langs(curriculum_id),
-      where: rt.topic_id == ^topic_id
-    )
-  end
-
-  defp maybe_add_paragraph_siblings_all_langs(problems, params, curriculum_id) do
+  defp maybe_add_paragraph_siblings_all_langs(problems, params, scope, curriculum_id) do
     if params["include_paragraph_siblings"] == "true" do
       res_ids = Enum.map(problems, & &1.resource.id)
 
@@ -1391,21 +1604,26 @@ defmodule DbserviceWeb.ResourceController do
         )
         |> Repo.all()
 
-      add_paragraph_siblings_all_langs(problems, paragraph_ids, curriculum_id)
+      add_paragraph_siblings_all_langs(problems, paragraph_ids, scope, curriculum_id)
     else
       problems
     end
   end
 
-  defp add_paragraph_siblings_all_langs(problems, [], _curriculum_id), do: problems
+  defp add_paragraph_siblings_all_langs(problems, [], _scope, _curriculum_id), do: problems
 
-  defp add_paragraph_siblings_all_langs(problems, paragraph_ids, curriculum_id) do
-    existing_res_ids = MapSet.new(Enum.map(problems, & &1.resource.id))
+  defp add_paragraph_siblings_all_langs(problems, paragraph_ids, scope, curriculum_id) do
+    members =
+      scope
+      |> passage_members_query_all_langs(curriculum_id, paragraph_ids)
+      |> Repo.all()
+
+    {owned_paragraph_ids, matching_res_ids} = passage_ownership(members, problems)
 
     # Any problem sharing one of these paragraphs, in any language.
     sibling_res_ids =
       from(pl in ProblemLanguage,
-        where: pl.paragraph_id in ^paragraph_ids,
+        where: pl.paragraph_id in ^owned_paragraph_ids,
         distinct: true,
         select: pl.res_id
       )
@@ -1416,10 +1634,27 @@ defmodule DbserviceWeb.ResourceController do
         where: r.id in ^sibling_res_ids
       )
       |> Repo.all()
-      |> Enum.reject(fn p -> MapSet.member?(existing_res_ids, p.resource.id) end)
+      |> Enum.reject(fn p -> MapSet.member?(matching_res_ids, p.resource.id) end)
       |> Enum.uniq_by(& &1.resource.id)
 
     problems ++ siblings
+  end
+
+  defp passage_members_query_all_langs(scope, curriculum_id, paragraph_ids) do
+    scope
+    |> problems_query_all_langs(curriculum_id)
+    |> exclude(:select)
+    |> distinct(true)
+    |> join(:inner, [resource: r], pl in ProblemLanguage,
+      on: pl.res_id == r.id,
+      as: :problem_lang
+    )
+    |> where([problem_lang: pl], pl.paragraph_id in ^paragraph_ids)
+    |> select([resource: r, problem_lang: pl], %{
+      id: r.id,
+      code: r.code,
+      paragraph_id: pl.paragraph_id
+    })
   end
 
   swagger_path :get_problem do

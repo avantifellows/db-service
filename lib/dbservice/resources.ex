@@ -104,12 +104,9 @@ defmodule Dbservice.Resources do
       # ids appear in the test's type_params (the order the test defines).
       |> order_problems_by_ids(problem_ids)
 
-    resource_topic_by_resource_id = resource_topics_by_resource_id(problem_ids)
-
     Enum.map(problems, fn resource ->
       %{
         resource: resource,
-        resource_topic: Map.get(resource_topic_by_resource_id, resource.id, %{}),
         resource_curriculums: resource.resource_curriculum,
         problem_lang: %{},
         requested_curriculum_id: curriculum_id
@@ -147,16 +144,11 @@ defmodule Dbservice.Resources do
       # order the ids appear in the test's type_params (the order the test defines).
       |> order_problems_by_ids(problem_ids)
 
-    # topic_id lives on the resource_topic join table, not on the resource
-    # itself, so fetch the mapping separately and attach it per problem.
-    resource_topic_by_resource_id = resource_topics_by_resource_id(problem_ids)
-
     Enum.map(problems, fn resource ->
       problem_lang = Enum.find(resource.problem_language, &(&1.lang_id == lang_id))
 
       %{
         resource: resource,
-        resource_topic: Map.get(resource_topic_by_resource_id, resource.id, %{}),
         resource_curriculums: resource.resource_curriculum,
         problem_lang: problem_lang || %{},
         requested_curriculum_id: curriculum_id
@@ -174,17 +166,6 @@ defmodule Dbservice.Resources do
     |> Enum.uniq()
     |> Enum.map(&Map.get(problems_by_id, &1))
     |> Enum.reject(&is_nil/1)
-  end
-
-  # Returns a map of resource_id => resource_topic record for the given
-  # resources. A problem maps to a single topic in the response, so the first
-  # resource_topic per resource is kept.
-  defp resource_topics_by_resource_id(resource_ids) do
-    from(rt in ResourceTopic, where: rt.resource_id in ^resource_ids)
-    |> Repo.all()
-    |> Enum.reduce(%{}, fn rt, acc ->
-      Map.put_new(acc, rt.resource_id, rt)
-    end)
   end
 
   @doc """
@@ -987,29 +968,81 @@ defmodule Dbservice.Resources do
     end
   end
 
+  @doc """
+  Normalizes a `topic_ids` list from request params into a deduplicated list of
+  integer topic ids, dropping anything that is not a usable id.
+  """
+  def normalize_topic_ids(topic_ids) when is_list(topic_ids) do
+    topic_ids
+    |> Enum.map(&normalize_chapter_topic_id/1)
+    |> Enum.reject(&is_nil/1)
+    |> Enum.uniq()
+  end
+
+  def normalize_topic_ids(_), do: []
+
+  # `topic_ids` is the full desired set of topics for the resource: topics missing
+  # from the database are added, topics no longer listed are removed, and `[]`
+  # clears every mapping. The legacy singular `topic_id` describes the same set
+  # with at most one member. When neither key is sent the mappings are left alone,
+  # which is what lets a move to another chapter keep the problem's topics
+  # (issue #784).
   defp update_resource_topic(resource, params) do
-    if Map.has_key?(params, "topic_id") do
-      requested_topic_id = params["topic_id"]
+    cond do
+      Map.has_key?(params, "topic_ids") ->
+        sync_resource_topics(resource, normalize_topic_ids(params["topic_ids"]))
 
-      current_topic_ids =
-        from(rt in ResourceTopic, where: rt.resource_id == ^resource.id, select: rt.topic_id)
-        |> Repo.all()
-        |> MapSet.new()
+      Map.has_key?(params, "topic_id") ->
+        sync_resource_topics(resource, normalize_topic_ids(List.wrap(params["topic_id"])))
 
-      requested_set =
-        if requested_topic_id, do: MapSet.new([requested_topic_id]), else: MapSet.new()
+      true ->
+        :ok
+    end
+  end
 
-      if requested_set != current_topic_ids do
-        from(rt in ResourceTopic, where: rt.resource_id == ^resource.id)
-        |> Repo.delete_all()
+  # The deletes and inserts run in one transaction. None of the three callers of
+  # update_resource_and_associations/2 opens one, so without it a failing insert
+  # (a topic_id that no longer exists, say) would leave the deletes committed and
+  # the problem short of its topics. create_resource_topic!/1 raises rather than
+  # returning an ignored {:error, changeset}, which aborts the transaction and
+  # leaves the existing mappings as they were.
+  defp sync_resource_topics(resource, requested_topic_ids) do
+    current_topic_ids =
+      from(rt in ResourceTopic, where: rt.resource_id == ^resource.id, select: rt.topic_id)
+      |> Repo.all()
+      |> MapSet.new()
 
-        if requested_topic_id do
-          Dbservice.ResourceTopics.create_resource_topic(%{
-            "resource_id" => resource.id,
-            "topic_id" => requested_topic_id
-          })
-        end
-      end
+    requested_set = MapSet.new(requested_topic_ids)
+    removed = MapSet.difference(current_topic_ids, requested_set)
+    added = MapSet.difference(requested_set, current_topic_ids)
+
+    if Enum.empty?(removed) and Enum.empty?(added) do
+      :ok
+    else
+      {:ok, :ok} =
+        Repo.transaction(fn ->
+          delete_resource_topics(resource, removed)
+
+          Enum.each(added, fn topic_id ->
+            Dbservice.ResourceTopics.create_resource_topic!(%{
+              "resource_id" => resource.id,
+              "topic_id" => topic_id
+            })
+          end)
+        end)
+
+      :ok
+    end
+  end
+
+  defp delete_resource_topics(resource, removed) do
+    if not Enum.empty?(removed) do
+      removed = MapSet.to_list(removed)
+
+      from(rt in ResourceTopic,
+        where: rt.resource_id == ^resource.id and rt.topic_id in ^removed
+      )
+      |> Repo.delete_all()
     end
   end
 
