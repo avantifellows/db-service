@@ -78,7 +78,7 @@ defmodule DbserviceWeb.StudentController do
       {:error, {:ambiguous_student, _, _} = reason} ->
         conn
         |> put_status(:conflict)
-        |> json(%{errors: Users.ambiguous_student_message(reason)})
+        |> json(%{errors: Users.ambiguous_student_api_message(reason)})
 
       nil ->
         render(conn, :index, student: [])
@@ -275,7 +275,7 @@ defmodule DbserviceWeb.StudentController do
       {:error, {:ambiguous_student, _, _} = reason} ->
         conn
         |> put_status(:conflict)
-        |> json(%{errors: Users.ambiguous_student_message(reason)})
+        |> json(%{errors: Users.ambiguous_student_api_message(reason)})
 
       nil ->
         conn
@@ -307,7 +307,7 @@ defmodule DbserviceWeb.StudentController do
       {:error, {:ambiguous_student, _, _} = reason} ->
         conn
         |> put_status(:conflict)
-        |> json(%{errors: Users.ambiguous_student_message(reason)})
+        |> json(%{errors: Users.ambiguous_student_api_message(reason)})
 
       nil ->
         conn
@@ -335,7 +335,7 @@ defmodule DbserviceWeb.StudentController do
       {:error, {:ambiguous_student, _, _} = reason} ->
         conn
         |> put_status(:conflict)
-        |> json(%{errors: Users.ambiguous_student_message(reason)})
+        |> json(%{errors: Users.ambiguous_student_api_message(reason)})
 
       nil ->
         conn
@@ -360,7 +360,7 @@ defmodule DbserviceWeb.StudentController do
       {:error, {:ambiguous_student, _, _} = reason} ->
         conn
         |> put_status(:conflict)
-        |> json(%{errors: Users.ambiguous_student_message(reason)})
+        |> json(%{errors: Users.ambiguous_student_api_message(reason)})
 
       nil ->
         conn
@@ -632,7 +632,11 @@ defmodule DbserviceWeb.StudentController do
           "verification_params" => verification_params
         } = params
       ) do
-    case get_student_and_user(student_id, params) do
+    # The auth group may travel inside verification_params rather than at the top
+    # level; without it the lookup is unscoped and a shared student_id cannot resolve.
+    lookup_params = Map.merge(params, verification_params_map(verification_params))
+
+    case get_student_and_user(student_id, lookup_params) do
       {:ok, student, user} ->
         student_exists = verify_student_and_user_data(student, user, verification_params)
 
@@ -646,7 +650,7 @@ defmodule DbserviceWeb.StudentController do
       {:error, {:ambiguous_student, _, _} = reason} ->
         conn
         |> put_status(:conflict)
-        |> json(%{error: Users.ambiguous_student_message(reason)})
+        |> json(%{error: Users.ambiguous_student_api_message(reason)})
 
       {:error, :not_found} ->
         conn
@@ -654,6 +658,9 @@ defmodule DbserviceWeb.StudentController do
         |> json(%{error: "Student not found"})
     end
   end
+
+  defp verification_params_map(params) when is_map(params), do: params
+  defp verification_params_map(_params), do: %{}
 
   defp get_student_and_user(student_id, auth_group_params) do
     case Users.get_student_by_student_id(student_id, auth_group_params) do
@@ -741,7 +748,7 @@ defmodule DbserviceWeb.StudentController do
       {:error, {:ambiguous_student, _, _} = reason} ->
         conn
         |> put_status(:conflict)
-        |> json(%{message: Users.ambiguous_student_message(reason)})
+        |> json(%{message: Users.ambiguous_student_api_message(reason)})
 
       nil ->
         conn
@@ -824,7 +831,7 @@ defmodule DbserviceWeb.StudentController do
   defp get_student(student_id) do
     case Users.get_student_by_student_id(student_id) do
       {:error, {:ambiguous_student, _, _} = reason} ->
-        {:error, Users.ambiguous_student_message(reason)}
+        {:error, Users.ambiguous_student_api_message(reason)}
 
       nil ->
         {:error, "Student not found"}
@@ -899,7 +906,7 @@ defmodule DbserviceWeb.StudentController do
         {:error,
          %{
            student_id: student_data["student_id"],
-           message: Users.ambiguous_student_message(reason)
+           message: Users.ambiguous_student_api_message(reason)
          }}
 
       nil ->
@@ -994,7 +1001,7 @@ defmodule DbserviceWeb.StudentController do
       {:error, {:ambiguous_student, _, _} = reason} ->
         conn
         |> put_status(:conflict)
-        |> json(%{error: Users.ambiguous_student_message(reason)})
+        |> json(%{error: Users.ambiguous_student_api_message(reason)})
 
       {:error, changeset} ->
         conn

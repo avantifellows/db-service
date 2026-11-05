@@ -1006,6 +1006,23 @@ defmodule Dbservice.UsersTest do
       assert message =~ "222222222242"
     end
 
+    test "fails a row whose apaar_id belongs to another student, even with none stored" do
+      # The row holds the proof that the user_id is wrong: that apaar_id is someone
+      # else's. Only an identifier db-service does not know at all is let through.
+      {_user, target} = student_fixture(%{student_id: "IMP-NONE", apaar_id: nil})
+
+      {_other_user, _other} =
+        student_fixture(%{student_id: "IMP-OWNER", apaar_id: "444444444454"})
+
+      assert {:error, message} =
+               Users.get_student_for_import(%{
+                 "user_id" => target.user_id,
+                 "apaar_id" => "444444444454"
+               })
+
+      assert message =~ "belongs to a different student"
+    end
+
     test "does not treat a student with no apaar_id as a mismatch" do
       # 92% of students have no apaar_id, while rows routinely carry one sourced
       # outside db-service; a blank stored value is no evidence of a wrong user_id.

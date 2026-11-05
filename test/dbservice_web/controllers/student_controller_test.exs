@@ -153,6 +153,35 @@ defmodule DbserviceWeb.StudentControllerTest do
       assert %{"is_verified" => true} = json_response(conn, 200)
     end
 
+    test "scopes by an auth group sent inside verification_params", %{conn: conn} do
+      auth_group = auth_group_fixture(%{name: "VERIFY_SCOPE_GROUP"})
+      {user_a, student_a} = student_fixture(%{student_id: "VERIFY-SCOPED"})
+      {_user_b, _student_b} = student_fixture(%{student_id: "VERIFY-SCOPED"})
+
+      enrollment_record_fixture(%{
+        user_id: student_a.user_id,
+        group_type: "auth_group",
+        group_id: auth_group.id,
+        is_current: true
+      })
+
+      group = Dbservice.Groups.get_group_by_child_id_and_type(auth_group.id, "auth_group")
+
+      {:ok, _group_user} =
+        Dbservice.GroupUsers.create_group_user(%{user_id: user_a.id, group_id: group.id})
+
+      conn =
+        post(conn, ~p"/api/student/verify-student", %{
+          "student_id" => "VERIFY-SCOPED",
+          "verification_params" => %{
+            "auth_group_id" => auth_group.id,
+            "first_name" => user_a.first_name
+          }
+        })
+
+      assert %{"is_verified" => true} = json_response(conn, 200)
+    end
+
     test "answers 409 instead of crashing when the student_id matches two students", %{
       conn: conn
     } do

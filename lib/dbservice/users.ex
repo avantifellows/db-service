@@ -246,15 +246,34 @@ defmodule Dbservice.Users do
   end
 
   @doc """
-  Renders an `{:ambiguous_student, field, value}` reason as an operator-facing message.
+  Renders an `{:ambiguous_student, field, value}` reason for an import row.
 
-  Import row errors and API responses both go to a human who has to decide which student
-  was meant, so the message names the column to add rather than just reporting a conflict.
+  The reader is an operator holding a sheet, so the message names the column to add.
+  Only `student_id` is resolvable that way; any other field matching twice is a
+  duplicate that has to be cleaned up before the row can be imported.
   """
-  def ambiguous_student_message({:ambiguous_student, field, value}) do
-    "Ambiguous #{field} '#{value}': it matches more than one student. The same student_id " <>
-      "can exist in different auth groups, so add an `auth_group` or `user_id` column to " <>
+  def ambiguous_student_message({:ambiguous_student, :student_id, value}) do
+    "Ambiguous student_id '#{value}': it matches more than one student. The same student_id " <>
+      "can exist in different auth groups, so add a `user_id` column (or an `auth_group`) to " <>
       "identify which student is meant."
+  end
+
+  def ambiguous_student_message({:ambiguous_student, field, value}) do
+    "Ambiguous #{field} '#{value}': it matches more than one student. The duplicate has to be " <>
+      "resolved before this row can be imported."
+  end
+
+  @doc """
+  Renders an `{:ambiguous_student, field, value}` reason for an API response.
+
+  API callers cannot "add a column": the message says what the request could not
+  decide and who can fix it, since AF LMS surfaces this text to its own users.
+  """
+  def ambiguous_student_api_message({:ambiguous_student, field, value}) do
+    "More than one student matches #{field} '#{value}', so this request cannot tell them " <>
+      "apart. The same student_id can exist in more than one auth group: send the student's " <>
+      "auth group if this endpoint accepts one, otherwise ask the data team to resolve the " <>
+      "duplicate."
   end
 
   @doc """
@@ -378,23 +397,49 @@ defmodule Dbservice.Users do
   defp cross_check_import_identifiers(student, record) do
     mismatch =
       Enum.find_value([{"student_id", :student_id}, {"apaar_id", :apaar_id}], fn {column, field} ->
-        with row_value when row_value not in [nil, ""] <- trimmed(record[column]),
-             student_value when student_value not in [nil, ""] <-
-               trimmed(Map.get(student, field)),
-             true <- row_value != student_value do
-          identifier_mismatch_message(student, column, row_value, student_value)
-        else
-          _ -> nil
+        case trimmed(record[column]) do
+          row_value when row_value in [nil, ""] -> nil
+          row_value -> cross_check_identifier(student, column, field, row_value)
         end
       end)
 
     if mismatch, do: {:error, mismatch}, else: {:ok, student}
   end
 
+  defp cross_check_identifier(student, column, field, row_value) do
+    case trimmed(Map.get(student, field)) do
+      stored when stored in [nil, ""] ->
+        identifier_held_elsewhere(student, column, field, row_value)
+
+      ^row_value ->
+        nil
+
+      stored ->
+        identifier_mismatch_message(student, column, row_value, stored)
+    end
+  end
+
+  # db-service not holding the identifier is normal - 684,658 of 743,955 students have no
+  # apaar_id, while sheets carry one sourced from the APAAR list - so a blank stored value
+  # cannot fail the row on its own. It is evidence of a wrong user_id only when the value
+  # belongs to *another* student, and then the row contradicts itself.
+  defp identifier_held_elsewhere(student, column, field, row_value) do
+    case find_student(field, row_value) do
+      nil -> nil
+      _another_student -> identifier_elsewhere_message(student, column, row_value)
+    end
+  end
+
   defp identifier_mismatch_message(student, column, row_value, student_value) do
     "user_id #{student.user_id} belongs to the student whose #{column} is " <>
       "'#{student_value}', but the row's #{column} column says '#{row_value}'. " <>
       "Fix the row: one of the two columns points at the wrong student."
+  end
+
+  defp identifier_elsewhere_message(student, column, row_value) do
+    "user_id #{student.user_id} belongs to a student with no #{column} on record, but the " <>
+      "row's #{column} '#{row_value}' belongs to a different student. Fix the row: the " <>
+      "user_id is pointing at the wrong student."
   end
 
   defp trimmed(value) when is_binary(value), do: String.trim(value)
@@ -1431,12 +1476,16 @@ defmodule Dbservice.Users do
           from(s in Student, where: s.student_id == ^id)
       end
 
+    # The "EnableStudents" branch matches on either column, so the ambiguity cannot be
+    # attributed to student_id specifically.
+    field = if group == "EnableStudents", do: :identifier, else: :student_id
+
     from(s in base, order_by: [asc: s.id], limit: 2)
     |> Repo.all()
     |> case do
       [] -> nil
       [student] -> student
-      [_, _] -> {:error, {:ambiguous_student, :student_id, id}}
+      [_, _] -> {:error, {:ambiguous_student, field, id}}
     end
   end
 

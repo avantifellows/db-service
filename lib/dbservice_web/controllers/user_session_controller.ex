@@ -154,7 +154,7 @@ defmodule DbserviceWeb.UserSessionController do
       {:error, {:ambiguous_student, _, _} = reason} ->
         conn
         |> put_status(:conflict)
-        |> json(%{error: Users.ambiguous_student_message(reason)})
+        |> json(%{error: Users.ambiguous_student_api_message(reason)})
 
       {:error, :session_records_exists} ->
         conn
@@ -185,7 +185,7 @@ defmodule DbserviceWeb.UserSessionController do
       {:error, {:ambiguous_student, _, _} = reason} ->
         conn
         |> put_status(:conflict)
-        |> json(%{error: Users.ambiguous_student_message(reason)})
+        |> json(%{error: Users.ambiguous_student_api_message(reason)})
 
       {:error, :user_id_not_found} ->
         conn

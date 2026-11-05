@@ -150,7 +150,7 @@ defmodule DbserviceWeb.StudentProfileController do
       {:error, {:ambiguous_student, _, _} = reason} ->
         conn
         |> put_status(:conflict)
-        |> json(%{errors: Users.ambiguous_student_message(reason)})
+        |> json(%{errors: Users.ambiguous_student_api_message(reason)})
 
       nil ->
         conn
