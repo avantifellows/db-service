@@ -311,6 +311,96 @@ defmodule Dbservice.Users do
     end
   end
 
+  @doc """
+  Resolves the student a lookup-import row refers to, keyed on `user_id`.
+
+  `user_id` is the key because it is the only student identifier that is unique on its
+  own: `student_id` is unique only within an auth group, and production holds 476
+  `student_id` values that match two different students.
+
+  `student_id` and `apaar_id` stay available as *optional* columns, used only as a
+  cross-check. When a row carries one, the student found by `user_id` must actually
+  carry that identifier, otherwise the row fails. This is what catches a mispasted or
+  shifted `user_id`, which would otherwise write silently to an unrelated student.
+
+  ## Options
+
+    * `:cross_check` - defaults to `true`. Pass `false` for an import where those
+      columns are values being written rather than identifiers (student_update can
+      set a student's `student_id`/`apaar_id`, guarded by
+      `validate_identifier_conflicts/2`), so a differing value is an edit, not a
+      mismatch.
+
+  ## Returns
+
+    * `{:ok, %Student{}}` - the row resolves to exactly one student
+    * `{:error, message}` - operator-facing reason the row cannot be resolved
+  """
+  def get_student_for_import(record, opts \\ []) when is_map(record) do
+    with {:ok, user_id} <- cast_import_user_id(record["user_id"]),
+         {:ok, student} <- student_by_user_id(user_id) do
+      if Keyword.get(opts, :cross_check, true),
+        do: cross_check_import_identifiers(student, record),
+        else: {:ok, student}
+    end
+  end
+
+  defp cast_import_user_id(value) when value in [nil, ""] do
+    {:error,
+     "user_id is required. A student_id can belong to more than one student, so the row " <>
+       "must say which user_id is meant."}
+  end
+
+  defp cast_import_user_id(value) when is_integer(value), do: {:ok, value}
+
+  defp cast_import_user_id(value) when is_binary(value) do
+    case Integer.parse(String.trim(value)) do
+      {user_id, ""} -> {:ok, user_id}
+      _ -> {:error, "Invalid user_id '#{value}': it must be the numeric user_id of the student."}
+    end
+  end
+
+  defp cast_import_user_id(value),
+    do: {:error, "Invalid user_id '#{inspect(value)}': it must be the numeric user_id."}
+
+  defp student_by_user_id(user_id) do
+    case find_student(:user_id, user_id) do
+      nil -> {:error, "No student found for user_id #{user_id}."}
+      {:error, reason} -> {:error, ambiguous_student_message(reason)}
+      student -> {:ok, student}
+    end
+  end
+
+  # Only identifiers the row actually supplies are checked; a blank cell is not a
+  # mismatch, it is simply a row that chose not to cross-check.
+  defp cross_check_import_identifiers(student, record) do
+    mismatch =
+      Enum.find_value([{"student_id", :student_id}, {"apaar_id", :apaar_id}], fn {column, field} ->
+        with row_value when row_value not in [nil, ""] <- trimmed(record[column]),
+             student_value <- trimmed(Map.get(student, field)),
+             true <- row_value != student_value do
+          identifier_mismatch_message(student, column, row_value, student_value)
+        else
+          _ -> nil
+        end
+      end)
+
+    if mismatch, do: {:error, mismatch}, else: {:ok, student}
+  end
+
+  defp identifier_mismatch_message(student, column, row_value, student_value) do
+    "user_id #{student.user_id} belongs to the student whose #{column} is " <>
+      "#{format_identifier(student_value)}, but the row's #{column} column says '#{row_value}'. " <>
+      "Fix the row: one of the two columns points at the wrong student."
+  end
+
+  defp format_identifier(nil), do: "empty"
+  defp format_identifier(""), do: "empty"
+  defp format_identifier(value), do: "'#{value}'"
+
+  defp trimmed(value) when is_binary(value), do: String.trim(value)
+  defp trimmed(value), do: value
+
   # `student_id` is only unique within an auth group, so an unscoped lookup can match
   # several students. Fetch two rows to tell "one" from "more than one" and report the
   # ambiguity rather than raising (`Repo.get_by/2`) or picking the lowest id.

@@ -323,11 +323,13 @@ defmodule Dbservice.DataImport.ImportWorkerTest do
 
   describe "student_update imports (issue #641)" do
     test "halts with a clear error when a row moves another student's apaar_id, and does not overwrite either student" do
-      {_u1, _target} = student_fixture(%{student_id: "UPD-TARGET", apaar_id: "111111111111"})
+      {_u1, target} = student_fixture(%{student_id: "UPD-TARGET", apaar_id: "111111111111"})
       {_u2, other} = student_fixture(%{student_id: "UPD-OTHER", apaar_id: "222222222222"})
 
       # The row identifies UPD-TARGET but tries to set UPD-OTHER's APAAR ID on it.
-      csv_content = student_update_csv_content([{"UPD-TARGET", "222222222222", "Hacked"}])
+      csv_content =
+        student_update_csv_content([{target.user_id, "UPD-TARGET", "222222222222", "Hacked"}])
+
       filename = create_test_csv("student_update_conflict.csv", csv_content)
       on_exit(fn -> cleanup_test_csv("student_update_conflict.csv") end)
 
@@ -352,7 +354,7 @@ defmodule Dbservice.DataImport.ImportWorkerTest do
     test "applies a clean update row with no identifier conflict" do
       {_u, target} = student_fixture(%{student_id: "UPD-CLEAN", apaar_id: "333333333333"})
 
-      csv_content = student_update_csv_content([{"UPD-CLEAN", "", "Renamed"}])
+      csv_content = student_update_csv_content([{target.user_id, "UPD-CLEAN", "", "Renamed"}])
       filename = create_test_csv("student_update_clean.csv", csv_content)
       on_exit(fn -> cleanup_test_csv("student_update_clean.csv") end)
 
@@ -368,12 +370,16 @@ defmodule Dbservice.DataImport.ImportWorkerTest do
     end
 
     test "trims whitespace so a padded apaar_id cannot bypass the duplicate check" do
-      {_u1, _target} = student_fixture(%{student_id: "UPD-WS-TARGET", apaar_id: "111111111112"})
+      {_u1, target} = student_fixture(%{student_id: "UPD-WS-TARGET", apaar_id: "111111111112"})
       {_u2, other} = student_fixture(%{student_id: "UPD-WS-OTHER", apaar_id: "222222222223"})
 
       # The row identifies UPD-WS-TARGET but tries to set UPD-WS-OTHER's APAAR ID
       # on it, padded with spaces — trimming must still catch the conflict.
-      csv_content = student_update_csv_content([{"UPD-WS-TARGET", " 222222222223 ", "Hacked"}])
+      csv_content =
+        student_update_csv_content([
+          {target.user_id, "UPD-WS-TARGET", " 222222222223 ", "Hacked"}
+        ])
+
       filename = create_test_csv("student_update_ws.csv", csv_content)
       on_exit(fn -> cleanup_test_csv("student_update_ws.csv") end)
 
@@ -394,13 +400,14 @@ defmodule Dbservice.DataImport.ImportWorkerTest do
     end
 
     test "halts when a row moves another student's pen_number (issue #641 review)" do
-      {_u1, _target} = student_fixture(%{student_id: "UPD-PEN-TARGET", pen_number: "11111111112"})
+      {_u1, target} = student_fixture(%{student_id: "UPD-PEN-TARGET", pen_number: "11111111112"})
       {_u2, other} = student_fixture(%{student_id: "UPD-PEN-OTHER", pen_number: "22222222223"})
 
       # PEN is now an importable student_update column; a row must not move another
       # student's PEN onto a different student.
       csv_content =
-        "student_id,student_pen_number,user_first_name\nUPD-PEN-TARGET,22222222223,Hacked\n"
+        "user_id,student_id,student_pen_number,user_first_name\n" <>
+          "#{target.user_id},UPD-PEN-TARGET,22222222223,Hacked\n"
 
       filename = create_test_csv("student_update_pen.csv", csv_content)
       on_exit(fn -> cleanup_test_csv("student_update_pen.csv") end)

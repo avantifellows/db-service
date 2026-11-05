@@ -933,6 +933,105 @@ defmodule Dbservice.UsersTest do
     end
   end
 
+  describe "get_student_for_import/2" do
+    import Dbservice.UsersFixtures
+
+    test "resolves the student by user_id" do
+      {_user, student} = student_fixture(%{student_id: "IMP-001"})
+
+      assert {:ok, found} = Users.get_student_for_import(%{"user_id" => student.user_id})
+      assert found.id == student.id
+    end
+
+    test "accepts the user_id as the string a CSV row carries" do
+      {_user, student} = student_fixture(%{student_id: "IMP-002"})
+
+      assert {:ok, found} =
+               Users.get_student_for_import(%{"user_id" => " #{student.user_id} "})
+
+      assert found.id == student.id
+    end
+
+    test "picks the right student when two share a student_id" do
+      {_user_a, a} = student_fixture(%{student_id: "IMP-SHARED"})
+      {_user_b, b} = student_fixture(%{student_id: "IMP-SHARED"})
+
+      assert {:ok, found} =
+               Users.get_student_for_import(%{
+                 "user_id" => b.user_id,
+                 "student_id" => "IMP-SHARED"
+               })
+
+      assert found.id == b.id
+      refute found.id == a.id
+    end
+
+    test "fails a row with no user_id" do
+      assert {:error, message} = Users.get_student_for_import(%{"student_id" => "IMP-001"})
+      assert message =~ "user_id is required"
+    end
+
+    test "fails a row whose user_id is not a number" do
+      assert {:error, message} = Users.get_student_for_import(%{"user_id" => "not-a-number"})
+      assert message =~ "Invalid user_id"
+    end
+
+    test "fails a row whose user_id matches no student" do
+      assert {:error, "No student found for user_id 999999999."} =
+               Users.get_student_for_import(%{"user_id" => 999_999_999})
+    end
+
+    test "fails a row whose student_id belongs to a different student" do
+      {_user, student} = student_fixture(%{student_id: "IMP-REAL"})
+
+      assert {:error, message} =
+               Users.get_student_for_import(%{
+                 "user_id" => student.user_id,
+                 "student_id" => "IMP-OTHER"
+               })
+
+      assert message =~ "IMP-REAL"
+      assert message =~ "IMP-OTHER"
+    end
+
+    test "fails a row whose apaar_id belongs to a different student" do
+      {_user, student} = student_fixture(%{student_id: "IMP-AP", apaar_id: "111111111141"})
+
+      assert {:error, message} =
+               Users.get_student_for_import(%{
+                 "user_id" => student.user_id,
+                 "apaar_id" => "222222222242"
+               })
+
+      assert message =~ "222222222242"
+    end
+
+    test "ignores blank identifier columns" do
+      {_user, student} = student_fixture(%{student_id: "IMP-BLANK"})
+
+      assert {:ok, found} =
+               Users.get_student_for_import(%{
+                 "user_id" => student.user_id,
+                 "student_id" => "",
+                 "apaar_id" => nil
+               })
+
+      assert found.id == student.id
+    end
+
+    test "skips the cross-check when the columns are values being written" do
+      {_user, student} = student_fixture(%{student_id: "IMP-RENAME"})
+
+      assert {:ok, found} =
+               Users.get_student_for_import(
+                 %{"user_id" => student.user_id, "student_id" => "IMP-RENAMED"},
+                 cross_check: false
+               )
+
+      assert found.id == student.id
+    end
+  end
+
   describe "validate_identifier_conflicts/2" do
     alias Dbservice.Users.Student
 
