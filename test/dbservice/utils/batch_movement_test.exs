@@ -13,6 +13,23 @@ defmodule Dbservice.DataImport.BatchMovementTest do
   alias Dbservice.Services.BatchEnrollmentService
 
   describe "process_batch_movement/1" do
+    test "an archived student is rejected, like a dropout" do
+      {_user, student} = student_fixture(%{student_id: "ARCHIVED001"})
+      {:ok, _student} = Dbservice.Users.update_student(student, %{"status" => "archived"})
+
+      assert {:error, message} =
+               BatchMovement.process_batch_movement(%{
+                 "student_id" => "ARCHIVED001",
+                 "apaar_id" => nil,
+                 "batch_id" => "ANY_BATCH",
+                 "grade" => nil,
+                 "start_date" => "2026-06-01",
+                 "academic_year" => "2026-2027"
+               })
+
+      assert message =~ "because status is archived"
+    end
+
     test "a row that cannot complete rolls back and reports the failure" do
       # The batches being left are closed before the new enrollment is created, so
       # a failed create used to leave the student with no current batch at all -

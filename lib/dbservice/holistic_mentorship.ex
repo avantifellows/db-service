@@ -7,7 +7,7 @@ defmodule Dbservice.HolisticMentorship do
 
   @mapping_table "holistic_mentorship_mentor_mentee_mappings"
   @profile_program_ids [1, 74, 78, 88, 94, 99]
-  @eligibility_end_reasons ~w(student_dropout student_program_changed student_school_changed student_grade_changed)a
+  @eligibility_end_reasons ~w(student_dropout student_archived student_program_changed student_school_changed student_grade_changed)a
   @approved_profile_sources %{
     {"6a44a83d1184e717b920c499", "EnableStudents_6a44a83d1184e717b920c499", 11} => true,
     {"6a4deca8e030ebe34669fb0f", "EnableStudents_6a4deca8e030ebe34669fb0f", 12} => true,

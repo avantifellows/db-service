@@ -95,6 +95,7 @@ defmodule Dbservice.Constants.Mappings do
         "batch_movement",
         "student_update",
         "dropout",
+        "archive",
         "re_enrollment",
         "student_enrollment"
       ],
@@ -372,6 +373,7 @@ defmodule Dbservice.Constants.Mappings do
         "student_update",
         "batch_movement",
         "dropout",
+        "archive",
         "alumni_addition",
         "re_enrollment",
         "update_incorrect_batch_id_to_correct_batch_id",
@@ -415,6 +417,7 @@ defmodule Dbservice.Constants.Mappings do
         "teacher_addition",
         "teacher_batch_assignment",
         "dropout",
+        "archive",
         "re_enrollment",
         "student_enrollment",
         "student_school_movement",
@@ -643,6 +646,7 @@ defmodule Dbservice.Constants.Mappings do
         "teacher_addition",
         "teacher_batch_assignment",
         "dropout",
+        "archive",
         "re_enrollment",
         "student_enrollment"
       ],
