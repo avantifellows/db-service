@@ -42,7 +42,6 @@ defmodule DbserviceWeb.ResourceJSONTest do
           problems: [
             %{
               resource: problem,
-              resource_topic: %{},
               resource_curriculums: [],
               requested_curriculum_id: nil,
               problem_lang: en_problem_lang

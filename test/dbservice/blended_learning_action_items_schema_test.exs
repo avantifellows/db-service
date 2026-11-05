@@ -162,6 +162,59 @@ defmodule Dbservice.BlendedLearningActionItemsSchemaTest do
            ]
   end
 
+  test "stores Profile Doc Action Items without a Conversation, once per Student, text and owner" do
+    scope = insert_scope()
+    {:ok, %{rows: [[conversation_id]]}} = insert_conversation(scope, %{})
+
+    assert {:ok, %{rows: [[item_id]]}} = insert_profile_doc_item(scope, %{position: 1})
+    assert {:ok, _} = insert_profile_doc_item(scope, %{position: 2, owner: "mentor"})
+
+    assert {:ok, _} =
+             insert_profile_doc_item(%{scope | student_id: scope.other_student_id}, %{position: 1})
+
+    # The same text agreed in a Conversation is a separate Action Item.
+    assert {:ok, _} = insert_action_item(scope, conversation_id, %{position: 1})
+
+    assert_constraint(:unique_violation, fn -> insert_profile_doc_item(scope, %{position: 3}) end)
+
+    # Exactly one source: a Conversation or the Profile Doc.
+    assert_constraint(:check_violation, fn ->
+      insert_action_item(scope, nil, %{position: 2, text: "No source."})
+    end)
+
+    assert_constraint(:check_violation, fn ->
+      insert_action_item(scope, conversation_id, %{
+        position: 2,
+        text: "Both sources.",
+        from_profile_doc: true
+      })
+    end)
+
+    assert Repo.query!(
+             "SELECT conversation_id, from_profile_doc, status FROM #{@action_items} WHERE id = $1",
+             [item_id]
+           ).rows == [[nil, true, "open"]]
+
+    assert Repo.query!(
+             "SELECT from_profile_doc FROM #{@action_items} WHERE conversation_id = $1",
+             [conversation_id]
+           ).rows == [[false]]
+
+    # A later Conversation closes it like any other Action Item.
+    Repo.query!(
+      """
+      UPDATE #{@action_items}
+      SET status = 'done', completed_by_conversation_id = $2,
+          completed_at = '2026-10-27 11:00:00', completed_by_email = 'mentor@example.org'
+      WHERE id = $1
+      """,
+      [item_id, conversation_id]
+    )
+
+    assert Repo.query!("SELECT status FROM #{@action_items} WHERE id = $1", [item_id]).rows ==
+             [["done"]]
+  end
+
   defp insert_scope do
     [[student_user_id], [other_student_user_id], [mentor_user_id]] =
       Repo.query!("""
@@ -235,6 +288,10 @@ defmodule Dbservice.BlendedLearningActionItemsSchemaTest do
         attrs
       )
     )
+  end
+
+  defp insert_profile_doc_item(scope, attrs) do
+    insert_action_item(scope, nil, Map.merge(%{from_profile_doc: true}, attrs))
   end
 
   defp insert_row(table, attrs) do

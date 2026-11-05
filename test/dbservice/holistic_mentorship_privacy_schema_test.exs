@@ -24,7 +24,8 @@ defmodule Dbservice.HolisticMentorshipPrivacySchemaTest do
              ["historical_answers_erased", "integer", "NO"],
              ["occurred_at", "timestamp without time zone", "NO"],
              ["inserted_at", "timestamp without time zone", "NO"],
-             ["updated_at", "timestamp without time zone", "NO"]
+             ["updated_at", "timestamp without time zone", "NO"],
+             ["post_session_challenges_erased", "integer", "NO"]
            ]
 
     assert Repo.query!(
@@ -42,9 +43,13 @@ defmodule Dbservice.HolisticMentorshipPrivacySchemaTest do
              """
              SELECT conname FROM pg_constraint
              WHERE conrelid = to_regclass($1) AND contype = 'c'
+             ORDER BY conname
              """,
              [@table]
-           ).rows == [["hm_privacy_deletions_content_check"]]
+           ).rows == [
+             ["hm_privacy_deletions_challenges_erased_check"],
+             ["hm_privacy_deletions_content_check"]
+           ]
 
     assert Repo.query!(
              """

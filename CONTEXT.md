@@ -123,6 +123,12 @@ least one usable actor identity: a canonical `actor_user_id`, a nonblank
 ID-only system and legacy writers remain valid.
 _Avoid_: editable audit row, content snapshot
 
+**Challenge Category**:
+One fixed, coded Academic or Non-academic classification a Mentor selects for a
+Mentee in Post-Session Notes, identified by a stable code. LMS owns the code
+list, labels and validation.
+_Avoid_: tag, challenge tag, issue type, free-text category
+
 **Follow-up Note**:
 An immutable answer set for one Student and stable Phase, added by its author
 after that Phase's Post-Session Notes are submitted, answering up to three fixed
@@ -201,10 +207,29 @@ a separate S3 object with the same retention.
 _Avoid_: storing audio or transcripts in Postgres
 
 **Action Item**:
-A follow-up agreed in a Conversation, owned by the Student, the Mentor or the
-Parent, with no due date. Its only permitted change is open to done, recording
-the later Conversation that closed it.
+A follow-up agreed in a Conversation, pushed from a Common Action Item, or
+loaded from the latest entry in the Student's Profile Doc, owned by the
+Student, the Mentor or the Parent, with no due date. Its only permitted change
+is open to done, recording the later Conversation that closed it; a pushed
+Action Item's text and owner also follow its Common Action Item while open, and
+a re-import of the Profile Doc may delete its still-open Profile Doc Action
+Items that the doc no longer lists.
 _Avoid_: Action (a School Visit term), task
+
+**Common Action Item**:
+An Action Item a Blended Learning Admin pushes to a target (every Student with
+an active Mapping, one grade, one Mentor's Students, or specific Students listed
+by `student.student_id`, stored so a later push can reach them again). Only
+Students with an active Mapping receive it. It is materialised at
+push time as one open Action Item per targeted Student, at most one per
+Student; Students mapped later get it only when it is pushed again. Removing it
+is a soft removal that deletes its still-open Action Items and keeps done ones.
+_Avoid_: template, broadcast, recurring task
+
+**Resource**:
+A titled `https://` link on the Mentors' Resources tab, ordered by position and
+managed by Blended Learning Admins.
+_Avoid_: Mentor Toolkit (one Resource), Student Links
 
 **Mentor Flag**:
 A concern raised on one Conversation for one Flag Recipient
@@ -212,10 +237,21 @@ A concern raised on one Conversation for one Flag Recipient
 comment; at most one per Recipient per Conversation, with no resolution status.
 _Avoid_: Intervention Flag, escalation
 
+**Screener Feedback**:
+A Blended Learning Mentor's two 1-5 ratings of the Student's Screener form (did
+it help them understand the Student, and did the Student seem more comfortable
+talking), asked once per Student on the first Conversation where the Mentor
+ticks "Was the screener form used?" (`screener_used`). It is never asked again
+for that Student, even under a later Mentor. A Conversation's `screener_used`
+is NULL when the Student had no Screener link; Attempts never carry it.
+_Avoid_: Screener survey, per-Conversation feedback
+
 **Student Links**:
 A Student's Profile Doc URL and Screener Link URL, loaded from the Profile
 Dashboard Sheet by an LMS script, and an exact legacy last-contact date from
-the Profile Doc: its latest dated conversation.
+the Profile Doc: its latest dated conversation, with that conversation's
+summary. The summary shows in the conversation history at that date but is not
+a Conversation.
 _Avoid_: Student Profile, Holistic questionnaire links
 
 ## Relationships
@@ -223,6 +259,8 @@ _Avoid_: Student Profile, Holistic questionnaire links
 - A Program has one Phase Plan per Academic Year; a Phase Plan has ordered Phases.
 - A Student has at most one active Mentor-Mentee Mapping per Academic Year.
 - Post-Session Notes belong to one Student, one stable Phase, and their author.
+- Post-Session Notes have zero or more distinct Challenge Categories; Follow-up
+  Notes and Historical Holistic Notes have none.
 - Follow-up Notes belong to one Student, one stable Phase, and their author;
   a Student and Phase may have many.
 - Mapping and Post-Session Note audit events retain immutable actor snapshots;
@@ -244,8 +282,15 @@ _Avoid_: Student Profile, Holistic questionnaire links
 - A Conversation has many Action Items, Photos and Mentor Flags; a Conversation
   saved from a Conversation Draft keeps the Draft's Call Recording and transcript
   keys.
+- An Action Item has exactly one source: a Conversation, a Common Action Item or
+  the Student's Profile Doc (at most one Profile Doc Action Item per Student,
+  text and owner).
 - A Conversation Draft has many Transcription Requests over time but at most one
   queued or running.
+- A Student has at most one Screener Feedback, saved in the same transaction as
+  the Conversation it was given on (same Student, `screener_used` true).
+- A Visit Concern or Visit Highlight belongs to one School code and has Mentions
+  from many Visits; a Visit has at most one Visit Note Summary.
 
 ## Invariants
 
@@ -272,12 +317,17 @@ _Avoid_: Student Profile, Holistic questionnaire links
 - Student eligibility mutations end affected active Mappings atomically.
 - Database sync includes all Holistic data for local and staging targets, including privacy-deletion markers. Oban job data is excluded from both targets.
 - Blended Learning Conversations and Attempts are append-only (trigger); af_lms
-  only inserts Photos and Mentor Flags and only moves Action Items open to done.
+  only inserts Photos, Mentor Flags and Screener Feedback and only moves Action Items open to done,
+  apart from a Common Action Item's edit or removal, which updates or deletes its
+  still-open Action Items, and the Profile Doc import, which inserts Profile Doc
+  Action Items and deletes still-open ones the doc no longer lists.
 - `etl-next` reads Transcription Requests and writes Conversation Draft content
   only through the db-service API; it receives the Student's gender and the
   session details, never names or phone numbers.
 - Call Recording audio and raw transcripts live only in S3; Postgres keeps their
   keys.
+- Visit Concern events are append-only (trigger) and records with events are never
+  deleted; `etl-next` reaches Visit Concerns only through the db-service API.
 
 ### Follow-up privacy erasure (LMS #412)
 
@@ -299,6 +349,111 @@ existing data or complete that operational rollout. Deploy schema before LMS.
 Production should use forward fixes: `down` restores unconditional Follow-up
 immutability and drops the companion table, losing its audit history, and cannot
 restore erased text. Exercise rollback only on disposable databases.
+
+### Post-Session Note Challenge Categories (LMS #457)
+
+last_updated: 2026-10-26
+
+Challenge Categories are `category_code` rows in
+`holistic_mentorship_post_session_note_challenges`, unique per Notes and code,
+nonblank and at most 100 characters. No CHECK restricts the code list: LMS owns
+it. Writes are guarded like Post-Session answers (blocked after
+privacy deletion; deletes stay allowed for draft and privacy erasure).
+
+The privacy tombstone records `post_session_challenges_erased`, the number of
+Challenge Category rows LMS deleted before inserting it, as it does for
+Post-Session answers. Tombstones are immutable, so the count must be written with
+the tombstone or it can never be recorded. The column is `NOT NULL DEFAULT 0`
+with a separate `>= 0` CHECK; existing tombstones predate Challenge Categories
+and keep 0. There is no backfill. Deploy schema before the LMS release.
+
+### Visit Concerns (LMS #470)
+
+last_updated: 2026-10-29
+
+`20261028120000_create_lms_visit_concerns` owns `lms_visit_concerns`,
+`lms_visit_concern_mentions`, `lms_visit_concern_events` and
+`lms_visit_note_summaries`, with no Ecto schemas. db-service owns the schema and the
+machine APIs; `etl-next` groups Visit free text with an LLM and only calls those
+APIs, never Postgres; `af_lms` reads the tables directly and writes the human
+events. Names, types, defaults and the trigger match the af_lms e2e mirror
+`20261027140000_add_lms_visit_concerns.sql`, plus the two event guard CHECKs below.
+Timestamps are `timestamp(0)` without time zone holding UTC.
+
+- **Visit Concern**: a durable per-School record (`kind = 'concern'`) of a problem
+  PMs raise in Visit free text; `open` or `resolved`.
+- **Visit Highlight**: the same kind of record for something going well
+  (`kind = 'highlight'`); it has no status.
+- **Mention**: a link from a record to one Visit that raised it, with a short
+  snippet; at most one per record and Visit.
+- **Live mention**: a Mention whose Visit is completed and not soft-deleted.
+  Soft-deleting a Visit makes its Mentions non-live without any write.
+- **Hidden record**: a record with no live mention. It is kept, never deleted.
+- **Visit Note Summary**: one row per Visit with the fingerprint and prompt version
+  it was last summarised with, and `summarised_at`.
+
+Events (`resolved`, `reopened`, `comment`, `auto_reopened`) are append-only: a trigger
+rejects every UPDATE and DELETE with SQLSTATE 23514, and the non-cascading FK means a
+record with events cannot be deleted. Only `auto_reopened` names a Visit and has no
+author or body. The guard CHECKs `lms_visit_concern_events_body_check` and
+`lms_visit_concern_events_author_check` require every other event to have a
+non-blank body of at most 2000 characters after trimming, a non-blank author, and no
+Visit.
+
+**Item labels** on the free text sent to `etl-next` come from stable keys and
+positions plus class context (grade and subject), never from a teacher's or a
+Student's name (`teacher_name`, `teachers[].name` and Student names are never read):
+
+- every `classroom_observation` item is `"Grade 11 Physics class observation: <key>"`,
+  or `"Grade 11 class observation: <key>"` / `"Physics class observation: <key>"`
+  when only one is valid, else just `<key>`. `grade` must be an integer or a digit
+  string from 1 to 99; `subject_name` is trimmed, whitespace-collapsed and capped
+  at 40 characters.
+- an `individual_af_teacher_interaction` teacher is `"Teacher <n> (<Subject>)"`, else
+  `"Teacher <n>"`. `teachers[].id` is an LMS `user_permission` id (not a `teacher`
+  id); the subject is the English `subject.name` of the single `teacher` row on
+  `user_permission.user_id`, looked up in one query per chunk of Visits. No
+  `user_id`, several teacher rows or no subject means no subject.
+
+Labels are part of the fingerprint, so changing them re-summarises the Visits they
+touch: adding class context did so (intended; nothing had run in production), and so
+does a teacher's subject or `user_permission.user_id` changing later.
+
+**Auto-reopen**: when PUT visit-summary mentions a resolved Concern and the Visit's
+`visit_date` is strictly after the IST date of the Concern's latest `resolved` event
+(latest by `inserted_at`, then id), the same transaction sets it `open` and appends
+one `auto_reopened` event naming that Visit. A same-day or older Visit never undoes
+a resolution, and a resolved Concern with no `resolved` event stays resolved.
+Re-summarising a Visit never changes a status or erases history; Highlights are
+never touched.
+
+**Lock order** (PUT visit-summary): the Visit row `FOR UPDATE`, then, in one
+`ORDER BY id FOR UPDATE` statement, every Concern-kind record the PUT can mention:
+the body's `existing_id`s plus the Concerns the Visit mentioned before (all of them,
+not only resolved ones). Both locks come before any mention is deleted or inserted,
+because a mention insert's FK check takes `FOR KEY SHARE` on its record. Two PUTs
+for different Visits at one School that both held that on a Concern and then asked
+for `FOR UPDATE` would deadlock. Highlights and records the PUT creates are not
+locked. The operation timestamp is the DB's `clock_timestamp()` (UTC, rounded to
+the second), read after the locks, so an `auto_reopened` event is never stamped
+before a resolution committed while the PUT waited. af_lms must lock Concern rows
+`FOR UPDATE` in ascending id order before writing their events, so it and
+db-service cannot deadlock, and must stamp them with `clock_timestamp()` after that
+lock, not `NOW()` (the transaction start) or an app clock, so the history (ordered
+by `inserted_at`, then id) follows lock order on both sides.
+
+PUT trims record `text`, `snippet` and `prompt_version` and caps them at 500, 300
+and 50 Unicode code points (as `char_length` counts, not graphemes); the columns
+are plain `text` with no length CHECK. A NUL in any of them is a 400 `{error}`,
+since Postgres text cannot hold one.
+
+Record `text` and `snippet` are filtered from the Phoenix request log
+(`:filter_parameters`). A body that cannot be parsed gets a 400 `{error}` without
+the body being logged.
+
+There is no data migration: the flow's first run is the backfill. Rollback drops the
+trigger, the function and the tables; the LMS treats missing rows as "not summarised
+yet". Deploy schema before LMS.
 
 ## Example Dialogue
 

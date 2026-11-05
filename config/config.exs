@@ -48,7 +48,9 @@ config :logger, :request_log,
 
 # Use Jason for JSON parsing in Phoenix
 config :phoenix, :json_library, Jason
-config :phoenix, :filter_parameters, ["password", "template_text"]
+# Matched as substrings of param keys. "text" and "snippet" keep Visit Concern
+# record text and snippets (PUT visit-summary) out of the request log.
+config :phoenix, :filter_parameters, ["password", "template_text", "text", "snippet"]
 
 config :dbservice, :phoenix_swagger,
   swagger_files: %{
