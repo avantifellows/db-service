@@ -1180,10 +1180,16 @@ defmodule Dbservice.HolisticMentorship do
 
   # Archiving ends a student's active Mappings for the same eligibility reason a
   # dropout does, so an archived Student must not be eligible to be re-mapped the
-  # next day. It carries its own reason code rather than reusing "dropout", so AF
-  # LMS can tell the two apart.
-  defp not_terminal_status("dropout"), do: {:error, :dropout}
-  defp not_terminal_status("archived"), do: {:error, :archived}
+  # next day.
+  #
+  # It reports the existing "dropout" reason code rather than a new one: etl-next
+  # validates preflight results against a fixed list of codes
+  # (orchestrator/flows/holistic_student_profiles_flow.py) and raises on anything
+  # else, so a new code would fail the whole run, not just the archived Student's
+  # record. Give archived its own code once etl-next and AF LMS know the value.
+  defp not_terminal_status(status) when status in ["dropout", "archived"],
+    do: {:error, :dropout}
+
   defp not_terminal_status(_status), do: :ok
 
   defp eligible_grade_number(grade_number) when grade_number in [11, 12], do: :ok

@@ -463,7 +463,8 @@ defmodule DbserviceWeb.HolisticMentorshipProfilePreflightControllerTest do
                rejected("no-grade", "grade_ineligible"),
                rejected("grade-mismatch", "eligibility_inconsistent"),
                rejected("dropout", "dropout"),
-               rejected("archived", "archived")
+               # archived reports the "dropout" code until etl-next knows a new one
+               rejected("archived", "dropout")
              ]
            }
   end

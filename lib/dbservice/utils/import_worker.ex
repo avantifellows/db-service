@@ -941,6 +941,17 @@ defmodule Dbservice.DataImport.ImportWorker do
 
   defp process_archive_for_student(record) do
     case Users.get_student_by_id_or_apaar_id(record) do
+      # A student_id shared across auth groups cannot be resolved here. Once the
+      # lookup imports move to user_id (#819) this import should follow; until then
+      # the row fails with a message an operator can act on, rather than taking the
+      # tuple for a student and crashing the whole file. The message is inline
+      # because the shared renderer arrives with that PR.
+      {:error, {:ambiguous_student, field, value}} ->
+        {:error,
+         "Ambiguous #{field} '#{value}': it matches more than one student. The same " <>
+           "student_id can exist in different auth groups, so this row cannot say which " <>
+           "student to archive."}
+
       nil ->
         {:error,
          "Student not found. student_id: #{record["student_id"]}, apaar_id: #{record["apaar_id"]}"}
