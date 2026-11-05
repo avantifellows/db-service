@@ -640,6 +640,14 @@ defmodule DbserviceWeb.StudentController do
         |> put_status(:ok)
         |> json(%{is_verified: student_exists})
 
+      # The verification params carry no auth group, so this lookup is unscoped and a
+      # student_id shared across auth groups cannot be resolved here. Answering
+      # "verified" off whichever student matched first would verify the wrong person.
+      {:error, {:ambiguous_student, _, _} = reason} ->
+        conn
+        |> put_status(:conflict)
+        |> json(%{error: Users.ambiguous_student_message(reason)})
+
       {:error, :not_found} ->
         conn
         |> put_status(:not_found)

@@ -371,13 +371,16 @@ defmodule Dbservice.Users do
     end
   end
 
-  # Only identifiers the row actually supplies are checked; a blank cell is not a
-  # mismatch, it is simply a row that chose not to cross-check.
+  # Only identifiers both sides actually carry are compared. A blank cell is a row
+  # that chose not to cross-check; a blank *stored* value is no evidence of a
+  # mispasted user_id either - 92% of students have no apaar_id, and those rows
+  # routinely carry one sourced outside db-service.
   defp cross_check_import_identifiers(student, record) do
     mismatch =
       Enum.find_value([{"student_id", :student_id}, {"apaar_id", :apaar_id}], fn {column, field} ->
         with row_value when row_value not in [nil, ""] <- trimmed(record[column]),
-             student_value <- trimmed(Map.get(student, field)),
+             student_value when student_value not in [nil, ""] <-
+               trimmed(Map.get(student, field)),
              true <- row_value != student_value do
           identifier_mismatch_message(student, column, row_value, student_value)
         else
@@ -390,13 +393,9 @@ defmodule Dbservice.Users do
 
   defp identifier_mismatch_message(student, column, row_value, student_value) do
     "user_id #{student.user_id} belongs to the student whose #{column} is " <>
-      "#{format_identifier(student_value)}, but the row's #{column} column says '#{row_value}'. " <>
+      "'#{student_value}', but the row's #{column} column says '#{row_value}'. " <>
       "Fix the row: one of the two columns points at the wrong student."
   end
-
-  defp format_identifier(nil), do: "empty"
-  defp format_identifier(""), do: "empty"
-  defp format_identifier(value), do: "'#{value}'"
 
   defp trimmed(value) when is_binary(value), do: String.trim(value)
   defp trimmed(value), do: value

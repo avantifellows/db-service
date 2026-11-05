@@ -1006,6 +1006,20 @@ defmodule Dbservice.UsersTest do
       assert message =~ "222222222242"
     end
 
+    test "does not treat a student with no apaar_id as a mismatch" do
+      # 92% of students have no apaar_id, while rows routinely carry one sourced
+      # outside db-service; a blank stored value is no evidence of a wrong user_id.
+      {_user, student} = student_fixture(%{student_id: "IMP-NO-APAAR", apaar_id: nil})
+
+      assert {:ok, found} =
+               Users.get_student_for_import(%{
+                 "user_id" => student.user_id,
+                 "apaar_id" => "333333333343"
+               })
+
+      assert found.id == student.id
+    end
+
     test "ignores blank identifier columns" do
       {_user, student} = student_fixture(%{student_id: "IMP-BLANK"})
 

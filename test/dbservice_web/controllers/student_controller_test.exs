@@ -140,6 +140,39 @@ defmodule DbserviceWeb.StudentControllerTest do
     end
   end
 
+  describe "verify student" do
+    test "verifies the student when the student_id resolves to one student", %{conn: conn} do
+      {user, student} = student_fixture(%{student_id: "VERIFY-ONE"})
+
+      conn =
+        post(conn, ~p"/api/student/verify-student", %{
+          "student_id" => student.student_id,
+          "verification_params" => %{"first_name" => user.first_name}
+        })
+
+      assert %{"is_verified" => true} = json_response(conn, 200)
+    end
+
+    test "answers 409 instead of crashing when the student_id matches two students", %{
+      conn: conn
+    } do
+      # No auth group travels with the verification params, so this lookup is
+      # unscoped: verifying against whichever student matched first would answer
+      # for the wrong person.
+      {_user_a, _a} = student_fixture(%{student_id: "VERIFY-SHARED"})
+      {_user_b, _b} = student_fixture(%{student_id: "VERIFY-SHARED"})
+
+      conn =
+        post(conn, ~p"/api/student/verify-student", %{
+          "student_id" => "VERIFY-SHARED",
+          "verification_params" => %{"first_name" => "some first name"}
+        })
+
+      assert %{"error" => message} = json_response(conn, 409)
+      assert message =~ "VERIFY-SHARED"
+    end
+  end
+
   describe "create student" do
     test "renders student when data is valid", %{conn: conn} do
       conn = post(conn, ~p"/api/student", @create_attrs)
