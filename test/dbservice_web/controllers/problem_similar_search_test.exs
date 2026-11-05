@@ -469,14 +469,38 @@ defmodule DbserviceWeb.ProblemSimilarSearchTest do
       assert match["match_score"] == 1.0
     end
 
-    test "a candidate with no options stored is scored on its question alone", %{conn: conn} do
+    test "a candidate with no options at all is not a match for a problem that has them", %{
+      conn: conn
+    } do
       en = language_fixture("o7e")
-      # A subjective problem, or a row written before the backfill: there is
-      # nothing to compare, which is not evidence that it is not a duplicate.
+      # A subjective problem: a request carrying options is for a different kind
+      # of problem, so a shared stem alone must not flag it (issue #777 review).
       stored = problem_fixture()
       problem_lang_fixture(stored, en, @shared_stem)
 
       body = similar_with_options(conn, "o7e", @shared_stem, @planet_options)
+
+      assert body["problems"] == []
+    end
+
+    test "a candidate whose options are images is still scored on its question", %{conn: conn} do
+      en = language_fixture("o7i")
+      # The options exist but strip to nothing, so the stem is the only signal
+      # there is. Dropping these would let an editor re-create an image-option
+      # problem with no warning at all.
+      stored = problem_fixture()
+
+      {:ok, _pl} =
+        ProblemLanguages.create_problem_language(%{
+          res_id: stored.id,
+          lang_id: en.id,
+          meta_data: %{
+            "text" => "<div>#{@shared_stem}</div>",
+            "options" => ["<img src=\"a.png\">", "<img src=\"b.png\">"]
+          }
+        })
+
+      body = similar_with_options(conn, "o7i", @shared_stem, @planet_options)
 
       assert [match] = body["problems"]
       assert match["id"] == stored.id

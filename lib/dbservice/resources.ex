@@ -1688,9 +1688,17 @@ defmodule Dbservice.Resources do
   # the score on the same 0-1 scale and comparable against the one threshold,
   # so nothing downstream has to learn a second number.
   #
-  # The CASE is the no-options-stored fallback; it is written against
-  # `coalesce(..., '')` because the column is NULL on rows written before the
-  # backfill and '' on rows whose meta_data has no options.
+  # A candidate with no comparable options text splits in two (issue #777 review),
+  # and `meta_data` is what tells them apart, since both store '':
+  #
+  #   * options exist but strip to nothing - image-only options, 1,119 of 17,054
+  #     rows - so the stem is the only signal there is. Scored on the question
+  #     alone: having nothing to compare is not evidence that it is not a
+  #     duplicate, and dropping these would let an editor re-create an
+  #     image-option problem with no warning at all.
+  #   * no options at all - a subjective problem, 1,526 rows. A request carrying
+  #     options is for a different kind of problem, so `least(q, 0)` drops it,
+  #     which is what requirement 2 of the issue asks for.
   defp select_match_score(query, normalized, options) do
     from([pl, res: r] in query,
       select: %{
@@ -1699,17 +1707,23 @@ defmodule Dbservice.Resources do
         match_score:
           fragment(
             """
-            CASE WHEN coalesce(?, '') = '' THEN similarity(?, ?)
-                 ELSE least(similarity(?, ?), similarity(?, ?))
+            CASE WHEN coalesce(?, '') <> ''
+                   THEN least(similarity(?, ?), similarity(?, ?))
+                 WHEN jsonb_typeof(? -> 'options') = 'array'
+                      AND jsonb_array_length(? -> 'options') > 0
+                   THEN similarity(?, ?)
+                 ELSE 0
             END
             """,
             pl.options_plain_text,
             pl.question_plain_text,
             ^normalized,
-            pl.question_plain_text,
-            ^normalized,
             pl.options_plain_text,
-            ^options
+            ^options,
+            pl.meta_data,
+            pl.meta_data,
+            pl.question_plain_text,
+            ^normalized
           )
       }
     )
