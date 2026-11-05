@@ -1171,15 +1171,20 @@ defmodule Dbservice.HolisticMentorship do
         log: false
       ).rows
 
-    with :ok <- not_dropout(status),
+    with :ok <- not_terminal_status(status),
          :ok <- eligible_grade_number(grade_number),
          :ok <- consistent_grade(user_id, grade_id) do
       eligible_school(user_id)
     end
   end
 
-  defp not_dropout("dropout"), do: {:error, :dropout}
-  defp not_dropout(_status), do: :ok
+  # Archiving ends a student's active Mappings for the same eligibility reason a
+  # dropout does, so an archived Student must not be eligible to be re-mapped the
+  # next day. It carries its own reason code rather than reusing "dropout", so AF
+  # LMS can tell the two apart.
+  defp not_terminal_status("dropout"), do: {:error, :dropout}
+  defp not_terminal_status("archived"), do: {:error, :archived}
+  defp not_terminal_status(_status), do: :ok
 
   defp eligible_grade_number(grade_number) when grade_number in [11, 12], do: :ok
   defp eligible_grade_number(_grade_number), do: {:error, :grade_ineligible}
