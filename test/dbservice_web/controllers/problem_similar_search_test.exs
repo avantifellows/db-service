@@ -76,12 +76,6 @@ defmodule DbserviceWeb.ProblemSimilarSearchTest do
     pl
   end
 
-  defp similar(conn, languages) do
-    conn
-    |> post(~p"/api/problems/similar-search", %{"languages" => languages})
-    |> json_response(200)
-  end
-
   defp similar(conn, languages, curriculum_id) do
     conn
     |> post(~p"/api/problems/similar-search", %{
@@ -94,17 +88,31 @@ defmodule DbserviceWeb.ProblemSimilarSearchTest do
   describe "POST /api/problems/similar-search" do
     test "empty problem bank returns no matches", %{conn: conn} do
       language_fixture("q1e")
+      physics = curriculum_fixture("q1-physics")
 
-      body = similar(conn, [%{"lang_code" => "q1e", "text" => "<div>#{@electric_vacuum}</div>"}])
+      body =
+        similar(
+          conn,
+          [%{"lang_code" => "q1e", "text" => "<div>#{@electric_vacuum}</div>"}],
+          physics.id
+        )
+
       assert body == %{"problems" => []}
     end
 
     test "returns an exact duplicate with match_score 1.0", %{conn: conn} do
       en = language_fixture("q2e")
+      physics = curriculum_fixture("q2-physics")
       problem = problem_fixture()
+      map_to_curriculum(problem, physics)
       problem_lang_fixture(problem, en, @electric_vacuum)
 
-      body = similar(conn, [%{"lang_code" => "q2e", "text" => "<div>#{@electric_vacuum}</div>"}])
+      body =
+        similar(
+          conn,
+          [%{"lang_code" => "q2e", "text" => "<div>#{@electric_vacuum}</div>"}],
+          physics.id
+        )
 
       assert [match] = body["problems"]
       assert match["id"] == problem.id
@@ -115,13 +123,21 @@ defmodule DbserviceWeb.ProblemSimilarSearchTest do
 
     test "returns a near-duplicate (> 0.75, < 1.0) and excludes unrelated ones", %{conn: conn} do
       en = language_fixture("q3e")
+      physics = curriculum_fixture("q3-physics")
       near = problem_fixture()
       unrelated = problem_fixture()
+      map_to_curriculum(near, physics)
+      map_to_curriculum(unrelated, physics)
       problem_lang_fixture(near, en, @electric_vacuum)
       problem_lang_fixture(unrelated, en, @unrelated)
 
       # Query with a slightly different phrasing of the "near" problem.
-      body = similar(conn, [%{"lang_code" => "q3e", "text" => "<div>#{@electric_air}</div>"}])
+      body =
+        similar(
+          conn,
+          [%{"lang_code" => "q3e", "text" => "<div>#{@electric_air}</div>"}],
+          physics.id
+        )
 
       ids = Enum.map(body["problems"], & &1["id"])
       assert near.id in ids
@@ -135,15 +151,21 @@ defmodule DbserviceWeb.ProblemSimilarSearchTest do
     test "matches per language: only the language with a duplicate returns a hit", %{conn: conn} do
       en = language_fixture("q4e")
       _hi = language_fixture("q4h")
+      physics = curriculum_fixture("q4-physics")
       problem = problem_fixture()
+      map_to_curriculum(problem, physics)
       # Only the English text exists in the bank.
       problem_lang_fixture(problem, en, @electric_vacuum)
 
       body =
-        similar(conn, [
-          %{"lang_code" => "q4e", "text" => "<div>#{@electric_vacuum}</div>"},
-          %{"lang_code" => "q4h", "text" => "<div>#{@electric_vacuum}</div>"}
-        ])
+        similar(
+          conn,
+          [
+            %{"lang_code" => "q4e", "text" => "<div>#{@electric_vacuum}</div>"},
+            %{"lang_code" => "q4h", "text" => "<div>#{@electric_vacuum}</div>"}
+          ],
+          physics.id
+        )
 
       assert [match] = body["problems"]
       assert match["lang_code"] == "q4e"
@@ -153,20 +175,34 @@ defmodule DbserviceWeb.ProblemSimilarSearchTest do
     test "does not match the same text across a different language", %{conn: conn} do
       en = language_fixture("q5e")
       _hi = language_fixture("q5h")
+      physics = curriculum_fixture("q5-physics")
       problem = problem_fixture()
+      map_to_curriculum(problem, physics)
       problem_lang_fixture(problem, en, @electric_vacuum)
 
       # Same text, but queried under a different lang_code — must not match the en row.
-      body = similar(conn, [%{"lang_code" => "q5h", "text" => "<div>#{@electric_vacuum}</div>"}])
+      body =
+        similar(
+          conn,
+          [%{"lang_code" => "q5h", "text" => "<div>#{@electric_vacuum}</div>"}],
+          physics.id
+        )
+
       assert body == %{"problems" => []}
     end
 
     test "unknown lang_code and blank text contribute nothing", %{conn: conn} do
+      physics = curriculum_fixture("q6-physics")
+
       body =
-        similar(conn, [
-          %{"lang_code" => "nope", "text" => "<div>#{@electric_vacuum}</div>"},
-          %{"lang_code" => "q6e", "text" => "<div></div>"}
-        ])
+        similar(
+          conn,
+          [
+            %{"lang_code" => "nope", "text" => "<div>#{@electric_vacuum}</div>"},
+            %{"lang_code" => "q6e", "text" => "<div></div>"}
+          ],
+          physics.id
+        )
 
       assert body == %{"problems" => []}
     end
@@ -203,23 +239,55 @@ defmodule DbserviceWeb.ProblemSimilarSearchTest do
       assert match["id"] == in_scope.id
     end
 
-    test "omitting curriculum_id still matches across curricula", %{conn: conn} do
-      en = language_fixture("c2e")
-      physics = curriculum_fixture("c2-physics")
-      chemistry = curriculum_fixture("c2-chemistry")
+    # The cross-curriculum fallback this endpoint used to fall back to is gone
+    # (issue #833): a request without a usable curriculum_id is now an error
+    # rather than a search of every curriculum.
+    test "400 when curriculum_id is missing", %{conn: conn} do
+      language_fixture("c2e")
 
-      one = problem_fixture()
-      two = problem_fixture()
-      map_to_curriculum(one, physics)
-      map_to_curriculum(two, chemistry)
-      problem_lang_fixture(one, en, @electric_vacuum)
-      problem_lang_fixture(two, en, @electric_vacuum)
+      conn =
+        post(conn, ~p"/api/problems/similar-search", %{
+          "languages" => [%{"lang_code" => "c2e", "text" => "<div>#{@electric_vacuum}</div>"}]
+        })
 
-      body = similar(conn, [%{"lang_code" => "c2e", "text" => "<div>#{@electric_vacuum}</div>"}])
+      assert json_response(conn, 400)["error"] =~ "curriculum_id"
+    end
 
-      ids = Enum.map(body["problems"], & &1["id"])
-      assert one.id in ids
-      assert two.id in ids
+    test "400 when curriculum_id is blank", %{conn: conn} do
+      language_fixture("c2b")
+
+      conn =
+        post(conn, ~p"/api/problems/similar-search", %{
+          "languages" => [%{"lang_code" => "c2b", "text" => "<div>#{@electric_vacuum}</div>"}],
+          "curriculum_id" => ""
+        })
+
+      assert json_response(conn, 400)["error"] =~ "curriculum_id"
+    end
+
+    # Used to raise from String.to_integer/1 and surface as a 500.
+    test "400 when curriculum_id is not an integer", %{conn: conn} do
+      language_fixture("c2n")
+
+      conn =
+        post(conn, ~p"/api/problems/similar-search", %{
+          "languages" => [%{"lang_code" => "c2n", "text" => "<div>#{@electric_vacuum}</div>"}],
+          "curriculum_id" => "abc"
+        })
+
+      assert json_response(conn, 400)["error"] =~ "curriculum_id"
+    end
+
+    test "400 when curriculum_id has trailing characters", %{conn: conn} do
+      language_fixture("c2t")
+
+      conn =
+        post(conn, ~p"/api/problems/similar-search", %{
+          "languages" => [%{"lang_code" => "c2t", "text" => "<div>#{@electric_vacuum}</div>"}],
+          "curriculum_id" => "12abc"
+        })
+
+      assert json_response(conn, 400)["error"] =~ "curriculum_id"
     end
 
     test "a problem mapped to the curriculum twice is returned once", %{conn: conn} do
@@ -259,11 +327,18 @@ defmodule DbserviceWeb.ProblemSimilarSearchTest do
 
       assert scoped == %{"problems" => []}
 
-      # ...but the unscoped fallback still finds it.
-      unscoped =
-        similar(conn, [%{"lang_code" => "c4e", "text" => "<div>#{@electric_vacuum}</div>"}])
+      # The problem exists and its text matches - only the curriculum mapping is
+      # missing, which is now the only way to reach it.
+      map_to_curriculum(unmapped, physics)
 
-      assert [%{"id" => id}] = unscoped["problems"]
+      rescoped =
+        similar(
+          conn,
+          [%{"lang_code" => "c4e", "text" => "<div>#{@electric_vacuum}</div>"}],
+          physics.id
+        )
+
+      assert [%{"id" => id}] = rescoped["problems"]
       assert id == unmapped.id
     end
 
@@ -290,10 +365,18 @@ defmodule DbserviceWeb.ProblemSimilarSearchTest do
   describe "archived problems (issue #745)" do
     test "an archived near-duplicate is not returned", %{conn: conn} do
       en = language_fixture("a1e")
+      physics = curriculum_fixture("a1-physics")
       archived = problem_fixture(%{"cms_status_id" => archived_status().id})
+      map_to_curriculum(archived, physics)
       problem_lang_fixture(archived, en, @electric_vacuum)
 
-      body = similar(conn, [%{"lang_code" => "a1e", "text" => "<div>#{@electric_vacuum}</div>"}])
+      body =
+        similar(
+          conn,
+          [%{"lang_code" => "a1e", "text" => "<div>#{@electric_vacuum}</div>"}],
+          physics.id
+        )
+
       assert body == %{"problems" => []}
     end
 
@@ -321,14 +404,21 @@ defmodule DbserviceWeb.ProblemSimilarSearchTest do
 
     test "a problem with no cms_status is still matched", %{conn: conn} do
       en = language_fixture("a3e")
+      physics = curriculum_fixture("a3-physics")
       # Force the "archived" row to exist, so the filter is actually applied.
       archived_status()
 
       problem = problem_fixture()
       assert is_nil(problem.cms_status_id)
+      map_to_curriculum(problem, physics)
       problem_lang_fixture(problem, en, @electric_vacuum)
 
-      body = similar(conn, [%{"lang_code" => "a3e", "text" => "<div>#{@electric_vacuum}</div>"}])
+      body =
+        similar(
+          conn,
+          [%{"lang_code" => "a3e", "text" => "<div>#{@electric_vacuum}</div>"}],
+          physics.id
+        )
 
       assert [%{"id" => id}] = body["problems"]
       assert id == problem.id
@@ -336,13 +426,20 @@ defmodule DbserviceWeb.ProblemSimilarSearchTest do
 
     test "a problem in a non-archived cms_status is still matched", %{conn: conn} do
       en = language_fixture("a4e")
+      physics = curriculum_fixture("a4-physics")
       archived_status()
       {:ok, live_status} = CmsStatuses.create_cms_status(%{"name" => "a4-in-review"})
 
       problem = problem_fixture(%{"cms_status_id" => live_status.id})
+      map_to_curriculum(problem, physics)
       problem_lang_fixture(problem, en, @electric_vacuum)
 
-      body = similar(conn, [%{"lang_code" => "a4e", "text" => "<div>#{@electric_vacuum}</div>"}])
+      body =
+        similar(
+          conn,
+          [%{"lang_code" => "a4e", "text" => "<div>#{@electric_vacuum}</div>"}],
+          physics.id
+        )
 
       assert [%{"id" => id}] = body["problems"]
       assert id == problem.id
