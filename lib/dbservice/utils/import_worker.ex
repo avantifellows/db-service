@@ -847,9 +847,12 @@ defmodule Dbservice.DataImport.ImportWorker do
   defp nil_or_empty?(value), do: is_nil(value) or value == ""
 
   defp process_student_update_record(record) do
-    # Keyed on user_id. No cross-check here: on this import student_id/apaar_id are
-    # columns the row writes (issue #641 guards them), not identifiers to verify.
-    case Users.get_student_for_import(record, cross_check: false) do
+    # Keyed on user_id, and student_id/apaar_id are cross-checked like everywhere
+    # else: ops confirmed this sheet is for details (name, phone, parents, school),
+    # never for changing a student's identifiers, so a row whose student_id does not
+    # match the user_id's student is a misaligned sheet, not a rename. Correcting an
+    # identifier has its own import.
+    case Users.get_student_for_import(record) do
       {:ok, student} -> StudentUpdateService.update_student_with_user_data(student, record)
       {:error, message} -> {:error, message}
     end
