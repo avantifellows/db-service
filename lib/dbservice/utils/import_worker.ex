@@ -20,6 +20,7 @@ defmodule Dbservice.DataImport.ImportWorker do
   alias Dbservice.Constants.Mappings
   alias Dbservice.Users
   alias Dbservice.Grades
+  alias Dbservice.Services.StudentIdentifierCorrectionService
   alias Dbservice.Services.StudentUpdateService
   alias Dbservice.Services.DropoutService
   alias Dbservice.Services.ReEnrollmentService
@@ -103,6 +104,7 @@ defmodule Dbservice.DataImport.ImportWorker do
       "update_incorrect_grade_to_correct_grade" => &process_grade_update_record/1,
       "update_incorrect_auth_group_to_correct_auth_group" => &process_auth_group_update_record/1,
       "blended_learning_mentor_assignment" => &process_blended_mentor_assignment_record/1,
+      "student_identifier_correction" => &process_student_identifier_correction_record/1,
       "dropout" => &process_dropout_record/1,
       "re_enrollment" => &process_re_enrollment_record/1
     }
@@ -887,6 +889,15 @@ defmodule Dbservice.DataImport.ImportWorker do
 
   defp process_batch_movement_record(record) do
     DataImport.BatchMovement.process_batch_movement(record)
+  end
+
+  defp process_student_identifier_correction_record(record) do
+    # Keyed on user_id, and the row carries no current identifiers to cross-check:
+    # new_student_id/new_apaar_id are the values being written.
+    case Users.get_student_for_import(record, cross_check: false) do
+      {:ok, student} -> StudentIdentifierCorrectionService.process_correction(student, record)
+      {:error, message} -> {:error, message}
+    end
   end
 
   defp process_dropout_record(record) do

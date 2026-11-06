@@ -39,6 +39,13 @@ defmodule DbserviceWeb.Router do
     pipe_through([:browser, :dashboard_auth])
 
     post("/imports/dropout", ImportController, :create_dropout_import)
+
+    post(
+      "/imports/student_identifier_correction",
+      ImportController,
+      :create_student_identifier_correction_import
+    )
+
     post("/imports/re_enrollment", ImportController, :create_re_enrollment_import)
     post("/imports/student_enrollment", ImportController, :create_student_enrollment_import)
     post("/imports/auth_group", ImportController, :create_auth_group_import)
