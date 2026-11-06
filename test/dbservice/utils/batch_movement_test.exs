@@ -13,12 +13,61 @@ defmodule Dbservice.DataImport.BatchMovementTest do
   alias Dbservice.Services.BatchEnrollmentService
 
   describe "process_batch_movement/1" do
+    test "a student_id shared by two students is no longer ambiguous, user_id picks one" do
+      # The same student_id legitimately exists in several auth groups. The row says
+      # which user_id is meant, so the import moves exactly that student and leaves
+      # the other one alone - this is why the lookup imports are keyed on user_id.
+      _enrolled_status = status_fixture(%{title: :enrolled})
+      {_user_a, student_a} = student_fixture(%{student_id: "SHARED001"})
+      {_user_b, student_b} = student_fixture(%{student_id: "SHARED001"})
+      batch = batch_fixture(%{batch_id: "BATCH_SHARED"})
+
+      record = %{
+        "user_id" => student_b.user_id,
+        "student_id" => "SHARED001",
+        "apaar_id" => nil,
+        "batch_id" => batch.batch_id,
+        "grade" => nil,
+        "start_date" => "2024-01-01",
+        "academic_year" => "2024-2025"
+      }
+
+      assert {:ok, "Batch movement processed successfully"} =
+               BatchMovement.process_batch_movement(record)
+
+      assert batch_er_current?(student_b.user_id, batch.id)
+      refute batch_er_current?(student_a.user_id, batch.id)
+    end
+
+    test "fails the row when the user_id's student carries a different student_id" do
+      # A mispasted or shifted user_id would otherwise write silently to an unrelated
+      # student; the optional student_id column is what catches it.
+      {_user, student} = student_fixture(%{student_id: "REAL001"})
+      batch = batch_fixture(%{batch_id: "BATCH_MISMATCH"})
+
+      record = %{
+        "user_id" => student.user_id,
+        "student_id" => "SOMEONE_ELSE",
+        "apaar_id" => nil,
+        "batch_id" => batch.batch_id,
+        "grade" => nil,
+        "start_date" => "2024-01-01",
+        "academic_year" => "2024-2025"
+      }
+
+      assert {:error, message} = BatchMovement.process_batch_movement(record)
+      assert message =~ "REAL001"
+      assert message =~ "SOMEONE_ELSE"
+      refute batch_er_current?(student.user_id, batch.id)
+    end
+
     test "an archived student is rejected, like a dropout" do
       {_user, student} = student_fixture(%{student_id: "ARCHIVED001"})
       {:ok, _student} = Dbservice.Users.update_student(student, %{"status" => "archived"})
 
       assert {:error, message} =
                BatchMovement.process_batch_movement(%{
+                 "user_id" => student.user_id,
                  "student_id" => "ARCHIVED001",
                  "apaar_id" => nil,
                  "batch_id" => "ANY_BATCH",
@@ -64,6 +113,7 @@ defmodule Dbservice.DataImport.BatchMovementTest do
       # "2025-26" fails the enrollment_record academic-year format validation.
       result =
         BatchMovement.process_batch_movement(%{
+          "user_id" => student.user_id,
           "student_id" => "ROLLBACK001",
           "apaar_id" => nil,
           "batch_id" => "RB_NEW",
@@ -91,6 +141,7 @@ defmodule Dbservice.DataImport.BatchMovementTest do
       _enrolled_status = status_fixture(%{title: :enrolled})
 
       record = %{
+        "user_id" => student.user_id,
         "student_id" => student.student_id,
         "apaar_id" => nil,
         "batch_id" => batch.batch_id,
@@ -115,6 +166,7 @@ defmodule Dbservice.DataImport.BatchMovementTest do
       _enrolled_status = status_fixture(%{title: :enrolled})
 
       record = %{
+        "user_id" => student.user_id,
         "student_id" => student.student_id,
         "apaar_id" => nil,
         "batch_id" => batch.batch_id,
@@ -139,6 +191,7 @@ defmodule Dbservice.DataImport.BatchMovementTest do
       _enrolled_status = status_fixture(%{title: :enrolled})
 
       record = %{
+        "user_id" => student.user_id,
         "student_id" => student.student_id,
         "apaar_id" => nil,
         "batch_id" => batch.batch_id,
@@ -154,6 +207,7 @@ defmodule Dbservice.DataImport.BatchMovementTest do
 
     test "returns error when student is not found" do
       record = %{
+        "user_id" => 999_999_999,
         "student_id" => "NONEXISTENT_STUDENT",
         "apaar_id" => "NONEXISTENT_APAAR",
         "batch_id" => "BATCH001",
@@ -163,9 +217,7 @@ defmodule Dbservice.DataImport.BatchMovementTest do
 
       result = BatchMovement.process_batch_movement(record)
 
-      assert {:error,
-              "Student not found. student_id: NONEXISTENT_STUDENT, apaar_id: NONEXISTENT_APAAR"} =
-               result
+      assert {:error, "No student found for user_id 999999999."} = result
     end
 
     test "returns error when batch is not found" do
@@ -178,6 +230,7 @@ defmodule Dbservice.DataImport.BatchMovementTest do
       _enrolled_status = status_fixture(%{title: :enrolled})
 
       record = %{
+        "user_id" => student.user_id,
         "student_id" => student.student_id,
         "apaar_id" => nil,
         "batch_id" => "NONEXISTENT_BATCH",
@@ -201,6 +254,7 @@ defmodule Dbservice.DataImport.BatchMovementTest do
       _enrolled_status = status_fixture(%{title: :enrolled})
 
       record = %{
+        "user_id" => student.user_id,
         "student_id" => student.student_id,
         "apaar_id" => nil,
         "batch_id" => batch.batch_id,
@@ -226,6 +280,7 @@ defmodule Dbservice.DataImport.BatchMovementTest do
 
       # First enrollment
       record1 = %{
+        "user_id" => student.user_id,
         "student_id" => student.student_id,
         "apaar_id" => nil,
         "batch_id" => batch.batch_id,
@@ -239,6 +294,7 @@ defmodule Dbservice.DataImport.BatchMovementTest do
 
       # Second enrollment (should handle already enrolled case)
       record2 = %{
+        "user_id" => student.user_id,
         "student_id" => student.student_id,
         "apaar_id" => nil,
         "batch_id" => batch.batch_id,
@@ -264,6 +320,7 @@ defmodule Dbservice.DataImport.BatchMovementTest do
 
       # First batch movement with grade 8
       record1 = %{
+        "user_id" => student.user_id,
         "student_id" => student.student_id,
         "apaar_id" => nil,
         "batch_id" => batch.batch_id,
@@ -277,6 +334,7 @@ defmodule Dbservice.DataImport.BatchMovementTest do
 
       # Second batch movement with grade 9 (grade change)
       record2 = %{
+        "user_id" => student.user_id,
         "student_id" => student.student_id,
         "apaar_id" => nil,
         "batch_id" => batch.batch_id,
@@ -301,6 +359,7 @@ defmodule Dbservice.DataImport.BatchMovementTest do
       _enrolled_status = status_fixture(%{title: :enrolled})
 
       record = %{
+        "user_id" => student.user_id,
         "student_id" => student.student_id,
         "apaar_id" => nil,
         "batch_id" => batch.batch_id,
@@ -323,6 +382,7 @@ defmodule Dbservice.DataImport.BatchMovementTest do
       _enrolled_status = status_fixture(%{title: :enrolled})
 
       record = %{
+        "user_id" => student.user_id,
         "student_id" => student.student_id,
         "apaar_id" => nil,
         "batch_id" => batch.batch_id,
@@ -445,6 +505,7 @@ defmodule Dbservice.DataImport.BatchMovementTest do
 
   defp movement(student, batch) do
     %{
+      "user_id" => student.user_id,
       "student_id" => student.student_id,
       "apaar_id" => nil,
       "batch_id" => batch.batch_id,

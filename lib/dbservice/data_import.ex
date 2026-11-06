@@ -416,9 +416,25 @@ defmodule Dbservice.DataImport do
     extra_headers = normalized_headers -- all_headers
 
     if not Enum.empty?(missing_required) or not Enum.empty?(extra_headers) do
-      {:error, "Invalid format for #{sheet_type}"}
+      {:error,
+       "Invalid format for #{sheet_type}" <> header_problems(missing_required, extra_headers)}
     else
       :ok
+    end
+  end
+
+  # Ops get this message as a flash on a sheet they then have to fix, so it names the
+  # columns. Rollout of a newly required column (user_id) depends on it.
+  defp header_problems(missing_required, extra_headers) do
+    [
+      {"missing required column(s): ", missing_required},
+      {"unexpected column(s): ", extra_headers}
+    ]
+    |> Enum.reject(fn {_label, columns} -> columns == [] end)
+    |> Enum.map_join("; ", fn {label, columns} -> label <> Enum.join(columns, ", ") end)
+    |> case do
+      "" -> ""
+      problems -> " - " <> problems
     end
   end
 

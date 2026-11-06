@@ -126,25 +126,9 @@ defmodule Dbservice.DataImport.GroupUpdateProcessor do
     end
   end
 
-  # Common student lookup with consistent error handling
-  defp get_student(record) when is_map(record) do
-    student_id = record["student_id"]
-    apaar_id = record["apaar_id"]
-
-    # Validate that at least one identifier is provided
-    if (is_nil(student_id) or student_id == "") and (is_nil(apaar_id) or apaar_id == "") do
-      {:error, "Either student_id or apaar_id is required"}
-    else
-      case Users.get_student_by_id_or_apaar_id(record) do
-        nil ->
-          {:error,
-           "Student not found. student_id: #{inspect(student_id)}, apaar_id: #{inspect(apaar_id)}"}
-
-        student ->
-          {:ok, student}
-      end
-    end
-  end
+  # Common student lookup: keyed on user_id, with student_id/apaar_id as optional
+  # cross-checks. See `Users.get_student_for_import/1`.
+  defp get_student(record) when is_map(record), do: Users.get_student_for_import(record)
 
   # academic_year is a required header for school movement, but a given row may
   # leave it blank; guard so we fail that row clearly instead of mis-scoping.

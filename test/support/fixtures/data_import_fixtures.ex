@@ -126,11 +126,12 @@ defmodule Dbservice.DataImportFixtures do
   tuple. `apaar_id`/`first_name` may be "" to omit that column value for a row.
   """
   def student_update_csv_content(rows) do
-    header = "student_id,student_apaar_id,user_first_name"
+    # Lookup imports are keyed on user_id; student_id is the optional cross-check.
+    header = "user_id,student_id,student_apaar_id,user_first_name"
 
     body =
-      Enum.map_join(rows, "\n", fn {student_id, apaar_id, first_name} ->
-        "#{student_id},#{apaar_id},#{first_name}"
+      Enum.map_join(rows, "\n", fn {user_id, student_id, apaar_id, first_name} ->
+        "#{user_id},#{student_id},#{apaar_id},#{first_name}"
       end)
 
     header <> "\n" <> body <> "\n"
