@@ -33,6 +33,24 @@ defmodule Dbservice.Services.StudentEligibilityCleanupTest do
              ]
   end
 
+  test "an archive transition ends the Student's active Holistic Mapping" do
+    %{mapping_id: mapping_id, student: student} = insert_mapping_scope()
+
+    assert {:ok, updated_student} =
+             StudentUpdateService.update_student_with_user_data(student, %{"status" => "archived"})
+
+    assert updated_student.status == "archived"
+
+    assert Repo.query!(
+             """
+             SELECT ended_at IS NOT NULL, end_source, end_reason
+             FROM holistic_mentorship_mentor_mentee_mappings
+             WHERE id = $1
+             """,
+             [mapping_id]
+           ).rows == [[true, "db_service_student_eligibility", "student_archived"]]
+  end
+
   test "a canonical Grade change ends the Student's active Holistic Mapping" do
     %{mapping_id: mapping_id, student: student} = insert_mapping_scope()
     old_grade_id = insert_grade(11)
