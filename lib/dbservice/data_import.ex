@@ -49,6 +49,7 @@ defmodule Dbservice.DataImport do
   def format_type_name("blended_learning_mentor_assignment"),
     do: "Blended Learning Mentor Assignment"
 
+  def format_type_name("student_identifier_correction"), do: "Student ID / APAAR ID Correction"
   def format_type_name("dropout"), do: "Student Dropout"
   def format_type_name("re_enrollment"), do: "Student Re-Enrollment After Dropout"
 

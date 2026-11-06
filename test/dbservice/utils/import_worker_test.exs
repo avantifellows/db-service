@@ -344,7 +344,9 @@ defmodule Dbservice.DataImport.ImportWorkerTest do
 
       first_error = List.first(updated_import.error_details)
       assert Map.has_key?(first_error, "row")
-      assert first_error["error"] =~ "APAAR ID '222222222222' already exists for another student"
+      # The row is now rejected before any write: this sheet does not change
+      # identifiers, so another student's apaar_id in it is a misaligned sheet.
+      assert first_error["error"] =~ "apaar_id column says '222222222222'"
 
       # No duplicate created: the other student keeps its APAAR ID and the target row is untouched.
       assert Users.get_student!(other.id).apaar_id == "222222222222"
@@ -392,7 +394,7 @@ defmodule Dbservice.DataImport.ImportWorkerTest do
       assert updated_import.error_count > 0
 
       first_error = List.first(updated_import.error_details)
-      assert first_error["error"] =~ "APAAR ID '222222222223' already exists for another student"
+      assert first_error["error"] =~ "apaar_id column says '222222222223'"
 
       # Neither student's APAAR ID changed.
       assert Users.get_student!(other.id).apaar_id == "222222222223"
