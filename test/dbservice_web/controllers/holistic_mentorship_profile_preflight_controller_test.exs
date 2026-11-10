@@ -412,6 +412,7 @@ defmodule DbserviceWeb.HolisticMentorshipProfilePreflightControllerTest do
     {missing_grade_user, _student} = eligible_student(11, "NO-GRADE")
     {mismatched_grade_user, _student} = eligible_student(11, "GRADE-MISMATCH")
     {dropout_user, _student} = eligible_student(11, "DROPOUT")
+    {archived_user, _student} = eligible_student(11, "ARCHIVED")
 
     remove_group_membership(school_program_user.id, "batch")
 
@@ -438,6 +439,8 @@ defmodule DbserviceWeb.HolisticMentorshipProfilePreflightControllerTest do
 
     Repo.query!("UPDATE student SET status = 'dropout' WHERE user_id = $1", [dropout_user.id])
 
+    Repo.query!("UPDATE student SET status = 'archived' WHERE user_id = $1", [archived_user.id])
+
     records = [
       preflight_record("school-program", school_program_user.id, prompt_configuration_id),
       preflight_record("school", school_user.id, prompt_configuration_id),
@@ -445,7 +448,8 @@ defmodule DbserviceWeb.HolisticMentorshipProfilePreflightControllerTest do
       preflight_record("grade-10", grade_10_user.id, prompt_configuration_id),
       preflight_record("no-grade", missing_grade_user.id, prompt_configuration_id),
       preflight_record("grade-mismatch", mismatched_grade_user.id, prompt_configuration_id),
-      preflight_record("dropout", dropout_user.id, prompt_configuration_id)
+      preflight_record("dropout", dropout_user.id, prompt_configuration_id),
+      preflight_record("archived", archived_user.id, prompt_configuration_id)
     ]
 
     assert conn
@@ -458,7 +462,9 @@ defmodule DbserviceWeb.HolisticMentorshipProfilePreflightControllerTest do
                rejected("grade-10", "grade_ineligible"),
                rejected("no-grade", "grade_ineligible"),
                rejected("grade-mismatch", "eligibility_inconsistent"),
-               rejected("dropout", "dropout")
+               rejected("dropout", "dropout"),
+               # archived reports the "dropout" code until etl-next knows a new one
+               rejected("archived", "dropout")
              ]
            }
   end

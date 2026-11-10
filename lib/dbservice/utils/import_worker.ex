@@ -21,6 +21,7 @@ defmodule Dbservice.DataImport.ImportWorker do
   alias Dbservice.Users
   alias Dbservice.Grades
   alias Dbservice.Services.StudentUpdateService
+  alias Dbservice.Services.ArchiveService
   alias Dbservice.Services.DropoutService
   alias Dbservice.Services.ReEnrollmentService
   alias Dbservice.Services.EnrollmentService
@@ -104,6 +105,7 @@ defmodule Dbservice.DataImport.ImportWorker do
       "update_incorrect_auth_group_to_correct_auth_group" => &process_auth_group_update_record/1,
       "blended_learning_mentor_assignment" => &process_blended_mentor_assignment_record/1,
       "dropout" => &process_dropout_record/1,
+      "archive" => &process_archive_record/1,
       "re_enrollment" => &process_re_enrollment_record/1
     }
 
@@ -891,6 +893,18 @@ defmodule Dbservice.DataImport.ImportWorker do
     case Users.get_student_for_import(record) do
       {:ok, student} ->
         DropoutService.process_dropout(student, record["start_date"], record["academic_year"])
+
+      {:error, message} ->
+        {:error, message}
+    end
+  end
+
+  defp process_archive_record(record) do
+    # Keyed on user_id like every other lookup import; student_id/apaar_id are
+    # optional cross-checks.
+    case Users.get_student_for_import(record) do
+      {:ok, student} ->
+        ArchiveService.process_archive(student, record["start_date"], record["academic_year"])
 
       {:error, message} ->
         {:error, message}

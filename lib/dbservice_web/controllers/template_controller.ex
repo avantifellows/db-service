@@ -25,6 +25,7 @@ defmodule DbserviceWeb.TemplateController do
          "alumni_addition",
          "batch_movement",
          "dropout",
+         "archive",
          "re_enrollment",
          "teacher_batch_assignment",
          "batch_id_correction",

@@ -93,7 +93,8 @@ defmodule Dbservice.Constants.Mappings do
         "update_incorrect_school_to_correct_school",
         "update_incorrect_grade_to_correct_grade",
         "update_incorrect_auth_group_to_correct_auth_group",
-        "student_school_movement"
+        "student_school_movement",
+        "archive"
       ],
       optional: [],
       type: :integer
@@ -111,6 +112,7 @@ defmodule Dbservice.Constants.Mappings do
         "batch_movement",
         "student_update",
         "dropout",
+        "archive",
         "re_enrollment",
         "student_enrollment",
         "update_incorrect_batch_id_to_correct_batch_id",
@@ -393,6 +395,7 @@ defmodule Dbservice.Constants.Mappings do
         "student_update",
         "batch_movement",
         "dropout",
+        "archive",
         "alumni_addition",
         "re_enrollment",
         "update_incorrect_batch_id_to_correct_batch_id",
@@ -436,6 +439,7 @@ defmodule Dbservice.Constants.Mappings do
         "teacher_addition",
         "teacher_batch_assignment",
         "dropout",
+        "archive",
         "re_enrollment",
         "student_enrollment",
         "student_school_movement",
@@ -664,6 +668,7 @@ defmodule Dbservice.Constants.Mappings do
         "teacher_addition",
         "teacher_batch_assignment",
         "dropout",
+        "archive",
         "re_enrollment",
         "student_enrollment"
       ],

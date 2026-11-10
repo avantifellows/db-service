@@ -50,6 +50,7 @@ defmodule Dbservice.DataImport do
     do: "Blended Learning Mentor Assignment"
 
   def format_type_name("dropout"), do: "Student Dropout"
+  def format_type_name("archive"), do: "Student Archive"
   def format_type_name("re_enrollment"), do: "Student Re-Enrollment After Dropout"
 
   def format_type_name(type), do: String.capitalize(type)
