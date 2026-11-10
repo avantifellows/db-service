@@ -34,6 +34,11 @@ defmodule Dbservice.Repo.Migrations.MergeRetiredSkills do
   the safety net for a change the data itself cannot reconstruct - once Recall
   and Fundamental are one id, nothing left on the resource says which of the
   two it carried.
+
+  This file first shipped as `20261022120000`, the same version as
+  `create_blended_learning_student_links`. That migration ran first on staging
+  and prod, so the version was already recorded and this one was skipped. It was
+  renumbered so it runs. The backup tables keep their original names.
   """
   use Ecto.Migration
 
