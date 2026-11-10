@@ -21,6 +21,7 @@ defmodule Dbservice.DataImport.ImportWorker do
   alias Dbservice.Users
   alias Dbservice.Grades
   alias Dbservice.Services.StudentUpdateService
+  alias Dbservice.Services.ArchiveService
   alias Dbservice.Services.DropoutService
   alias Dbservice.Services.ReEnrollmentService
   alias Dbservice.Services.EnrollmentService
@@ -104,6 +105,7 @@ defmodule Dbservice.DataImport.ImportWorker do
       "update_incorrect_auth_group_to_correct_auth_group" => &process_auth_group_update_record/1,
       "blended_learning_mentor_assignment" => &process_blended_mentor_assignment_record/1,
       "dropout" => &process_dropout_record/1,
+      "archive" => &process_archive_record/1,
       "re_enrollment" => &process_re_enrollment_record/1
     }
 
@@ -763,6 +765,9 @@ defmodule Dbservice.DataImport.ImportWorker do
       nil ->
         create_student_with_enrollments(record)
 
+      {:error, {:ambiguous_student, _, _} = reason} ->
+        {:error, Users.ambiguous_student_message(reason)}
+
       %Dbservice.Users.Student{} = existing_student ->
         {:error, build_student_exists_error_message(existing_student)}
     end
@@ -844,21 +849,11 @@ defmodule Dbservice.DataImport.ImportWorker do
   defp nil_or_empty?(value), do: is_nil(value) or value == ""
 
   defp process_student_update_record(record) do
-    # Accept either student_id or apaar_id (like addition and batch movement)
-    student_id = record["student_id"]
-    apaar_id = record["apaar_id"]
-
-    if (is_nil(student_id) or student_id == "") and (is_nil(apaar_id) or apaar_id == "") do
-      {:error, "Either student_id or apaar_id is required for student updates"}
-    else
-      case Users.get_student_by_id_or_apaar_id(record) do
-        nil ->
-          {:error,
-           "Student not found. student_id: #{record["student_id"]}, apaar_id: #{record["apaar_id"]}"}
-
-        student ->
-          StudentUpdateService.update_student_with_user_data(student, record)
-      end
+    # Keyed on user_id. No cross-check here: on this import student_id/apaar_id are
+    # columns the row writes (issue #641 guards them), not identifiers to verify.
+    case Users.get_student_for_import(record, cross_check: false) do
+      {:ok, student} -> StudentUpdateService.update_student_with_user_data(student, record)
+      {:error, message} -> {:error, message}
     end
   end
 
@@ -872,27 +867,20 @@ defmodule Dbservice.DataImport.ImportWorker do
   # (via a group_user row or a current enrollment record), it is a hard error so
   # already-enrolled students are surfaced rather than silently no-oped.
   defp process_student_enrollment_record(record) do
-    student_id = record["student_id"]
-    apaar_id = record["apaar_id"]
+    # Keyed on user_id; student_id/apaar_id are optional cross-checks.
+    case Users.get_student_for_import(record) do
+      {:error, message} ->
+        {:error, message}
 
-    if (is_nil(student_id) or student_id == "") and (is_nil(apaar_id) or apaar_id == "") do
-      {:error, "Either student_id or apaar_id is required for student enrollment"}
-    else
-      case Users.get_student_by_id_or_apaar_id(record) do
-        nil ->
-          {:error,
-           "Student not found. student_id: #{record["student_id"]}, apaar_id: #{record["apaar_id"]}"}
+      {:ok, student} ->
+        student = Dbservice.Repo.preload(student, [:user])
 
-        student ->
-          student = Dbservice.Repo.preload(student, [:user])
-
-          with :ok <- EnrollmentService.validate_row_memberships_absent(student.user.id, record),
-               {:ok, _} <- DataImport.StudentEnrollment.create_enrollments(student.user, record) do
-            {:ok, student}
-          else
-            {:error, reason} -> {:error, reason}
-          end
-      end
+        with :ok <- EnrollmentService.validate_row_memberships_absent(student.user.id, record),
+             {:ok, _} <- DataImport.StudentEnrollment.create_enrollments(student.user, record) do
+          {:ok, student}
+        else
+          {:error, reason} -> {:error, reason}
+        end
     end
   end
 
@@ -901,50 +889,33 @@ defmodule Dbservice.DataImport.ImportWorker do
   end
 
   defp process_dropout_record(record) do
-    # Accept either student_id or apaar_id (like batch movement)
-    student_id = record["student_id"]
-    apaar_id = record["apaar_id"]
+    # Keyed on user_id; student_id/apaar_id are optional cross-checks.
+    case Users.get_student_for_import(record) do
+      {:ok, student} ->
+        DropoutService.process_dropout(student, record["start_date"], record["academic_year"])
 
-    if (is_nil(student_id) or student_id == "") and (is_nil(apaar_id) or apaar_id == "") do
-      {:error, "Either student_id or apaar_id is required for dropout"}
-    else
-      process_dropout_for_student(record)
+      {:error, message} ->
+        {:error, message}
     end
   end
 
-  defp process_dropout_for_student(record) do
-    case Users.get_student_by_id_or_apaar_id(record) do
-      nil ->
-        {:error,
-         "Student not found. student_id: #{record["student_id"]}, apaar_id: #{record["apaar_id"]}"}
+  defp process_archive_record(record) do
+    # Keyed on user_id like every other lookup import; student_id/apaar_id are
+    # optional cross-checks.
+    case Users.get_student_for_import(record) do
+      {:ok, student} ->
+        ArchiveService.process_archive(student, record["start_date"], record["academic_year"])
 
-      student ->
-        start_date = record["start_date"]
-        academic_year = record["academic_year"]
-        DropoutService.process_dropout(student, start_date, academic_year)
+      {:error, message} ->
+        {:error, message}
     end
   end
 
   defp process_re_enrollment_record(record) do
-    # Accept either student_id or apaar_id
-    student_id = record["student_id"]
-    apaar_id = record["apaar_id"]
-
-    if (is_nil(student_id) or student_id == "") and (is_nil(apaar_id) or apaar_id == "") do
-      {:error, "Either student_id or apaar_id is required for re-enrollment"}
-    else
-      process_re_enrollment_for_student(record)
-    end
-  end
-
-  defp process_re_enrollment_for_student(record) do
-    case Users.get_student_by_id_or_apaar_id(record) do
-      nil ->
-        {:error,
-         "Student not found. student_id: #{record["student_id"]}, apaar_id: #{record["apaar_id"]}"}
-
-      student ->
-        ReEnrollmentService.process_re_enrollment(student, record)
+    # Keyed on user_id; student_id/apaar_id are optional cross-checks.
+    case Users.get_student_for_import(record) do
+      {:ok, student} -> ReEnrollmentService.process_re_enrollment(student, record)
+      {:error, message} -> {:error, message}
     end
   end
 
@@ -1724,6 +1695,9 @@ defmodule Dbservice.DataImport.ImportWorker do
 
   defp get_or_create_student_pk(record, student_identifier) do
     case Users.get_student_by_student_id(student_identifier) do
+      {:error, {:ambiguous_student, _, _} = reason} ->
+        {:error, Users.ambiguous_student_message(reason)}
+
       nil ->
         case Users.create_student_with_user(record) do
           {:ok, %Dbservice.Users.Student{id: student_pk}} -> {:ok, student_pk}

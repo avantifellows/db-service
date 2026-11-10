@@ -79,24 +79,47 @@ defmodule Dbservice.Constants.Mappings do
     },
 
     # Student fields
+    # The lookup imports are keyed on user_id: it is the only student identifier that
+    # is unique on its own, where a student_id is unique only within an auth group.
+    "user_id" => %{
+      db_field: "user_id",
+      required: [
+        "student_update",
+        "student_enrollment",
+        "batch_movement",
+        "dropout",
+        "re_enrollment",
+        "update_incorrect_batch_id_to_correct_batch_id",
+        "update_incorrect_school_to_correct_school",
+        "update_incorrect_grade_to_correct_grade",
+        "update_incorrect_auth_group_to_correct_auth_group",
+        "student_school_movement",
+        "archive"
+      ],
+      optional: [],
+      type: :integer
+    },
+    # Optional on the lookup imports, where it is only a cross-check against the
+    # user_id's student; still the key for student addition, which has no user yet.
     "student_id" => %{
       db_field: "student_id",
       required: [
         "student",
         "alumni_addition",
-        "update_incorrect_batch_id_to_correct_batch_id",
-        "update_incorrect_school_to_correct_school",
-        "student_school_movement",
-        "update_incorrect_grade_to_correct_grade",
-        "update_incorrect_auth_group_to_correct_auth_group",
         "blended_learning_mentor_assignment"
       ],
       optional: [
         "batch_movement",
         "student_update",
         "dropout",
+        "archive",
         "re_enrollment",
-        "student_enrollment"
+        "student_enrollment",
+        "update_incorrect_batch_id_to_correct_batch_id",
+        "update_incorrect_school_to_correct_school",
+        "update_incorrect_grade_to_correct_grade",
+        "update_incorrect_auth_group_to_correct_auth_group",
+        "student_school_movement"
       ],
       type: :string
     },
@@ -372,6 +395,7 @@ defmodule Dbservice.Constants.Mappings do
         "student_update",
         "batch_movement",
         "dropout",
+        "archive",
         "alumni_addition",
         "re_enrollment",
         "update_incorrect_batch_id_to_correct_batch_id",
@@ -415,6 +439,7 @@ defmodule Dbservice.Constants.Mappings do
         "teacher_addition",
         "teacher_batch_assignment",
         "dropout",
+        "archive",
         "re_enrollment",
         "student_enrollment",
         "student_school_movement",
@@ -643,6 +668,7 @@ defmodule Dbservice.Constants.Mappings do
         "teacher_addition",
         "teacher_batch_assignment",
         "dropout",
+        "archive",
         "re_enrollment",
         "student_enrollment"
       ],

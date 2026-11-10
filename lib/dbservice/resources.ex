@@ -104,12 +104,9 @@ defmodule Dbservice.Resources do
       # ids appear in the test's type_params (the order the test defines).
       |> order_problems_by_ids(problem_ids)
 
-    resource_topic_by_resource_id = resource_topics_by_resource_id(problem_ids)
-
     Enum.map(problems, fn resource ->
       %{
         resource: resource,
-        resource_topic: Map.get(resource_topic_by_resource_id, resource.id, %{}),
         resource_curriculums: resource.resource_curriculum,
         problem_lang: %{},
         requested_curriculum_id: curriculum_id
@@ -147,16 +144,11 @@ defmodule Dbservice.Resources do
       # order the ids appear in the test's type_params (the order the test defines).
       |> order_problems_by_ids(problem_ids)
 
-    # topic_id lives on the resource_topic join table, not on the resource
-    # itself, so fetch the mapping separately and attach it per problem.
-    resource_topic_by_resource_id = resource_topics_by_resource_id(problem_ids)
-
     Enum.map(problems, fn resource ->
       problem_lang = Enum.find(resource.problem_language, &(&1.lang_id == lang_id))
 
       %{
         resource: resource,
-        resource_topic: Map.get(resource_topic_by_resource_id, resource.id, %{}),
         resource_curriculums: resource.resource_curriculum,
         problem_lang: problem_lang || %{},
         requested_curriculum_id: curriculum_id
@@ -174,17 +166,6 @@ defmodule Dbservice.Resources do
     |> Enum.uniq()
     |> Enum.map(&Map.get(problems_by_id, &1))
     |> Enum.reject(&is_nil/1)
-  end
-
-  # Returns a map of resource_id => resource_topic record for the given
-  # resources. A problem maps to a single topic in the response, so the first
-  # resource_topic per resource is kept.
-  defp resource_topics_by_resource_id(resource_ids) do
-    from(rt in ResourceTopic, where: rt.resource_id in ^resource_ids)
-    |> Repo.all()
-    |> Enum.reduce(%{}, fn rt, acc ->
-      Map.put_new(acc, rt.resource_id, rt)
-    end)
   end
 
   @doc """
@@ -987,29 +968,81 @@ defmodule Dbservice.Resources do
     end
   end
 
+  @doc """
+  Normalizes a `topic_ids` list from request params into a deduplicated list of
+  integer topic ids, dropping anything that is not a usable id.
+  """
+  def normalize_topic_ids(topic_ids) when is_list(topic_ids) do
+    topic_ids
+    |> Enum.map(&normalize_chapter_topic_id/1)
+    |> Enum.reject(&is_nil/1)
+    |> Enum.uniq()
+  end
+
+  def normalize_topic_ids(_), do: []
+
+  # `topic_ids` is the full desired set of topics for the resource: topics missing
+  # from the database are added, topics no longer listed are removed, and `[]`
+  # clears every mapping. The legacy singular `topic_id` describes the same set
+  # with at most one member. When neither key is sent the mappings are left alone,
+  # which is what lets a move to another chapter keep the problem's topics
+  # (issue #784).
   defp update_resource_topic(resource, params) do
-    if Map.has_key?(params, "topic_id") do
-      requested_topic_id = params["topic_id"]
+    cond do
+      Map.has_key?(params, "topic_ids") ->
+        sync_resource_topics(resource, normalize_topic_ids(params["topic_ids"]))
 
-      current_topic_ids =
-        from(rt in ResourceTopic, where: rt.resource_id == ^resource.id, select: rt.topic_id)
-        |> Repo.all()
-        |> MapSet.new()
+      Map.has_key?(params, "topic_id") ->
+        sync_resource_topics(resource, normalize_topic_ids(List.wrap(params["topic_id"])))
 
-      requested_set =
-        if requested_topic_id, do: MapSet.new([requested_topic_id]), else: MapSet.new()
+      true ->
+        :ok
+    end
+  end
 
-      if requested_set != current_topic_ids do
-        from(rt in ResourceTopic, where: rt.resource_id == ^resource.id)
-        |> Repo.delete_all()
+  # The deletes and inserts run in one transaction. None of the three callers of
+  # update_resource_and_associations/2 opens one, so without it a failing insert
+  # (a topic_id that no longer exists, say) would leave the deletes committed and
+  # the problem short of its topics. create_resource_topic!/1 raises rather than
+  # returning an ignored {:error, changeset}, which aborts the transaction and
+  # leaves the existing mappings as they were.
+  defp sync_resource_topics(resource, requested_topic_ids) do
+    current_topic_ids =
+      from(rt in ResourceTopic, where: rt.resource_id == ^resource.id, select: rt.topic_id)
+      |> Repo.all()
+      |> MapSet.new()
 
-        if requested_topic_id do
-          Dbservice.ResourceTopics.create_resource_topic(%{
-            "resource_id" => resource.id,
-            "topic_id" => requested_topic_id
-          })
-        end
-      end
+    requested_set = MapSet.new(requested_topic_ids)
+    removed = MapSet.difference(current_topic_ids, requested_set)
+    added = MapSet.difference(requested_set, current_topic_ids)
+
+    if Enum.empty?(removed) and Enum.empty?(added) do
+      :ok
+    else
+      {:ok, :ok} =
+        Repo.transaction(fn ->
+          delete_resource_topics(resource, removed)
+
+          Enum.each(added, fn topic_id ->
+            Dbservice.ResourceTopics.create_resource_topic!(%{
+              "resource_id" => resource.id,
+              "topic_id" => topic_id
+            })
+          end)
+        end)
+
+      :ok
+    end
+  end
+
+  defp delete_resource_topics(resource, removed) do
+    if not Enum.empty?(removed) do
+      removed = MapSet.to_list(removed)
+
+      from(rt in ResourceTopic,
+        where: rt.resource_id == ^resource.id and rt.topic_id in ^removed
+      )
+      |> Repo.delete_all()
     end
   end
 
@@ -1536,10 +1569,11 @@ defmodule Dbservice.Resources do
   for duplicate-problem detection (issue #700).
 
   `languages` is a list of `%{"lang_code" => code, "text" => html}` entries (one
-  per language of the problem being saved). Matching is scoped per language: each
-  entry's text is normalized (see `ProblemText`) and trigram-compared only against
+  per language of the problem being saved), each optionally carrying
+  `"options" => [html, ...]`. Matching is scoped per language: each entry's text
+  is normalized (see `ProblemText`) and trigram-compared only against
   `problem_lang` rows in the same language. Returns matches with
-  `similarity > #{@similarity_threshold}` (the pg_trgm `%` operator is strictly
+  `match_score > #{@similarity_threshold}` (the pg_trgm `%` operator is strictly
   greater than the threshold), at most #{@similarity_limit} per language, each
   tagged with the `lang_code` it matched on, merged and sorted by `match_score`
   descending:
@@ -1559,6 +1593,29 @@ defmodule Dbservice.Resources do
 
   Entries with blank text, an unknown `lang_code`, or no matches contribute
   nothing.
+
+  ## Options (issue #777)
+
+  When an entry carries a non-empty `options` list, `match_score` becomes
+  `least(question similarity, options similarity)` instead of the question
+  similarity alone, so a candidate has to be close on *both* to clear the
+  threshold. This is what the CMS needs: a stem like "Which of the following is
+  correct?" is shared by many unrelated problems, and warning the editor about
+  every one of them is worse than not warning at all. On real data this drops
+  about three quarters of today's flagged pairs, and the ones it drops have
+  options that are nowhere near each other.
+
+  The options of one problem are compared as a single joined string. pg_trgm
+  scores trigram *sets*, so the same four options in a different order score
+  1.0 - shuffling the options of a duplicate does not hide it.
+
+  A candidate with no options stored (a subjective problem, or a row written
+  before the backfill) is scored on its question alone rather than being
+  dropped: having nothing to compare is not evidence that it is not a
+  duplicate.
+
+  Omitting `options`, or sending an empty list, leaves behaviour exactly as it
+  was, so callers that have not been updated are unaffected.
   """
   def similar_problems(languages, curriculum_id \\ nil)
 
@@ -1574,10 +1631,11 @@ defmodule Dbservice.Resources do
     lang_code = entry["lang_code"] || entry[:lang_code]
     text = entry["text"] || entry[:text]
     normalized = ProblemText.to_plain_text(text)
+    options = normalized_options(entry)
 
     with true <- is_binary(lang_code) and normalized != "",
          %Language{id: lang_id} <- Repo.get_by(Language, code: lang_code) do
-      query_similar_problems(lang_id, lang_code, normalized, curriculum_id)
+      query_similar_problems(lang_id, lang_code, normalized, options, curriculum_id)
     else
       _ -> []
     end
@@ -1585,33 +1643,54 @@ defmodule Dbservice.Resources do
 
   defp similar_problems_for_entry(_, _), do: []
 
+  # nil, not "", for "this request has no options to compare": an entry that
+  # omits options, sends an empty list, sends something that is not a list, or
+  # sends options that are blank once the HTML is stripped all take the
+  # question-only path that callers had before issue #777.
+  defp normalized_options(entry) do
+    case ProblemText.options_to_plain_text(entry["options"] || entry[:options]) do
+      "" -> nil
+      options -> options
+    end
+  end
+
   # Uses the `%` operator (backed by the GIN trigram index) with a
-  # transaction-local similarity threshold, then orders by the exact similarity
-  # score. Runs inside a transaction so set_config's local scope applies to the
-  # query on the same connection.
-  defp query_similar_problems(lang_id, lang_code, normalized, curriculum_id) do
+  # transaction-local similarity threshold to pick candidates on the question,
+  # then scores, filters and orders those candidates in an outer query. Runs
+  # inside a transaction so set_config's local scope applies to the query on the
+  # same connection.
+  #
+  # The score has to be available to the SELECT, the WHERE and the ORDER BY, so
+  # it is computed once in a subquery and read back as a column rather than
+  # written out three times. The planner inlines the subquery, so the GIN index
+  # still drives candidate selection.
+  defp query_similar_problems(lang_id, lang_code, normalized, options, curriculum_id) do
     {:ok, matches} =
       Repo.transaction(fn ->
         Repo.query!("SELECT set_config('pg_trgm.similarity_threshold', $1, true)", [
           Float.to_string(@similarity_threshold)
         ])
 
-        from(pl in ProblemLanguage,
-          join: r in Resource,
-          as: :res,
-          on: r.id == pl.res_id,
-          where:
-            pl.lang_id == ^lang_id and fragment("? % ?", pl.question_plain_text, ^normalized),
-          order_by: [desc: fragment("similarity(?, ?)", pl.question_plain_text, ^normalized)],
-          limit: @similarity_limit,
-          select: %{
-            id: r.id,
-            code: r.code,
-            match_score: fragment("similarity(?, ?)", pl.question_plain_text, ^normalized)
-          }
+        scored =
+          from(pl in ProblemLanguage,
+            join: r in Resource,
+            as: :res,
+            on: r.id == pl.res_id,
+            where:
+              pl.lang_id == ^lang_id and fragment("? % ?", pl.question_plain_text, ^normalized)
+          )
+          |> select_match_score(normalized, options)
+          |> scope_similar_to_curriculum(curriculum_id)
+          |> exclude_archived_problems()
+
+        # Redundant for the question-only score, which the `%` operator has
+        # already filtered on, and the point of the exercise for the combined
+        # one: a candidate whose options are far away is cut here.
+        from(s in subquery(scored),
+          where: s.match_score > ^@similarity_threshold,
+          order_by: [desc: s.match_score],
+          limit: @similarity_limit
         )
-        |> scope_similar_to_curriculum(curriculum_id)
-        |> exclude_archived_problems()
         |> Repo.all()
       end)
 
@@ -1623,6 +1702,64 @@ defmodule Dbservice.Resources do
         match_score: Float.round(m.match_score * 1.0, 4)
       }
     end)
+  end
+
+  # Question only — the behaviour every caller had before issue #777.
+  defp select_match_score(query, normalized, nil) do
+    from([pl, res: r] in query,
+      select: %{
+        id: r.id,
+        code: r.code,
+        match_score: fragment("similarity(?, ?)", pl.question_plain_text, ^normalized)
+      }
+    )
+  end
+
+  # `least`, not an average: the ask is that a candidate only scores high when
+  # the question *and* the options are close, and an average lets a perfect stem
+  # carry completely different options over the threshold. `least` also keeps
+  # the score on the same 0-1 scale and comparable against the one threshold,
+  # so nothing downstream has to learn a second number.
+  #
+  # A candidate with no comparable options text splits in two (issue #777 review),
+  # and `meta_data` is what tells them apart, since both store '':
+  #
+  #   * options exist but strip to nothing - image-only options, 1,119 of 17,054
+  #     rows - so the stem is the only signal there is. Scored on the question
+  #     alone: having nothing to compare is not evidence that it is not a
+  #     duplicate, and dropping these would let an editor re-create an
+  #     image-option problem with no warning at all.
+  #   * no options at all - a subjective problem, 1,526 rows. A request carrying
+  #     options is for a different kind of problem, so `least(q, 0)` drops it,
+  #     which is what requirement 2 of the issue asks for.
+  defp select_match_score(query, normalized, options) do
+    from([pl, res: r] in query,
+      select: %{
+        id: r.id,
+        code: r.code,
+        match_score:
+          fragment(
+            """
+            CASE WHEN coalesce(?, '') <> ''
+                   THEN least(similarity(?, ?), similarity(?, ?))
+                 WHEN jsonb_typeof(? -> 'options') = 'array'
+                      AND jsonb_array_length(? -> 'options') > 0
+                   THEN similarity(?, ?)
+                 ELSE 0
+            END
+            """,
+            pl.options_plain_text,
+            pl.question_plain_text,
+            ^normalized,
+            pl.options_plain_text,
+            ^options,
+            pl.meta_data,
+            pl.meta_data,
+            pl.question_plain_text,
+            ^normalized
+          )
+      }
+    )
   end
 
   # A semi-join, not a plain join: a problem can have several resource_curriculum

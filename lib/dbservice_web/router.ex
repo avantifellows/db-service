@@ -34,11 +34,12 @@ defmodule DbserviceWeb.Router do
     get("/templates/:type/download", TemplateController, :download_csv_template)
   end
 
-  # Protected endpoints (basic auth) for dropout, re-enrollment, auth group, product, program, batch imports
+  # Protected endpoints (basic auth) for dropout, archive, re-enrollment, auth group, product, program, batch imports
   scope "/", DbserviceWeb do
     pipe_through([:browser, :dashboard_auth])
 
     post("/imports/dropout", ImportController, :create_dropout_import)
+    post("/imports/archive", ImportController, :create_archive_import)
     post("/imports/re_enrollment", ImportController, :create_re_enrollment_import)
     post("/imports/student_enrollment", ImportController, :create_student_enrollment_import)
     post("/imports/auth_group", ImportController, :create_auth_group_import)

@@ -215,8 +215,16 @@ defmodule Dbservice.Users do
   auth-group-scoped match (the student in *that* group, or `nil`). This is what identity-
   sensitive callers should do so they never act on another auth group's student.
 
-  Without a resolvable auth group it falls back to the earliest-created matching student,
-  rather than raising `Ecto.MultipleResultsError` (which `Repo.get_by/2` would on duplicates).
+  Without a resolvable auth group there is nothing to disambiguate with, so an id that
+  matches more than one student returns `{:error, {:ambiguous_student, :student_id, id}}`.
+  Callers must surface that to the operator instead of acting on a guess - silently taking
+  one of the matches writes to the wrong student.
+
+  ## Returns
+
+    * `%Student{}` - exactly one match
+    * `nil` - no match
+    * `{:error, {:ambiguous_student, field, value}}` - more than one match
 
   ## Examples
       iex> get_student_by_student_id("1234")
@@ -234,12 +242,38 @@ defmodule Dbservice.Users do
   end
 
   defp get_student_by_student_id_unscoped(student_id) do
-    from(s in Student,
-      where: s.student_id == ^student_id,
-      order_by: [asc: s.id],
-      limit: 1
-    )
-    |> Repo.one()
+    find_student(:student_id, student_id)
+  end
+
+  @doc """
+  Renders an `{:ambiguous_student, field, value}` reason for an import row.
+
+  The reader is an operator holding a sheet, so the message names the column to add.
+  Only `student_id` is resolvable that way; any other field matching twice is a
+  duplicate that has to be cleaned up before the row can be imported.
+  """
+  def ambiguous_student_message({:ambiguous_student, :student_id, value}) do
+    "Ambiguous student_id '#{value}': it matches more than one student. The same student_id " <>
+      "can exist in different auth groups, so add a `user_id` column (or an `auth_group`) to " <>
+      "identify which student is meant."
+  end
+
+  def ambiguous_student_message({:ambiguous_student, field, value}) do
+    "Ambiguous #{field} '#{value}': it matches more than one student. The duplicate has to be " <>
+      "resolved before this row can be imported."
+  end
+
+  @doc """
+  Renders an `{:ambiguous_student, field, value}` reason for an API response.
+
+  API callers cannot "add a column": the message says what the request could not
+  decide and who can fix it, since AF LMS surfaces this text to its own users.
+  """
+  def ambiguous_student_api_message({:ambiguous_student, field, value}) do
+    "More than one student matches #{field} '#{value}', so this request cannot tell them " <>
+      "apart. The same student_id can exist in more than one auth group: send the student's " <>
+      "auth group if this endpoint accepts one, otherwise ask the data team to resolve the " <>
+      "duplicate."
   end
 
   @doc """
@@ -261,18 +295,32 @@ defmodule Dbservice.Users do
       %Student{}
       iex> get_student_by_id_or_apaar_id(%{"student_id" => nil, "apaar_id" => nil})
       nil
+
+  Returns `{:error, {:ambiguous_student, field, value}}` when an identifier matches more
+  than one student; the apaar_id fallback is only tried when student_id matched nothing.
   """
   def get_student_by_id_or_apaar_id(record) when is_map(record) do
-    find_student(:student_id, record["student_id"]) ||
-      find_student(:apaar_id, record["apaar_id"])
+    case find_student(:student_id, record["student_id"]) do
+      nil -> find_student(:apaar_id, record["apaar_id"])
+      result -> result
+    end
   end
 
   def get_student_by_id_pen_or_apaar_id(record) when is_map(record) do
-    [
+    matches = [
       find_student(:student_id, record["student_id"]),
       find_student(:pen_number, record["pen_number"]),
       find_student(:apaar_id, record["apaar_id"])
     ]
+
+    case Enum.find(matches, &match?({:error, _}, &1)) do
+      nil -> single_identifier_match(matches)
+      ambiguous -> ambiguous
+    end
+  end
+
+  defp single_identifier_match(matches) do
+    matches
     |> Enum.reject(&is_nil/1)
     |> Enum.uniq_by(& &1.id)
     |> case do
@@ -282,8 +330,135 @@ defmodule Dbservice.Users do
     end
   end
 
+  @doc """
+  Resolves the student a lookup-import row refers to, keyed on `user_id`.
+
+  `user_id` is the key because it is the only student identifier that is unique on its
+  own: `student_id` is unique only within an auth group, and production holds 476
+  `student_id` values that match two different students.
+
+  `student_id` and `apaar_id` stay available as *optional* columns, used only as a
+  cross-check. When a row carries one, the student found by `user_id` must actually
+  carry that identifier, otherwise the row fails. This is what catches a mispasted or
+  shifted `user_id`, which would otherwise write silently to an unrelated student.
+
+  ## Options
+
+    * `:cross_check` - defaults to `true`. Pass `false` for an import where those
+      columns are values being written rather than identifiers (student_update can
+      set a student's `student_id`/`apaar_id`, guarded by
+      `validate_identifier_conflicts/2`), so a differing value is an edit, not a
+      mismatch.
+
+  ## Returns
+
+    * `{:ok, %Student{}}` - the row resolves to exactly one student
+    * `{:error, message}` - operator-facing reason the row cannot be resolved
+  """
+  def get_student_for_import(record, opts \\ []) when is_map(record) do
+    with {:ok, user_id} <- cast_import_user_id(record["user_id"]),
+         {:ok, student} <- student_by_user_id(user_id) do
+      if Keyword.get(opts, :cross_check, true),
+        do: cross_check_import_identifiers(student, record),
+        else: {:ok, student}
+    end
+  end
+
+  defp cast_import_user_id(value) when value in [nil, ""] do
+    {:error,
+     "user_id is required. A student_id can belong to more than one student, so the row " <>
+       "must say which user_id is meant."}
+  end
+
+  defp cast_import_user_id(value) when is_integer(value), do: {:ok, value}
+
+  defp cast_import_user_id(value) when is_binary(value) do
+    case Integer.parse(String.trim(value)) do
+      {user_id, ""} -> {:ok, user_id}
+      _ -> {:error, "Invalid user_id '#{value}': it must be the numeric user_id of the student."}
+    end
+  end
+
+  defp cast_import_user_id(value),
+    do: {:error, "Invalid user_id '#{inspect(value)}': it must be the numeric user_id."}
+
+  defp student_by_user_id(user_id) do
+    case find_student(:user_id, user_id) do
+      nil -> {:error, "No student found for user_id #{user_id}."}
+      {:error, reason} -> {:error, ambiguous_student_message(reason)}
+      student -> {:ok, student}
+    end
+  end
+
+  # Only identifiers both sides actually carry are compared. A blank cell is a row
+  # that chose not to cross-check; a blank *stored* value is no evidence of a
+  # mispasted user_id either - 92% of students have no apaar_id, and those rows
+  # routinely carry one sourced outside db-service.
+  defp cross_check_import_identifiers(student, record) do
+    mismatch =
+      Enum.find_value([{"student_id", :student_id}, {"apaar_id", :apaar_id}], fn {column, field} ->
+        case trimmed(record[column]) do
+          row_value when row_value in [nil, ""] -> nil
+          row_value -> cross_check_identifier(student, column, field, row_value)
+        end
+      end)
+
+    if mismatch, do: {:error, mismatch}, else: {:ok, student}
+  end
+
+  defp cross_check_identifier(student, column, field, row_value) do
+    case trimmed(Map.get(student, field)) do
+      stored when stored in [nil, ""] ->
+        identifier_held_elsewhere(student, column, field, row_value)
+
+      ^row_value ->
+        nil
+
+      stored ->
+        identifier_mismatch_message(student, column, row_value, stored)
+    end
+  end
+
+  # db-service not holding the identifier is normal - 684,658 of 743,955 students have no
+  # apaar_id, while sheets carry one sourced from the APAAR list - so a blank stored value
+  # cannot fail the row on its own. It is evidence of a wrong user_id only when the value
+  # belongs to *another* student, and then the row contradicts itself.
+  defp identifier_held_elsewhere(student, column, field, row_value) do
+    case find_student(field, row_value) do
+      nil -> nil
+      _another_student -> identifier_elsewhere_message(student, column, row_value)
+    end
+  end
+
+  defp identifier_mismatch_message(student, column, row_value, student_value) do
+    "user_id #{student.user_id} belongs to the student whose #{column} is " <>
+      "'#{student_value}', but the row's #{column} column says '#{row_value}'. " <>
+      "Fix the row: one of the two columns points at the wrong student."
+  end
+
+  defp identifier_elsewhere_message(student, column, row_value) do
+    "user_id #{student.user_id} belongs to a student with no #{column} on record, but the " <>
+      "row's #{column} '#{row_value}' belongs to a different student. Fix the row: the " <>
+      "user_id is pointing at the wrong student."
+  end
+
+  defp trimmed(value) when is_binary(value), do: String.trim(value)
+  defp trimmed(value), do: value
+
+  # `student_id` is only unique within an auth group, so an unscoped lookup can match
+  # several students. Fetch two rows to tell "one" from "more than one" and report the
+  # ambiguity rather than raising (`Repo.get_by/2`) or picking the lowest id.
   defp find_student(_field, value) when value in [nil, ""], do: nil
-  defp find_student(field, value), do: Repo.get_by(Student, [{field, value}])
+
+  defp find_student(field, value) do
+    from(s in Student, where: field(s, ^field) == ^value, order_by: [asc: s.id], limit: 2)
+    |> Repo.all()
+    |> case do
+      [] -> nil
+      [student] -> student
+      [_, _] -> {:error, {:ambiguous_student, field, value}}
+    end
+  end
 
   @doc """
   Gets a student scoped to an auth group.
@@ -478,6 +653,11 @@ defmodule Dbservice.Users do
       cond do
         student.status != updated_student.status and updated_student.status == "dropout" ->
           :student_dropout
+
+        # Archiving is a terminal status like dropout, so it ends active
+        # Holistic mappings for the same eligibility reason.
+        student.status != updated_student.status and updated_student.status == "archived" ->
+          :student_archived
 
         student.grade_id != updated_student.grade_id ->
           :student_grade_changed
@@ -691,8 +871,16 @@ defmodule Dbservice.Users do
     apaar_id = params["apaar_id"]
 
     # Use the existing function to find student
-    existing_student = get_student_by_id_or_apaar_id(params)
+    case get_student_by_id_or_apaar_id(params) do
+      {:error, {:ambiguous_student, _, _} = reason} ->
+        {:error, ambiguous_student_message(reason)}
 
+      existing_student ->
+        validate_found_student(existing_student, student_id, apaar_id)
+    end
+  end
+
+  defp validate_found_student(existing_student, student_id, apaar_id) do
     # Determine which identifier was used to find the student (for validation)
     {student_by_id, student_by_apaar} =
       determine_matching_identifiers(existing_student, student_id, apaar_id)
@@ -1284,12 +1472,25 @@ defmodule Dbservice.Users do
   Gets a student by id and group.
   """
   def get_student_by_id_and_group(id, group) do
-    case group do
-      "EnableStudents" ->
-        Repo.one(from s in Student, where: s.apaar_id == ^id or s.student_id == ^id)
+    base =
+      case group do
+        "EnableStudents" ->
+          from(s in Student, where: s.apaar_id == ^id or s.student_id == ^id)
 
-      _ ->
-        Repo.one(from s in Student, where: s.student_id == ^id)
+        _ ->
+          from(s in Student, where: s.student_id == ^id)
+      end
+
+    # The "EnableStudents" branch matches on either column, so the ambiguity cannot be
+    # attributed to student_id specifically.
+    field = if group == "EnableStudents", do: :identifier, else: :student_id
+
+    from(s in base, order_by: [asc: s.id], limit: 2)
+    |> Repo.all()
+    |> case do
+      [] -> nil
+      [student] -> student
+      [_, _] -> {:error, {:ambiguous_student, field, id}}
     end
   end
 
