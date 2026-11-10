@@ -7,6 +7,11 @@ defmodule DbserviceWeb.CollegeJSON do
     render(college)
   end
 
+  # Already-shaped %{college_id, name} maps from Colleges.list_college_names/1
+  def names(%{college_names: college_names}) do
+    college_names
+  end
+
   def render(college) do
     %{
       college_id: college.college_id,
