@@ -51,6 +51,12 @@ annotate() { # level file message
 fail() { errors=$((errors + 1)); annotate error "$1" "$2"; }
 warn() { annotate warning "$1" "$2"; }
 die() { echo "check_migration_versions: $*" >&2; exit 2; }
+stop_if_errors() {
+  if [ "$errors" -gt 0 ]; then
+    echo "Found $errors migration version problem(s)."
+    exit 1
+  fi
+}
 
 # Read migration paths on stdin and print "version<TAB>name<TAB>path".
 # Matches Ecto.Migrator: <integer>_<name>.exs anywhere under the directory
@@ -70,22 +76,44 @@ parse_migrations() {
 
 tree="$(find "$MIGRATIONS_DIR" -type f -name '*.exs' | sort | parse_migrations)"
 
+# Migrations already in BASE_REF have been merged and may have run on staging
+# and prod; the rest are new on this branch. The tree check words its advice
+# by that, and works without it when BASE_REF is missing.
+base_known=0
+base_paths=""
+if git rev-parse --verify --quiet "$BASE_REF^{commit}" > /dev/null; then
+  base_known=1
+  base_paths="$(git ls-tree -r --name-only "$BASE_REF" -- "$MIGRATIONS_DIR")"
+fi
+
+rename_new="to an unused timestamp from 'mix ecto.gen.migration' (not a round ...120000 one)"
+rename_merged="Both are already merged, so a database that ran one has probably skipped the other. Check schema_migrations on staging and prod to see which was skipped, and rename that one $rename_new. A renamed migration is pending again everywhere, so it also re-runs wherever it did run: rename it only if it is safe to run twice (guarded or idempotent), or insert its new version into schema_migrations on those databases first."
+
 # 1. No version or name may appear twice in this tree. On a PR this is the
 #    merge of the PR into its base, so it also catches a clash with main.
+#    Every file in a clash is annotated; the clash counts as one problem.
 for field in 1 2; do
-  if [ "$field" = 1 ]; then
-    what=version
-    why="A database that has run one of these files records the version and silently skips the other. Rename one to an unused timestamp from 'mix ecto.gen.migration' (not a round ...120000 one)."
-  else
-    what=name
-    why="Ecto refuses to run two pending migrations with the same name. Rename one."
-  fi
+  [ "$field" = 1 ] && what=version || what=name
   for dup in $(printf '%s\n' "$tree" | cut -f"$field" | sort | uniq -d); do
     files="$(printf '%s\n' "$tree" | awk -F'\t' -v f="$field" -v d="$dup" '$f == d { print $3 }')"
+    new_files=""
+    if [ "$base_known" = 1 ]; then
+      new_files="$(printf '%s\n' "$files" | grep -vxF -f <(printf '%s\n' "$base_paths") || true)"
+    fi
+    if [ "$field" = 2 ]; then
+      why="Ecto refuses to run two pending migrations with the same name. Rename one."
+    elif [ "$base_known" = 1 ] && [ -z "$new_files" ]; then
+      why="$rename_merged"
+    elif [ -n "$new_files" ] && [ "$(printf '%s\n' "$new_files" | wc -l)" -lt "$(printf '%s\n' "$files" | wc -l)" ]; then
+      why="A database that has run one of these files records the version and silently skips the other. Rename the one this branch adds ($(printf '%s\n' "$new_files" | paste -sd ' ' -)) $rename_new."
+    else
+      why="A database that has run one of these files records the version and silently skips the other. Rename one $rename_new."
+    fi
     for file in $files; do
       others="$(printf '%s\n' "$files" | grep -vxF "$file" | tr '\n' ' ')"
-      fail "$file" "migration $what $dup is also used by ${others% }. $why"
+      annotate error "$file" "migration $what $dup is also used by ${others% }. $why"
     done
+    errors=$((errors + 1))
   done
 done
 
@@ -93,23 +121,22 @@ count="$(printf '%s\n' "$tree" | grep -c . || true)"
 echo "Checked $count migrations in $MIGRATIONS_DIR for duplicate versions and names."
 
 if [ "${SKIP_OPEN_PRS:-}" = 1 ]; then
-  [ "$errors" -eq 0 ] || exit 1
+  stop_if_errors
   echo "Skipping the open-PR comparison (SKIP_OPEN_PRS=1)."
   exit 0
 fi
 
 # 2. Migrations this branch adds must not share a version with migrations that
 #    another open PR to TARGET_BRANCH adds.
-git rev-parse --verify --quiet "$BASE_REF^{commit}" > /dev/null ||
+[ "$base_known" = 1 ] ||
   die "base ref '$BASE_REF' not found (fetch it, or set BASE_REF)"
 
-base_paths="$(git ls-tree -r --name-only "$BASE_REF" -- "$MIGRATIONS_DIR")"
 added="$(printf '%s\n' "$tree" | awk -F'\t' 'NR == FNR { base[$0] = 1; next } !($3 in base)' \
   <(printf '%s\n' "$base_paths") - | grep . || true)"
 
 if [ -z "$added" ]; then
   echo "This branch adds no migrations relative to $BASE_REF; nothing to compare with open PRs."
-  [ "$errors" -eq 0 ] || exit 1
+  stop_if_errors
   exit 0
 fi
 
@@ -230,8 +257,5 @@ done <<< "$prs"
 
 echo "Compared with $compared other open PR(s) to $TARGET_BRANCH in $repo."
 
-if [ "$errors" -gt 0 ]; then
-  echo "Found $errors migration version problem(s)."
-  exit 1
-fi
+stop_if_errors
 echo "No migration version collisions."

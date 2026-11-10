@@ -135,7 +135,26 @@ migration "$M/20261002120000_add_c.exs" AddC
 commit
 run "duplicate version in the tree fails" 1 \
   "ERROR: $M/20261002120000_add_c.exs: migration version 20261002120000 is also used by $M/20261002120000_create_b.exs" \
-  "ERROR: $M/20261002120000_create_b.exs: migration version 20261002120000"
+  "ERROR: $M/20261002120000_create_b.exs: migration version 20261002120000" \
+  "Rename the one this branch adds ($M/20261002120000_add_c.exs)" \
+  "Found 1 migration version problem(s)."
+
+# --- duplicate version where both files are new on this branch ---------------
+new_repo
+migration "$M/20261005120000_add_c.exs" AddC
+migration "$M/20261005120000_add_d.exs" AddD
+commit
+SKIP_OPEN_PRS=1 run "duplicate version between two new files says rename one" 1 \
+  "migration version 20261005120000 is also used by" "Rename one to an unused timestamp" \
+  "Found 1 migration version problem(s)."
+
+# --- duplicate version already merged: renaming re-runs it -------------------
+new_repo
+migration "$M/20261002120000_add_c.exs" AddC
+commit
+git branch -qf main HEAD
+run "duplicate version already in the base warns that a rename re-runs it" 1 \
+  "Both are already merged" "safe to run twice" "Found 1 migration version problem(s)."
 
 # --- duplicate version that differs only by leading zeros (Ecto parses ints) --
 new_repo
