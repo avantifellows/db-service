@@ -1050,7 +1050,9 @@ defmodule Dbservice.UsersTest do
       assert found.id == student.id
     end
 
-    test "skips the cross-check when the columns are values being written" do
+    test "cross_check: false resolves on user_id alone" do
+      # Kept for an import whose row legitimately writes a new identifier; the
+      # lookup imports, student_update included, all cross-check.
       {_user, student} = student_fixture(%{student_id: "IMP-RENAME"})
 
       assert {:ok, found} =

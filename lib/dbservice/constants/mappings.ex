@@ -93,10 +93,27 @@ defmodule Dbservice.Constants.Mappings do
         "update_incorrect_school_to_correct_school",
         "update_incorrect_grade_to_correct_grade",
         "update_incorrect_auth_group_to_correct_auth_group",
-        "student_school_movement"
+        "student_school_movement",
+        "student_identifier_correction"
       ],
       optional: [],
       type: :integer
+    },
+    # The only import that writes a student's identifiers: ops confirmed the
+    # Update Student Details sheet never changes them. Named new_* so a sheet
+    # cannot be read as carrying the current values, which everywhere else are a
+    # cross-check rather than something to write.
+    "new_student_id" => %{
+      db_field: "new_student_id",
+      required: [],
+      optional: ["student_identifier_correction"],
+      type: :string
+    },
+    "new_apaar_id" => %{
+      db_field: "new_apaar_id",
+      required: [],
+      optional: ["student_identifier_correction"],
+      type: :string
     },
     # Optional on the lookup imports, where it is only a cross-check against the
     # user_id's student; still the key for student addition, which has no user yet.
