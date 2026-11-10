@@ -774,7 +774,7 @@ defmodule Dbservice.UsersTest do
       assert message =~ "APAAR ID"
     end
 
-    test "get_student_by_student_id returns earliest match without raising on duplicates" do
+    test "get_student_by_student_id reports ambiguity instead of guessing on duplicates" do
       setup_auth_group("AuthA")
       setup_auth_group("AuthB")
 
@@ -784,11 +784,52 @@ defmodule Dbservice.UsersTest do
       assert {:ok, %Student{} = second} =
                Users.create_or_update_student(student_params("S1", "AuthB"))
 
-      # Two rows now share student_id "S1"; the legacy single-id lookup must not raise
-      # Ecto.MultipleResultsError and should return the earliest-created row deterministically.
+      # Two rows now share student_id "S1". The unscoped lookup has nothing to pick between
+      # them with, so it must neither raise Ecto.MultipleResultsError nor silently return
+      # one of them - callers have to surface the ambiguity to the operator.
       assert first.id < second.id
+
+      assert {:error, {:ambiguous_student, :student_id, "S1"}} =
+               Users.get_student_by_student_id("S1")
+    end
+
+    test "get_student_by_student_id still resolves a unique id and a missing id" do
+      setup_auth_group("AuthA")
+
+      assert {:ok, %Student{} = only} =
+               Users.create_or_update_student(student_params("S1", "AuthA"))
+
       assert %Student{id: id} = Users.get_student_by_student_id("S1")
-      assert id == first.id
+      assert id == only.id
+      assert is_nil(Users.get_student_by_student_id("does-not-exist"))
+    end
+
+    test "get_student_by_id_or_apaar_id reports ambiguity and does not fall through to apaar_id" do
+      setup_auth_group("AuthA")
+      setup_auth_group("AuthB")
+
+      assert {:ok, %Student{}} =
+               Users.create_or_update_student(
+                 student_params("S1", "AuthA", %{"apaar_id" => "123456789012"})
+               )
+
+      assert {:ok, %Student{}} = Users.create_or_update_student(student_params("S1", "AuthB"))
+
+      # A shared student_id must stop the row, not quietly resolve via the apaar_id of
+      # whichever student happened to carry one.
+      assert {:error, {:ambiguous_student, :student_id, "S1"}} =
+               Users.get_student_by_id_or_apaar_id(%{
+                 "student_id" => "S1",
+                 "apaar_id" => "123456789012"
+               })
+    end
+
+    test "ambiguous_student_message names the columns that disambiguate" do
+      message = Users.ambiguous_student_message({:ambiguous_student, :student_id, "S1"})
+
+      assert message =~ "S1"
+      assert message =~ "auth_group"
+      assert message =~ "user_id"
     end
 
     test "get_student_by_student_id scopes to the auth group when one is supplied" do
@@ -889,6 +930,136 @@ defmodule Dbservice.UsersTest do
 
       assert Users.get_student_by_student_id_and_auth_group("S1", auth_a.id).apaar_id ==
                "111111111111"
+    end
+  end
+
+  describe "get_student_for_import/2" do
+    import Dbservice.UsersFixtures
+
+    test "resolves the student by user_id" do
+      {_user, student} = student_fixture(%{student_id: "IMP-001"})
+
+      assert {:ok, found} = Users.get_student_for_import(%{"user_id" => student.user_id})
+      assert found.id == student.id
+    end
+
+    test "accepts the user_id as the string a CSV row carries" do
+      {_user, student} = student_fixture(%{student_id: "IMP-002"})
+
+      assert {:ok, found} =
+               Users.get_student_for_import(%{"user_id" => " #{student.user_id} "})
+
+      assert found.id == student.id
+    end
+
+    test "picks the right student when two share a student_id" do
+      {_user_a, a} = student_fixture(%{student_id: "IMP-SHARED"})
+      {_user_b, b} = student_fixture(%{student_id: "IMP-SHARED"})
+
+      assert {:ok, found} =
+               Users.get_student_for_import(%{
+                 "user_id" => b.user_id,
+                 "student_id" => "IMP-SHARED"
+               })
+
+      assert found.id == b.id
+      refute found.id == a.id
+    end
+
+    test "fails a row with no user_id" do
+      assert {:error, message} = Users.get_student_for_import(%{"student_id" => "IMP-001"})
+      assert message =~ "user_id is required"
+    end
+
+    test "fails a row whose user_id is not a number" do
+      assert {:error, message} = Users.get_student_for_import(%{"user_id" => "not-a-number"})
+      assert message =~ "Invalid user_id"
+    end
+
+    test "fails a row whose user_id matches no student" do
+      assert {:error, "No student found for user_id 999999999."} =
+               Users.get_student_for_import(%{"user_id" => 999_999_999})
+    end
+
+    test "fails a row whose student_id belongs to a different student" do
+      {_user, student} = student_fixture(%{student_id: "IMP-REAL"})
+
+      assert {:error, message} =
+               Users.get_student_for_import(%{
+                 "user_id" => student.user_id,
+                 "student_id" => "IMP-OTHER"
+               })
+
+      assert message =~ "IMP-REAL"
+      assert message =~ "IMP-OTHER"
+    end
+
+    test "fails a row whose apaar_id belongs to a different student" do
+      {_user, student} = student_fixture(%{student_id: "IMP-AP", apaar_id: "111111111141"})
+
+      assert {:error, message} =
+               Users.get_student_for_import(%{
+                 "user_id" => student.user_id,
+                 "apaar_id" => "222222222242"
+               })
+
+      assert message =~ "222222222242"
+    end
+
+    test "fails a row whose apaar_id belongs to another student, even with none stored" do
+      # The row holds the proof that the user_id is wrong: that apaar_id is someone
+      # else's. Only an identifier db-service does not know at all is let through.
+      {_user, target} = student_fixture(%{student_id: "IMP-NONE", apaar_id: nil})
+
+      {_other_user, _other} =
+        student_fixture(%{student_id: "IMP-OWNER", apaar_id: "444444444454"})
+
+      assert {:error, message} =
+               Users.get_student_for_import(%{
+                 "user_id" => target.user_id,
+                 "apaar_id" => "444444444454"
+               })
+
+      assert message =~ "belongs to a different student"
+    end
+
+    test "does not treat a student with no apaar_id as a mismatch" do
+      # 92% of students have no apaar_id, while rows routinely carry one sourced
+      # outside db-service; a blank stored value is no evidence of a wrong user_id.
+      {_user, student} = student_fixture(%{student_id: "IMP-NO-APAAR", apaar_id: nil})
+
+      assert {:ok, found} =
+               Users.get_student_for_import(%{
+                 "user_id" => student.user_id,
+                 "apaar_id" => "333333333343"
+               })
+
+      assert found.id == student.id
+    end
+
+    test "ignores blank identifier columns" do
+      {_user, student} = student_fixture(%{student_id: "IMP-BLANK"})
+
+      assert {:ok, found} =
+               Users.get_student_for_import(%{
+                 "user_id" => student.user_id,
+                 "student_id" => "",
+                 "apaar_id" => nil
+               })
+
+      assert found.id == student.id
+    end
+
+    test "skips the cross-check when the columns are values being written" do
+      {_user, student} = student_fixture(%{student_id: "IMP-RENAME"})
+
+      assert {:ok, found} =
+               Users.get_student_for_import(
+                 %{"user_id" => student.user_id, "student_id" => "IMP-RENAMED"},
+                 cross_check: false
+               )
+
+      assert found.id == student.id
     end
   end
 

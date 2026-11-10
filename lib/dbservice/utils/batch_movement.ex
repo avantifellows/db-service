@@ -4,7 +4,7 @@ defmodule Dbservice.DataImport.BatchMovement do
   @moduledoc """
   This module handles batch movement processing for importing student batch changes.
   It processes batch movement records by:
-  1. Finding the student by student_id or apaar_id
+  1. Finding the student by user_id (student_id/apaar_id cross-check the row)
   2. Finding the new batch by batch_id
   3. Updating group_user records to reflect the new batch
   4. Creating new enrollment records for the new batch (isCurrent=true)
@@ -21,13 +21,10 @@ defmodule Dbservice.DataImport.BatchMovement do
   alias Dbservice.Utils.ChangesetFormatter
 
   def process_batch_movement(record) do
-    case Users.get_student_by_id_or_apaar_id(record) do
-      nil ->
-        {:error,
-         "Student not found. student_id: #{record["student_id"]}, apaar_id: #{record["apaar_id"]}"}
-
-      student ->
-        process_student_with_batch(student, record)
+    # Keyed on user_id; student_id/apaar_id are optional cross-checks.
+    case Users.get_student_for_import(record) do
+      {:ok, student} -> process_student_with_batch(student, record)
+      {:error, message} -> {:error, message}
     end
   end
 

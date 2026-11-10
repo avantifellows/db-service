@@ -43,6 +43,7 @@ defmodule Dbservice.DataImport.GroupUpdateProcessorTest do
         })
 
       record = %{
+        "user_id" => student.user_id,
         "student_id" => student.student_id,
         "old_batch_id" => old_batch.batch_id,
         "batch_id" => new_batch.batch_id
@@ -55,21 +56,21 @@ defmodule Dbservice.DataImport.GroupUpdateProcessorTest do
 
     test "returns error when student is not found" do
       record = %{
-        "student_id" => "NONEXISTENT_STUDENT",
+        "user_id" => 999_999_999,
         "old_batch_id" => "OLD_BATCH",
         "batch_id" => "NEW_BATCH"
       }
 
       result = GroupUpdateProcessor.process_batch_id_update(record)
 
-      assert {:error, "Student not found. student_id: \"NONEXISTENT_STUDENT\", apaar_id: nil"} =
-               result
+      assert {:error, "No student found for user_id 999999999."} = result
     end
 
     test "returns error when old batch is not found" do
       {_user, student} = student_fixture(%{student_id: "STUDENT001"})
 
       record = %{
+        "user_id" => student.user_id,
         "student_id" => student.student_id,
         "old_batch_id" => "NONEXISTENT_BATCH",
         "batch_id" => "NEW_BATCH"
@@ -85,6 +86,7 @@ defmodule Dbservice.DataImport.GroupUpdateProcessorTest do
       old_batch = batch_fixture(%{batch_id: "OLD_BATCH"})
 
       record = %{
+        "user_id" => student.user_id,
         "student_id" => student.student_id,
         "old_batch_id" => old_batch.batch_id,
         "batch_id" => "NONEXISTENT_BATCH"
@@ -101,6 +103,7 @@ defmodule Dbservice.DataImport.GroupUpdateProcessorTest do
       new_batch = batch_fixture(%{batch_id: "NEW_BATCH"})
 
       record = %{
+        "user_id" => student.user_id,
         "student_id" => student.student_id,
         "old_batch_id" => old_batch.batch_id,
         "batch_id" => new_batch.batch_id
@@ -142,6 +145,7 @@ defmodule Dbservice.DataImport.GroupUpdateProcessorTest do
       mapping_id = insert_active_mapping(student.id)
 
       record = %{
+        "user_id" => student.user_id,
         "student_id" => student.student_id,
         "school_code" => school.code
       }
@@ -158,20 +162,20 @@ defmodule Dbservice.DataImport.GroupUpdateProcessorTest do
 
     test "returns error when student is not found" do
       record = %{
-        "student_id" => "NONEXISTENT_STUDENT",
+        "user_id" => 999_999_999,
         "school_code" => "SCHOOL001"
       }
 
       result = GroupUpdateProcessor.process_school_update(record)
 
-      assert {:error, "Student not found. student_id: \"NONEXISTENT_STUDENT\", apaar_id: nil"} =
-               result
+      assert {:error, "No student found for user_id 999999999."} = result
     end
 
     test "returns error when school is not found" do
       {_user, student} = student_fixture(%{student_id: "STUDENT001"})
 
       record = %{
+        "user_id" => student.user_id,
         "student_id" => student.student_id,
         "school_code" => "NONEXISTENT_SCHOOL"
       }
@@ -186,6 +190,7 @@ defmodule Dbservice.DataImport.GroupUpdateProcessorTest do
       school = school_fixture(%{code: "SCHOOL001"})
 
       record = %{
+        "user_id" => student.user_id,
         "student_id" => student.student_id,
         "school_code" => school.code
       }
@@ -223,6 +228,7 @@ defmodule Dbservice.DataImport.GroupUpdateProcessorTest do
         })
 
       record = %{
+        "user_id" => student.user_id,
         "student_id" => student.student_id,
         "school_code" => new_school.code,
         "academic_year" => "2026-2027",
@@ -270,6 +276,7 @@ defmodule Dbservice.DataImport.GroupUpdateProcessorTest do
       school = school_fixture(%{code: "NEW_SCHOOL"})
 
       record = %{
+        "user_id" => student.user_id,
         "student_id" => student.student_id,
         "school_code" => school.code,
         "academic_year" => "2026-2027"
@@ -294,7 +301,11 @@ defmodule Dbservice.DataImport.GroupUpdateProcessorTest do
       {_user, student} = student_fixture(%{student_id: "STUDENT001"})
       school = school_fixture(%{code: "NEW_SCHOOL"})
 
-      record = %{"student_id" => student.student_id, "school_code" => school.code}
+      record = %{
+        "user_id" => student.user_id,
+        "student_id" => student.student_id,
+        "school_code" => school.code
+      }
 
       assert {:error, "academic_year is required"} =
                GroupUpdateProcessor.process_school_movement(record)
@@ -302,12 +313,12 @@ defmodule Dbservice.DataImport.GroupUpdateProcessorTest do
 
     test "returns error when student is not found" do
       record = %{
-        "student_id" => "NONEXISTENT_STUDENT",
+        "user_id" => 999_999_999,
         "school_code" => "NEW_SCHOOL",
         "academic_year" => "2026-2027"
       }
 
-      assert {:error, "Student not found. student_id: \"NONEXISTENT_STUDENT\", apaar_id: nil"} =
+      assert {:error, "No student found for user_id 999999999."} =
                GroupUpdateProcessor.process_school_movement(record)
     end
 
@@ -315,6 +326,7 @@ defmodule Dbservice.DataImport.GroupUpdateProcessorTest do
       {_user, student} = student_fixture(%{student_id: "STUDENT001"})
 
       record = %{
+        "user_id" => student.user_id,
         "student_id" => student.student_id,
         "school_code" => "NONEXISTENT_SCHOOL",
         "academic_year" => "2026-2027"
@@ -329,6 +341,7 @@ defmodule Dbservice.DataImport.GroupUpdateProcessorTest do
       school = school_fixture(%{code: "NEW_SCHOOL"})
 
       record = %{
+        "user_id" => student.user_id,
         "student_id" => student.student_id,
         "school_code" => school.code,
         "academic_year" => "2026-2027",
@@ -369,6 +382,7 @@ defmodule Dbservice.DataImport.GroupUpdateProcessorTest do
         })
 
       record = %{
+        "user_id" => student.user_id,
         "student_id" => student.student_id,
         "grade" => grade.number
       }
@@ -385,20 +399,20 @@ defmodule Dbservice.DataImport.GroupUpdateProcessorTest do
 
     test "returns error when student is not found" do
       record = %{
-        "student_id" => "NONEXISTENT_STUDENT",
+        "user_id" => 999_999_999,
         "grade" => 10
       }
 
       result = GroupUpdateProcessor.process_grade_update(record)
 
-      assert {:error, "Student not found. student_id: \"NONEXISTENT_STUDENT\", apaar_id: nil"} =
-               result
+      assert {:error, "No student found for user_id 999999999."} = result
     end
 
     test "returns error when grade is not found" do
       {_user, student} = student_fixture(%{student_id: "STUDENT001"})
 
       record = %{
+        "user_id" => student.user_id,
         "student_id" => student.student_id,
         "grade" => 999
       }
@@ -413,6 +427,7 @@ defmodule Dbservice.DataImport.GroupUpdateProcessorTest do
       grade = grade_fixture(%{number: 9999})
 
       record = %{
+        "user_id" => student.user_id,
         "student_id" => student.student_id,
         "grade" => grade.number
       }
@@ -452,6 +467,7 @@ defmodule Dbservice.DataImport.GroupUpdateProcessorTest do
         })
 
       record = %{
+        "user_id" => student.user_id,
         "student_id" => student.student_id,
         "auth_group_name" => auth_group.name
       }
@@ -463,20 +479,20 @@ defmodule Dbservice.DataImport.GroupUpdateProcessorTest do
 
     test "returns error when student is not found" do
       record = %{
-        "student_id" => "NONEXISTENT_STUDENT",
+        "user_id" => 999_999_999,
         "auth_group_name" => "Test Auth Group"
       }
 
       result = GroupUpdateProcessor.process_auth_group_update(record)
 
-      assert {:error, "Student not found. student_id: \"NONEXISTENT_STUDENT\", apaar_id: nil"} =
-               result
+      assert {:error, "No student found for user_id 999999999."} = result
     end
 
     test "returns error when auth group is not found" do
       {_user, student} = student_fixture(%{student_id: "STUDENT001"})
 
       record = %{
+        "user_id" => student.user_id,
         "student_id" => student.student_id,
         "auth_group_name" => "NONEXISTENT_AUTH_GROUP"
       }
@@ -491,6 +507,7 @@ defmodule Dbservice.DataImport.GroupUpdateProcessorTest do
       auth_group = auth_group_fixture(%{name: "Test Auth Group"})
 
       record = %{
+        "user_id" => student.user_id,
         "student_id" => student.student_id,
         "auth_group_name" => auth_group.name
       }
