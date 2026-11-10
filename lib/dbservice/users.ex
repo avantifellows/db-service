@@ -654,6 +654,11 @@ defmodule Dbservice.Users do
         student.status != updated_student.status and updated_student.status == "dropout" ->
           :student_dropout
 
+        # Archiving is a terminal status like dropout, so it ends active
+        # Holistic mappings for the same eligibility reason.
+        student.status != updated_student.status and updated_student.status == "archived" ->
+          :student_archived
+
         student.grade_id != updated_student.grade_id ->
           :student_grade_changed
 

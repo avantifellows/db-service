@@ -29,11 +29,11 @@ defmodule Dbservice.DataImport.BatchMovement do
   end
 
   defp process_student_with_batch(student, record) do
-    if student.status == "dropout" do
+    if student.status in ["dropout", "archived"] do
       student_identifier = student.student_id || student.apaar_id
 
       {:error,
-       "Cannot process batch movement for student id: #{student_identifier} because status is dropout"}
+       "Cannot process batch movement for student id: #{student_identifier} because status is #{student.status}"}
     else
       process_with_batch_info(student, record)
     end
