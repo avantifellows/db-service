@@ -26,7 +26,10 @@ env:
   VPC_ID: vpc-0a48a661
   # Smoke check hits the shared ALB directly (Host header) so it doesn't depend
   # on public DNS (which lives in Cloudflare, not Route53).
-  SERVICE_HOST: db.avantifellows.org
+  # Parallel-host validation: ECS answers on prod-db while the legacy EC2 box
+  # keeps db.avantifellows.org. Flip to "db.avantifellows.org" at the cutover,
+  # alongside domain_prefix in envs/prod.tfvars.
+  SERVICE_HOST: prod-db.avantifellows.org
   ALB_NAME: af-load-balancer
 
 concurrency:
