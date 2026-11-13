@@ -88,7 +88,7 @@ defmodule Dbservice.HolisticMentorshipDictationUsageSchemaTest do
     scope = insert_scope()
 
     assert {:ok, %{rows: [[id, 0, nil]]}} =
-             insert_usage(scope, "post_session", 125, "failed")
+             insert_usage(scope, "post_session", 305, "failed")
 
     assert {:ok, %{rows: [["ok", 420, %NaiveDateTime{}]]}} =
              Repo.query(
@@ -131,7 +131,8 @@ defmodule Dbservice.HolisticMentorshipDictationUsageSchemaTest do
     scope = insert_scope()
 
     assert_constraint(:check_violation, fn -> insert_usage(scope, "post_session", 0, "ok") end)
-    assert_constraint(:check_violation, fn -> insert_usage(scope, "post_session", 126, "ok") end)
+    assert_constraint(:check_violation, fn -> insert_usage(scope, "post_session", 306, "ok") end)
+    assert {:ok, _} = insert_usage(scope, "post_session", 305, "ok")
 
     assert_constraint(:check_violation, fn ->
       insert_usage(scope, "post_session", 10, "ok", -1)

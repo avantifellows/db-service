@@ -39,11 +39,11 @@ defmodule Dbservice.Repo.Migrations.CreateHolisticMentorshipDictationUsageRecord
              check: "note_kind IN ('post_session', 'follow_up')"
            )
 
-    # One recording is capped at two minutes; 125 allows five seconds of timer slop.
+    # One recording is capped at five minutes; 305 allows five seconds of timer slop.
     create constraint(
              :holistic_mentorship_dictation_usage_records,
              :hm_dictation_usage_audio_seconds_check,
-             check: "audio_seconds BETWEEN 1 AND 125"
+             check: "audio_seconds BETWEEN 1 AND 305"
            )
 
     create constraint(
