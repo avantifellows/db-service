@@ -135,6 +135,12 @@ after that Phase's Post-Session Notes are submitted, answering up to three fixed
 questions with a system submission time.
 _Avoid_: editable note, extra Post-Session Notes, draft
 
+**Dictation Usage Record**:
+A content-free record of one LMS Dictation attempt by a Mentor: School, Program,
+note kind, audio seconds, characters returned, and outcome. It never holds the
+Student, Phase, Question, text, or audio.
+_Avoid_: transcript log, audio log, Dictation history
+
 **Historical Holistic Notes**:
 A provenance-bearing legacy answer set imported for a safely matched Student,
 without inventing a canonical Phase, Mapping, or completion.
@@ -263,6 +269,8 @@ _Avoid_: Student Profile, Holistic questionnaire links
   Notes and Historical Holistic Notes have none.
 - Follow-up Notes belong to one Student, one stable Phase, and their author;
   a Student and Phase may have many.
+- Dictation Usage Records belong to a Mentor, School, and Program only; they are
+  not Student content, so privacy deletion does not touch them.
 - Mapping and Post-Session Note audit events retain immutable actor snapshots;
   canonical User links are optional where authenticated access has no User row.
 - Mapping machine source/reason fields are never repurposed for human audit
