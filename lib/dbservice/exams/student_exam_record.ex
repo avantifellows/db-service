@@ -17,9 +17,19 @@ defmodule Dbservice.Exams.StudentExamRecord do
   # a typo rather than an old attempt.
   @earliest_exam_year 1990
 
+  # AWS KMS caps an Encrypt plaintext at 4096 bytes and adds a few hundred bytes
+  # of envelope; base64 grows that by a third. Anything longer did not come out
+  # of KMS.
+  @max_password_ciphertext_length 8192
+
   schema "student_exam_record" do
     field :application_number, :string
+    # Legacy plaintext, retired by application_password_ciphertext and dropped
+    # once the backfill has re-encrypted every value.
     field :application_password, :string
+    # Base64 AWS KMS ciphertext. AF LMS encrypts and decrypts it; this service
+    # stores it opaquely and holds no key that could read it.
+    field :application_password_ciphertext, :string
     field :date, :date
     field :score, :float
     field :percentile, :float
@@ -45,6 +55,7 @@ defmodule Dbservice.Exams.StudentExamRecord do
       :exam_id,
       :application_number,
       :application_password,
+      :application_password_ciphertext,
       :date,
       :score,
       :percentile,
@@ -81,6 +92,28 @@ defmodule Dbservice.Exams.StudentExamRecord do
     )
     |> normalize_sessions_applied()
     |> validate_sessions_applied()
+    |> validate_password_ciphertext()
+    |> retire_plaintext_password(attrs)
+  end
+
+  defp validate_password_ciphertext(changeset) do
+    changeset
+    |> validate_format(:application_password_ciphertext, ~r/\A[A-Za-z0-9+\/]+={0,2}\z/,
+      message: "must be base64-encoded ciphertext"
+    )
+    |> validate_length(:application_password_ciphertext, max: @max_password_ciphertext_length)
+  end
+
+  # A writer that speaks the ciphertext field - even to clear it - owns the
+  # password from then on, so whatever plaintext the row still holds is wiped
+  # rather than left beside (or instead of) the encrypted value.
+  defp retire_plaintext_password(changeset, attrs) do
+    if Map.has_key?(attrs, :application_password_ciphertext) or
+         Map.has_key?(attrs, "application_password_ciphertext") do
+      put_change(changeset, :application_password, nil)
+    else
+      changeset
+    end
   end
 
   # The sittings a student applied for are a set: order and repeats carry no
