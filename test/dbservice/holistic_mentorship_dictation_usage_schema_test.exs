@@ -23,7 +23,9 @@ defmodule Dbservice.HolisticMentorshipDictationUsageSchemaTest do
              ["outcome", "character varying", "NO", nil],
              ["completed_at", "timestamp without time zone", "YES", nil],
              ["inserted_at", "timestamp without time zone", "NO", "now()"],
-             ["updated_at", "timestamp without time zone", "NO", "now()"]
+             ["updated_at", "timestamp without time zone", "NO", "now()"],
+             ["detected_language", "character varying", "YES", nil],
+             ["translation", "character varying", "NO", "'not_run'::character varying"]
            ]
 
     # Restrictive FKs: 'a' is NO ACTION. There is no Student, Phase or Question link.
@@ -53,8 +55,10 @@ defmodule Dbservice.HolisticMentorshipDictationUsageSchemaTest do
            ).rows == [
              ["hm_dictation_usage_audio_seconds_check"],
              ["hm_dictation_usage_characters_returned_check"],
+             ["hm_dictation_usage_detected_language_check"],
              ["hm_dictation_usage_note_kind_check"],
-             ["hm_dictation_usage_outcome_check"]
+             ["hm_dictation_usage_outcome_check"],
+             ["hm_dictation_usage_translation_check"]
            ]
 
     assert Repo.query!(
@@ -147,6 +151,60 @@ defmodule Dbservice.HolisticMentorshipDictationUsageSchemaTest do
         insert_usage(%{scope | key => -1}, "post_session", 10, "ok")
       end)
     end
+  end
+
+  test "defaults translation to not_run and accepts only the four translation results" do
+    scope = insert_scope()
+
+    assert {:ok, %{rows: [[id, 0, nil]]}} = insert_usage(scope, "post_session", 10, "failed")
+
+    assert Repo.query!(
+             "SELECT translation, detected_language FROM #{@table} WHERE id = $1",
+             [id]
+           ).rows == [["not_run", nil]]
+
+    for translation <- ["not_run", "skipped", "ok", "failed"] do
+      assert {:ok, %{rows: [[^translation]]}} =
+               insert_with(scope, "translation", translation)
+    end
+
+    for translation <- ["done", "OK", "", nil] do
+      assert_constraint(
+        if(is_nil(translation), do: :not_null_violation, else: :check_violation),
+        fn -> insert_with(scope, "translation", translation) end
+      )
+    end
+  end
+
+  test "stores an optional short detected language code" do
+    scope = insert_scope()
+
+    assert {:ok, %{rows: [[nil]]}} = insert_with(scope, "detected_language", nil)
+    assert {:ok, %{rows: [["hin"]]}} = insert_with(scope, "detected_language", "hin")
+
+    assert {:ok, %{rows: [[sixteen]]}} =
+             insert_with(scope, "detected_language", String.duplicate("a", 16))
+
+    assert String.length(sixteen) == 16
+
+    for language <- ["", String.duplicate("a", 17)] do
+      assert_constraint(:check_violation, fn ->
+        insert_with(scope, "detected_language", language)
+      end)
+    end
+  end
+
+  # Inserts an 'ok' attempt with one extra column set; returns that column.
+  defp insert_with(scope, column, value) when column in ["translation", "detected_language"] do
+    Repo.query(
+      """
+      INSERT INTO #{@table}
+        (mentor_user_id, school_id, program_id, note_kind, audio_seconds, outcome, #{column})
+      VALUES ($1, $2, $3, 'post_session', 10, 'ok', $4)
+      RETURNING #{column}
+      """,
+      [scope.mentor_user_id, scope.school_id, scope.program_id, value]
+    )
   end
 
   defp insert_usage(scope, kind, seconds, outcome, characters \\ 0) do

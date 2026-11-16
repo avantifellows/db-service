@@ -137,8 +137,8 @@ _Avoid_: editable note, extra Post-Session Notes, draft
 
 **Dictation Usage Record**:
 A content-free record of one LMS Dictation attempt by a Mentor: School, Program,
-note kind, audio seconds, characters returned, and outcome. It never holds the
-Student, Phase, Question, text, or audio.
+note kind, audio seconds, characters returned, outcome, detected language code,
+and translation result. It never holds the Student, Phase, Question, text, or audio.
 _Avoid_: transcript log, audio log, Dictation history
 
 **Historical Holistic Notes**:
