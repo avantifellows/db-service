@@ -23,6 +23,7 @@ defmodule Dbservice.Resources.Resource do
     field(:exam_ids, {:array, :integer})
     field(:skill_ids, {:array, :integer})
     field(:learning_objective_ids, {:array, :integer})
+    field(:is_active, :boolean, default: true)
 
     timestamps()
 
@@ -50,7 +51,8 @@ defmodule Dbservice.Resources.Resource do
       :learning_objective_ids,
       :teacher_id,
       :exam_ids,
-      :cms_status_id
+      :cms_status_id,
+      :is_active
     ])
     |> validate_required([:type, :type_params])
   end
