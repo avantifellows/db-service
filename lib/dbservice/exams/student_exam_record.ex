@@ -93,7 +93,7 @@ defmodule Dbservice.Exams.StudentExamRecord do
     |> normalize_sessions_applied()
     |> validate_sessions_applied()
     |> validate_password_ciphertext()
-    |> retire_plaintext_password(attrs)
+    |> retire_superseded_password()
   end
 
   defp validate_password_ciphertext(changeset) do
@@ -104,17 +104,38 @@ defmodule Dbservice.Exams.StudentExamRecord do
     |> validate_length(:application_password_ciphertext, max: @max_password_ciphertext_length)
   end
 
+  # Only one of the two password columns may describe the current password.
+  #
   # A writer that speaks the ciphertext field - even to clear it - owns the
   # password from then on, so whatever plaintext the row still holds is wiped
   # rather than left beside (or instead of) the encrypted value.
-  defp retire_plaintext_password(changeset, attrs) do
-    if Map.has_key?(attrs, :application_password_ciphertext) or
-         Map.has_key?(attrs, "application_password_ciphertext") do
-      put_change(changeset, :application_password, nil)
-    else
-      changeset
+  #
+  # A writer that has not moved to ciphertext and sends a new plaintext
+  # password has replaced the password, so a ciphertext left from an earlier
+  # write is wiped too; otherwise AF LMS would keep revealing the old one. A
+  # blank or absent plaintext says nothing about the password, so the
+  # ciphertext is kept - a legacy client echoing a whole record must not erase
+  # it.
+  #
+  # `changeset.params` holds the caller's keys as strings whatever form they
+  # arrived in.
+  defp retire_superseded_password(%Ecto.Changeset{params: params} = changeset) do
+    params = params || %{}
+
+    cond do
+      Map.has_key?(params, "application_password_ciphertext") ->
+        put_change(changeset, :application_password, nil)
+
+      present_string?(params["application_password"]) ->
+        put_change(changeset, :application_password_ciphertext, nil)
+
+      true ->
+        changeset
     end
   end
+
+  defp present_string?(value) when is_binary(value), do: String.trim(value) != ""
+  defp present_string?(_value), do: false
 
   # The sittings a student applied for are a set: order and repeats carry no
   # meaning, so [2, 1, 2] and [1, 2] are stored as the same value. An empty

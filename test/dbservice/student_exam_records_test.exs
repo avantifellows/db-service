@@ -228,6 +228,40 @@ defmodule Dbservice.StudentExamRecordsTest do
                StudentExamRecords.update_student_exam_record(record, %{sessions_applied: [1]})
     end
 
+    test "update_student_exam_record/2 drops stale ciphertext when a new plaintext arrives", %{
+      attrs: attrs
+    } do
+      {:ok, record} =
+        StudentExamRecords.create_student_exam_record(
+          Map.put(attrs, :application_password_ciphertext, @ciphertext)
+        )
+
+      assert {:ok,
+              %StudentExamRecord{
+                application_password: "new-from-legacy-writer",
+                application_password_ciphertext: nil
+              }} =
+               StudentExamRecords.update_student_exam_record(record, %{
+                 "application_password" => "new-from-legacy-writer"
+               })
+    end
+
+    test "update_student_exam_record/2 keeps the ciphertext when a legacy writer echoes a blank plaintext",
+         %{attrs: attrs} do
+      {:ok, record} =
+        StudentExamRecords.create_student_exam_record(
+          Map.put(attrs, :application_password_ciphertext, @ciphertext)
+        )
+
+      for blank <- [nil, "", "   "] do
+        assert {:ok, %StudentExamRecord{application_password_ciphertext: @ciphertext}} =
+                 StudentExamRecords.update_student_exam_record(record, %{
+                   application_password: blank,
+                   sessions_applied: [1]
+                 })
+      end
+    end
+
     test "create_student_exam_record/1 rejects ciphertext that is not base64", %{attrs: attrs} do
       assert {:error, changeset} =
                StudentExamRecords.create_student_exam_record(
