@@ -23,6 +23,7 @@ defmodule Dbservice.LmsStudentUpdate do
   alias Dbservice.Users
   alias Dbservice.Users.Student
   alias Dbservice.Users.User
+  alias Dbservice.Utils.Util
 
   @action "student_update"
   @cbse_board "CBSE"
@@ -702,7 +703,7 @@ defmodule Dbservice.LmsStudentUpdate do
   end
 
   defp validate_phone(%{"phone" => phone}, false) when is_binary(phone) do
-    if Regex.match?(~r/^[1-9]\d{9}$/, phone),
+    if Util.valid_phone?(phone),
       do: :ok,
       else:
         {:error,

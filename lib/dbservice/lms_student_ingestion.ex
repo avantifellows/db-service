@@ -834,7 +834,7 @@ defmodule Dbservice.LmsStudentIngestion do
   end
 
   defp validate_phone(row) do
-    if Regex.match?(~r/^[1-9]\d{9}$/, get_in(row, ["user", "phone"]) || ""),
+    if Util.valid_phone?(get_in(row, ["user", "phone"]) || ""),
       do: :ok,
       else: {:error, "Parents Phone Number must be exactly 10 digits and cannot start with zero"}
   end

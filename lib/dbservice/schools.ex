@@ -249,7 +249,7 @@ defmodule Dbservice.Schools do
   end
 
   @doc """
-  Creates a user first and then the school.
+  Creates a user first and then the school, in one transaction.
 
   ## Examples
 
@@ -261,13 +261,28 @@ defmodule Dbservice.Schools do
 
   """
   def create_school_with_user(attrs \\ %{}) do
-    alias Dbservice.Users
+    school_and_user_transaction(fn ->
+      with {:ok, %User{} = user} <- Users.create_user(attrs),
+           {:ok, %School{} = school} <-
+             Schools.create_school(Map.merge(stringify_keys(attrs), %{"user_id" => user.id})) do
+        {:ok, school}
+      end
+    end)
+  end
 
-    with {:ok, %User{} = user} <- Users.create_user(attrs),
-         {:ok, %School{} = school} <-
-           Schools.create_school(Map.merge(stringify_keys(attrs), %{"user_id" => user.id})) do
-      {:ok, school}
-    end
+  # A school is written as a user row and a school row, and the school row is the one
+  # carrying almost every validation: an invalid email, an unnormalized contact number, an
+  # unknown status or stream, a grade outside 1-12. Without a transaction a rejected import
+  # row still left its `user` behind, and each re-run of the corrected sheet added another
+  # orphan. Repo.transaction/1 joins an enclosing transaction rather than opening a second
+  # one, so nesting these calls (create_or_update_school_with_user/1) is safe.
+  defp school_and_user_transaction(fun) do
+    Repo.transaction(fn ->
+      case fun.() do
+        {:ok, %School{} = school} -> school
+        {:error, reason} -> Repo.rollback(reason)
+      end
+    end)
   end
 
   defp stringify_keys(map) do
@@ -277,7 +292,7 @@ defmodule Dbservice.Schools do
   end
 
   @doc """
-  Updates a user first and then the school.
+  Updates a user first and then the school, in one transaction.
 
   ## Examples
 
@@ -289,16 +304,16 @@ defmodule Dbservice.Schools do
 
   """
   def update_school_with_user(school, user, attrs \\ %{}) do
-    alias Dbservice.Users
-
-    with {:ok, %User{} = user} <- Users.update_user(user, attrs),
-         {:ok, %School{} = school} <-
-           Schools.update_school(
-             school,
-             Map.merge(stringify_keys(attrs), %{"user_id" => user.id})
-           ) do
-      {:ok, school}
-    end
+    school_and_user_transaction(fn ->
+      with {:ok, %User{} = user} <- Users.update_user(user, attrs),
+           {:ok, %School{} = school} <-
+             Schools.update_school(
+               school,
+               Map.merge(stringify_keys(attrs), %{"user_id" => user.id})
+             ) do
+        {:ok, school}
+      end
+    end)
   end
 
   @doc """
@@ -312,15 +327,17 @@ defmodule Dbservice.Schools do
   Returns `{:ok, %School{}}` or `{:error, %Ecto.Changeset{}}`.
   """
   def create_or_update_school_with_user(attrs) do
-    case get_school_by_code(attrs["code"]) do
-      nil ->
-        create_school_with_user(attrs)
+    school_and_user_transaction(fn ->
+      case get_school_by_code(attrs["code"]) do
+        nil ->
+          create_school_with_user(attrs)
 
-      %School{} = existing ->
-        with {:ok, %User{} = user} <- ensure_school_user(existing, attrs) do
-          update_school_with_user(existing, user, attrs)
-        end
-    end
+        %School{} = existing ->
+          with {:ok, %User{} = user} <- ensure_school_user(existing, attrs) do
+            update_school_with_user(existing, user, attrs)
+          end
+      end
+    end)
   end
 
   defp ensure_school_user(%School{user_id: nil}, attrs), do: Users.create_user(attrs)
