@@ -15,7 +15,19 @@ defmodule DbserviceWeb.SwaggerSchema.StudentExamRecord do
             student_id(:integer, "Student ID", required: true)
             exam_id(:integer, "Exam ID", required: true)
             application_number(:string, "Application number on the exam portal", required: true)
-            application_password(:string, "Password for the exam portal")
+
+            application_password(
+              :string,
+              "Deprecated plaintext exam-portal password, kept only until the KMS backfill; " <>
+                "cleared by any write that sends application_password_ciphertext"
+            )
+
+            application_password_ciphertext(
+              :string,
+              "Base64 AWS KMS ciphertext of the exam-portal password. Encrypted and decrypted " <>
+                "by AF LMS; this service never sees the plaintext"
+            )
+
             date(:string, "Date of the exam", format: "date")
             score(:number, "Score obtained")
             percentile(:number, "Percentile obtained")
@@ -38,7 +50,8 @@ defmodule DbserviceWeb.SwaggerSchema.StudentExamRecord do
             student_id: 123,
             exam_id: 456,
             application_number: "JEE2026001234",
-            application_password: "s3cret",
+            application_password: nil,
+            application_password_ciphertext: "AQICAHh0ZXN0LWNpcGhlcnRleHQ=",
             date: "2026-01-24",
             score: 212.0,
             percentile: 98.76,
