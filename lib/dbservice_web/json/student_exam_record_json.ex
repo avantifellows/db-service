@@ -14,6 +14,7 @@ defmodule DbserviceWeb.StudentExamRecordJSON do
       exam_id: student_exam_record.exam_id,
       application_number: student_exam_record.application_number,
       application_password: student_exam_record.application_password,
+      application_password_ciphertext: student_exam_record.application_password_ciphertext,
       date: student_exam_record.date,
       score: student_exam_record.score,
       percentile: student_exam_record.percentile,

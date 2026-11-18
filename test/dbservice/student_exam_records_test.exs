@@ -161,4 +161,126 @@ defmodule Dbservice.StudentExamRecordsTest do
                StudentExamRecords.update_student_exam_record(record, %{sessions_applied: []})
     end
   end
+
+  describe "application password ciphertext" do
+    setup do
+      record_attrs()
+    end
+
+    @ciphertext "AQICAHhEeGFtcGxlLWttcy1jaXBoZXJ0ZXh0Lw+="
+
+    test "create_student_exam_record/1 stores the ciphertext without plaintext", %{attrs: attrs} do
+      assert {:ok,
+              %StudentExamRecord{
+                application_password_ciphertext: @ciphertext,
+                application_password: nil
+              }} =
+               StudentExamRecords.create_student_exam_record(
+                 attrs
+                 |> Map.put(:application_password, "plain")
+                 |> Map.put(:application_password_ciphertext, @ciphertext)
+               )
+    end
+
+    test "update_student_exam_record/2 retires the plaintext once ciphertext is written", %{
+      attrs: attrs
+    } do
+      {:ok, record} =
+        StudentExamRecords.create_student_exam_record(
+          Map.put(attrs, :application_password, "legacy")
+        )
+
+      assert record.application_password == "legacy"
+
+      assert {:ok,
+              %StudentExamRecord{
+                application_password: nil,
+                application_password_ciphertext: @ciphertext
+              }} =
+               StudentExamRecords.update_student_exam_record(record, %{
+                 "application_password_ciphertext" => @ciphertext
+               })
+    end
+
+    test "update_student_exam_record/2 clears both when the ciphertext is cleared", %{
+      attrs: attrs
+    } do
+      {:ok, record} =
+        StudentExamRecords.create_student_exam_record(
+          Map.put(attrs, :application_password, "legacy")
+        )
+
+      assert {:ok,
+              %StudentExamRecord{application_password: nil, application_password_ciphertext: nil}} =
+               StudentExamRecords.update_student_exam_record(record, %{
+                 application_password_ciphertext: nil
+               })
+    end
+
+    test "update_student_exam_record/2 leaves the plaintext to a writer that does not send ciphertext",
+         %{attrs: attrs} do
+      {:ok, record} =
+        StudentExamRecords.create_student_exam_record(
+          Map.put(attrs, :application_password, "legacy")
+        )
+
+      assert {:ok, %StudentExamRecord{application_password: "legacy"}} =
+               StudentExamRecords.update_student_exam_record(record, %{sessions_applied: [1]})
+    end
+
+    test "update_student_exam_record/2 drops stale ciphertext when a new plaintext arrives", %{
+      attrs: attrs
+    } do
+      {:ok, record} =
+        StudentExamRecords.create_student_exam_record(
+          Map.put(attrs, :application_password_ciphertext, @ciphertext)
+        )
+
+      assert {:ok,
+              %StudentExamRecord{
+                application_password: "new-from-legacy-writer",
+                application_password_ciphertext: nil
+              }} =
+               StudentExamRecords.update_student_exam_record(record, %{
+                 "application_password" => "new-from-legacy-writer"
+               })
+    end
+
+    test "update_student_exam_record/2 keeps the ciphertext when a legacy writer echoes a blank plaintext",
+         %{attrs: attrs} do
+      {:ok, record} =
+        StudentExamRecords.create_student_exam_record(
+          Map.put(attrs, :application_password_ciphertext, @ciphertext)
+        )
+
+      for blank <- [nil, "", "   "] do
+        assert {:ok, %StudentExamRecord{application_password_ciphertext: @ciphertext}} =
+                 StudentExamRecords.update_student_exam_record(record, %{
+                   application_password: blank,
+                   sessions_applied: [1]
+                 })
+      end
+    end
+
+    test "create_student_exam_record/1 rejects ciphertext that is not base64", %{attrs: attrs} do
+      assert {:error, changeset} =
+               StudentExamRecords.create_student_exam_record(
+                 Map.put(attrs, :application_password_ciphertext, "plain password!")
+               )
+
+      assert {"must be base64-encoded ciphertext", _} =
+               changeset.errors[:application_password_ciphertext]
+    end
+
+    test "create_student_exam_record/1 rejects ciphertext longer than KMS can produce", %{
+      attrs: attrs
+    } do
+      assert {:error, changeset} =
+               StudentExamRecords.create_student_exam_record(
+                 Map.put(attrs, :application_password_ciphertext, String.duplicate("A", 8196))
+               )
+
+      assert changeset.errors[:application_password_ciphertext]
+    end
+  end
 end

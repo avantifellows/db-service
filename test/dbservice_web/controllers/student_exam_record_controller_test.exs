@@ -11,6 +11,28 @@ defmodule DbserviceWeb.StudentExamRecordControllerTest do
   end
 
   describe "create" do
+    test "stores and returns the password ciphertext, never plaintext", %{
+      conn: conn,
+      student: student,
+      exam: exam
+    } do
+      ciphertext = "AQICAHhEeGFtcGxlLWttcy1jaXBoZXJ0ZXh0Lw+="
+
+      conn =
+        post(conn, ~p"/api/student-exam-record", %{
+          student_id: student.id,
+          exam_id: exam.id,
+          application_number: "APP-#{System.unique_integer([:positive])}",
+          application_password: nil,
+          application_password_ciphertext: ciphertext
+        })
+
+      assert %{
+               "application_password" => nil,
+               "application_password_ciphertext" => ^ciphertext
+             } = json_response(conn, 201)
+    end
+
     test "stores the sittings applied for", %{conn: conn, student: student, exam: exam} do
       conn =
         post(conn, ~p"/api/student-exam-record", %{
