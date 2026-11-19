@@ -117,6 +117,12 @@ defmodule DbserviceWeb.Router do
     )
 
     get(
+      "/blended-learning/mentor",
+      BlendedLearningMentorController,
+      :show
+    )
+
+    get(
       "/blended-learning/transcription-requests/:request_key",
       BlendedLearningTranscriptionRequestController,
       :show,

@@ -20,6 +20,55 @@ defmodule Dbservice.BlendedLearning do
   @reassignment_end_reason "mentor_reassigned"
 
   @doc """
+  The mentor currently assigned to a student, looked up by the student's `user`
+  id — the same identifier Gurukul already holds from its session, so a caller
+  never has to resolve a student row first.
+
+  `academic_year` is optional. Without it the most recently started running
+  mapping wins, which is what a caller asking "who is this student's mentor"
+  means; passing a year answers the narrower question for that year only.
+
+  Returns `nil` when the student has no running mapping, which is the ordinary
+  case for every student outside Blended Learning — not an error.
+
+  Only the mentor's name and user id come back. A student-facing screen needs a
+  name to say who to contact, so that much is the point of the endpoint; the
+  phone, WhatsApp number and email are deliberately left out until someone has
+  decided a student should see them. Mentors are staff who did not choose to
+  publish their personal numbers to every student assigned to them, and the
+  sibling Blended Learning endpoints hold the same line. Adding a field here
+  later is one line; un-exposing one that has already shipped is not.
+  """
+  def active_mentor_for_user(user_id, academic_year \\ nil) do
+    from(mapping in @mapping_table,
+      join: student in "student",
+      on: student.id == mapping.student_id,
+      join: mentor in "user",
+      on: mentor.id == mapping.mentor_user_id,
+      where: student.user_id == ^user_id and is_nil(mapping.ended_at),
+      order_by: [desc: mapping.started_at],
+      limit: 1,
+      select: %{
+        academic_year: mapping.academic_year,
+        program_id: mapping.program_id,
+        started_at: mapping.started_at,
+        mentor: %{
+          user_id: mentor.id,
+          first_name: mentor.first_name,
+          last_name: mentor.last_name
+        }
+      }
+    )
+    |> filter_academic_year(academic_year)
+    |> Repo.one()
+  end
+
+  defp filter_academic_year(query, nil), do: query
+
+  defp filter_academic_year(query, academic_year),
+    do: from(mapping in query, where: mapping.academic_year == ^academic_year)
+
+  @doc """
   Assigns a mentor to a student for an academic year.
 
   Returns `{:ok, :assigned}` for a fresh mapping, `{:ok, :reassigned}` when a
