@@ -59,7 +59,11 @@ defmodule DbserviceWeb.SwaggerSchema.AlumniJourney do
               "Answers that differ from the previous journey row"
             )
 
-            actor_email(:string, "Email of the person who recorded it")
+            actor_email(
+              :string,
+              "Email of the person who recorded it; null for rows written by imports or the system"
+            )
+
             actor_role(:string, "LMS role of the person who recorded it")
             notes(:string, "Free-text notes")
             inserted_at(:string, "Created at", format: "date-time")

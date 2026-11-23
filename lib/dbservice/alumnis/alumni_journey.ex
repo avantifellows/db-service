@@ -29,8 +29,21 @@ defmodule Dbservice.Alumnis.AlumniJourney do
 
   def sources, do: @sources
 
-  @doc false
+  @doc """
+  For a follow-up recorded by a person through the API: who recorded it is required.
+  """
   def changeset(journey, attrs) do
+    journey
+    |> system_changeset(attrs)
+    |> validate_required([:actor_email])
+  end
+
+  @doc """
+  For rows dbservice writes itself (imports, generic alumni writes, the
+  `initial` copy taken before an alumni's first change), which have no person
+  to attribute them to; `actor_role` says what wrote them.
+  """
+  def system_changeset(journey, attrs) do
     journey
     |> cast(attrs, [
       :alumni_id,
@@ -43,7 +56,7 @@ defmodule Dbservice.Alumnis.AlumniJourney do
       :actor_role,
       :notes
     ])
-    |> validate_required([:alumni_id, :reported_on, :source, :data, :actor_email])
+    |> validate_required([:alumni_id, :reported_on, :source, :data])
     |> validate_inclusion(:source, @sources)
     |> validate_length(:source, max: 50)
     |> foreign_key_constraint(:alumni_id)

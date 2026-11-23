@@ -20,7 +20,9 @@ defmodule DbserviceWeb.AlumniJourneyController do
     description("""
     Records one follow-up with an alumnus. Applies `data` to the alumni record and
     appends a journey row with the full snapshot of answers. Blank values never erase
-    a recorded answer. `changed_fields` is computed by the server.
+    a recorded answer, except with `source: "correction"`, where a blank clears it.
+    `reported_on` may not be earlier than the latest follow-up. `changed_fields` is
+    computed by the server.
     """)
 
     parameters do

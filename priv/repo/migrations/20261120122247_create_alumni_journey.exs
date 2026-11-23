@@ -13,7 +13,7 @@ defmodule Dbservice.Repo.Migrations.CreateAlumniJourney do
       add :contact_status, :string
       add :data, :map, null: false
       add :changed_fields, {:array, :text}, null: false, default: []
-      add :actor_email, :string, null: false
+      add :actor_email, :string
       add :actor_role, :string
       add :notes, :text
 
