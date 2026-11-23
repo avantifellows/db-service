@@ -196,24 +196,35 @@ defmodule DbserviceWeb.UserController do
     get_user_sessions(conn, %{"user_id" => user_id, "quiz" => false})
   end
 
-  # Single optimized query
+  # Live sessions only need the user's direct class groups, so they skip the
+  # batch-hierarchy CTE entirely. Quiz sessions need every batch above them.
   defp fetch_user_sessions(user_id, quiz_flag) do
-    user_batch_data = get_user_batch_data(user_id)
+    user_id = if is_binary(user_id), do: String.to_integer(user_id), else: user_id
 
-    if Enum.empty?(user_batch_data) do
-      []
+    if quiz_flag do
+      user_id |> get_user_batch_data() |> get_quiz_sessions()
     else
-      if quiz_flag do
-        get_quiz_sessions(user_batch_data)
-      else
-        get_regular_sessions(user_batch_data)
-      end
+      user_id |> get_class_group_ids() |> get_regular_sessions()
     end
+  end
+
+  # The user's direct batch groups (level 0 of the hierarchy), as one indexed
+  # lookup. Same rows the CTE's base case returns as class_group_id.
+  defp get_class_group_ids(user_id) do
+    from(gu in Dbservice.Groups.GroupUser,
+      join: g in Dbservice.Groups.Group,
+      on: g.id == gu.group_id and g.type == "batch",
+      join: b in Dbservice.Batches.Batch,
+      on: b.id == g.child_id,
+      where: gu.user_id == ^user_id,
+      distinct: true,
+      select: g.id
+    )
+    |> Repo.all()
   end
 
   # Get user's groups with batch information (supports multi-level hierarchy)
   defp get_user_batch_data(user_id) do
-    user_id = if is_binary(user_id), do: String.to_integer(user_id), else: user_id
     # First, get all batches in the hierarchy using recursive CTE
     batch_hierarchy_query = """
     WITH RECURSIVE batch_hierarchy AS (
@@ -250,7 +261,14 @@ defmodule DbserviceWeb.UserController do
       bh.level,
       qg.id as quiz_group_id
     FROM batch_hierarchy bh
-    LEFT JOIN "group" qg ON qg.child_id = bh.batch_pk AND qg.type = 'batch'
+    -- A per-batch lookup on group_child_id_type_index. A plain LEFT JOIN made the
+    -- planner hash-join the whole group table on every call (~3.5x the cost).
+    -- OFFSET 0 stops Postgres flattening the LATERAL back into that same join.
+    LEFT JOIN LATERAL (
+      SELECT g.id FROM "group" g
+      WHERE g.child_id = bh.batch_pk AND g.type = 'batch'
+      OFFSET 0
+    ) qg ON true
     ORDER BY bh.level ASC
     """
 
@@ -291,19 +309,9 @@ defmodule DbserviceWeb.UserController do
     end
   end
 
-  # Updated regular sessions to work with multi-level hierarchy
-  defp get_regular_sessions(user_batch_data) do
-    # Get class group IDs (only level 0 - direct class groups)
-    class_group_ids =
-      user_batch_data
-      |> Enum.filter(&(&1.level == 0 && !is_nil(&1.class_group_id)))
-      |> Enum.map(& &1.class_group_id)
-      |> Enum.uniq()
+  defp get_regular_sessions([]), do: []
 
-    if Enum.empty?(class_group_ids) do
-      []
-    else
-      Dbservice.GroupSessions.fetch_sessions_by_group_ids(class_group_ids)
-    end
+  defp get_regular_sessions(class_group_ids) do
+    Dbservice.GroupSessions.fetch_sessions_by_group_ids(class_group_ids)
   end
 end
