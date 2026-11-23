@@ -99,9 +99,10 @@ defmodule DbserviceWeb.SessionOccurrenceController do
     # Get current timestamp for active occurrence queries (when is_start_time="active")
     current_time = NaiveDateTime.utc_now() |> NaiveDateTime.add(5 * 3600 + 30 * 60, :second)
 
+    # No ORDER BY yet: filters may set their own (see "active"), and the default
+    # id ordering is added after them in apply_default_order/2.
     base_query =
       from(m in SessionOccurrence,
-        order_by: [asc: m.id],
         offset: ^Pagination.offset(params),
         limit: ^Pagination.limit(params)
       )
@@ -136,10 +137,25 @@ defmodule DbserviceWeb.SessionOccurrenceController do
         {:cont, {:ok, query}}
     end)
     |> case do
-      {:ok, query} -> {:ok, Repo.all(query)}
+      {:ok, query} -> {:ok, query |> apply_default_order(params) |> Repo.all()}
       {:error, message} -> {:error, message}
     end
   end
+
+  # Results are ordered by id unless a filter already set its own order.
+  #
+  # With a session_ids filter, a plain `ORDER BY id ... LIMIT` lets PostgreSQL walk
+  # the primary key and filter every row until the page fills; for a student with
+  # hundreds of session ids that scanned the whole table (2026-11-23 load test).
+  # `id + 0` gives the same order but can't be served by the primary key, so the
+  # planner uses the session_id / time-window indexes and sorts the few matches.
+  # Unfiltered listings keep the plain primary-key order, which is cheapest there.
+  defp apply_default_order(%Ecto.Query{order_bys: [_ | _]} = query, _params), do: query
+
+  defp apply_default_order(query, %{"session_ids" => _}),
+    do: order_by(query, [so], asc: fragment("? + 0", so.id))
+
+  defp apply_default_order(query, _params), do: order_by(query, [so], asc: so.id)
 
   # start_time_lte and end_time_gte together select occurrences overlapping a
   # caller-supplied window [end_time_gte, start_time_lte]. The window semantics

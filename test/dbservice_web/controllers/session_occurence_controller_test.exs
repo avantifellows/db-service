@@ -137,6 +137,57 @@ defmodule DbserviceWeb.SessionOccurrenceControllerTest do
     end
   end
 
+  describe "ordering and pagination with session_ids" do
+    defp ordering_fixtures(_) do
+      now = DateTime.utc_now()
+      past = DateTime.add(now, -365, :day)
+
+      occ = fn days ->
+        session_occurrence_fixture(%{start_time: past, end_time: DateTime.add(now, days, :day)})
+      end
+
+      # inserted so that id order (a, b, c, d) differs from end_time order (c, a, d, b)
+      a = occ.(2)
+      b = occ.(4)
+      c = occ.(1)
+      d = occ.(3)
+      other = occ.(5)
+      %{occ: [a, b, c, d], other: other}
+    end
+
+    setup [:ordering_fixtures]
+
+    defp search_ids(conn, body),
+      do:
+        conn
+        |> post(~p"/api/session-occurrence/search", body)
+        |> json_response(200)
+        |> Enum.map(& &1["id"])
+
+    test "search returns matches in id order and paginates on it", %{conn: conn, occ: occ} do
+      session_ids = Enum.map(occ, & &1.session_id)
+      by_id = occ |> Enum.map(& &1.id) |> Enum.sort()
+
+      assert search_ids(conn, %{session_ids: session_ids}) == by_id
+
+      assert search_ids(conn, %{session_ids: session_ids, limit: 2, offset: 0}) ==
+               Enum.slice(by_id, 0, 2)
+
+      assert search_ids(conn, %{session_ids: session_ids, limit: 2, offset: 2}) ==
+               Enum.slice(by_id, 2, 2)
+    end
+
+    test "is_start_time=active with session_ids keeps end_time order", %{
+      conn: conn,
+      occ: [a, b, c, d]
+    } do
+      session_ids = Enum.map([a, b, c, d], & &1.session_id)
+
+      assert search_ids(conn, %{session_ids: session_ids, is_start_time: "active"}) ==
+               [c.id, a.id, d.id, b.id]
+    end
+  end
+
   describe "create session_occurrence" do
     test "renders session_occurrence when data is valid", %{conn: conn} do
       session = session_fixture()
