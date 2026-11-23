@@ -5,7 +5,9 @@ defmodule Dbservice.BlendedLearning do
   Blended Learning has no teachers; mentorship is done by ops people. A mapping
   records which mentor owns a student for an academic year, and mappings are
   never deleted: a reassignment ends the running mapping and starts a new one,
-  so the history of who mentored whom survives.
+  so the history of who mentored whom survives. A student who drops out or is
+  archived has the running mapping ended the same way, from the canonical Student
+  update that changed the status.
 
   Queries are schemaless, matching `Dbservice.HolisticMentorship`, since the
   mapping tables have no Ecto schema.
@@ -18,6 +20,49 @@ defmodule Dbservice.BlendedLearning do
   @mapping_table "blended_learning_mentor_mentee_mappings"
   @data_import_source "data_import"
   @reassignment_end_reason "mentor_reassigned"
+  @eligibility_end_source "db_service_student_eligibility"
+  @eligibility_end_reasons ~w(student_dropout student_archived)a
+
+  @doc """
+  Ends every running mapping for a student who has stopped being eligible.
+
+  Called from `Dbservice.Users.update_student/2`, inside that transaction, so a
+  student who drops out or is archived cannot be left on an ops mentor's running
+  roster. Only the terminal statuses end a mapping: Blended mentorship is not
+  Grade-scoped, so a Grade correction leaves the mentor in place.
+
+  The mapping is ended, never deleted, the same way a reassignment ends one. No
+  person did this, so `ended_by_user_id` and `ended_by_email` stay blank and
+  `end_source` records the system that acted.
+  """
+  def end_active_mappings(student_id, reason) when reason in @eligibility_end_reasons do
+    reason = Atom.to_string(reason)
+
+    {count, _} =
+      from(mapping in @mapping_table,
+        where: field(mapping, :student_id) == ^student_id and is_nil(field(mapping, :ended_at)),
+        update: [
+          set: [
+            # A mapping can be future-dated by the import sheet, and
+            # blm_mappings_lifecycle_check rejects ended_at < started_at; ending
+            # such a mapping at its own start date keeps the dropout from failing
+            # and records a mentorship that never ran.
+            ended_at: fragment("greatest(timezone('UTC', now()), ?)", mapping.started_at),
+            ended_by_user_id: nil,
+            ended_by_email: nil,
+            end_source: @eligibility_end_source,
+            end_reason: ^reason,
+            end_audit_reason: nil,
+            updated_at: fragment("timezone('UTC', now())")
+          ]
+        ]
+      )
+      |> Repo.update_all([])
+
+    {:ok, count}
+  end
+
+  def end_active_mappings(_student_id, _reason), do: {:error, :invalid_end_reason}
 
   @doc """
   Assigns a mentor to a student for an academic year.

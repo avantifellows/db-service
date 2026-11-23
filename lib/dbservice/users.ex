@@ -643,33 +643,51 @@ defmodule Dbservice.Users do
     student = Repo.get!(Student, student.id, lock: "FOR UPDATE")
 
     with {:ok, updated_student} <- Repo.update(Student.changeset(student, attrs)),
-         {:ok, _count} <- cleanup_holistic_mappings(student, updated_student) do
+         {:ok, _count} <- cleanup_mentor_mappings(student, updated_student) do
       {:ok, updated_student}
     end
   end
 
-  defp cleanup_holistic_mappings(student, updated_student) do
-    reason =
-      cond do
-        student.status != updated_student.status and updated_student.status == "dropout" ->
-          :student_dropout
+  defp cleanup_mentor_mappings(student, updated_student) do
+    reason = eligibility_end_reason(student, updated_student)
 
-        # Archiving is a terminal status like dropout, so it ends active
-        # Holistic mappings for the same eligibility reason.
-        student.status != updated_student.status and updated_student.status == "archived" ->
-          :student_archived
-
-        student.grade_id != updated_student.grade_id ->
-          :student_grade_changed
-
-        true ->
-          nil
-      end
-
-    if reason,
-      do: Dbservice.HolisticMentorship.end_active_mappings(student.id, reason),
-      else: {:ok, 0}
+    with {:ok, holistic_count} <- end_holistic_mappings(student.id, reason),
+         {:ok, blended_count} <- end_blended_mappings(student.id, reason) do
+      {:ok, holistic_count + blended_count}
+    end
   end
+
+  defp eligibility_end_reason(student, updated_student) do
+    cond do
+      student.status != updated_student.status and updated_student.status == "dropout" ->
+        :student_dropout
+
+      # Archiving is a terminal status like dropout, so it ends active
+      # mappings for the same eligibility reason.
+      student.status != updated_student.status and updated_student.status == "archived" ->
+        :student_archived
+
+      student.grade_id != updated_student.grade_id ->
+        :student_grade_changed
+
+      true ->
+        nil
+    end
+  end
+
+  defp end_holistic_mappings(_student_id, nil), do: {:ok, 0}
+
+  defp end_holistic_mappings(student_id, reason),
+    do: Dbservice.HolisticMentorship.end_active_mappings(student_id, reason)
+
+  # Blended mentorship is owned by ops and is not Grade-scoped, so only the
+  # terminal statuses free a student from a running Blended mapping; a Grade
+  # correction leaves the ops mentor in place.
+  defp end_blended_mappings(student_id, reason)
+       when reason in [:student_dropout, :student_archived],
+       do: Dbservice.BlendedLearning.end_active_mappings(student_id, reason)
+
+  defp end_blended_mappings(_student_id, _reason), do: {:ok, 0}
 
   @doc """
   Creates or updates a student based on student_id or apaar_id.
