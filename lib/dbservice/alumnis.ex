@@ -71,7 +71,15 @@ defmodule Dbservice.Alumnis do
   def create_alumni(attrs \\ %{}, journey \\ @api_create) do
     Repo.transaction(fn ->
       with {:ok, alumni} <- %Alumni{} |> Alumni.changeset(attrs) |> Repo.insert(),
-           {:ok, _journey} <- append_if_changed(alumni, journey, Date.utc_today(), %{}) do
+           {:ok, _journey} <-
+             append_if_changed(
+               alumni,
+               nil,
+               journey,
+               Date.utc_today(),
+               %{},
+               answers_snapshot(alumni)
+             ) do
         alumni
       else
         {:error, error} -> Repo.rollback(error)
@@ -82,16 +90,18 @@ defmodule Dbservice.Alumnis do
   @doc """
   Updates an alumni, and records a journey row if any answer changed.
 
-  An alumni with no history yet first gets an `initial` row holding its
-  answers as they were, so the update never destroys the starting copy.
+  A save that changes nothing writes no row at all. When an answer does
+  change on an alumni with no history yet, an `initial` row holding its
+  answers as they were is written first, so the starting copy is kept.
   """
   def update_alumni(%Alumni{id: alumni_id}, attrs, journey \\ @api_update) do
     Repo.transaction(fn ->
-      with %Alumni{} = alumni <- lock_alumni(alumni_id),
-           reported_on = system_reported_on(alumni_id),
-           {:ok, previous} <- history_before(alumni, reported_on),
-           {:ok, alumni} <- alumni |> Alumni.changeset(attrs) |> Repo.update(),
-           {:ok, _journey} <- append_if_changed(alumni, journey, reported_on, previous) do
+      with %Alumni{} = before <- lock_alumni(alumni_id),
+           {previous, initial} = history_before(before),
+           {:ok, alumni} <- before |> Alumni.changeset(attrs) |> Repo.update(),
+           snapshot = answers_snapshot(alumni),
+           {:ok, _journey} <-
+             append_if_changed(before, initial, journey, Date.utc_today(), previous, snapshot) do
         alumni
       else
         nil -> Repo.rollback(:not_found)
@@ -136,12 +146,15 @@ defmodule Dbservice.Alumnis do
     blank clears the answer, so an earlier version can be restored exactly.
   - The top-level `contact_status` (the call's outcome) is also applied to
     `alumni.contact_status`; one that contradicts `data.contact_status` is rejected.
-  - `reported_on` may not be earlier than the alumnus's latest journey row: the
-    snapshot is the alumni row as it is now, so a back-dated row would file
-    today's answers under an older date.
+  - `reported_on` is when the call happened and may be back-dated; history is
+    ordered by when rows were recorded (`id`), not by `reported_on`. It may not
+    be after tomorrow (LMS sends Indian dates, the server runs on UTC) or before
+    2000.
+  - A row is always written, even when nothing changed (a notes-only call such
+    as "wrong phone number" is still a follow-up).
   - An alumnus with no history yet first gets an `initial` row with its answers
     as they were before this follow-up.
-  - `changed_fields` is computed here, against the latest journey row (or
+  - `changed_fields` is computed here, against the latest recorded row (or
     against nothing, for an alumnus's first row), not trusted from the caller.
   """
   def record_journey(%Alumni{id: alumni_id}, attrs) when is_map(attrs) do
@@ -150,13 +163,12 @@ defmodule Dbservice.Alumnis do
     with {:ok, answers} <- journey_answers(Map.get(attrs, "data", %{}), clear_blanks?),
          {:ok, answers} <- put_contact_status(answers, Map.get(attrs, "contact_status")) do
       Repo.transaction(fn ->
-        with %Alumni{} = alumni <- lock_alumni(alumni_id),
+        with %Alumni{} = before <- lock_alumni(alumni_id),
              %Ecto.Changeset{valid?: true} = changeset <- journey_changeset(attrs, alumni_id),
              reported_on = Ecto.Changeset.get_field(changeset, :reported_on),
-             {latest_on, _data} = latest_journey(alumni_id),
-             :ok <- not_back_dated(reported_on, latest_on),
-             {:ok, previous} <- history_before(alumni, reported_on),
-             {:ok, alumni} <- alumni |> Alumni.changeset(answers) |> Repo.update(),
+             {previous, initial} = history_before(before),
+             {:ok, alumni} <- before |> Alumni.changeset(answers) |> Repo.update(),
+             {:ok, _initial} <- write_initial(before, initial, reported_on),
              snapshot = answers_snapshot(alumni),
              {:ok, journey} <-
                changeset
@@ -186,42 +198,46 @@ defmodule Dbservice.Alumnis do
     |> then(&AlumniJourney.changeset(%AlumniJourney{}, &1))
   end
 
-  # The snapshot the next row is compared against. An alumni with no history
-  # gets an `initial` row first, holding its answers as they are before this
-  # write; it is dated no later than the write itself.
-  defp history_before(%Alumni{} = alumni, reported_on) do
+  # The snapshot the next row is compared against, and, for an alumni with no
+  # history yet, the `initial` row still owed: its answers before this write.
+  # The `initial` row is only written once the caller knows a row will follow,
+  # so a save that changes nothing leaves no history behind.
+  defp history_before(%Alumni{} = alumni) do
     case latest_journey(alumni.id) do
-      {nil, _none} ->
+      nil ->
         snapshot = answers_snapshot(alumni)
 
-        if Enum.all?(snapshot, fn {_field, value} -> is_nil(value) end) do
-          {:ok, %{}}
-        else
-          on = Enum.min([NaiveDateTime.to_date(alumni.updated_at), reported_on], Date)
+        if Enum.all?(snapshot, fn {_field, value} -> is_nil(value) end),
+          do: {%{}, nil},
+          else: {snapshot, snapshot}
 
-          meta = %{
-            "source" => "initial",
-            "actor_role" => "system",
-            "notes" => "Answers as they were before the first recorded change"
-          }
-
-          with {:ok, _journey} <- insert_system_journey(alumni.id, meta, on, snapshot, %{}) do
-            {:ok, snapshot}
-          end
-        end
-
-      {_latest_on, data} ->
-        {:ok, data}
+      data ->
+        {data, nil}
     end
   end
 
-  defp append_if_changed(%Alumni{} = alumni, meta, reported_on, previous) do
-    snapshot = answers_snapshot(alumni)
+  # Dated no later than the write that follows it.
+  defp write_initial(_before, nil, _reported_on), do: {:ok, nil}
 
+  defp write_initial(%Alumni{} = before, snapshot, reported_on) do
+    on = Enum.min([NaiveDateTime.to_date(before.updated_at), reported_on], Date)
+
+    meta = %{
+      "source" => "initial",
+      "actor_role" => "system",
+      "notes" => "Answers as they were before the first recorded change"
+    }
+
+    insert_system_journey(before.id, meta, on, snapshot, %{})
+  end
+
+  defp append_if_changed(alumni, initial, meta, reported_on, previous, snapshot) do
     if changed_fields(previous, snapshot) == [] do
       {:ok, nil}
     else
-      insert_system_journey(alumni.id, meta, reported_on, snapshot, previous)
+      with {:ok, _initial} <- write_initial(alumni, initial, reported_on) do
+        insert_system_journey(alumni.id, meta, reported_on, snapshot, previous)
+      end
     end
   end
 
@@ -237,15 +253,6 @@ defmodule Dbservice.Alumnis do
       })
 
     %AlumniJourney{} |> AlumniJourney.system_changeset(attrs) |> Repo.insert()
-  end
-
-  # Writes not tied to a call are dated today, but never before the latest
-  # row, so they cannot make a later follow-up look back-dated.
-  defp system_reported_on(alumni_id) do
-    case latest_journey(alumni_id) do
-      {nil, _none} -> Date.utc_today()
-      {latest_on, _data} -> Enum.max([Date.utc_today(), latest_on], Date)
-    end
   end
 
   @answer_keys Enum.map(Alumni.answer_fields(), &Atom.to_string/1)
@@ -287,30 +294,21 @@ defmodule Dbservice.Alumnis do
     end
   end
 
-  defp not_back_dated(_reported_on, nil), do: :ok
-
-  defp not_back_dated(reported_on, latest_on) do
-    if Date.compare(reported_on, latest_on) == :lt do
-      {:error, "reported_on is earlier than the latest follow-up (#{latest_on})"}
-    else
-      :ok
-    end
-  end
-
   # Round-tripped through JSON so it compares equal to what jsonb hands back.
   defp answers_snapshot(%Alumni{} = alumni) do
     alumni |> Map.take(Alumni.answer_fields()) |> Jason.encode!() |> Jason.decode!()
   end
 
+  # History is ordered by when it was recorded, not by reported_on, so a
+  # back-dated call is compared against what was on file when it was logged.
   defp latest_journey(alumni_id) do
     from(j in AlumniJourney,
       where: j.alumni_id == ^alumni_id,
-      order_by: [desc: j.reported_on, desc: j.id],
+      order_by: [desc: j.id],
       limit: 1,
-      select: {j.reported_on, j.data}
+      select: j.data
     )
     |> Repo.one()
-    |> Kernel.||({nil, %{}})
   end
 
   defp changed_fields(previous, snapshot) do

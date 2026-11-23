@@ -21,8 +21,9 @@ defmodule DbserviceWeb.AlumniJourneyController do
     Records one follow-up with an alumnus. Applies `data` to the alumni record and
     appends a journey row with the full snapshot of answers. Blank values never erase
     a recorded answer, except with `source: "correction"`, where a blank clears it.
-    `reported_on` may not be earlier than the latest follow-up. `changed_fields` is
-    computed by the server.
+    `reported_on` is when the call happened: it may be back-dated, but not after
+    tomorrow or before 2000. A row is written even if nothing changed.
+    `changed_fields` is computed by the server against the latest recorded row.
     """)
 
     parameters do

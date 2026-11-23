@@ -28,6 +28,8 @@ defmodule Dbservice.Repo.Migrations.CreateAlumniJourney do
              check: "jsonb_typeof(data) = 'object'"
            )
 
-    create index(:alumni_journey, [:alumni_id, "reported_on DESC"])
+    # History is read per alumnus in the order it was recorded (id), not by
+    # reported_on, since a call may be logged after later changes.
+    create index(:alumni_journey, [:alumni_id, :id])
   end
 end

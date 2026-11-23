@@ -277,27 +277,91 @@ defmodule DbserviceWeb.AlumniJourneyControllerTest do
     assert Repo.aggregate(AlumniJourney, :count) == 0
   end
 
-  test "rejects a follow-up dated before the latest one, allows the same day", %{
-    conn: conn,
-    alumni: alumni
-  } do
-    assert post(conn, ~p"/api/alumni/#{alumni.id}/journey", follow_up(%{}))
-           |> json_response(201)
+  test "a call logged after a later change can be back-dated", %{conn: conn, alumni: alumni} do
+    # Tuesday: an import changes the alumnus, dated today.
+    {:ok, _alumni} =
+      Alumnis.update_alumni(alumni, %{"degree_ug" => "B.Sc"}, %{
+        "source" => "bulk_upload",
+        "actor_role" => "import"
+      })
 
-    assert post(conn, ~p"/api/alumni/#{alumni.id}/journey", follow_up(%{}))
-           |> json_response(201)
+    # Wednesday: Monday's call is logged, dated before the import row.
+    reported_on = Date.add(Date.utc_today(), -2)
 
     conn =
       post(
         conn,
         ~p"/api/alumni/#{alumni.id}/journey",
-        follow_up(%{"reported_on" => "2026-03-01", "data" => %{"ug_status" => "Dropped"}})
+        follow_up(%{
+          "reported_on" => Date.to_iso8601(reported_on),
+          "data" => %{"ug_status" => "Dropped"}
+        })
       )
 
-    assert %{"errors" => %{"message" => message}} = json_response(conn, 422)
-    assert message =~ "earlier than the latest follow-up"
-    assert Alumnis.get_alumni(alumni.id).ug_status == "Pursuing"
-    assert Repo.aggregate(AlumniJourney, :count) == 3
+    body = json_response(conn, 201)
+    assert body["reported_on"] == Date.to_iso8601(reported_on)
+
+    # Compared against what was on file when it was logged, i.e. after the import.
+    assert Enum.sort(body["changed_fields"]) == ["contact_status", "ug_status"]
+    assert body["data"]["degree_ug"] == "B.Sc"
+
+    assert [%{source: "initial"}, %{source: "bulk_upload"}, %{source: "call"}] =
+             journey_rows(alumni)
+  end
+
+  test "rejects a reported_on after tomorrow or before 2000, allows tomorrow", %{
+    conn: conn,
+    alumni: alumni
+  } do
+    for date <- [Date.add(Date.utc_today(), 2), ~D[2099-01-01], ~D[1999-12-31], ~D[0001-01-01]] do
+      conn =
+        post(
+          conn,
+          ~p"/api/alumni/#{alumni.id}/journey",
+          follow_up(%{"reported_on" => Date.to_iso8601(date)})
+        )
+
+      assert %{"errors" => %{"reported_on" => [_]}} = json_response(conn, 422)
+    end
+
+    assert Repo.aggregate(AlumniJourney, :count) == 0
+
+    tomorrow = Date.utc_today() |> Date.add(1) |> Date.to_iso8601()
+
+    assert post(
+             conn,
+             ~p"/api/alumni/#{alumni.id}/journey",
+             follow_up(%{"reported_on" => tomorrow})
+           )
+           |> json_response(201)
+  end
+
+  test "a notes-only call still records a row", %{conn: conn, alumni: alumni} do
+    post(conn, ~p"/api/alumni/#{alumni.id}/journey", follow_up(%{}))
+
+    conn =
+      post(
+        conn,
+        ~p"/api/alumni/#{alumni.id}/journey",
+        follow_up(%{"notes" => "Wrong phone number"})
+      )
+
+    body = json_response(conn, 201)
+    assert body["changed_fields"] == []
+    assert body["notes"] == "Wrong phone number"
+  end
+
+  test "a save that changes nothing leaves no history, so the alumnus can still be deleted", %{
+    conn: conn,
+    alumni: alumni
+  } do
+    assert patch(conn, ~p"/api/alumni/#{alumni.id}", %{"ug_status" => "Pursuing"})
+           |> json_response(200)
+
+    assert patch(conn, ~p"/api/alumni/#{alumni.id}", %{}) |> json_response(200)
+
+    assert journey_rows(alumni) == []
+    assert delete(conn, ~p"/api/alumni/#{alumni.id}") |> response(204)
   end
 
   test "an alumnus with follow-up history cannot be deleted", %{conn: conn, alumni: alumni} do

@@ -36,6 +36,23 @@ defmodule Dbservice.Alumnis.AlumniJourney do
     journey
     |> system_changeset(attrs)
     |> validate_required([:actor_email])
+    |> validate_reported_on()
+  end
+
+  @earliest_reported_on ~D[2000-01-01]
+
+  # A wrong year or a day/month mix-up in the form should fail, not be filed.
+  # One day of slack past today: LMS sends Indian dates, the server runs on UTC.
+  defp validate_reported_on(changeset) do
+    validate_change(changeset, :reported_on, fn :reported_on, date ->
+      latest = Date.add(Date.utc_today(), 1)
+
+      cond do
+        Date.compare(date, latest) == :gt -> [reported_on: "cannot be in the future"]
+        Date.compare(date, @earliest_reported_on) == :lt -> [reported_on: "is before 2000"]
+        true -> []
+      end
+    end)
   end
 
   @doc """
