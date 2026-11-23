@@ -446,14 +446,55 @@ defmodule Dbservice.BlendedLearningMentorshipMappingSchemaTest do
     assert {:ok, _} = insert_row(scope, %{started_at: ~N[2099-01-01 00:00:00]})
   end
 
+  # Needs real transactions: inside the sandbox's one transaction now() never moves.
+  test "a dropout late in a second still lets a mapping start in that second" do
+    Ecto.Adapters.SQL.Sandbox.unboxed_run(Repo, fn ->
+      scope = insert_scope()
+
+      try do
+        assert {:ok, _} = insert_row(scope, %{started_at: ~N[2026-01-01 10:00:00]})
+
+        # A rounding timestamp(0) column would store this second plus one.
+        wait_until_late_in_a_second()
+
+        assert {:ok, {:ok, 1}} =
+                 Repo.transaction(fn ->
+                   BlendedLearning.end_active_mappings(scope.student_id, :student_dropout)
+                 end)
+
+        # An import with a blank started_at, truncated to the second, as the processor does.
+        [[started_at]] =
+          Repo.query!("SELECT date_trunc('second', timezone('UTC', clock_timestamp()))").rows
+
+        assert {:ok, :assigned} =
+                 BlendedLearning.assign_mentor(%{
+                   student_id: scope.student_id,
+                   mentor_user_id: scope.mentor_user_id,
+                   program_id: scope.program_id,
+                   academic_year: "2026-2027",
+                   started_at: started_at,
+                   assigned_by_user_id: nil,
+                   assigned_by_email: "ops@example.org",
+                   assignment_audit_reason: nil
+                 })
+      after
+        delete_scope(scope)
+      end
+    end)
+  end
+
   test "updated_at moves on every UPDATE, even one that does not set it" do
     scope = insert_scope()
 
     assert {:ok, %{rows: [[mapping_id]]}} =
              insert_row(scope, %{updated_at: ~N[2026-01-01 00:00:00]})
 
-    stamp_query =
-      "SELECT updated_at = timezone('UTC', now())::timestamp(0) FROM #{@table} WHERE id = $1"
+    # Stamped from the clock when the UPDATE runs, not the transaction's start.
+    stamp_query = """
+    SELECT updated_at >= date_trunc('second', timezone('UTC', now())) AND
+           updated_at <= timezone('UTC', clock_timestamp())
+    FROM #{@table} WHERE id = $1
+    """
 
     assert Repo.query!(stamp_query, [mapping_id]).rows == [[false]]
 
@@ -475,6 +516,19 @@ defmodule Dbservice.BlendedLearningMentorshipMappingSchemaTest do
     )
 
     assert Repo.query!(stamp_query, [mapping_id]).rows == [[true]]
+
+    # Later in the same transaction, the stamp is later than the transaction's start,
+    # so a long transaction cannot stamp a row earlier than one committed meanwhile.
+    Repo.query!("SELECT pg_sleep(1.1)")
+    Repo.query!("UPDATE #{@table} SET end_audit_reason = 'Moved' WHERE id = $1", [mapping_id])
+
+    assert Repo.query!(
+             """
+             SELECT updated_at > date_trunc('second', timezone('UTC', now()))
+             FROM #{@table} WHERE id = $1
+             """,
+             [mapping_id]
+           ).rows == [[true]]
   end
 
   test "concurrent assignment is first-write-wins" do
@@ -679,6 +733,16 @@ defmodule Dbservice.BlendedLearningMentorshipMappingSchemaTest do
       student_id: student_id,
       student_user_id: student_user_id
     }
+  end
+
+  defp wait_until_late_in_a_second do
+    [[microseconds]] =
+      Repo.query!("SELECT (extract(microseconds FROM clock_timestamp()) % 1000000)::integer").rows
+
+    unless microseconds in 550_000..750_000 do
+      Process.sleep(5)
+      wait_until_late_in_a_second()
+    end
   end
 
   defp delete_scope(scope) do

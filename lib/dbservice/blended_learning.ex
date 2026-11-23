@@ -48,13 +48,22 @@ defmodule Dbservice.BlendedLearning do
             # blm_mappings_lifecycle_check rejects ended_at < started_at; ending
             # such a mapping at its own start date keeps the dropout from failing
             # and records a mentorship that never ran.
-            ended_at: fragment("greatest(timezone('UTC', now()), ?)", mapping.started_at),
+            #
+            # Truncated, not left to the timestamp(0) column, which rounds: 12:00:00.7
+            # would store 12:00:01 and overlap a mapping imported straight after with
+            # a started_at of 12:00:00 (imports truncate), which
+            # blm_mappings_no_overlapping_periods rejects.
+            ended_at:
+              fragment(
+                "greatest(date_trunc('second', timezone('UTC', now())), ?)",
+                mapping.started_at
+              ),
             ended_by_user_id: nil,
             ended_by_email: nil,
             end_source: @eligibility_end_source,
             end_reason: ^reason,
             end_audit_reason: nil,
-            updated_at: fragment("timezone('UTC', now())")
+            updated_at: fragment("date_trunc('second', timezone('UTC', now()))")
           ]
         ]
       )
@@ -175,8 +184,8 @@ defmodule Dbservice.BlendedLearning do
         "Student already has a running mentor mapping for this academic year"
 
       "blm_mappings_no_overlapping_periods" ->
-        "started_at falls inside an earlier mentor mapping for this student and academic " <>
-          "year; a mentorship cannot overlap another"
+        "this mentor mapping's period overlaps another mapping for the same student and " <>
+          "academic year"
 
       other ->
         "Mapping rejected by the database (#{other})"

@@ -264,7 +264,7 @@ defmodule Dbservice.DataImport.BlendedMentorAssignmentProcessorTest do
                Processor.process_mentor_assignment(record(ctx, %{"started_at" => "2026-08-01"}))
 
       assert message =~ "Mentor assignment failed"
-      assert message =~ "cannot overlap another"
+      assert message =~ "overlaps another mapping for the same student and academic year"
       assert [_only_the_ended_one] = mappings_for(ctx.student.id)
     end
 

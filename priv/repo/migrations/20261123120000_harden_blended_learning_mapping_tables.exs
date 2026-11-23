@@ -99,13 +99,16 @@ defmodule Dbservice.Repo.Migrations.HardenBlendedLearningMappingTables do
                "gist (supervisor_user_id WITH =, mentor_user_id WITH =, academic_year WITH =, #{@period})"
            )
 
+    # clock_timestamp(), not now(): now() is the transaction's start, so a long
+    # transaction would stamp a row earlier than one committed before it. Truncated
+    # because a timestamp(0) column rounds, which could stamp a time still to come.
     execute("""
     CREATE FUNCTION blended_learning_touch_updated_at()
     RETURNS trigger
     LANGUAGE plpgsql
     AS $$
     BEGIN
-      NEW.updated_at := timezone('UTC', now());
+      NEW.updated_at := date_trunc('second', timezone('UTC', clock_timestamp()));
       RETURN NEW;
     END;
     $$;

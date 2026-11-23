@@ -283,8 +283,12 @@ defmodule Dbservice.BlendedLearningMentorSupervisionsSchemaTest do
     assert {:ok, %{rows: [[id]]}} =
              insert_supervision(supervisor, mentor, %{updated_at: ~N[2026-01-01 00:00:00]})
 
-    stamp_query =
-      "SELECT updated_at = timezone('UTC', now())::timestamp(0) FROM #{@table} WHERE id = $1"
+    # Stamped from the clock when the UPDATE runs, not the transaction's start.
+    stamp_query = """
+    SELECT updated_at >= date_trunc('second', timezone('UTC', now())) AND
+           updated_at <= timezone('UTC', clock_timestamp())
+    FROM #{@table} WHERE id = $1
+    """
 
     assert Repo.query!(stamp_query, [id]).rows == [[false]]
 
