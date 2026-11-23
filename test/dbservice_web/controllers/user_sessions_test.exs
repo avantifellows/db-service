@@ -78,6 +78,33 @@ defmodule DbserviceWeb.UserSessionsTest do
              expected(s, [:class_live, :parent_quiz, :grandparent_quiz_any, :parent_live])
   end
 
+  test "duplicate rows and dangling groups are kept exactly as before", %{conn: conn} do
+    user = user_fixture()
+    class = batch_fixture(%{batch_id: "D1", name: "dup class"})
+
+    # two batch groups on the same batch, plus a batch group whose batch is gone
+    g1 = group_fixture(%{type: "batch", child_id: class.id})
+    g2 = group_fixture(%{type: "batch", child_id: class.id})
+    g_dangling = group_fixture(%{type: "batch", child_id: 999_999_999})
+
+    for g <- [g1, g2, g_dangling] do
+      {:ok, _} = GroupUsers.create_group_user(%{user_id: user.id, group_id: g.id})
+    end
+
+    shared = session_fixture(%{is_active: true, platform: "meet"})
+    only_g2 = session_fixture(%{is_active: true, platform: "meet"})
+    dangling = session_fixture(%{is_active: true, platform: "meet"})
+
+    for {g, s} <- [{g1, shared}, {g2, shared}, {g2, only_g2}, {g_dangling, dangling}] do
+      {:ok, _} = GroupSessions.create_group_session(%{group_id: g.id, session_id: s.id})
+    end
+
+    # `shared` is linked through two of the user's groups, so it comes back twice
+    want = Enum.sort([shared.id, shared.id, only_g2.id])
+    assert conn |> get(~p"/api/user/#{user.id}/sessions") |> ids() == want
+    assert conn |> get(~p"/api/user/#{user.id}/sessions?quiz=true") |> ids() == want
+  end
+
   test "a user in no batch group gets no sessions", %{conn: conn} do
     loner = user_fixture()
     assert conn |> get(~p"/api/user/#{loner.id}/sessions") |> json_response(200) == []
