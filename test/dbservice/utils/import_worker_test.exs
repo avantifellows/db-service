@@ -93,6 +93,44 @@ defmodule Dbservice.DataImport.ImportWorkerTest do
       assert user2.email == "jane.smith@email.com"
     end
 
+    test "alumni_addition import keeps the alumni's history" do
+      {_user, student} = student_fixture()
+
+      alumni =
+        Dbservice.Repo.insert!(%Dbservice.Alumnis.Alumni{
+          student_id: student.id,
+          ug_status: "Pursuing"
+        })
+
+      filename =
+        create_test_csv(
+          "alumni_journey_import.csv",
+          "student_id,ug_status\n#{student.student_id},Completed\n"
+        )
+
+      on_exit(fn -> cleanup_test_csv("alumni_journey_import.csv") end)
+
+      import_record =
+        import_fixture(%{filename: filename, type: "alumni_addition", status: "pending"})
+
+      assert :ok = perform_job(ImportWorker, %{"id" => import_record.id})
+
+      assert Dbservice.Alumnis.get_alumni(alumni.id).ug_status == "Completed"
+
+      rows =
+        Dbservice.Repo.all(
+          from(j in Dbservice.Alumnis.AlumniJourney,
+            where: j.alumni_id == ^alumni.id,
+            order_by: j.id
+          )
+        )
+
+      assert [
+               %{source: "initial", data: %{"ug_status" => "Pursuing"}},
+               %{source: "bulk_upload", actor_role: "import", changed_fields: ["ug_status"]}
+             ] = rows
+    end
+
     test "preserves existing batch metadata during batch import", %{batch_id: batch_id} do
       batch = Dbservice.Batches.get_batch!(batch_id)
 

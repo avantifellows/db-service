@@ -1712,9 +1712,18 @@ defmodule Dbservice.DataImport.ImportWorker do
   defp create_or_update_alumni(student_pk, record) do
     attrs = Map.put(record, "student_id", student_pk)
 
+    journey = %{
+      "source" => "bulk_upload",
+      "actor_role" => "import",
+      "notes" => "alumni_addition import"
+    }
+
     case Dbservice.Alumnis.get_alumni_by_student_id(student_pk) do
-      nil -> Dbservice.Alumnis.create_alumni(attrs)
-      %Dbservice.Alumnis.Alumni{} = existing -> Dbservice.Alumnis.update_alumni(existing, attrs)
+      nil ->
+        Dbservice.Alumnis.create_alumni(attrs, journey)
+
+      %Dbservice.Alumnis.Alumni{} = existing ->
+        Dbservice.Alumnis.update_alumni(existing, attrs, journey)
     end
   end
 
