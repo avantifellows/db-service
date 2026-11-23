@@ -1,6 +1,8 @@
 defmodule Dbservice.BlendedLearningMentorshipMappingSchemaTest do
   use Dbservice.DataCase, async: false
 
+  alias Dbservice.BlendedLearning
+
   @table "blended_learning_mentor_mentee_mappings"
 
   test "defines the canonical Mapping contract and indexes" do
@@ -114,6 +116,48 @@ defmodule Dbservice.BlendedLearningMentorshipMappingSchemaTest do
     assert_check_violation(fn ->
       Repo.query("UPDATE #{@table} SET assignment_source = '' WHERE id = $1", [mapping_id])
     end)
+  end
+
+  test "ends active Mappings once through the shared eligibility operation" do
+    scope = insert_scope()
+    assert {:ok, %{rows: [[mapping_id]]}} = insert_mapping(scope, [nil, nil, nil, nil])
+
+    assert {:error, :invalid_end_reason} =
+             BlendedLearning.end_active_mappings(scope.student_id, :mentor_reassigned)
+
+    assert {:error, :invalid_end_reason} =
+             BlendedLearning.end_active_mappings(scope.student_id, :student_grade_changed)
+
+    assert Repo.query!("SELECT ended_at FROM #{@table} WHERE id = $1", [mapping_id]).rows == [
+             [nil]
+           ]
+
+    assert {:ok, {:ok, 1}} =
+             Repo.transaction(fn ->
+               BlendedLearning.end_active_mappings(scope.student_id, :student_dropout)
+             end)
+
+    assert Repo.query!(
+             "SELECT id, ended_at IS NOT NULL, ended_by_user_id, ended_by_email, end_source, end_reason, end_audit_reason FROM #{@table}",
+             []
+           ).rows == [
+             [
+               mapping_id,
+               true,
+               nil,
+               nil,
+               "db_service_student_eligibility",
+               "student_dropout",
+               nil
+             ]
+           ]
+
+    assert {:ok, {:ok, 0}} =
+             Repo.transaction(fn ->
+               BlendedLearning.end_active_mappings(scope.student_id, :student_archived)
+             end)
+
+    assert Repo.query!("SELECT count(*) FROM #{@table}").rows == [[1]]
   end
 
   test "stores audit snapshots and rejects blank or active end-event metadata" do

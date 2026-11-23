@@ -73,6 +73,9 @@ Holistic Mentorship status/Grade/dropout cleanup remains transaction-coupled to
 canonical Student mutations through `Dbservice.Users.update_student/2`. Generic
 School/Program `Dbservice.EnrollmentRecords` CRUD must not query or mutate Holistic
 tables; AF LMS reconciles those eligibility changes before protected Holistic work.
+Blended Learning mentor mappings ride the same hook, but only for the terminal
+statuses (dropout, archived): Blended mentorship is owned by ops and is not
+Grade-scoped, so a Grade correction leaves the Blended mapping running.
 
 ### Revised NVS student writes
 
