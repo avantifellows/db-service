@@ -51,7 +51,9 @@ defmodule DbserviceWeb.AlumniJourneyControllerTest do
     assert body["data"]["current_ctc"] == 600_000.0
     assert Map.has_key?(body["data"], "pg_status")
     refute Map.has_key?(body["data"], "student_id")
-    assert Enum.sort(body["changed_fields"]) == ["current_ctc", "degree_ug", "ug_status"]
+
+    assert Enum.sort(body["changed_fields"]) ==
+             ["contact_status", "current_ctc", "degree_ug", "ug_status"]
   end
 
   test "applies answers to alumni and records only what changed since the last row", %{
@@ -89,7 +91,7 @@ defmodule DbserviceWeb.AlumniJourneyControllerTest do
       post(
         conn,
         ~p"/api/alumni/#{alumni.id}/journey",
-        follow_up(%{"data" => %{"ug_status" => "", "degree_ug" => nil}})
+        follow_up(%{"data" => %{"ug_status" => "   ", "degree_ug" => nil, "degree_pg" => ""}})
       )
 
     body = json_response(conn, 201)
@@ -144,5 +146,75 @@ defmodule DbserviceWeb.AlumniJourneyControllerTest do
   test "404s an unknown alumni", %{conn: conn} do
     conn = post(conn, ~p"/api/alumni/0/journey", follow_up(%{}))
     assert json_response(conn, 404)
+  end
+
+  test "the call outcome is applied to alumni.contact_status", %{conn: conn, alumni: alumni} do
+    conn =
+      post(
+        conn,
+        ~p"/api/alumni/#{alumni.id}/journey",
+        follow_up(%{"contact_status" => "Not reachable"})
+      )
+
+    assert json_response(conn, 201)["data"]["contact_status"] == "Not reachable"
+    assert Alumnis.get_alumni(alumni.id).contact_status == "Not reachable"
+  end
+
+  test "rejects a call outcome that contradicts data.contact_status", %{
+    conn: conn,
+    alumni: alumni
+  } do
+    conn =
+      post(
+        conn,
+        ~p"/api/alumni/#{alumni.id}/journey",
+        follow_up(%{
+          "contact_status" => "Reached",
+          "data" => %{"contact_status" => "Not reachable"}
+        })
+      )
+
+    assert %{"errors" => %{"message" => "contact_status and data.contact_status disagree"}} =
+             json_response(conn, 422)
+
+    assert Repo.aggregate(AlumniJourney, :count) == 0
+  end
+
+  test "rejects a follow-up dated before the latest one, allows the same day", %{
+    conn: conn,
+    alumni: alumni
+  } do
+    assert post(conn, ~p"/api/alumni/#{alumni.id}/journey", follow_up(%{}))
+           |> json_response(201)
+
+    assert post(conn, ~p"/api/alumni/#{alumni.id}/journey", follow_up(%{}))
+           |> json_response(201)
+
+    conn =
+      post(
+        conn,
+        ~p"/api/alumni/#{alumni.id}/journey",
+        follow_up(%{"reported_on" => "2026-03-01", "data" => %{"ug_status" => "Dropped"}})
+      )
+
+    assert %{"errors" => %{"message" => message}} = json_response(conn, 422)
+    assert message =~ "earlier than the latest follow-up"
+    assert Alumnis.get_alumni(alumni.id).ug_status == "Pursuing"
+    assert Repo.aggregate(AlumniJourney, :count) == 2
+  end
+
+  test "an alumnus with follow-up history cannot be deleted", %{conn: conn, alumni: alumni} do
+    post(conn, ~p"/api/alumni/#{alumni.id}/journey", follow_up(%{}))
+
+    conn = delete(conn, ~p"/api/alumni/#{alumni.id}")
+
+    assert %{"errors" => %{"id" => ["has follow-up history and cannot be deleted"]}} =
+             json_response(conn, 422)
+
+    assert Alumnis.get_alumni(alumni.id)
+  end
+
+  test "an alumnus without history can still be deleted", %{conn: conn, alumni: alumni} do
+    assert delete(conn, ~p"/api/alumni/#{alumni.id}") |> response(204)
   end
 end

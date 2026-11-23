@@ -53,7 +53,12 @@ defmodule DbserviceWeb.SwaggerSchema.AlumniJourney do
             source(:string, "Where the follow-up came from")
             contact_status(:string, "Outcome of the call")
             data(:object, "Full snapshot of the alumnus's answers after this follow-up")
-            changed_fields(:array, "Answers that differ from the previous journey row")
+
+            changed_fields(
+              Schema.array(:string),
+              "Answers that differ from the previous journey row"
+            )
+
             actor_email(:string, "Email of the person who recorded it")
             actor_role(:string, "LMS role of the person who recorded it")
             notes(:string, "Free-text notes")
