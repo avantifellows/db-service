@@ -58,9 +58,19 @@ defmodule Dbservice.BlendedLearningMentorshipMappingSchemaTest do
            ]
 
     assert check_names() == [
+             "blm_mappings_academic_year_format_check",
              "blm_mappings_audit_fields_check",
+             "blm_mappings_ended_by_check",
              "blm_mappings_lifecycle_check"
            ]
+
+    assert exclusion_constraints() == [
+             {"blm_mappings_no_overlapping_periods",
+              "EXCLUDE USING gist (student_id WITH =, academic_year WITH =, " <>
+                "tsrange(started_at, ended_at, '[)'::text) WITH &&)"}
+           ]
+
+    assert triggers() == ["blm_mappings_touch_updated_at"]
 
     assert indexes() == [
              {"blended_learning_mentor_mentee_mappings_pkey", true, ["id"], nil},
@@ -70,6 +80,8 @@ defmodule Dbservice.BlendedLearningMentorshipMappingSchemaTest do
               ["program_id", "academic_year", "student_id"], "(ended_at IS NULL)"},
              {"blm_mappings_active_student_year_unique", true, ["student_id", "academic_year"],
               "(ended_at IS NULL)"},
+             # The exclusion constraint's index; its period expression is not a column.
+             {"blm_mappings_no_overlapping_periods", false, ["student_id", "academic_year"], nil},
              {"blm_mappings_student_history_idx", false,
               ["student_id", "academic_year", "started_at"], nil}
            ]
@@ -101,12 +113,12 @@ defmodule Dbservice.BlendedLearningMentorshipMappingSchemaTest do
     end
 
     assert {:ok, %{rows: [[mapping_id]]}} =
-             insert_mapping(scope, [
-               ~N[2026-07-16 10:01:00],
-               nil,
-               "student_dropout",
-               "af_lms"
-             ])
+             insert_row(scope, %{
+               ended_at: ~N[2026-07-16 10:01:00],
+               ended_by_email: "ops@example.org",
+               end_reason: "student_dropout",
+               end_source: "af_lms"
+             })
 
     assert Repo.query!(
              "SELECT ended_by_user_id FROM #{@table} WHERE id = $1",
@@ -248,7 +260,9 @@ defmodule Dbservice.BlendedLearningMentorshipMappingSchemaTest do
     )
 
     assert {:ok, %{rows: [[second_id]]}} =
-             insert_mapping(%{scope | mentor_user_id: other_mentor_user_id}, [nil, nil, nil, nil])
+             insert_row(%{scope | mentor_user_id: other_mentor_user_id}, %{
+               started_at: ~N[2026-01-02 10:00:00]
+             })
 
     assert Repo.query!(
              "SELECT id, ended_at IS NULL FROM #{@table} ORDER BY id",
@@ -262,6 +276,205 @@ defmodule Dbservice.BlendedLearningMentorshipMappingSchemaTest do
     assert_foreign_key_violation(fn ->
       Repo.query("DELETE FROM \"user\" WHERE id = $1", [scope.mentor_user_id])
     end)
+  end
+
+  test "requires a YYYY-YYYY academic year of consecutive years" do
+    scope = insert_scope()
+
+    for academic_year <- [
+          "2026-2028",
+          "2026-2026",
+          "2027-2026",
+          "2026/2027",
+          "26-27",
+          "2026-27",
+          " 2026-2027",
+          "2026-2027 ",
+          "2026-2027\n",
+          "abcd-efgh",
+          "2026-20271",
+          ""
+        ] do
+      assert_check_violation(fn -> insert_row(scope, %{academic_year: academic_year}) end)
+    end
+
+    for academic_year <- ["2025-2026", "2026-2027", "1999-2000"] do
+      assert {:ok, _} = insert_row(scope, %{academic_year: academic_year})
+    end
+  end
+
+  test "rejects a whitespace-only source or end reason" do
+    scope = insert_scope()
+    ended = %{ended_at: ~N[2026-03-01 10:00:00], ended_by_email: "ops@example.org"}
+
+    for attrs <- [
+          %{assignment_source: "  "},
+          Map.merge(ended, %{end_source: " \t", end_reason: "reassigned"}),
+          Map.merge(ended, %{end_source: "af_lms", end_reason: "\n"})
+        ] do
+      assert_check_violation(fn -> insert_row(scope, attrs) end)
+    end
+
+    assert {:ok, _} =
+             insert_row(
+               scope,
+               Map.merge(ended, %{end_source: "af_lms", end_reason: "reassigned"})
+             )
+  end
+
+  test "an ended Mapping names who ended it, unless student eligibility ended it" do
+    scope = insert_scope()
+
+    ended = %{
+      ended_at: ~N[2026-03-01 10:00:00],
+      end_source: "af_lms",
+      end_reason: "reassigned"
+    }
+
+    for attrs <- [
+          ended,
+          %{ended | end_source: "data_import"},
+          # Only the exact system end_source is exempt.
+          %{ended | end_source: "db_service_student_eligibility "}
+        ] do
+      assert_check_violation(fn -> insert_row(scope, attrs) end)
+    end
+
+    # Back-to-back periods, so each row below can be ended without overlapping.
+    for {attrs, month} <- [
+          {%{ended_by_user_id: scope.mentor_user_id}, 1},
+          {%{ended_by_email: "ops@example.org"}, 3},
+          {%{end_source: "db_service_student_eligibility", end_reason: "student_dropout"}, 5}
+        ] do
+      started_at = NaiveDateTime.new!(2026, month, 1, 0, 0, 0)
+
+      assert {:ok, _} =
+               insert_row(
+                 scope,
+                 ended
+                 |> Map.merge(attrs)
+                 |> Map.merge(%{
+                   started_at: started_at,
+                   ended_at: NaiveDateTime.new!(2026, month + 2, 1, 0, 0, 0)
+                 })
+               )
+    end
+  end
+
+  test "a Student's Mapping periods in a year cannot overlap" do
+    scope = insert_scope()
+
+    ended = %{
+      ended_by_email: "ops@example.org",
+      end_source: "af_lms",
+      end_reason: "reassigned"
+    }
+
+    assert {:ok, %{rows: [[first_id]]}} =
+             insert_row(
+               scope,
+               Map.merge(ended, %{
+                 started_at: ~N[2026-01-01 10:00:00],
+                 ended_at: ~N[2026-03-01 10:00:00]
+               })
+             )
+
+    for attrs <- [
+          # A running row that starts inside the ended period.
+          %{started_at: ~N[2026-02-01 10:00:00]},
+          # A running row that starts before it.
+          %{started_at: ~N[2025-12-01 10:00:00]},
+          # An ended row that ends one second into it.
+          Map.merge(ended, %{
+            started_at: ~N[2025-12-01 10:00:00],
+            ended_at: ~N[2026-01-01 10:00:01]
+          })
+        ] do
+      assert_exclusion_violation(fn -> insert_row(scope, attrs) end)
+    end
+
+    # A reassignment ends the old row exactly where the new one starts.
+    assert {:ok, %{rows: [[running_id]]}} =
+             insert_row(scope, %{started_at: ~N[2026-03-01 10:00:00]})
+
+    # Ending a row at its own start leaves an empty period, which overlaps nothing.
+    for _ <- 1..2 do
+      assert {:ok, _} =
+               insert_row(
+                 scope,
+                 Map.merge(ended, %{
+                   started_at: ~N[2026-05-01 10:00:00],
+                   ended_at: ~N[2026-05-01 10:00:00]
+                 })
+               )
+    end
+
+    # Other years and other Students are separate.
+    assert {:ok, _} =
+             insert_row(scope, %{academic_year: "2025-2026", started_at: ~N[2026-02-01 10:00:00]})
+
+    assert {:ok, _} = insert_row(insert_scope(), %{started_at: ~N[2026-02-01 10:00:00]})
+
+    # Stretching an ended row into its successor is rejected too.
+    assert_exclusion_violation(fn ->
+      Repo.query("UPDATE #{@table} SET ended_at = '2026-03-02 10:00:00' WHERE id = $1", [
+        first_id
+      ])
+    end)
+
+    assert Repo.query!("SELECT ended_at FROM #{@table} WHERE id = $1", [running_id]).rows == [
+             [nil]
+           ]
+  end
+
+  test "ending a future-dated Mapping for a dropout still allows a new one" do
+    scope = insert_scope()
+
+    assert {:ok, %{rows: [[future_id]]}} =
+             insert_row(scope, %{started_at: ~N[2099-01-01 00:00:00]})
+
+    assert {:ok, {:ok, 1}} =
+             Repo.transaction(fn ->
+               BlendedLearning.end_active_mappings(scope.student_id, :student_dropout)
+             end)
+
+    assert Repo.query!(
+             "SELECT ended_at = started_at FROM #{@table} WHERE id = $1",
+             [future_id]
+           ).rows == [[true]]
+
+    assert {:ok, _} = insert_row(scope, %{started_at: ~N[2099-01-01 00:00:00]})
+  end
+
+  test "updated_at moves on every UPDATE, even one that does not set it" do
+    scope = insert_scope()
+
+    assert {:ok, %{rows: [[mapping_id]]}} =
+             insert_row(scope, %{updated_at: ~N[2026-01-01 00:00:00]})
+
+    stamp_query =
+      "SELECT updated_at = timezone('UTC', now())::timestamp(0) FROM #{@table} WHERE id = $1"
+
+    assert Repo.query!(stamp_query, [mapping_id]).rows == [[false]]
+
+    Repo.query!(
+      """
+      UPDATE #{@table}
+      SET ended_at = '2026-01-02 10:00:00', ended_by_email = 'ops@example.org',
+          end_source = 'af_lms', end_reason = 'reassigned'
+      WHERE id = $1
+      """,
+      [mapping_id]
+    )
+
+    assert Repo.query!(stamp_query, [mapping_id]).rows == [[true]]
+
+    Repo.query!(
+      "UPDATE #{@table} SET updated_at = '2026-01-01 00:00:00' WHERE id = $1",
+      [mapping_id]
+    )
+
+    assert Repo.query!(stamp_query, [mapping_id]).rows == [[true]]
   end
 
   test "concurrent assignment is first-write-wins" do
@@ -387,6 +600,31 @@ defmodule Dbservice.BlendedLearningMentorshipMappingSchemaTest do
     |> Enum.map(fn [name] -> name end)
   end
 
+  defp exclusion_constraints do
+    Repo.query!(
+      """
+      SELECT conname, pg_get_constraintdef(oid)
+      FROM pg_constraint
+      WHERE conrelid = $1::text::regclass AND contype = 'x'
+      ORDER BY conname
+      """,
+      [@table]
+    ).rows
+    |> Enum.map(fn [name, definition] -> {name, definition} end)
+  end
+
+  defp triggers do
+    Repo.query!(
+      """
+      SELECT tgname FROM pg_trigger
+      WHERE tgrelid = $1::text::regclass AND NOT tgisinternal
+      ORDER BY tgname
+      """,
+      [@table]
+    ).rows
+    |> Enum.map(fn [name] -> name end)
+  end
+
   defp indexes do
     Repo.query!(
       """
@@ -457,29 +695,43 @@ defmodule Dbservice.BlendedLearningMentorshipMappingSchemaTest do
   end
 
   defp insert_mapping(scope, [ended_at, ended_by_user_id, end_reason, end_source]) do
+    insert_row(scope, %{
+      ended_at: ended_at,
+      ended_by_user_id: ended_by_user_id,
+      end_reason: end_reason,
+      end_source: end_source
+    })
+  end
+
+  defp insert_row(scope, attrs) do
+    {columns, values} =
+      %{
+        student_id: scope.student_id,
+        mentor_user_id: scope.mentor_user_id,
+        program_id: scope.program_id,
+        academic_year: "2026-2027",
+        started_at: ~N[2026-01-01 10:00:00],
+        assignment_source: "af_lms"
+      }
+      |> Map.merge(attrs)
+      |> Enum.sort()
+      |> Enum.unzip()
+
+    placeholders = Enum.map_join(1..length(values), ", ", &"$#{&1}")
+
     Repo.query(
-      """
-      INSERT INTO #{@table}
-        (student_id, mentor_user_id, program_id, academic_year, started_at,
-         assignment_source, ended_at, ended_by_user_id, end_reason, end_source)
-      VALUES ($1, $2, $3, '2026-2027', $4, 'af_lms', $5, $6, $7, $8)
-      RETURNING id
-      """,
-      [
-        scope.student_id,
-        scope.mentor_user_id,
-        scope.program_id,
-        ~N[2026-01-01 10:00:00],
-        ended_at,
-        ended_by_user_id,
-        end_reason,
-        end_source
-      ]
+      "INSERT INTO #{@table} (#{Enum.join(columns, ", ")}) VALUES (#{placeholders}) RETURNING id",
+      values
     )
   end
 
   defp assert_check_violation(query) do
     assert {:error, {:error, %Postgrex.Error{postgres: %{code: :check_violation}}}} =
+             Repo.transaction(fn -> Repo.rollback(query.()) end, mode: :savepoint)
+  end
+
+  defp assert_exclusion_violation(query) do
+    assert {:error, {:error, %Postgrex.Error{postgres: %{code: :exclusion_violation}}}} =
              Repo.transaction(fn -> Repo.rollback(query.()) end, mode: :savepoint)
   end
 

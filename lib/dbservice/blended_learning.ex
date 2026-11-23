@@ -33,7 +33,8 @@ defmodule Dbservice.BlendedLearning do
 
   The mapping is ended, never deleted, the same way a reassignment ends one. No
   person did this, so `ended_by_user_id` and `ended_by_email` stay blank and
-  `end_source` records the system that acted.
+  `end_source` records the system that acted. `blm_mappings_ended_by_check`
+  allows a blank ender only for this `end_source`.
   """
   def end_active_mappings(student_id, reason) when reason in @eligibility_end_reasons do
     reason = Atom.to_string(reason)
@@ -172,6 +173,10 @@ defmodule Dbservice.BlendedLearning do
     case constraint do
       "blm_mappings_active_student_year_unique" ->
         "Student already has a running mentor mapping for this academic year"
+
+      "blm_mappings_no_overlapping_periods" ->
+        "started_at falls inside an earlier mentor mapping for this student and academic " <>
+          "year; a mentorship cannot overlap another"
 
       other ->
         "Mapping rejected by the database (#{other})"

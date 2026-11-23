@@ -221,18 +221,51 @@ defmodule Dbservice.DataImport.BlendedMentorAssignmentProcessorTest do
                Processor.process_mentor_assignment(record(ctx, %{"academic_year" => " "}))
     end
 
+    test "requires academic_year to be two consecutive years as YYYY-YYYY", ctx do
+      for year <- ["2026-2028", "2026-27", "2026/2027", "26-27", "2026-2027 2027-2028"] do
+        assert {:error, message} =
+                 Processor.process_mentor_assignment(record(ctx, %{"academic_year" => year}))
+
+        assert message ==
+                 "academic_year '#{year}' must be two consecutive years as YYYY-YYYY, e.g. 2026-2027"
+      end
+
+      assert mappings_for(ctx.student.id) == []
+
+      assert {:ok, _message} =
+               Processor.process_mentor_assignment(
+                 record(ctx, %{"academic_year" => " 2027-2028 "})
+               )
+
+      assert [%{"academic_year" => "2027-2028"}] = mappings_for(ctx.student.id)
+    end
+
     # Row processors are expected to return errors, not raise: an exception is
     # reported as a bare message with no context about the row's data.
     test "turns a database rejection into a row error", ctx do
-      oversized_year = String.duplicate("2026-2027 ", 40)
+      [[mentor_user_id]] =
+        Repo.query!(
+          "INSERT INTO \"user\" (inserted_at, updated_at) VALUES (now(), now()) RETURNING id"
+        ).rows
+
+      # An earlier mentorship, already ended, that a backdated row would overlap.
+      Repo.query!(
+        """
+        INSERT INTO #{@table}
+          (student_id, mentor_user_id, program_id, academic_year, started_at,
+           assignment_source, ended_at, ended_by_email, end_source, end_reason)
+        VALUES ($1, $2, $3, '2026-2027', '2026-07-01 00:00:00', 'data_import',
+                '2026-10-01 00:00:00', 'ops@example.org', 'data_import', 'mentor_reassigned')
+        """,
+        [ctx.student.id, mentor_user_id, ctx.program.id]
+      )
 
       assert {:error, message} =
-               Processor.process_mentor_assignment(
-                 record(ctx, %{"academic_year" => oversized_year})
-               )
+               Processor.process_mentor_assignment(record(ctx, %{"started_at" => "2026-08-01"}))
 
       assert message =~ "Mentor assignment failed"
-      assert mappings_for(ctx.student.id) == []
+      assert message =~ "cannot overlap another"
+      assert [_only_the_ended_one] = mappings_for(ctx.student.id)
     end
 
     test "rejects an unparseable started_at", ctx do

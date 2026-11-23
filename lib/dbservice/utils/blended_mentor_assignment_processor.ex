@@ -92,7 +92,20 @@ defmodule Dbservice.DataImport.BlendedMentorAssignmentProcessor do
   defp get_academic_year(record) do
     case trimmed(record["academic_year"]) do
       nil -> {:error, "academic_year is required"}
-      year -> {:ok, year}
+      year -> validate_academic_year(year)
+    end
+  end
+
+  # The mapping table's blm_mappings_academic_year_format_check enforces the same
+  # rule; checking it here names the bad value instead of reporting a rejected row.
+  defp validate_academic_year(year) do
+    with [_, first, second] <- Regex.run(~r/\A(\d{4})-(\d{4})\z/, year),
+         true <- String.to_integer(second) == String.to_integer(first) + 1 do
+      {:ok, year}
+    else
+      _ ->
+        {:error,
+         "academic_year '#{year}' must be two consecutive years as YYYY-YYYY, e.g. 2026-2027"}
     end
   end
 

@@ -44,17 +44,30 @@ defmodule Dbservice.BlendedLearningMentorSupervisionsSchemaTest do
            ]
 
     assert check_names() == [
+             "blm_supervisions_academic_year_format_check",
              "blm_supervisions_audit_fields_check",
+             "blm_supervisions_ended_by_check",
              "blm_supervisions_lifecycle_check",
              "blm_supervisions_not_self_check"
            ]
+
+    assert exclusion_constraints() == [
+             {"blm_supervisions_no_overlapping_periods",
+              "EXCLUDE USING gist (supervisor_user_id WITH =, mentor_user_id WITH =, " <>
+                "academic_year WITH =, tsrange(started_at, ended_at, '[)'::text) WITH &&)"}
+           ]
+
+    assert triggers() == ["blm_supervisions_touch_updated_at"]
 
     assert indexes() == [
              {"blended_learning_mentor_supervisions_pkey", true, ["id"], nil},
              {"blm_supervisions_active_mentor_year_idx", false,
               ["mentor_user_id", "academic_year"], "(ended_at IS NULL)"},
              {"blm_supervisions_active_pair_year_unique", true,
-              ["supervisor_user_id", "mentor_user_id", "academic_year"], "(ended_at IS NULL)"}
+              ["supervisor_user_id", "mentor_user_id", "academic_year"], "(ended_at IS NULL)"},
+             # The exclusion constraint's index; its period expression is not a column.
+             {"blm_supervisions_no_overlapping_periods", false,
+              ["supervisor_user_id", "mentor_user_id", "academic_year"], nil}
            ]
   end
 
@@ -94,7 +107,9 @@ defmodule Dbservice.BlendedLearningMentorSupervisionsSchemaTest do
       [first_id]
     )
 
-    assert {:ok, %{rows: [[second_id]]}} = insert_supervision(supervisor, mentor, %{})
+    # The new Supervision starts where the ended one stopped.
+    assert {:ok, %{rows: [[second_id]]}} =
+             insert_supervision(supervisor, mentor, %{started_at: ~N[2026-11-01 10:00:00]})
 
     assert Repo.query!(
              "SELECT id, ended_at IS NULL FROM #{@table} WHERE academic_year = '2026-2027' ORDER BY id"
@@ -112,8 +127,22 @@ defmodule Dbservice.BlendedLearningMentorSupervisionsSchemaTest do
           %{ended_at: ~N[2026-11-01 10:00:00], end_source: "af_lms_script"},
           %{
             ended_at: ~N[2026-01-01 09:00:00],
+            ended_by_email: "ops@example.org",
             end_source: "af_lms_script",
             end_reason: "team_changed"
+          },
+          %{assignment_source: " \t"},
+          %{
+            ended_at: ~N[2026-11-01 10:00:00],
+            ended_by_email: "ops@example.org",
+            end_source: "  ",
+            end_reason: "team_changed"
+          },
+          %{
+            ended_at: ~N[2026-11-01 10:00:00],
+            ended_by_email: "ops@example.org",
+            end_source: "af_lms_script",
+            end_reason: "\n"
           }
         ] do
       assert_constraint(:check_violation, fn -> insert_supervision(supervisor, mentor, attrs) end)
@@ -122,9 +151,154 @@ defmodule Dbservice.BlendedLearningMentorSupervisionsSchemaTest do
     assert {:ok, _} =
              insert_supervision(supervisor, mentor, %{
                ended_at: ~N[2026-11-01 10:00:00],
+               ended_by_email: "ops@example.org",
                end_source: "af_lms_script",
                end_reason: "team_changed"
              })
+  end
+
+  test "requires a YYYY-YYYY academic year of consecutive years" do
+    [supervisor, mentor] = insert_users(2)
+
+    for academic_year <- ["2026-2028", "2026-2026", "2026/2027", "26-27", "2026-2027 ", "x"] do
+      assert_constraint(:check_violation, fn ->
+        insert_supervision(supervisor, mentor, %{academic_year: academic_year})
+      end)
+    end
+
+    for academic_year <- ["2026-2027", "2027-2028"] do
+      assert {:ok, _} = insert_supervision(supervisor, mentor, %{academic_year: academic_year})
+    end
+  end
+
+  test "an ended Supervision always names who ended it" do
+    [supervisor, mentor] = insert_users(2)
+
+    ended = %{
+      ended_at: ~N[2026-06-01 00:00:00],
+      end_source: "af_lms_team_leads",
+      end_reason: "team_changed"
+    }
+
+    # Supervisions have no system end, so even the Mapping's exempt source needs a person.
+    for attrs <- [ended, %{ended | end_source: "db_service_student_eligibility"}] do
+      assert_constraint(:check_violation, fn -> insert_supervision(supervisor, mentor, attrs) end)
+    end
+
+    assert {:ok, _} =
+             insert_supervision(supervisor, mentor, Map.put(ended, :ended_by_user_id, supervisor))
+
+    assert {:ok, _} =
+             insert_supervision(
+               supervisor,
+               mentor,
+               Map.merge(ended, %{
+                 started_at: ~N[2026-06-01 00:00:00],
+                 ended_at: ~N[2026-08-01 00:00:00],
+                 ended_by_email: "ops@example.org"
+               })
+             )
+  end
+
+  test "a pair's Supervision periods in a year cannot overlap" do
+    [supervisor, other_supervisor, mentor] = insert_users(3)
+
+    ended = %{
+      ended_by_email: "ops@example.org",
+      end_source: "af_lms_team_leads",
+      end_reason: "team_changed"
+    }
+
+    assert {:ok, _} =
+             insert_supervision(
+               supervisor,
+               mentor,
+               Map.put(ended, :ended_at, ~N[2026-06-01 00:00:00])
+             )
+
+    for attrs <- [
+          %{started_at: ~N[2026-05-01 00:00:00]},
+          %{started_at: ~N[2026-03-01 00:00:00]},
+          Map.merge(ended, %{
+            started_at: ~N[2026-05-31 00:00:00],
+            ended_at: ~N[2026-07-01 00:00:00]
+          })
+        ] do
+      assert_constraint(:exclusion_violation, fn ->
+        insert_supervision(supervisor, mentor, attrs)
+      end)
+    end
+
+    # Back to back: ended and started again at the same instant.
+    assert {:ok, _} =
+             insert_supervision(supervisor, mentor, %{started_at: ~N[2026-06-01 00:00:00]})
+
+    # Ended at its own start: an empty period, which overlaps nothing.
+    assert {:ok, _} =
+             insert_supervision(
+               supervisor,
+               mentor,
+               Map.merge(ended, %{
+                 started_at: ~N[2026-09-01 00:00:00],
+                 ended_at: ~N[2026-09-01 00:00:00]
+               })
+             )
+
+    # Another supervisor of the same Mentor has their own periods.
+    assert {:ok, _} = insert_supervision(other_supervisor, mentor, %{})
+  end
+
+  # af_lms starts a Supervision with ON CONFLICT ... DO NOTHING against the running-pair
+  # index; a pair that is already running must still be a no-op, not an exclusion error.
+  test "af_lms's idempotent insert stays a no-op for a running pair" do
+    [supervisor, mentor] = insert_users(2)
+
+    af_lms_insert = fn ->
+      Repo.query!(
+        """
+        INSERT INTO #{@table}
+           (supervisor_user_id, mentor_user_id, academic_year, started_at,
+            assigned_by_email, assignment_source, assignment_audit_reason)
+         VALUES ($1, $2, '2026-2027', date_trunc('second', now() AT TIME ZONE 'UTC'), $3, $4, NULL)
+         ON CONFLICT (supervisor_user_id, mentor_user_id, academic_year) WHERE ended_at IS NULL DO NOTHING
+         RETURNING id
+        """,
+        [supervisor, mentor, "ops@example.org", "af_lms_team_leads"]
+      )
+    end
+
+    assert %{num_rows: 1} = af_lms_insert.()
+    assert %{num_rows: 0} = af_lms_insert.()
+
+    # Also when the running row started earlier than the insert's started_at.
+    Repo.query!("UPDATE #{@table} SET started_at = '2026-04-01 00:00:00'")
+    assert %{num_rows: 0} = af_lms_insert.()
+
+    assert Repo.query!("SELECT count(*) FROM #{@table}").rows == [[1]]
+  end
+
+  test "updated_at moves on every UPDATE, even one that does not set it" do
+    [supervisor, mentor] = insert_users(2)
+
+    assert {:ok, %{rows: [[id]]}} =
+             insert_supervision(supervisor, mentor, %{updated_at: ~N[2026-01-01 00:00:00]})
+
+    stamp_query =
+      "SELECT updated_at = timezone('UTC', now())::timestamp(0) FROM #{@table} WHERE id = $1"
+
+    assert Repo.query!(stamp_query, [id]).rows == [[false]]
+
+    Repo.query!(
+      """
+      UPDATE #{@table}
+      SET ended_at = '2026-11-01 10:00:00', ended_by_email = 'ops@example.org',
+          end_source = 'af_lms_team_leads', end_reason = 'team_changed'
+      WHERE id = $1
+      """,
+      [id]
+    )
+
+    assert Repo.query!(stamp_query, [id]).rows == [[true]]
   end
 
   test "rejects blank audit fields" do
@@ -183,6 +357,31 @@ defmodule Dbservice.BlendedLearningMentorSupervisionsSchemaTest do
   defp assert_constraint(code, query) do
     assert {:error, {:error, %Postgrex.Error{postgres: %{code: ^code}}}} =
              Repo.transaction(fn -> Repo.rollback(query.()) end, mode: :savepoint)
+  end
+
+  defp exclusion_constraints do
+    Repo.query!(
+      """
+      SELECT conname, pg_get_constraintdef(oid)
+      FROM pg_constraint
+      WHERE conrelid = $1::text::regclass AND contype = 'x'
+      ORDER BY conname
+      """,
+      [@table]
+    ).rows
+    |> Enum.map(fn [name, definition] -> {name, definition} end)
+  end
+
+  defp triggers do
+    Repo.query!(
+      """
+      SELECT tgname FROM pg_trigger
+      WHERE tgrelid = $1::text::regclass AND NOT tgisinternal
+      ORDER BY tgname
+      """,
+      [@table]
+    ).rows
+    |> Enum.map(fn [name] -> name end)
   end
 
   defp column_types do
