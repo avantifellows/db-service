@@ -62,8 +62,8 @@ defmodule Dbservice.BlendedLearning do
             ended_by_email: nil,
             end_source: @eligibility_end_source,
             end_reason: ^reason,
-            end_audit_reason: nil,
-            updated_at: fragment("date_trunc('second', timezone('UTC', now()))")
+            # updated_at is set by the blm_mappings_touch_updated_at trigger.
+            end_audit_reason: nil
           ]
         ]
       )
@@ -82,7 +82,10 @@ defmodule Dbservice.BlendedLearning do
   the same mentor is already running (so re-running the same sheet is a no-op).
 
   The running mapping is ended at the new mapping's `started_at`, leaving no gap
-  or overlap between the two periods.
+  or overlap between the two periods. A nil `started_at` means now by the
+  database clock, the clock `end_active_mappings/2` ends mappings by, so a
+  student remapped straight after a dropout cannot start before the old
+  mapping ended just because the app's clock lags the database's.
   """
   def assign_mentor(attrs) do
     Repo.transaction(fn -> do_assign_mentor(attrs) end)
@@ -91,6 +94,7 @@ defmodule Dbservice.BlendedLearning do
   end
 
   defp do_assign_mentor(attrs) do
+    attrs = Map.put(attrs, :started_at, Map.get(attrs, :started_at) || database_now())
     running = active_mapping(attrs.student_id, attrs.academic_year)
 
     cond do
@@ -147,8 +151,8 @@ defmodule Dbservice.BlendedLearning do
         ended_by_email: attrs.assigned_by_email,
         end_source: @data_import_source,
         end_reason: @reassignment_end_reason,
-        end_audit_reason: attrs.assignment_audit_reason,
-        updated_at: now()
+        # updated_at is set by the blm_mappings_touch_updated_at trigger.
+        end_audit_reason: attrs.assignment_audit_reason
       ]
     )
   end
@@ -176,6 +180,14 @@ defmodule Dbservice.BlendedLearning do
   end
 
   defp now, do: NaiveDateTime.utc_now() |> NaiveDateTime.truncate(:second)
+
+  # Truncated like end_active_mappings/2's ended_at; the timestamp(0) column would round.
+  defp database_now do
+    %{rows: [[database_now]]} =
+      Repo.query!("SELECT date_trunc('second', timezone('UTC', now()))")
+
+    NaiveDateTime.truncate(database_now, :second)
+  end
 
   defp database_error_message(%Postgrex.Error{postgres: %{constraint: constraint}})
        when is_binary(constraint) do

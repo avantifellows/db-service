@@ -102,6 +102,7 @@ defmodule Dbservice.Repo.Migrations.HardenBlendedLearningMappingTables do
     # clock_timestamp(), not now(): now() is the transaction's start, so a long
     # transaction would stamp a row earlier than one committed before it. Truncated
     # because a timestamp(0) column rounds, which could stamp a time still to come.
+    # The WHEN clause skips an UPDATE that changes nothing, so it leaves updated_at.
     execute("""
     CREATE FUNCTION blended_learning_touch_updated_at()
     RETURNS trigger
@@ -118,7 +119,9 @@ defmodule Dbservice.Repo.Migrations.HardenBlendedLearningMappingTables do
       execute("""
       CREATE TRIGGER #{trigger}
       BEFORE UPDATE ON #{table}
-      FOR EACH ROW EXECUTE FUNCTION blended_learning_touch_updated_at()
+      FOR EACH ROW
+      WHEN (OLD.* IS DISTINCT FROM NEW.*)
+      EXECUTE FUNCTION blended_learning_touch_updated_at()
       """)
     end
   end

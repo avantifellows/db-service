@@ -277,7 +277,7 @@ defmodule Dbservice.BlendedLearningMentorSupervisionsSchemaTest do
     assert Repo.query!("SELECT count(*) FROM #{@table}").rows == [[1]]
   end
 
-  test "updated_at moves on every UPDATE, even one that does not set it" do
+  test "updated_at moves on every UPDATE that changes the row, even one that does not set it" do
     [supervisor, mentor] = insert_users(2)
 
     assert {:ok, %{rows: [[id]]}} =
@@ -291,6 +291,13 @@ defmodule Dbservice.BlendedLearningMentorSupervisionsSchemaTest do
     """
 
     assert Repo.query!(stamp_query, [id]).rows == [[false]]
+
+    # An UPDATE that changes nothing leaves it alone.
+    Repo.query!("UPDATE #{@table} SET academic_year = academic_year WHERE id = $1", [id])
+
+    assert Repo.query!("SELECT updated_at FROM #{@table} WHERE id = $1", [id]).rows == [
+             [~N[2026-01-01 00:00:00]]
+           ]
 
     Repo.query!(
       """

@@ -117,11 +117,12 @@ defmodule Dbservice.DataImport.BlendedMentorAssignmentProcessor do
 
   defp get_audit_reason(record), do: {:ok, trimmed(record["assignment_audit_reason"])}
 
-  # Blank means the mentorship starts now; a value is how an assignment entered
+  # Blank means the mentorship starts now, which BlendedLearning.assign_mentor/1
+  # reads from the database clock (nil here); a value is how an assignment entered
   # late gets backdated to when it actually began.
   defp get_started_at(record) do
     case trimmed(record["started_at"]) do
-      nil -> {:ok, NaiveDateTime.utc_now() |> NaiveDateTime.truncate(:second)}
+      nil -> {:ok, nil}
       value -> parse_started_at(value)
     end
   end

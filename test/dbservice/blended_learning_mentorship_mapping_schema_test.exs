@@ -462,17 +462,14 @@ defmodule Dbservice.BlendedLearningMentorshipMappingSchemaTest do
                    BlendedLearning.end_active_mappings(scope.student_id, :student_dropout)
                  end)
 
-        # An import with a blank started_at, truncated to the second, as the processor does.
-        [[started_at]] =
-          Repo.query!("SELECT date_trunc('second', timezone('UTC', clock_timestamp()))").rows
-
+        # An import with a blank started_at, which starts now by the database clock.
         assert {:ok, :assigned} =
                  BlendedLearning.assign_mentor(%{
                    student_id: scope.student_id,
                    mentor_user_id: scope.mentor_user_id,
                    program_id: scope.program_id,
                    academic_year: "2026-2027",
-                   started_at: started_at,
+                   started_at: nil,
                    assigned_by_user_id: nil,
                    assigned_by_email: "ops@example.org",
                    assignment_audit_reason: nil
@@ -483,7 +480,7 @@ defmodule Dbservice.BlendedLearningMentorshipMappingSchemaTest do
     end)
   end
 
-  test "updated_at moves on every UPDATE, even one that does not set it" do
+  test "updated_at moves on every UPDATE that changes the row, even one that does not set it" do
     scope = insert_scope()
 
     assert {:ok, %{rows: [[mapping_id]]}} =
@@ -497,6 +494,16 @@ defmodule Dbservice.BlendedLearningMentorshipMappingSchemaTest do
     """
 
     assert Repo.query!(stamp_query, [mapping_id]).rows == [[false]]
+
+    # An UPDATE that changes nothing leaves it alone.
+    Repo.query!(
+      "UPDATE #{@table} SET assignment_source = assignment_source WHERE id = $1",
+      [mapping_id]
+    )
+
+    assert Repo.query!("SELECT updated_at FROM #{@table} WHERE id = $1", [mapping_id]).rows == [
+             [~N[2026-01-01 00:00:00]]
+           ]
 
     Repo.query!(
       """

@@ -85,14 +85,22 @@ defmodule Dbservice.DataImport.BlendedMentorAssignmentProcessorTest do
       assert mapping["started_at"] == ~N[2026-07-01 00:00:00]
     end
 
-    test "defaults started_at to now when the sheet leaves it blank", ctx do
-      before = NaiveDateTime.utc_now() |> NaiveDateTime.add(-5, :second)
+    # The clock a dropout ends a mapping by, so a remap straight after one cannot
+    # start before it ended when the app's clock lags the database's.
+    test "defaults started_at to now by the database clock when the sheet leaves it blank",
+         ctx do
+      # The test's transaction keeps the database's now() at its start, so after this
+      # the app's clock is more than a second ahead of it.
+      Repo.query!("SELECT pg_sleep(1.1)")
 
       assert {:ok, _message} =
                Processor.process_mentor_assignment(record(ctx, %{"started_at" => "  "}))
 
+      [[database_now]] =
+        Repo.query!("SELECT date_trunc('second', timezone('UTC', now()))").rows
+
       assert [mapping] = mappings_for(ctx.student.id)
-      assert NaiveDateTime.compare(mapping["started_at"], before) in [:gt, :eq]
+      assert mapping["started_at"] == NaiveDateTime.truncate(database_now, :second)
     end
 
     test "accepts an ISO-8601 date and time for started_at", ctx do
