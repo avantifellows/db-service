@@ -10,6 +10,7 @@ defmodule Dbservice.DataImport.BlendedMentorAssignmentProcessor do
 
   alias Dbservice.BlendedLearning
   alias Dbservice.Users
+  alias Dbservice.Utils.AcademicYear
   alias Dbservice.Utils.ChangesetFormatter
 
   @mentor_role "mentor"
@@ -92,7 +93,18 @@ defmodule Dbservice.DataImport.BlendedMentorAssignmentProcessor do
   defp get_academic_year(record) do
     case trimmed(record["academic_year"]) do
       nil -> {:error, "academic_year is required"}
-      year -> {:ok, year}
+      year -> validate_academic_year(year)
+    end
+  end
+
+  # The mapping table's blm_mappings_academic_year_format_check enforces the same
+  # rule; checking it here names the bad value instead of reporting a rejected row.
+  defp validate_academic_year(year) do
+    if AcademicYear.valid?(year) do
+      {:ok, year}
+    else
+      {:error,
+       "academic_year '#{year}' must be two consecutive years as YYYY-YYYY, e.g. 2026-2027"}
     end
   end
 
@@ -105,11 +117,12 @@ defmodule Dbservice.DataImport.BlendedMentorAssignmentProcessor do
 
   defp get_audit_reason(record), do: {:ok, trimmed(record["assignment_audit_reason"])}
 
-  # Blank means the mentorship starts now; a value is how an assignment entered
+  # Blank means the mentorship starts now, which BlendedLearning.assign_mentor/1
+  # reads from the database clock (nil here); a value is how an assignment entered
   # late gets backdated to when it actually began.
   defp get_started_at(record) do
     case trimmed(record["started_at"]) do
-      nil -> {:ok, NaiveDateTime.utc_now() |> NaiveDateTime.truncate(:second)}
+      nil -> {:ok, nil}
       value -> parse_started_at(value)
     end
   end
