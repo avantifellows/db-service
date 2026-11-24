@@ -43,6 +43,24 @@ defmodule Dbservice.BlendedLearningJeeFormUpdatesSchemaTest do
              ]
     end
 
+    test "a confirmation must be a document of the same Student" do
+      scope = insert_scope()
+      other_scope = %{scope | student_id: scope.other_student_id}
+      own_document_id = insert_document(scope)
+      other_document_id = insert_document(other_scope)
+
+      assert {:ok, _} = insert_filled(scope, %{confirmation_document_id: own_document_id})
+      assert {:ok, _} = insert_filled(scope, %{confirmation_document_id: nil})
+
+      assert_constraint(:foreign_key_violation, fn ->
+        insert_filled(scope, %{confirmation_document_id: other_document_id})
+      end)
+
+      assert_constraint(:foreign_key_violation, fn ->
+        insert_filled(scope, %{confirmation_document_id: -1})
+      end)
+    end
+
     test "has no password column" do
       columns =
         Repo.query!(
