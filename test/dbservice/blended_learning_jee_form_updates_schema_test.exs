@@ -121,6 +121,38 @@ defmodule Dbservice.BlendedLearningJeeFormUpdatesSchemaTest do
       end)
     end
 
+    test "rejects duplicate reasons while allowing distinct reasons and NULL reasons on filled rows" do
+      scope = insert_scope()
+
+      assert {:ok, _} =
+               insert_not_filled(scope, %{
+                 reasons: ["not_aware", "other"],
+                 details: "Needs guidance."
+               })
+
+      assert {:ok, _} = insert_filled(scope, %{reasons: nil})
+
+      for attrs <- [
+            %{reasons: ["other", "other"], details: "Needs guidance."},
+            %{reasons: ["not_aware", "not_aware"]},
+            %{reasons: ["not_aware", "other", "not_aware"], details: "Needs guidance."}
+          ] do
+        assert_constraint(:check_violation, fn -> insert_not_filled(scope, attrs) end)
+      end
+    end
+
+    test "requires academic_year to be consecutive YYYY-YYYY" do
+      scope = insert_scope()
+
+      assert {:ok, _} = insert_filled(scope, %{academic_year: "2026-2027"})
+
+      for academic_year <- ["2026-2028", "26-27", "2026/2027", "", "   "] do
+        assert_constraint(:check_violation, fn ->
+          insert_filled(scope, %{academic_year: academic_year})
+        end)
+      end
+    end
+
     test "rejects an unknown status, an implausible year or a blank recorder" do
       scope = insert_scope()
 
@@ -148,8 +180,10 @@ defmodule Dbservice.BlendedLearningJeeFormUpdatesSchemaTest do
     end
   end
 
+  # The DB enforces same-Student via composite FKs, not the update's status; af_lms
+  # enforces that only not_filled updates raise a 'jee_form' flag.
   describe "JEE form flags" do
-    test "a not-filled update raises one 'jee_form' flag with no Conversation" do
+    test "a JEE form update raises at most one 'jee_form' flag with no Conversation" do
       scope = insert_scope()
       {:ok, %{rows: [[update_id]]}} = insert_not_filled(scope, %{})
 
@@ -194,6 +228,8 @@ defmodule Dbservice.BlendedLearningJeeFormUpdatesSchemaTest do
     end
   end
 
+  # The DB enforces same-Student via composite FKs, not the update's status; af_lms
+  # enforces that only filled updates tick the Student's reminder Action Item.
   describe "Action Items ticked by a JEE form" do
     test "a done item is completed by a Conversation or a JEE form update, never both or neither" do
       scope = insert_scope()

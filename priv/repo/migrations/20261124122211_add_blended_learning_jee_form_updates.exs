@@ -4,27 +4,30 @@ defmodule Dbservice.Repo.Migrations.AddBlendedLearningJeeFormUpdates do
   # LMS-owned, like the rest of Blended Learning: af_lms reads and writes these tables and
   # columns directly over SQL, so there is no schema/context/controller here.
   #
-  # The JEE form card on a Blended Learning Student's page: a Mentor (or a Blended Learning
-  # Admin) records whether the Student has filled the form for one exam sitting (JEE Main
-  # 2027 first; exam_id + exam_year name it). Each save is a new row, so the latest row per
-  # (student_id, exam_id, exam_year) is the current status and the earlier ones are its
-  # history. Rows are append-only (bl_jee_form_updates_immutable).
+  # The JEE form card on a Blended Learning Student's page: a Mentor records whether the
+  # Student has filled the form for one exam sitting (JEE Main 2027 first; exam_id +
+  # exam_year name it). Blended Learning Admins view it read-only. Each save is a new row,
+  # so the latest row per (student_id, exam_id, exam_year) is the current status and the
+  # earlier ones are its history. Rows are append-only (bl_jee_form_updates_immutable).
   #
   # - filled: the application number (also upserted by af_lms into student_exam_record
   #   through the DB Service) and, optionally, the confirmation page uploaded as an
   #   lms_student_documents row. Never a password: application_password stays on
   #   student_exam_record only.
   # - not_filled: one or more reasons (fixed codes; af_lms holds the labels) and optional
-  #   details, which are required when 'other' is a reason. A not_filled row raises a
-  #   Mentor Flag for the program team (recipient 'jee_form', below).
+  #   details, which are required when 'other' is a reason. When recording a not_filled row,
+  #   af_lms raises a Mentor Flag for the program team (recipient 'jee_form', below).
   #
   # blended_learning_mentor_flags: a flag now comes from a Conversation (as before) or from
-  # a not_filled JEE form update, never both, and only the JEE form raises 'jee_form'. The
-  # (jee_form_update_id, student_id) FK keeps it on the same Student.
+  # a JEE form update, never both, and only a JEE form flag uses recipient 'jee_form'. The
+  # (jee_form_update_id, student_id) FK checks only that the update belongs to the same
+  # Student, not its status; af_lms enforces that only not_filled updates raise a flag.
   #
   # blended_learning_action_items: a done Action Item is now completed by a Conversation or
-  # by a filled JEE form update (af_lms ticks the Student's open "JEE Form Filling
-  # (Reminder)" Common Action Item when the form is recorded as filled), never both.
+  # by a JEE form update, never both. The (completed_by_jee_form_update_id, student_id) FK
+  # checks only that the update belongs to the same Student, not its status; af_lms
+  # enforces that only filled updates tick the Student's open "JEE Form Filling (Reminder)"
+  # Common Action Item.
   #
   # Rolling back deletes the JEE form flags and reopens the Action Items a JEE form ticked
   # before restoring the earlier checks.
@@ -157,7 +160,8 @@ defmodule Dbservice.Repo.Migrations.AddBlendedLearningJeeFormUpdates do
 
     execute(&flags_from_jee_form/0, &flags_from_conversations_only/0)
 
-    # Action Items completed by a filled JEE form update.
+    # Action Items completed by a JEE form update (the FK checks the Student; af_lms
+    # enforces that only filled updates tick the reminder).
     alter table(@action_items) do
       add :completed_by_jee_form_update_id,
           references(@updates, with: [student_id: :student_id], on_delete: :nothing)
