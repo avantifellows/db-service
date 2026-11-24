@@ -30,11 +30,13 @@ defmodule Dbservice.Repo.Migrations.TightenBlendedLearningJeeFormUpdateChecks do
   @previous_academic_year_check "academic_year ~ '[^[:space:]]'"
 
   def up do
+    # Requires an element type with an equality operator (e.g. not json).
     execute("""
     CREATE FUNCTION blended_learning_array_has_no_duplicates(arr anyarray)
     RETURNS boolean
     LANGUAGE sql
     IMMUTABLE
+    PARALLEL SAFE
     AS $$
       SELECT
         arr IS NULL

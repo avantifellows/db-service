@@ -137,7 +137,11 @@ defmodule Dbservice.BlendedLearningJeeFormUpdatesSchemaTest do
             %{reasons: ["not_aware", "not_aware"]},
             %{reasons: ["not_aware", "other", "not_aware"], details: "Needs guidance."}
           ] do
-        assert_constraint(:check_violation, fn -> insert_not_filled(scope, attrs) end)
+        assert_constraint(
+          :check_violation,
+          "bl_jee_form_updates_reasons_unique_check",
+          fn -> insert_not_filled(scope, attrs) end
+        )
       end
     end
 
@@ -146,10 +150,22 @@ defmodule Dbservice.BlendedLearningJeeFormUpdatesSchemaTest do
 
       assert {:ok, _} = insert_filled(scope, %{academic_year: "2026-2027"})
 
-      for academic_year <- ["2026-2028", "26-27", "2026/2027", "", "   "] do
-        assert_constraint(:check_violation, fn ->
-          insert_filled(scope, %{academic_year: academic_year})
-        end)
+      for academic_year <- [
+            "2026-2028",
+            "26-27",
+            "2026/2027",
+            " 2026-2027",
+            "2026-2027 ",
+            "2027-2026",
+            "2026-2026",
+            "",
+            "   "
+          ] do
+        assert_constraint(
+          :check_violation,
+          "bl_jee_form_updates_academic_year_format_check",
+          fn -> insert_filled(scope, %{academic_year: academic_year}) end
+        )
       end
     end
 
@@ -159,8 +175,7 @@ defmodule Dbservice.BlendedLearningJeeFormUpdatesSchemaTest do
       for attrs <- [
             %{status: "submitted"},
             %{exam_year: 27},
-            %{recorded_by_email: " "},
-            %{academic_year: ""}
+            %{recorded_by_email: " "}
           ] do
         assert_constraint(:check_violation, fn -> insert_filled(scope, attrs) end)
       end
@@ -448,6 +463,11 @@ defmodule Dbservice.BlendedLearningJeeFormUpdatesSchemaTest do
 
   defp assert_constraint(code, query) do
     assert {:error, {:error, %Postgrex.Error{postgres: %{code: ^code}}}} =
+             Repo.transaction(fn -> Repo.rollback(query.()) end, mode: :savepoint)
+  end
+
+  defp assert_constraint(code, constraint, query) do
+    assert {:error, {:error, %Postgrex.Error{postgres: %{code: ^code, constraint: ^constraint}}}} =
              Repo.transaction(fn -> Repo.rollback(query.()) end, mode: :savepoint)
   end
 end
