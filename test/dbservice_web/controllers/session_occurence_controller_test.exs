@@ -164,11 +164,17 @@ defmodule DbserviceWeb.SessionOccurrenceControllerTest do
         |> json_response(200)
         |> Enum.map(& &1["id"])
 
-    test "search returns matches in id order and paginates on it", %{conn: conn, occ: occ} do
+    test "search returns matches in id order and paginates on it", %{
+      conn: conn,
+      occ: occ,
+      other: other
+    } do
       session_ids = Enum.map(occ, & &1.session_id)
       by_id = occ |> Enum.map(& &1.id) |> Enum.sort()
 
-      assert search_ids(conn, %{session_ids: session_ids}) == by_id
+      ids = search_ids(conn, %{session_ids: session_ids})
+      assert ids == by_id
+      refute other.id in ids
 
       assert search_ids(conn, %{session_ids: session_ids, limit: 2, offset: 0}) ==
                Enum.slice(by_id, 0, 2)
@@ -185,6 +191,55 @@ defmodule DbserviceWeb.SessionOccurrenceControllerTest do
 
       assert search_ids(conn, %{session_ids: session_ids, is_start_time: "active"}) ==
                [c.id, a.id, d.id, b.id]
+    end
+  end
+
+  # The result-based tests above pass with any id ordering, so these pin the
+  # ORDER BY the search actually sends: `id + 0` only when session_ids is given.
+  describe "search ORDER BY" do
+    setup do
+      test_pid = self()
+      handler_id = {__MODULE__, make_ref()}
+
+      :telemetry.attach(
+        handler_id,
+        [:dbservice, :repo, :query],
+        fn _event, _measurements, %{query: sql}, _ ->
+          if sql =~ ~s(FROM "session_occurrence"), do: send(test_pid, {:occurrence_sql, sql})
+        end,
+        nil
+      )
+
+      on_exit(fn -> :telemetry.detach(handler_id) end)
+      %{session_ids: [session_occurrence_fixture().session_id]}
+    end
+
+    defp search_order_by(conn, body) do
+      conn |> post(~p"/api/session-occurrence/search", body) |> json_response(200)
+      assert_received {:occurrence_sql, sql}
+      [_, order_by] = Regex.run(~r/ORDER BY (.+?) LIMIT/, sql)
+      {sql, order_by}
+    end
+
+    test "session_ids orders by id + 0", %{conn: conn, session_ids: session_ids} do
+      assert {_, ~s(s0."id" + 0)} = search_order_by(conn, %{session_ids: session_ids})
+    end
+
+    test "session_ids with is_start_time=today keeps id + 0 alongside the session join",
+         %{conn: conn, session_ids: session_ids} do
+      assert {sql, ~s(s0."id" + 0)} =
+               search_order_by(conn, %{session_ids: session_ids, is_start_time: "today"})
+
+      assert sql =~ ~s(JOIN "session")
+    end
+
+    test "no session_ids orders by plain id", %{conn: conn} do
+      assert {_, ~s(s0."id")} = search_order_by(conn, %{})
+    end
+
+    test "is_start_time=active orders by end_time, id", %{conn: conn, session_ids: session_ids} do
+      assert {_, ~s(s0."end_time", s0."id")} =
+               search_order_by(conn, %{session_ids: session_ids, is_start_time: "active"})
     end
   end
 

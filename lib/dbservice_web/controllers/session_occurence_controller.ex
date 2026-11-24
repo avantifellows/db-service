@@ -142,7 +142,8 @@ defmodule DbserviceWeb.SessionOccurrenceController do
     end
   end
 
-  # Results are ordered by id unless a filter already set its own order.
+  # Results are ordered by id, except is_start_time=active, which sets its own
+  # end_time order in apply_time_filter/5.
   #
   # With a session_ids filter, a plain `ORDER BY id ... LIMIT` lets PostgreSQL walk
   # the primary key and filter every row until the page fills; for a student with
@@ -150,7 +151,7 @@ defmodule DbserviceWeb.SessionOccurrenceController do
   # `id + 0` gives the same order but can't be served by the primary key, so the
   # planner uses the session_id / time-window indexes and sorts the few matches.
   # Unfiltered listings keep the plain primary-key order, which is cheapest there.
-  defp apply_default_order(%Ecto.Query{order_bys: [_ | _]} = query, _params), do: query
+  defp apply_default_order(query, %{"is_start_time" => "active"}), do: query
 
   defp apply_default_order(query, %{"session_ids" => _}),
     do: order_by(query, [so], asc: fragment("? + 0", so.id))
@@ -284,12 +285,12 @@ defmodule DbserviceWeb.SessionOccurrenceController do
             )
 
       "active" ->
-        # Active-window lookups filter by end_time (served by the end_time index). Override
-        # the base `ORDER BY id` - which makes PostgreSQL walk the primary key and scan
-        # ~630K rows to find the few active ones - with temporal ordering. `id` is a
-        # deterministic pagination tie-breaker for rows sharing an end_time.
+        # Active-window lookups filter by end_time (served by the end_time index) and
+        # order by it too; apply_default_order/2 skips this case. A plain `ORDER BY id`
+        # here would make PostgreSQL walk the primary key and scan ~630K rows to find
+        # the few active ones. `id` is a deterministic pagination tie-breaker for rows
+        # sharing an end_time.
         query
-        |> exclude(:order_by)
         |> where([so], so.start_time <= ^current_time and so.end_time >= ^current_time)
         |> order_by([so], asc: so.end_time, asc: so.id)
 
