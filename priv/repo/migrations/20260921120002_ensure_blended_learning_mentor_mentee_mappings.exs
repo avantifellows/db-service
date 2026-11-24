@@ -8,6 +8,9 @@ defmodule Dbservice.Repo.Migrations.EnsureBlendedLearningMentorMenteeMappings do
   # wherever 20260921120000 really created the table (prod, fresh DBs).
   #
   # Keep this in sync with 20260921120000_create_blended_learning_mentor_mentee_mappings.exs.
+  # Later changes to the table, such as 20261123120000_harden_blended_learning_mapping_tables.exs
+  # replacing blm_mappings_lifecycle_check, run after this on every database, so they
+  # belong in their own migrations, not here.
 
   @mapping_table "blended_learning_mentor_mentee_mappings"
 

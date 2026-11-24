@@ -85,14 +85,22 @@ defmodule Dbservice.DataImport.BlendedMentorAssignmentProcessorTest do
       assert mapping["started_at"] == ~N[2026-07-01 00:00:00]
     end
 
-    test "defaults started_at to now when the sheet leaves it blank", ctx do
-      before = NaiveDateTime.utc_now() |> NaiveDateTime.add(-5, :second)
+    # The clock a dropout ends a mapping by, so a remap straight after one cannot
+    # start before it ended when the app's clock lags the database's.
+    test "defaults started_at to now by the database clock when the sheet leaves it blank",
+         ctx do
+      # The test's transaction keeps the database's now() at its start, so after this
+      # the app's clock is more than a second ahead of it.
+      Repo.query!("SELECT pg_sleep(1.1)")
 
       assert {:ok, _message} =
                Processor.process_mentor_assignment(record(ctx, %{"started_at" => "  "}))
 
+      [[database_now]] =
+        Repo.query!("SELECT date_trunc('second', timezone('UTC', now()))").rows
+
       assert [mapping] = mappings_for(ctx.student.id)
-      assert NaiveDateTime.compare(mapping["started_at"], before) in [:gt, :eq]
+      assert mapping["started_at"] == NaiveDateTime.truncate(database_now, :second)
     end
 
     test "accepts an ISO-8601 date and time for started_at", ctx do
@@ -221,18 +229,51 @@ defmodule Dbservice.DataImport.BlendedMentorAssignmentProcessorTest do
                Processor.process_mentor_assignment(record(ctx, %{"academic_year" => " "}))
     end
 
+    test "requires academic_year to be two consecutive years as YYYY-YYYY", ctx do
+      for year <- ["2026-2028", "2026-27", "2026/2027", "26-27", "2026-2027 2027-2028"] do
+        assert {:error, message} =
+                 Processor.process_mentor_assignment(record(ctx, %{"academic_year" => year}))
+
+        assert message ==
+                 "academic_year '#{year}' must be two consecutive years as YYYY-YYYY, e.g. 2026-2027"
+      end
+
+      assert mappings_for(ctx.student.id) == []
+
+      assert {:ok, _message} =
+               Processor.process_mentor_assignment(
+                 record(ctx, %{"academic_year" => " 2027-2028 "})
+               )
+
+      assert [%{"academic_year" => "2027-2028"}] = mappings_for(ctx.student.id)
+    end
+
     # Row processors are expected to return errors, not raise: an exception is
     # reported as a bare message with no context about the row's data.
     test "turns a database rejection into a row error", ctx do
-      oversized_year = String.duplicate("2026-2027 ", 40)
+      [[mentor_user_id]] =
+        Repo.query!(
+          "INSERT INTO \"user\" (inserted_at, updated_at) VALUES (now(), now()) RETURNING id"
+        ).rows
+
+      # An earlier mentorship, already ended, that a backdated row would overlap.
+      Repo.query!(
+        """
+        INSERT INTO #{@table}
+          (student_id, mentor_user_id, program_id, academic_year, started_at,
+           assignment_source, ended_at, ended_by_email, end_source, end_reason)
+        VALUES ($1, $2, $3, '2026-2027', '2026-07-01 00:00:00', 'data_import',
+                '2026-10-01 00:00:00', 'ops@example.org', 'data_import', 'mentor_reassigned')
+        """,
+        [ctx.student.id, mentor_user_id, ctx.program.id]
+      )
 
       assert {:error, message} =
-               Processor.process_mentor_assignment(
-                 record(ctx, %{"academic_year" => oversized_year})
-               )
+               Processor.process_mentor_assignment(record(ctx, %{"started_at" => "2026-08-01"}))
 
       assert message =~ "Mentor assignment failed"
-      assert mappings_for(ctx.student.id) == []
+      assert message =~ "overlaps another mapping for the same student and academic year"
+      assert [_only_the_ended_one] = mappings_for(ctx.student.id)
     end
 
     test "rejects an unparseable started_at", ctx do
