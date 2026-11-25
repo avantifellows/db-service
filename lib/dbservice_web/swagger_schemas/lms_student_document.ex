@@ -16,6 +16,17 @@ defmodule DbserviceWeb.SwaggerSchema.LmsStudentDocument do
             document_type(:string, "Document type", required: true)
             pages(:array, "Array of {s3_key, page_number, mime_type, byte_size}", required: true)
             metadata(:object, "Per-type extensible fields")
+
+            student_exam_record_id(
+              :integer,
+              "Exam registration the document belongs to; required for, and only allowed on, exam_acknowledgement"
+            )
+
+            exam_session(
+              :integer,
+              "Sitting of the exam (e.g. JEE Main Session 1 or 2); one of the registration's sessions_applied, or null if it has none"
+            )
+
             uploaded_by(:string, "Email of the uploading user", required: true)
             deleted_at(:string, "Soft-delete timestamp", format: "ISO-8601")
             inserted_at(:string, "Created timestamp", format: "ISO-8601")

@@ -23,6 +23,8 @@ defmodule DbserviceWeb.LmsStudentDocumentController do
     parameters do
       student_id(:query, :integer, "Filter by student id", required: false)
       document_type(:query, :string, "Filter by document type", required: false)
+
+      student_exam_record_id(:query, :integer, "Filter by exam registration id", required: false)
     end
 
     response(200, "OK", Schema.ref(:LmsStudentDocuments))

@@ -7,6 +7,7 @@ defmodule Dbservice.StudentExamRecords do
   alias Dbservice.Repo
 
   alias Dbservice.Exams.StudentExamRecord
+  alias Dbservice.LmsStudentDocuments
 
   @doc """
   Returns the list of student_exam_records.
@@ -90,9 +91,47 @@ defmodule Dbservice.StudentExamRecords do
 
   """
   def update_student_exam_record(%StudentExamRecord{} = student_exam_record, attrs) do
-    student_exam_record
-    |> StudentExamRecord.changeset(attrs)
-    |> Repo.update()
+    changeset = StudentExamRecord.changeset(student_exam_record, attrs)
+
+    if retires_documents?(changeset) do
+      update_retiring_documents(changeset)
+    else
+      Repo.update(changeset)
+    end
+  end
+
+  # A registration's exam acknowledgements describe its exam and its
+  # sittings. Moving it to another exam (create upserts on student and
+  # application number, so it can) retires all of them; dropping a sitting
+  # retires that sitting's. Either happens in the same transaction as the
+  # change.
+  defp retires_documents?(changeset) do
+    Map.has_key?(changeset.changes, :exam_id) or
+      Map.has_key?(changeset.changes, :sessions_applied)
+  end
+
+  defp update_retiring_documents(changeset) do
+    Repo.transaction(fn ->
+      case Repo.update(changeset) do
+        {:ok, record} ->
+          retire_documents(changeset, record)
+          record
+
+        {:error, failed} ->
+          Repo.rollback(failed)
+      end
+    end)
+  end
+
+  defp retire_documents(changeset, record) do
+    if Map.has_key?(changeset.changes, :exam_id) do
+      LmsStudentDocuments.soft_delete_exam_documents(record.id)
+    else
+      LmsStudentDocuments.soft_delete_exam_documents_outside_sessions(
+        record.id,
+        record.sessions_applied
+      )
+    end
   end
 
   @doc """
@@ -108,7 +147,26 @@ defmodule Dbservice.StudentExamRecords do
 
   """
   def delete_student_exam_record(%StudentExamRecord{} = student_exam_record) do
-    Repo.delete(student_exam_record)
+    # The registration's exam acknowledgements go with it. They are
+    # soft-deleted, like every LMS document, so the files stay recoverable;
+    # the foreign key then clears their link when the row goes.
+    #
+    # The row is locked first, as an upload locks it: otherwise an upload
+    # committing between the soft-delete and the delete would leave a live
+    # acknowledgement whose link the delete then clears.
+    Repo.transaction(fn ->
+      StudentExamRecord
+      |> where([r], r.id == ^student_exam_record.id)
+      |> lock("FOR UPDATE")
+      |> Repo.one()
+
+      LmsStudentDocuments.soft_delete_exam_documents(student_exam_record.id)
+
+      case Repo.delete(student_exam_record) do
+        {:ok, record} -> record
+        {:error, failed} -> Repo.rollback(failed)
+      end
+    end)
   end
 
   @doc """
