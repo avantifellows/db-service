@@ -99,6 +99,40 @@ defmodule DbserviceWeb.LmsStudentDocumentControllerTest do
       assert length(resp) == 1
     end
 
+    test "filters by exam registration and renders the exam link", %{
+      conn: conn,
+      student: student,
+      create_attrs: attrs
+    } do
+      {:ok, exam} = Dbservice.Exams.create_exam(%{name: "JEE Mains #{System.unique_integer()}"})
+
+      {:ok, record} =
+        Dbservice.StudentExamRecords.create_student_exam_record(%{
+          student_id: student.id,
+          exam_id: exam.id,
+          application_number: "APP#{System.unique_integer([:positive])}",
+          sessions_applied: [1, 2]
+        })
+
+      {:ok, _unlinked} = LmsStudentDocuments.create_lms_student_document(attrs)
+
+      ack =
+        Map.merge(attrs, %{
+          document_type: "exam_acknowledgement",
+          student_exam_record_id: record.id,
+          exam_session: 2
+        })
+
+      conn = post(conn, ~p"/api/lms-student-document", ack)
+      %{"id" => id} = json_response(conn, 201)
+
+      conn = get(conn, ~p"/api/lms-student-document?student_exam_record_id=#{record.id}")
+      assert [doc] = json_response(conn, 200)
+      assert doc["id"] == id
+      assert doc["student_exam_record_id"] == record.id
+      assert doc["exam_session"] == 2
+    end
+
     test "excludes soft-deleted documents", %{conn: conn, student: student, create_attrs: attrs} do
       {:ok, doc} = LmsStudentDocuments.create_lms_student_document(attrs)
       {:ok, _} = LmsStudentDocuments.soft_delete_lms_student_document(doc)

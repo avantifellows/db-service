@@ -14,6 +14,8 @@ defmodule DbserviceWeb.LmsStudentDocumentJSON do
       document_type: doc.document_type,
       pages: doc.pages,
       metadata: doc.metadata,
+      student_exam_record_id: doc.student_exam_record_id,
+      exam_session: doc.exam_session,
       uploaded_by: doc.uploaded_by,
       deleted_at: doc.deleted_at,
       inserted_at: doc.inserted_at,
