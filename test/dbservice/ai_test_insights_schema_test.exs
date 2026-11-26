@@ -2,8 +2,16 @@ defmodule Dbservice.AiTestInsightsSchemaTest do
   use Dbservice.DataCase, async: false
 
   @requests "ai_test_insight_requests"
+  @sessions "ai_test_insight_sessions"
   @started ~N[2026-11-26 10:00:00]
   @finished ~N[2026-11-26 10:05:00]
+  @submitted %{
+    state: "submitted",
+    session_date: ~D[2026-11-25],
+    submitted_at: ~N[2026-11-26 10:05:00],
+    areas_of_concern: "Weak in optics",
+    immediate_actions: "Revise ray diagrams"
+  }
 
   # Expected shapes are literals from the af_lms #549 PRD (db-service #880) and its
   # slice issues, never read from the migration.
@@ -438,6 +446,441 @@ defmodule Dbservice.AiTestInsightsSchemaTest do
     assert Repo.query!("SELECT count(*) FROM acad_mentorship_inference_items WHERE id = $1", [
              item_id
            ]).rows == [[1]]
+  end
+
+  test "Insight Sessions have the PRD's columns, types, nullability and defaults" do
+    ts = "timestamp without time zone"
+
+    assert Repo.query!(
+             """
+             SELECT column_name::text, data_type::text, datetime_precision,
+                    is_nullable::text, column_default::text
+             FROM information_schema.columns
+             WHERE table_schema = 'public' AND table_name = $1
+             ORDER BY ordinal_position
+             """,
+             [@sessions]
+           ).rows == [
+             ["id", "bigint", nil, "NO", "nextval('ai_test_insight_sessions_id_seq'::regclass)"],
+             ["student_id", "bigint", nil, "NO", nil],
+             ["school_id", "bigint", nil, "NO", nil],
+             ["program_id", "bigint", nil, "NO", nil],
+             ["academic_year", "text", nil, "NO", nil],
+             ["author_user_id", "bigint", nil, "NO", nil],
+             ["state", "text", nil, "NO", "'draft'::text"],
+             ["session_date", "date", 0, "YES", nil],
+             ["areas_of_concern", "text", nil, "YES", nil],
+             ["immediate_actions", "text", nil, "YES", nil],
+             ["other_notes", "text", nil, "YES", nil],
+             ["insight_request_id", "bigint", nil, "YES", nil],
+             ["revision", "integer", nil, "NO", "1"],
+             ["submitted_at", ts, 0, "YES", nil],
+             ["inserted_at", ts, 0, "NO", "now()"],
+             ["updated_at", ts, 0, "NO", "now()"]
+           ]
+  end
+
+  test "Insight Sessions reference Student, School, Program, author and own-Student request" do
+    assert Repo.query!("""
+           SELECT constraint_record.conname::text,
+                  array(
+                    SELECT attribute.attname::text
+                    FROM unnest(constraint_record.conkey) WITH ORDINALITY AS key(attnum, position)
+                    JOIN pg_attribute AS attribute
+                      ON attribute.attrelid = constraint_record.conrelid
+                     AND attribute.attnum = key.attnum
+                    ORDER BY key.position
+                  ),
+                  referenced.relname::text,
+                  array(
+                    SELECT attribute.attname::text
+                    FROM unnest(constraint_record.confkey) WITH ORDINALITY AS key(attnum, position)
+                    JOIN pg_attribute AS attribute
+                      ON attribute.attrelid = constraint_record.confrelid
+                     AND attribute.attnum = key.attnum
+                    ORDER BY key.position
+                  ),
+                  constraint_record.confdeltype::text,
+                  constraint_record.confmatchtype::text
+           FROM pg_constraint AS constraint_record
+           JOIN pg_class AS referenced ON referenced.oid = constraint_record.confrelid
+           WHERE constraint_record.conrelid = 'public.ai_test_insight_sessions'::regclass
+             AND constraint_record.contype = 'f'
+           ORDER BY constraint_record.conname
+           """).rows == [
+             [
+               "ai_test_insight_sessions_author_user_id_fkey",
+               ["author_user_id"],
+               "user",
+               ["id"],
+               "a",
+               "s"
+             ],
+             [
+               "ai_test_insight_sessions_insight_request_id_fkey",
+               ["insight_request_id", "student_id"],
+               "ai_test_insight_requests",
+               ["id", "student_id"],
+               "a",
+               "s"
+             ],
+             [
+               "ai_test_insight_sessions_program_id_fkey",
+               ["program_id"],
+               "program",
+               ["id"],
+               "a",
+               "s"
+             ],
+             [
+               "ai_test_insight_sessions_school_id_fkey",
+               ["school_id"],
+               "school",
+               ["id"],
+               "a",
+               "s"
+             ],
+             [
+               "ai_test_insight_sessions_student_id_fkey",
+               ["student_id"],
+               "student",
+               ["id"],
+               "a",
+               "s"
+             ]
+           ]
+  end
+
+  test "Insight Sessions have the PRD's three indexes, including the draft predicate" do
+    on = "ON public.ai_test_insight_sessions USING btree"
+
+    assert Repo.query!(
+             """
+             SELECT indexname::text, indexdef
+             FROM pg_indexes
+             WHERE schemaname = 'public' AND tablename = $1
+             ORDER BY indexname
+             """,
+             [@sessions]
+           ).rows == [
+             [
+               "ai_test_insight_sessions_pkey",
+               "CREATE UNIQUE INDEX ai_test_insight_sessions_pkey #{on} (id)"
+             ],
+             [
+               "ati_sessions_author_student_draft_unique",
+               "CREATE UNIQUE INDEX ati_sessions_author_student_draft_unique #{on} " <>
+                 "(author_user_id, student_id) WHERE (state = 'draft'::text)"
+             ],
+             [
+               "ati_sessions_insight_request_idx",
+               "CREATE INDEX ati_sessions_insight_request_idx #{on} (insight_request_id)"
+             ],
+             [
+               "ati_sessions_student_state_date_idx",
+               "CREATE INDEX ati_sessions_student_state_date_idx #{on} " <>
+                 "(student_id, state, session_date)"
+             ]
+           ]
+  end
+
+  test "Insight Sessions have exactly the three named CHECK constraints" do
+    assert Repo.query!("""
+           SELECT conname::text
+           FROM pg_constraint
+           WHERE conrelid = 'public.ai_test_insight_sessions'::regclass AND contype = 'c'
+           ORDER BY conname
+           """).rows == [
+             ["ati_sessions_academic_year_check"],
+             ["ati_sessions_lifecycle_check"],
+             ["ati_sessions_revision_check"]
+           ]
+  end
+
+  describe "one draft per author per Student" do
+    test "a second draft by the same author for the same Student is rejected" do
+      scope = insert_scope()
+      assert {:ok, _} = insert_session(scope, %{areas_of_concern: "Weak in optics"})
+
+      assert_constraint(:unique_violation, "ati_sessions_author_student_draft_unique", fn ->
+        insert_session(scope)
+      end)
+
+      assert Repo.query!("SELECT areas_of_concern FROM #{@sessions}").rows == [
+               ["Weak in optics"]
+             ]
+    end
+
+    test "another author, another Student, or a submitted first draft leaves room for a draft" do
+      scope = insert_scope()
+      first_id = scope |> insert_session() |> inserted_id()
+      other_author_id = insert_user!()
+
+      assert {:ok, _} = insert_session(scope, %{author_user_id: other_author_id})
+      assert {:ok, _} = insert_session(scope, %{student_id: scope.other_student_id})
+
+      assert {:ok, %{num_rows: 1}} = update_session(first_id, @submitted)
+      assert {:ok, _} = insert_session(scope)
+
+      assert Repo.query!(
+               """
+               SELECT author_user_id = $1, student_id = $2, state
+               FROM #{@sessions} ORDER BY id
+               """,
+               [scope.teacher_user_id, scope.student_id]
+             ).rows == [
+               [true, true, "submitted"],
+               [false, true, "draft"],
+               [true, false, "draft"],
+               [true, true, "draft"]
+             ]
+    end
+
+    test "an empty draft is accepted with the PRD's defaults" do
+      scope = insert_scope()
+      assert {:ok, _} = insert_session(scope)
+
+      assert Repo.query!("""
+             SELECT state, revision, session_date, areas_of_concern, immediate_actions,
+                    other_notes, insight_request_id, submitted_at
+             FROM #{@sessions}
+             """).rows == [["draft", 1, nil, nil, nil, nil, nil, nil]]
+    end
+  end
+
+  describe "a submitted session needs a date, a submit time and both required notes" do
+    for field <- [:areas_of_concern, :immediate_actions],
+        {label, value} <- [
+          {"null", nil},
+          {"empty", ""},
+          {"spaces", "   "},
+          {"a tab", "\t"},
+          {"a newline", "\n"},
+          {"mixed whitespace", " \t\n "}
+        ] do
+      test "#{field} that is #{label} is rejected on insert and on submit" do
+        scope = insert_scope()
+        attrs = Map.put(@submitted, unquote(field), unquote(value))
+
+        assert_constraint(:check_violation, "ati_sessions_lifecycle_check", fn ->
+          insert_session(scope, attrs)
+        end)
+
+        draft_id = scope |> insert_session() |> inserted_id()
+
+        assert_constraint(:check_violation, "ati_sessions_lifecycle_check", fn ->
+          update_session(draft_id, attrs)
+        end)
+
+        assert Repo.query!("SELECT state FROM #{@sessions}").rows == [["draft"]]
+      end
+    end
+
+    for field <- [:session_date, :submitted_at] do
+      test "a missing #{field} is rejected on insert and on submit" do
+        scope = insert_scope()
+        attrs = Map.put(@submitted, unquote(field), nil)
+
+        assert_constraint(:check_violation, "ati_sessions_lifecycle_check", fn ->
+          insert_session(scope, attrs)
+        end)
+
+        draft_id = scope |> insert_session() |> inserted_id()
+
+        assert_constraint(:check_violation, "ati_sessions_lifecycle_check", fn ->
+          update_session(draft_id, attrs)
+        end)
+
+        assert Repo.query!("SELECT state FROM #{@sessions}").rows == [["draft"]]
+      end
+    end
+
+    test "Other notes is optional, on insert and on submit" do
+      scope = insert_scope()
+      attrs = Map.put(@submitted, :other_notes, nil)
+
+      assert {:ok, _} = insert_session(scope, attrs)
+      draft_id = scope |> insert_session(%{author_user_id: insert_user!()}) |> inserted_id()
+      assert {:ok, %{num_rows: 1}} = update_session(draft_id, attrs)
+
+      assert Repo.query!("""
+             SELECT state, session_date, submitted_at, areas_of_concern,
+                    immediate_actions, other_notes
+             FROM #{@sessions} ORDER BY id
+             """).rows ==
+               List.duplicate(
+                 [
+                   "submitted",
+                   ~D[2026-11-25],
+                   ~N[2026-11-26 10:05:00],
+                   "Weak in optics",
+                   "Revise ray diagrams",
+                   nil
+                 ],
+                 2
+               )
+    end
+
+    test "a draft with a submit time and an unknown state are rejected" do
+      scope = insert_scope()
+
+      for attrs <- [
+            %{submitted_at: @finished},
+            Map.put(@submitted, :state, "archived"),
+            Map.put(@submitted, :state, "Submitted"),
+            %{state: "Draft"}
+          ] do
+        assert_constraint(:check_violation, "ati_sessions_lifecycle_check", fn ->
+          insert_session(scope, attrs)
+        end)
+      end
+
+      assert Repo.query!("SELECT count(*) FROM #{@sessions}").rows == [[0]]
+    end
+  end
+
+  test "an Insight Session's academic year is YYYY-YYYY with consecutive years" do
+    scope = insert_scope()
+
+    for academic_year <- ["2026-2028", "2026-27", "2027-2026", ""] do
+      assert_constraint(:check_violation, "ati_sessions_academic_year_check", fn ->
+        insert_session(scope, %{academic_year: academic_year})
+      end)
+    end
+
+    assert {:ok, _} = insert_session(scope, %{academic_year: "2025-2026"})
+    assert Repo.query!("SELECT academic_year FROM #{@sessions}").rows == [["2025-2026"]]
+  end
+
+  describe "revision" do
+    test "starts above zero" do
+      scope = insert_scope()
+
+      for revision <- [0, -1] do
+        assert_constraint(:check_violation, "ati_sessions_revision_check", fn ->
+          insert_session(scope, %{revision: revision})
+        end)
+      end
+
+      assert Repo.query!("SELECT count(*) FROM #{@sessions}").rows == [[0]]
+    end
+
+    test "a save with a stale revision changes no row; the current one moves it on by one" do
+      scope = insert_scope()
+      id = scope |> insert_session(%{areas_of_concern: "first"}) |> inserted_id()
+
+      save = fn revision, text ->
+        Repo.query(
+          """
+          UPDATE #{@sessions}
+          SET areas_of_concern = $3, revision = revision + 1, updated_at = now()
+          WHERE id = $1 AND revision = $2
+          """,
+          [id, revision, text]
+        )
+      end
+
+      assert {:ok, %{num_rows: 1}} = save.(1, "second")
+      assert {:ok, %{num_rows: 0}} = save.(1, "stale tab")
+
+      assert Repo.query!("SELECT areas_of_concern, revision FROM #{@sessions}").rows == [
+               ["second", 2]
+             ]
+    end
+  end
+
+  describe "the linked Insight Request" do
+    test "must belong to the session's Student, or be null" do
+      scope = insert_scope()
+      own_request_id = scope |> insert_request() |> inserted_id()
+
+      other_request_id =
+        scope |> insert_request(%{student_id: scope.other_student_id}) |> inserted_id()
+
+      assert_constraint(
+        :foreign_key_violation,
+        "ai_test_insight_sessions_insight_request_id_fkey",
+        fn -> insert_session(scope, %{insight_request_id: other_request_id}) end
+      )
+
+      assert_constraint(
+        :foreign_key_violation,
+        "ai_test_insight_sessions_insight_request_id_fkey",
+        fn -> insert_session(scope, %{insight_request_id: own_request_id + 1_000_000}) end
+      )
+
+      assert {:ok, _} = insert_session(scope, %{insight_request_id: own_request_id})
+
+      assert {:ok, _} =
+               insert_session(scope, %{author_user_id: insert_user!(), insight_request_id: nil})
+
+      assert Repo.query!("SELECT insight_request_id FROM #{@sessions} ORDER BY id").rows == [
+               [own_request_id],
+               [nil]
+             ]
+    end
+
+    test "a linked session cannot move to another Student" do
+      scope = insert_scope()
+      request_id = scope |> insert_request() |> inserted_id()
+      id = scope |> insert_session(%{insight_request_id: request_id}) |> inserted_id()
+
+      assert_constraint(
+        :foreign_key_violation,
+        "ai_test_insight_sessions_insight_request_id_fkey",
+        fn -> update_session(id, %{student_id: scope.other_student_id}) end
+      )
+
+      assert Repo.query!("SELECT student_id FROM #{@sessions}").rows == [[scope.student_id]]
+    end
+
+    test "a request that a session names cannot be deleted" do
+      scope = insert_scope()
+      request_id = scope |> insert_request() |> inserted_id()
+      assert {:ok, _} = insert_session(scope, %{insight_request_id: request_id})
+
+      assert_constraint(
+        :foreign_key_violation,
+        "ai_test_insight_sessions_insight_request_id_fkey",
+        fn -> Repo.query("DELETE FROM #{@requests} WHERE id = $1", [request_id]) end
+      )
+
+      assert Repo.query!("SELECT id FROM #{@requests}").rows == [[request_id]]
+    end
+  end
+
+  defp insert_user! do
+    [[user_id]] =
+      Repo.query!(
+        "INSERT INTO \"user\" (inserted_at, updated_at) VALUES (now(), now()) RETURNING id"
+      ).rows
+
+    user_id
+  end
+
+  defp insert_session(scope, attrs \\ %{}) do
+    insert_row(
+      @sessions,
+      Map.merge(
+        %{
+          student_id: scope.student_id,
+          school_id: scope.school_id,
+          program_id: scope.program_id,
+          academic_year: "2026-2027",
+          author_user_id: scope.teacher_user_id
+        },
+        attrs
+      )
+    )
+  end
+
+  defp update_session(id, attrs) do
+    {columns, values} = attrs |> Enum.sort() |> Enum.unzip()
+
+    assignments =
+      columns |> Enum.with_index(2) |> Enum.map_join(", ", fn {c, i} -> "#{c} = $#{i}" end)
+
+    Repo.query("UPDATE #{@sessions} SET #{assignments} WHERE id = $1", [id | values])
   end
 
   defp insert_scope do

@@ -10,6 +10,8 @@ defmodule Dbservice.Repo.Migrations.CreateAiTestInsightTables do
   # - `ai_test_insight_requests`: the LMS inserts and reads it; AI Mentorship Guide
   #   reads it and updates progress (state, Item link, times, outcome code). This row
   #   is the whole contract between the two apps.
+  # - `ai_test_insight_sessions`: the LMS reads and writes it (Session Notes, draft
+  #   then submitted). AI Mentorship Guide does not touch it.
   #
   # Timestamps are `timestamp(0) without time zone` holding UTC. There is no
   # `updated_at` trigger: writers set it in their own SQL, using the database
@@ -128,6 +130,81 @@ defmodule Dbservice.Repo.Migrations.CreateAiTestInsightTables do
     # A Student's history, the tab counts and the "same Student, same tests" lookup.
     create index(:ai_test_insight_requests, [:student_id, :requested_at],
              name: :ati_requests_student_requested_idx
+           )
+
+    create table(:ai_test_insight_sessions) do
+      add :student_id, references(:student, on_delete: :nothing), null: false
+      add :school_id, references(:school, on_delete: :nothing), null: false
+      add :program_id, references(:program, on_delete: :nothing), null: false
+      add :academic_year, :text, null: false
+      add :author_user_id, references(:user, on_delete: :nothing), null: false
+      add :state, :text, null: false, default: "draft"
+      # The day the conversation happened.
+      add :session_date, :date
+      add :areas_of_concern, :text
+      add :immediate_actions, :text
+      add :other_notes, :text
+      # The Test Insight that was open, if any. The composite key, on
+      # ati_requests_id_student_unique, makes the request belong to the same Student.
+      # MATCH SIMPLE (the default) lets a null insight_request_id pass.
+      add :insight_request_id,
+          references(:ai_test_insight_requests,
+            with: [student_id: :student_id],
+            on_delete: :nothing
+          )
+
+      add :revision, :integer, null: false, default: 1
+      # First submit time; later edits do not change it.
+      add :submitted_at, :naive_datetime
+
+      timestamps(default: fragment("now()"), null: false)
+    end
+
+    # A draft may be empty. A submitted session needs a date, a submit time and
+    # non-blank Areas of concern and Immediate actions; Other notes stays optional.
+    # The COALESCE is required: a CHECK whose expression is null passes, so without
+    # it a null note field would be accepted. An unknown state matches no branch.
+    # The "not in the future" date rule is the LMS's (India time; this clock is UTC).
+    create constraint(:ai_test_insight_sessions, :ati_sessions_lifecycle_check,
+             check: """
+                (state = 'draft' AND submitted_at IS NULL)
+             OR (state = 'submitted' AND submitted_at IS NOT NULL AND session_date IS NOT NULL
+                 AND COALESCE(areas_of_concern, '')  ~ '[^[:space:]]'
+                 AND COALESCE(immediate_actions, '') ~ '[^[:space:]]')
+             """
+           )
+
+    # Same rule and form as ati_requests_academic_year_check.
+    create constraint(:ai_test_insight_sessions, :ati_sessions_academic_year_check,
+             check: """
+             CASE
+               WHEN academic_year ~ '^[0-9]{4}-[0-9]{4}$'
+               THEN left(academic_year, 4)::int + 1 = right(academic_year, 4)::int
+               ELSE false
+             END
+             """
+           )
+
+    # Optimistic saves: the LMS updates WHERE id = $1 AND revision = $2 and sets
+    # revision = revision + 1, with no further constraint.
+    create constraint(:ai_test_insight_sessions, :ati_sessions_revision_check,
+             check: "revision > 0"
+           )
+
+    # One draft per author per Student; a new draft is allowed once it is submitted.
+    create unique_index(:ai_test_insight_sessions, [:author_user_id, :student_id],
+             where: "state = 'draft'",
+             name: :ati_sessions_author_student_draft_unique
+           )
+
+    # The timeline, the tab counts and the last-session date.
+    create index(:ai_test_insight_sessions, [:student_id, :state, :session_date],
+             name: :ati_sessions_student_state_date_idx
+           )
+
+    # Test Insights that have no Insight Session.
+    create index(:ai_test_insight_sessions, [:insight_request_id],
+             name: :ati_sessions_insight_request_idx
            )
   end
 end

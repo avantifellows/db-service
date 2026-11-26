@@ -302,6 +302,9 @@ _Avoid_: Student Profile, Holistic questionnaire links
 - An Insight Request belongs to one Student, School, Program, Academic Year and
   requesting User; a Student has many over time but at most one `queued` or
   `running`, and an AI Mentorship Guide Item backs at most one Insight Request.
+- An Insight Session belongs to one Student, School, Program, Academic Year and
+  author User, and may name one Insight Request of the same Student; an author has
+  at most one draft per Student.
 
 ## Invariants
 
@@ -342,6 +345,9 @@ _Avoid_: Student Profile, Holistic questionnaire links
 - An Insight Request's state and fields agree (database CHECK); an Item linked
   from an Insight Request cannot be deleted. The LMS and AI Mentorship Guide reach
   Insight Requests only over SQL; db-service has no API for them.
+- A submitted Insight Session has a date, a submit time and non-blank Areas of
+  concern and Immediate actions (database CHECK); a request named by an Insight
+  Session cannot be deleted. The LMS reaches Insight Sessions only over SQL.
 
 ### Follow-up privacy erasure (LMS #412)
 
@@ -473,10 +479,12 @@ yet". Deploy schema before LMS.
 
 last_updated: 2026-11-26
 
-`20261126120504_create_ai_test_insight_tables` owns `ai_test_insight_requests`, with
-no API, Ecto schema or context: db-service owns only the DDL. `af_lms` reads and
-writes the table directly; AI Mentorship Guide reads it and updates a request's
-progress (state, Item link, times, outcome code) and touches no other LMS table.
+`20261126120504_create_ai_test_insight_tables` owns `ai_test_insight_requests` and
+`ai_test_insight_sessions`, created in that order, with no API, Ecto schema or
+context: db-service owns only the DDL. `af_lms` reads and writes both tables
+directly; AI Mentorship Guide reads `ai_test_insight_requests` and updates a
+request's progress (state, Item link, times, outcome code) and touches no other LMS
+table.
 Consumers: af_lms #549, #550 and #551, ai-mentorship-guide #135 (af_lms ADR 0015).
 Names use the `ati_` prefix; strings are `text` with CHECKs, not Postgres enums;
 timestamps are `timestamp(0)` without time zone holding UTC.
@@ -490,6 +498,13 @@ timestamps are `timestamp(0)` without time zone holding UTC.
   AI Mentorship Guide: it also holds `notes_snapshot`, the copy of Session Notes
   the generator reads, and `selected_test_ids`, the ticked tests newest first.
   _Avoid_: job, regeneration request
+- **Insight Session**: one offline mentoring conversation between a Teacher and a
+  Student about test performance, recorded as one submitted set of Session Notes.
+  _Avoid_: Mentorship session, Conversation
+- **Session Notes**: the draft-to-submitted record of one Insight Session, written
+  by the Teacher who held it: Areas of concern, Immediate actions and optional
+  Other notes.
+  _Avoid_: Post-Session Notes, Follow-up Note
 
 Request invariants, enforced by the database:
 
@@ -518,6 +533,28 @@ database `now()`), and setting `updated_at` (no trigger). A late generator resul
 may overwrite a request the LMS already marked `failed` unless its update says
 `WHERE state IN ('queued', 'running')`; the database allows either.
 
+Session invariants, enforced by the database:
+
+- One draft per author per Student (`ati_sessions_author_student_draft_unique`); once
+  it is submitted the author can start the next draft. Another author's draft for
+  the same Student is independent.
+- A draft may be empty. A submitted session needs `session_date`, `submitted_at`
+  (the first submit time; later edits keep it) and Areas of concern and Immediate
+  actions that are not null, empty or whitespace only; Other notes stays optional
+  (`ati_sessions_lifecycle_check`, which also rejects a draft with a submit time and
+  any unknown state). `revision` starts at 1 and stays above 0.
+- `insight_request_id` is optional; when set, the request belongs to the same
+  Student (composite FK on (`insight_request_id`, `student_id`)), and a request a
+  session names cannot be deleted.
+- Optimistic saves need no extra constraint: the LMS updates
+  `WHERE id = $1 AND revision = $2` and sets `revision = revision + 1`, so a stale
+  tab changes no row.
+
+Left to the LMS for sessions: the "not in the future" date rule (checked in India
+time, because the database clock is UTC and would wrongly reject a session entered
+between midnight and 05:30 India time), note length limits, and setting
+`updated_at` (no trigger).
+
 Deploy order: this schema, then AI Mentorship Guide, then the LMS. There is no data
 migration.
 
@@ -544,6 +581,9 @@ migration.
   currently active path rather than encode one historical workflow name.
 - "flag": a Blended Learning **Mentor Flag** is unrelated to Intervention
   Flags.
+- "session" now has three meanings in Main Postgres: the core `session` table,
+  `acad_mentorship_inference_sessions` (a generator run) and
+  `ai_test_insight_sessions` (an **Insight Session**).
 
 ### Missing initial enrolled status utility (2026-09-17)
 
