@@ -299,6 +299,9 @@ _Avoid_: Student Profile, Holistic questionnaire links
   the Conversation it was given on (same Student, `screener_used` true).
 - A Visit Concern or Visit Highlight belongs to one School code and has Mentions
   from many Visits; a Visit has at most one Visit Note Summary.
+- An Insight Request belongs to one Student, School, Program, Academic Year and
+  requesting User; a Student has many over time but at most one `queued` or
+  `running`, and an AI Mentorship Guide Item backs at most one Insight Request.
 
 ## Invariants
 
@@ -336,6 +339,9 @@ _Avoid_: Student Profile, Holistic questionnaire links
   keys.
 - Visit Concern events are append-only (trigger) and records with events are never
   deleted; `etl-next` reaches Visit Concerns only through the db-service API.
+- An Insight Request's state and fields agree (database CHECK); an Item linked
+  from an Insight Request cannot be deleted. The LMS and AI Mentorship Guide reach
+  Insight Requests only over SQL; db-service has no API for them.
 
 ### Follow-up privacy erasure (LMS #412)
 
@@ -462,6 +468,58 @@ the body being logged.
 There is no data migration: the flow's first run is the backfill. Rollback drops the
 trigger, the function and the tables; the LMS treats missing rows as "not summarised
 yet". Deploy schema before LMS.
+
+### AI Test Insights (LMS #549)
+
+last_updated: 2026-11-26
+
+`20261126120504_create_ai_test_insight_tables` owns `ai_test_insight_requests`, with
+no API, Ecto schema or context: db-service owns only the DDL. `af_lms` reads and
+writes the table directly; AI Mentorship Guide reads it and updates a request's
+progress (state, Item link, times, outcome code) and touches no other LMS table.
+Consumers: af_lms #549, #550 and #551, ai-mentorship-guide #135 (af_lms ADR 0015).
+Names use the `ati_` prefix; strings are `text` with CHECKs, not Postgres enums;
+timestamps are `timestamp(0)` without time zone holding UTC.
+
+- **Test Insight**: one AI-written document about one Student, generated from the
+  tests a Teacher selected and the Student's earlier Session Notes.
+  _Avoid_: Report, Student Profile
+- **Insight Request**: one Teacher's ask for a Test Insight for one Student and one
+  chosen set of tests; it carries the progress of that run until the Test Insight
+  is ready or the run has failed. The row is the whole contract between the LMS and
+  AI Mentorship Guide: it also holds `notes_snapshot`, the copy of Session Notes
+  the generator reads, and `selected_test_ids`, the ticked tests newest first.
+  _Avoid_: job, regeneration request
+
+Request invariants, enforced by the database:
+
+- One `queued` or `running` request per Student (`ati_requests_active_student_unique`);
+  a `completed`, `no_data` or `failed` request does not block the next one, and
+  earlier requests are kept, so "generate again" repeats are valid.
+- What each state requires (`ati_requests_lifecycle_check`): `queued` has no start,
+  finish, Item or outcome code; `running` has a start time, maybe an Item, no finish
+  and no code; `completed` has start, finish and Item and no code; `no_data` and
+  `failed` have a finish time and an outcome code. An unknown state matches no branch.
+- A request can become `failed` with no Item and no start time, so the LMS can close
+  a request the generator never finished. A stalled request still holds the
+  Student's running slot: before a retry the LMS sets it `failed` (e.g. `timed_out`)
+  in the same transaction as the new insert.
+- One request per Item (`ati_requests_inference_item_unique`). The FK from this
+  LMS-owned table to AI Mentorship Guide's `acad_mentorship_inference_items` is
+  intended: the generator cannot delete an Item a Test Insight depends on.
+- `selected_test_ids` is a non-empty array of non-empty strings; `notes_snapshot` is
+  an array (default `[]`); `outcome_code` is snake_case, at most 64 characters, from
+  a list the database does not restrict; `request_key` is unique, 1 to 64 letters,
+  digits, `_` or `-`; `academic_year` is `YYYY-YYYY` with consecutive years.
+
+Left to the two writers: request immutability, state order, the notes copy's
+element shape and 5-session cap, time order (both should stamp times with the
+database `now()`), and setting `updated_at` (no trigger). A late generator result
+may overwrite a request the LMS already marked `failed` unless its update says
+`WHERE state IN ('queued', 'running')`; the database allows either.
+
+Deploy order: this schema, then AI Mentorship Guide, then the LMS. There is no data
+migration.
 
 ## Example Dialogue
 
