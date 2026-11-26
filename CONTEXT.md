@@ -305,6 +305,9 @@ _Avoid_: Student Profile, Holistic questionnaire links
 - An Insight Session belongs to one Student, School, Program, Academic Year and
   author User, and may name one Insight Request of the same Student; an author has
   at most one draft per Student.
+- A Session Note audit belongs to one Insight Session and one actor User; a session
+  has at most one `submitted` audit and any number of `submitted_edited` audits,
+  one per revision.
 
 ## Invariants
 
@@ -348,6 +351,10 @@ _Avoid_: Student Profile, Holistic questionnaire links
 - A submitted Insight Session has a date, a submit time and non-blank Areas of
   concern and Immediate actions (database CHECK); a request named by an Insight
   Session cannot be deleted. The LMS reaches Insight Sessions only over SQL.
+- Session Note audits are content-free and append-only (trigger); an Insight
+  Session with an audit row cannot be deleted, while a draft with none can. Draft
+  saves write no audit row. Rolling back the AI Test Insights migration drops the
+  trigger, its function and all three tables.
 
 ### Follow-up privacy erasure (LMS #412)
 
@@ -479,12 +486,14 @@ yet". Deploy schema before LMS.
 
 last_updated: 2026-11-26
 
-`20261126120504_create_ai_test_insight_tables` owns `ai_test_insight_requests` and
-`ai_test_insight_sessions`, created in that order, with no API, Ecto schema or
-context: db-service owns only the DDL. `af_lms` reads and writes both tables
-directly; AI Mentorship Guide reads `ai_test_insight_requests` and updates a
+`20261126120504_create_ai_test_insight_tables` owns `ai_test_insight_requests`,
+`ai_test_insight_sessions` and `ai_test_insight_session_note_audits`, created in
+that order, then the audit trigger function and trigger, with no API, Ecto schema
+or context: db-service owns only the DDL. `af_lms` reads and writes all three
+tables directly; AI Mentorship Guide reads `ai_test_insight_requests` and updates a
 request's progress (state, Item link, times, outcome code) and touches no other LMS
-table.
+table. Rolling the migration back drops the trigger, the function and the three
+tables.
 Consumers: af_lms #549, #550 and #551, ai-mentorship-guide #135 (af_lms ADR 0015).
 Names use the `ati_` prefix; strings are `text` with CHECKs, not Postgres enums;
 timestamps are `timestamp(0)` without time zone holding UTC.
@@ -505,6 +514,10 @@ timestamps are `timestamp(0)` without time zone holding UTC.
   by the Teacher who held it: Areas of concern, Immediate actions and optional
   Other notes.
   _Avoid_: Post-Session Notes, Follow-up Note
+- **Session Note audit**: one content-free row recording who submitted or later
+  edited an Insight Session's Session Notes, when, and the session revision after
+  that action.
+  _Avoid_: note history, note version
 
 Request invariants, enforced by the database:
 
@@ -554,6 +567,25 @@ Left to the LMS for sessions: the "not in the future" date rule (checked in Indi
 time, because the database clock is UTC and would wrongly reject a session entered
 between midnight and 05:30 India time), note length limits, and setting
 `updated_at` (no trigger).
+
+Session Note audit invariants, enforced by the database:
+
+- Audit rows are content-free: the session, the actor User, the action
+  (`submitted` or `submitted_edited`, `ati_session_note_audits_action_check`), the
+  session's revision after the action (above 0,
+  `ati_session_note_audits_revision_check`), `occurred_at` and `inserted_at`. No
+  note text, no reason, no before or after values and no `updated_at`.
+- One row per session and revision (`ati_session_note_audits_session_revision_unique`)
+  and at most one `submitted` row per session
+  (`ati_session_note_audits_one_submit_unique`); later edits add `submitted_edited`
+  rows.
+- Audit rows are append-only by trigger: `ati_session_note_audits_immutable` calls
+  `ati_protect_session_note_audits()`, which rejects every UPDATE and DELETE with
+  SQLSTATE 23514. There is no privacy erasure exception.
+- A session with an audit row cannot be deleted: the session FK does not cascade
+  and the audit row cannot be removed. This is how the database backs "submitted
+  notes are not deleted in v1". Draft saves write no audit row, so a draft with no
+  audit row can be deleted.
 
 Deploy order: this schema, then AI Mentorship Guide, then the LMS. There is no data
 migration.

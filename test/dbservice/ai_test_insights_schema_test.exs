@@ -3,6 +3,7 @@ defmodule Dbservice.AiTestInsightsSchemaTest do
 
   @requests "ai_test_insight_requests"
   @sessions "ai_test_insight_sessions"
+  @audits "ai_test_insight_session_note_audits"
   @started ~N[2026-11-26 10:00:00]
   @finished ~N[2026-11-26 10:05:00]
   @submitted %{
@@ -849,6 +850,283 @@ defmodule Dbservice.AiTestInsightsSchemaTest do
     end
   end
 
+  test "Session Note audits have the PRD's columns, types, nullability and defaults" do
+    ts = "timestamp without time zone"
+
+    assert Repo.query!(
+             """
+             SELECT column_name::text, data_type::text, datetime_precision,
+                    is_nullable::text, column_default::text
+             FROM information_schema.columns
+             WHERE table_schema = 'public' AND table_name = $1
+             ORDER BY ordinal_position
+             """,
+             [@audits]
+           ).rows == [
+             [
+               "id",
+               "bigint",
+               nil,
+               "NO",
+               "nextval('ai_test_insight_session_note_audits_id_seq'::regclass)"
+             ],
+             ["session_id", "bigint", nil, "NO", nil],
+             ["actor_user_id", "bigint", nil, "NO", nil],
+             ["action", "text", nil, "NO", nil],
+             ["revision", "integer", nil, "NO", nil],
+             ["occurred_at", ts, 0, "NO", "now()"],
+             ["inserted_at", ts, 0, "NO", "now()"]
+           ]
+  end
+
+  test "Session Note audits reference the session and the actor User with NO ACTION" do
+    assert Repo.query!(
+             """
+             SELECT constraint_record.conname::text, attribute.attname::text,
+                    referenced.relname::text, constraint_record.confdeltype::text
+             FROM pg_constraint AS constraint_record
+             JOIN pg_class AS relation ON relation.oid = constraint_record.conrelid
+             JOIN pg_class AS referenced ON referenced.oid = constraint_record.confrelid
+             JOIN pg_attribute AS attribute
+               ON attribute.attrelid = relation.oid
+              AND attribute.attnum = constraint_record.conkey[1]
+             WHERE relation.relname = $1 AND constraint_record.contype = 'f'
+             ORDER BY constraint_record.conname
+             """,
+             [@audits]
+           ).rows == [
+             [
+               "ai_test_insight_session_note_audits_actor_user_id_fkey",
+               "actor_user_id",
+               "user",
+               "a"
+             ],
+             [
+               "ai_test_insight_session_note_audits_session_id_fkey",
+               "session_id",
+               "ai_test_insight_sessions",
+               "a"
+             ]
+           ]
+  end
+
+  test "Session Note audits have the PRD's two unique indexes, including the submit predicate" do
+    on = "ON public.ai_test_insight_session_note_audits USING btree"
+
+    assert Repo.query!(
+             """
+             SELECT indexname::text, indexdef
+             FROM pg_indexes
+             WHERE schemaname = 'public' AND tablename = $1
+             ORDER BY indexname
+             """,
+             [@audits]
+           ).rows == [
+             [
+               "ai_test_insight_session_note_audits_pkey",
+               "CREATE UNIQUE INDEX ai_test_insight_session_note_audits_pkey #{on} (id)"
+             ],
+             [
+               "ati_session_note_audits_one_submit_unique",
+               "CREATE UNIQUE INDEX ati_session_note_audits_one_submit_unique #{on} " <>
+                 "(session_id) WHERE (action = 'submitted'::text)"
+             ],
+             [
+               "ati_session_note_audits_session_revision_unique",
+               "CREATE UNIQUE INDEX ati_session_note_audits_session_revision_unique #{on} " <>
+                 "(session_id, revision)"
+             ]
+           ]
+  end
+
+  test "Session Note audits have exactly the two named CHECK constraints" do
+    assert Repo.query!("""
+           SELECT conname::text
+           FROM pg_constraint
+           WHERE conrelid = 'public.ai_test_insight_session_note_audits'::regclass
+             AND contype = 'c'
+           ORDER BY conname
+           """).rows == [
+             ["ati_session_note_audits_action_check"],
+             ["ati_session_note_audits_revision_check"]
+           ]
+  end
+
+  test "Session Note audits carry a row trigger that fires before every UPDATE and DELETE" do
+    assert Repo.query!(
+             """
+             SELECT trigger.tgname::text, function.proname::text,
+                    trigger.tgtype & 1 = 1 AS for_each_row,
+                    trigger.tgtype & 2 = 2 AS before,
+                    trigger.tgtype & 4 = 4 AS on_insert,
+                    trigger.tgtype & 8 = 8 AS on_delete,
+                    trigger.tgtype & 16 = 16 AS on_update,
+                    trigger.tgenabled::text
+             FROM pg_trigger AS trigger
+             JOIN pg_proc AS function ON function.oid = trigger.tgfoid
+             WHERE trigger.tgrelid = $1::text::regclass AND NOT trigger.tgisinternal
+             """,
+             [@audits]
+           ).rows == [
+             [
+               "ati_session_note_audits_immutable",
+               "ati_protect_session_note_audits",
+               true,
+               true,
+               false,
+               true,
+               true,
+               "O"
+             ]
+           ]
+  end
+
+  describe "Session Note audit rows" do
+    test "accept submitted and submitted_edited, with the PRD's defaults" do
+      scope = insert_scope()
+      session_id = scope |> insert_session(@submitted) |> inserted_id()
+
+      assert {:ok, _} = insert_audit(scope, session_id, %{action: "submitted", revision: 1})
+
+      assert {:ok, _} =
+               insert_audit(scope, session_id, %{action: "submitted_edited", revision: 2})
+
+      assert Repo.query!("""
+             SELECT action, revision, occurred_at IS NOT NULL, inserted_at IS NOT NULL
+             FROM #{@audits} ORDER BY id
+             """).rows == [["submitted", 1, true, true], ["submitted_edited", 2, true, true]]
+    end
+
+    test "reject an unknown action and a revision that is not above zero" do
+      scope = insert_scope()
+      session_id = scope |> insert_session(@submitted) |> inserted_id()
+
+      for action <- ["edited", "Submitted", "draft_saved", ""] do
+        assert_constraint(:check_violation, "ati_session_note_audits_action_check", fn ->
+          insert_audit(scope, session_id, %{action: action, revision: 1})
+        end)
+      end
+
+      for revision <- [0, -1] do
+        assert_constraint(:check_violation, "ati_session_note_audits_revision_check", fn ->
+          insert_audit(scope, session_id, %{action: "submitted", revision: revision})
+        end)
+      end
+
+      assert Repo.query!("SELECT count(*) FROM #{@audits}").rows == [[0]]
+    end
+
+    test "are unique per session and revision" do
+      scope = insert_scope()
+      session_id = scope |> insert_session(@submitted) |> inserted_id()
+
+      other_session_id =
+        scope
+        |> insert_session(Map.put(@submitted, :student_id, scope.other_student_id))
+        |> inserted_id()
+
+      assert {:ok, _} = insert_audit(scope, session_id, %{action: "submitted", revision: 1})
+
+      assert_constraint(
+        :unique_violation,
+        "ati_session_note_audits_session_revision_unique",
+        fn ->
+          insert_audit(scope, session_id, %{action: "submitted_edited", revision: 1})
+        end
+      )
+
+      assert {:ok, _} = insert_audit(scope, other_session_id, %{action: "submitted", revision: 1})
+
+      assert Repo.query!(
+               "SELECT session_id = $1, revision FROM #{@audits} ORDER BY id",
+               [session_id]
+             ).rows == [[true, 1], [false, 1]]
+    end
+
+    test "cannot be updated or deleted, and read back unchanged" do
+      scope = insert_scope()
+      session_id = scope |> insert_session(@submitted) |> inserted_id()
+
+      other_session_id =
+        scope |> insert_session(%{student_id: scope.other_student_id}) |> inserted_id()
+
+      audit_id =
+        scope
+        |> insert_audit(session_id, %{
+          action: "submitted",
+          revision: 1,
+          occurred_at: ~N[2026-11-26 10:05:00]
+        })
+        |> inserted_id()
+
+      for statement <- [
+            "UPDATE #{@audits} SET revision = revision WHERE id = $1",
+            "UPDATE #{@audits} SET action = 'submitted_edited' WHERE id = $1",
+            "UPDATE #{@audits} SET revision = 7 WHERE id = $1",
+            "UPDATE #{@audits} SET occurred_at = now() WHERE id = $1",
+            "UPDATE #{@audits} SET actor_user_id = #{insert_user!()} WHERE id = $1",
+            "UPDATE #{@audits} SET session_id = #{other_session_id} WHERE id = $1",
+            "DELETE FROM #{@audits} WHERE id = $1"
+          ] do
+        assert_append_only(fn -> Repo.query(statement, [audit_id]) end)
+      end
+
+      assert_append_only(fn -> Repo.query("DELETE FROM #{@audits}") end)
+
+      assert Repo.query!("""
+             SELECT session_id, actor_user_id, action, revision, occurred_at
+             FROM #{@audits}
+             """).rows == [
+               [session_id, scope.teacher_user_id, "submitted", 1, ~N[2026-11-26 10:05:00]]
+             ]
+    end
+
+    test "keep their session from being deleted, while a draft with none can be" do
+      scope = insert_scope()
+      submitted_id = scope |> insert_session(@submitted) |> inserted_id()
+      draft_id = scope |> insert_session() |> inserted_id()
+      assert {:ok, _} = insert_audit(scope, submitted_id, %{action: "submitted", revision: 1})
+
+      assert_constraint(
+        :foreign_key_violation,
+        "ai_test_insight_session_note_audits_session_id_fkey",
+        fn -> Repo.query("DELETE FROM #{@sessions} WHERE id = $1", [submitted_id]) end
+      )
+
+      assert {:ok, %{num_rows: 1}} =
+               Repo.query("DELETE FROM #{@sessions} WHERE id = $1", [draft_id])
+
+      assert Repo.query!("SELECT id, state FROM #{@sessions}").rows == [
+               [submitted_id, "submitted"]
+             ]
+
+      assert Repo.query!("SELECT session_id FROM #{@audits}").rows == [[submitted_id]]
+    end
+
+    test "allow one submitted row per session and any number of submitted_edited rows" do
+      scope = insert_scope()
+      session_id = scope |> insert_session(@submitted) |> inserted_id()
+
+      assert {:ok, _} = insert_audit(scope, session_id, %{action: "submitted", revision: 1})
+
+      assert_constraint(:unique_violation, "ati_session_note_audits_one_submit_unique", fn ->
+        insert_audit(scope, session_id, %{action: "submitted", revision: 2})
+      end)
+
+      for revision <- [2, 3, 4] do
+        assert {:ok, _} =
+                 insert_audit(scope, session_id, %{action: "submitted_edited", revision: revision})
+      end
+
+      assert Repo.query!("SELECT action, revision FROM #{@audits} ORDER BY id").rows == [
+               ["submitted", 1],
+               ["submitted_edited", 2],
+               ["submitted_edited", 3],
+               ["submitted_edited", 4]
+             ]
+    end
+  end
+
   defp insert_user! do
     [[user_id]] =
       Repo.query!(
@@ -871,6 +1149,13 @@ defmodule Dbservice.AiTestInsightsSchemaTest do
         },
         attrs
       )
+    )
+  end
+
+  defp insert_audit(scope, session_id, attrs) do
+    insert_row(
+      @audits,
+      Map.merge(%{session_id: session_id, actor_user_id: scope.teacher_user_id}, attrs)
     )
   end
 
@@ -992,6 +1277,18 @@ defmodule Dbservice.AiTestInsightsSchemaTest do
       "INSERT INTO #{table} (#{Enum.join(columns, ", ")}) VALUES (#{placeholders}) RETURNING id",
       values
     )
+  end
+
+  # The trigger raises check_violation with no constraint name.
+  defp assert_append_only(query) do
+    assert {:error,
+            {:error,
+             %Postgrex.Error{
+               postgres: %{
+                 code: :check_violation,
+                 message: "AI Test Insight Session Note audits are append-only"
+               }
+             }}} = Repo.transaction(fn -> Repo.rollback(query.()) end, mode: :savepoint)
   end
 
   defp assert_constraint(code, constraint, query) do

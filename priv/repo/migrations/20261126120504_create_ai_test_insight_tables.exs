@@ -12,6 +12,9 @@ defmodule Dbservice.Repo.Migrations.CreateAiTestInsightTables do
   #   is the whole contract between the two apps.
   # - `ai_test_insight_sessions`: the LMS reads and writes it (Session Notes, draft
   #   then submitted). AI Mentorship Guide does not touch it.
+  # - `ai_test_insight_session_note_audits`: the LMS inserts one content-free row for
+  #   each submit and each later edit of Session Notes. Rows are append-only (trigger
+  #   below). AI Mentorship Guide does not touch it.
   #
   # Timestamps are `timestamp(0) without time zone` holding UTC. There is no
   # `updated_at` trigger: writers set it in their own SQL, using the database
@@ -206,5 +209,70 @@ defmodule Dbservice.Repo.Migrations.CreateAiTestInsightTables do
     create index(:ai_test_insight_sessions, [:insight_request_id],
              name: :ati_sessions_insight_request_idx
            )
+
+    # One row per submit and per later edit: who, when and which revision. No note
+    # text, no reason and no before or after values. Draft saves write no row, so a
+    # draft can still be deleted; the session FK does not cascade, so a session with
+    # an audit row cannot be.
+    create table(:ai_test_insight_session_note_audits) do
+      add :session_id, references(:ai_test_insight_sessions, on_delete: :nothing), null: false
+      add :actor_user_id, references(:user, on_delete: :nothing), null: false
+      add :action, :text, null: false
+      # The session's revision after the action.
+      add :revision, :integer, null: false
+      add :occurred_at, :naive_datetime, null: false, default: fragment("now()")
+
+      # Rows never change, so there is no updated_at.
+      timestamps(default: fragment("now()"), null: false, updated_at: false)
+    end
+
+    # The names the LMS already uses for Holistic notes.
+    create constraint(:ai_test_insight_session_note_audits, :ati_session_note_audits_action_check,
+             check: "action IN ('submitted', 'submitted_edited')"
+           )
+
+    create constraint(
+             :ai_test_insight_session_note_audits,
+             :ati_session_note_audits_revision_check,
+             check: "revision > 0"
+           )
+
+    # One row per session revision.
+    create unique_index(:ai_test_insight_session_note_audits, [:session_id, :revision],
+             name: :ati_session_note_audits_session_revision_unique
+           )
+
+    # A session is submitted once; later edits are submitted_edited.
+    create unique_index(:ai_test_insight_session_note_audits, [:session_id],
+             where: "action = 'submitted'",
+             name: :ati_session_note_audits_one_submit_unique
+           )
+
+    # Audit rows are append-only, as in the Holistic and Visit Concern audit tables.
+    # With the non-cascading session FK this also makes a submitted session
+    # undeletable. 23514 is check_violation. There is no privacy erasure exception.
+    execute(
+      """
+      CREATE FUNCTION ati_protect_session_note_audits()
+      RETURNS trigger
+      LANGUAGE plpgsql
+      AS $$
+      BEGIN
+        RAISE EXCEPTION 'AI Test Insight Session Note audits are append-only'
+          USING ERRCODE = '23514';
+      END;
+      $$;
+      """,
+      "DROP FUNCTION ati_protect_session_note_audits()"
+    )
+
+    execute(
+      """
+      CREATE TRIGGER ati_session_note_audits_immutable
+      BEFORE UPDATE OR DELETE ON ai_test_insight_session_note_audits
+      FOR EACH ROW EXECUTE FUNCTION ati_protect_session_note_audits()
+      """,
+      "DROP TRIGGER ati_session_note_audits_immutable ON ai_test_insight_session_note_audits"
+    )
   end
 end
