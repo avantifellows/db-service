@@ -6,6 +6,7 @@ defmodule Dbservice.AiTestInsightsSchemaTest do
   @audits "ai_test_insight_session_note_audits"
   @started ~N[2026-11-26 10:00:00]
   @finished ~N[2026-11-26 10:05:00]
+  @utc_now "(now() AT TIME ZONE 'UTC'::text)"
   @submitted %{
     state: "submitted",
     session_date: ~D[2026-11-25],
@@ -19,16 +20,7 @@ defmodule Dbservice.AiTestInsightsSchemaTest do
   test "Insight Requests have the PRD's columns, types, nullability and defaults" do
     ts = "timestamp without time zone"
 
-    assert Repo.query!(
-             """
-             SELECT column_name::text, data_type::text, datetime_precision,
-                    is_nullable::text, column_default::text
-             FROM information_schema.columns
-             WHERE table_schema = 'public' AND table_name = $1
-             ORDER BY ordinal_position
-             """,
-             [@requests]
-           ).rows == [
+    assert columns(@requests) == [
              ["id", "bigint", nil, "NO", "nextval('ai_test_insight_requests_id_seq'::regclass)"],
              ["request_key", "text", nil, "NO", nil],
              ["student_id", "bigint", nil, "NO", nil],
@@ -41,60 +33,37 @@ defmodule Dbservice.AiTestInsightsSchemaTest do
              ["state", "text", nil, "NO", "'queued'::text"],
              ["outcome_code", "text", nil, "YES", nil],
              ["inference_item_id", "bigint", nil, "YES", nil],
-             ["requested_at", ts, 0, "NO", "now()"],
+             ["requested_at", ts, 0, "NO", @utc_now],
              ["started_at", ts, 0, "YES", nil],
              ["finished_at", ts, 0, "YES", nil],
-             ["inserted_at", ts, 0, "NO", "now()"],
-             ["updated_at", ts, 0, "NO", "now()"]
+             ["inserted_at", ts, 0, "NO", @utc_now],
+             ["updated_at", ts, 0, "NO", @utc_now]
            ]
   end
 
-  test "Insight Requests reference Student, School, Program, User and Item with NO ACTION" do
-    assert Repo.query!(
-             """
-             SELECT constraint_record.conname::text, attribute.attname::text,
-                    referenced.relname::text, constraint_record.confdeltype::text
-             FROM pg_constraint AS constraint_record
-             JOIN pg_class AS relation ON relation.oid = constraint_record.conrelid
-             JOIN pg_class AS referenced ON referenced.oid = constraint_record.confrelid
-             JOIN pg_attribute AS attribute
-               ON attribute.attrelid = relation.oid
-              AND attribute.attnum = constraint_record.conkey[1]
-             WHERE relation.relname = $1 AND constraint_record.contype = 'f'
-             ORDER BY constraint_record.conname
-             """,
-             [@requests]
-           ).rows == [
-             [
+  test "Insight Requests reference Student, School, Program, User and own-Student Item" do
+    assert foreign_keys(@requests) == [
+             fk(
                "ai_test_insight_requests_inference_item_id_fkey",
-               "inference_item_id",
+               ["inference_item_id", "student_id"],
                "acad_mentorship_inference_items",
-               "a"
-             ],
-             ["ai_test_insight_requests_program_id_fkey", "program_id", "program", "a"],
-             [
+               ["id", "student_id"]
+             ),
+             fk("ai_test_insight_requests_program_id_fkey", ["program_id"], "program"),
+             fk(
                "ai_test_insight_requests_requested_by_user_id_fkey",
-               "requested_by_user_id",
-               "user",
-               "a"
-             ],
-             ["ai_test_insight_requests_school_id_fkey", "school_id", "school", "a"],
-             ["ai_test_insight_requests_student_id_fkey", "student_id", "student", "a"]
+               ["requested_by_user_id"],
+               "user"
+             ),
+             fk("ai_test_insight_requests_school_id_fkey", ["school_id"], "school"),
+             fk("ai_test_insight_requests_student_id_fkey", ["student_id"], "student")
            ]
   end
 
   test "Insight Requests have the PRD's five indexes, including the partial predicates" do
     on = "ON public.ai_test_insight_requests USING btree"
 
-    assert Repo.query!(
-             """
-             SELECT indexname::text, indexdef
-             FROM pg_indexes
-             WHERE schemaname = 'public' AND tablename = $1
-             ORDER BY indexname
-             """,
-             [@requests]
-           ).rows == [
+    assert indexes(@requests) == [
              [
                "ai_test_insight_requests_pkey",
                "CREATE UNIQUE INDEX ai_test_insight_requests_pkey #{on} (id)"
@@ -125,18 +94,13 @@ defmodule Dbservice.AiTestInsightsSchemaTest do
   end
 
   test "Insight Requests have exactly the six named CHECK constraints" do
-    assert Repo.query!("""
-           SELECT conname::text
-           FROM pg_constraint
-           WHERE conrelid = 'public.ai_test_insight_requests'::regclass AND contype = 'c'
-           ORDER BY conname
-           """).rows == [
-             ["ati_requests_academic_year_check"],
-             ["ati_requests_lifecycle_check"],
-             ["ati_requests_notes_snapshot_check"],
-             ["ati_requests_outcome_code_check"],
-             ["ati_requests_request_key_check"],
-             ["ati_requests_selected_test_ids_check"]
+    assert check_names(@requests) == [
+             "ati_requests_academic_year_check",
+             "ati_requests_lifecycle_check",
+             "ati_requests_notes_snapshot_check",
+             "ati_requests_outcome_code_check",
+             "ati_requests_request_key_check",
+             "ati_requests_selected_test_ids_check"
            ]
   end
 
@@ -155,7 +119,7 @@ defmodule Dbservice.AiTestInsightsSchemaTest do
         end)
 
         assert {:ok, %{num_rows: 1}} =
-                 update_request(first_id, %{state: "running", started_at: @started})
+                 update_row(@requests, first_id, %{state: "running", started_at: @started})
 
         assert_constraint(:unique_violation, "ati_requests_active_student_unique", fn ->
           insert_request(scope)
@@ -170,7 +134,8 @@ defmodule Dbservice.AiTestInsightsSchemaTest do
           end
 
         assert {:ok, %{num_rows: 1}} =
-                 update_request(
+                 update_row(
+                   @requests,
                    first_id,
                    Map.merge(%{state: unquote(to_string(state)), finished_at: @finished}, finish)
                  )
@@ -286,7 +251,7 @@ defmodule Dbservice.AiTestInsightsSchemaTest do
       id = scope |> insert_request() |> inserted_id()
 
       assert {:ok, %{num_rows: 1}} =
-               update_request(id, %{
+               update_row(@requests, id, %{
                  state: "failed",
                  finished_at: @finished,
                  outcome_code: "timed_out"
@@ -449,19 +414,85 @@ defmodule Dbservice.AiTestInsightsSchemaTest do
            ]).rows == [[1]]
   end
 
+  test "a request cannot link to another Student's Item" do
+    scope = insert_scope()
+    other_item_id = insert_item!(scope.other_student_id)
+    running = %{state: "running", started_at: @started}
+
+    assert_constraint(
+      :foreign_key_violation,
+      "ai_test_insight_requests_inference_item_id_fkey",
+      fn -> insert_request(scope, Map.put(running, :inference_item_id, other_item_id)) end
+    )
+
+    id = scope |> insert_request(running) |> inserted_id()
+
+    assert_constraint(
+      :foreign_key_violation,
+      "ai_test_insight_requests_inference_item_id_fkey",
+      fn -> update_row(@requests, id, %{inference_item_id: other_item_id}) end
+    )
+
+    item_id = insert_item!(scope.student_id)
+    assert {:ok, %{num_rows: 1}} = update_row(@requests, id, %{inference_item_id: item_id})
+
+    # Neither side of a link can move to another Student afterwards.
+    assert_constraint(
+      :foreign_key_violation,
+      "ai_test_insight_requests_inference_item_id_fkey",
+      fn -> update_row(@requests, id, %{student_id: scope.other_student_id}) end
+    )
+
+    assert_constraint(
+      :foreign_key_violation,
+      "ai_test_insight_requests_inference_item_id_fkey",
+      fn ->
+        update_row("acad_mentorship_inference_items", item_id, %{
+          student_id: scope.other_student_id
+        })
+      end
+    )
+
+    assert Repo.query!("SELECT student_id, inference_item_id FROM #{@requests}").rows ==
+             [[scope.student_id, item_id]]
+  end
+
+  test "the Item table gains the (id, student_id) unique index the request key needs" do
+    assert [
+             "am_items_id_student_unique",
+             "CREATE UNIQUE INDEX am_items_id_student_unique " <>
+               "ON public.acad_mentorship_inference_items USING btree (id, student_id)"
+           ] in indexes("acad_mentorship_inference_items")
+  end
+
+  test "default times are UTC even when the connection's time zone is not" do
+    # A plain now() default would store India time here, 5.5 hours ahead.
+    Repo.query!("SET LOCAL TIME ZONE 'Asia/Kolkata'")
+    scope = insert_scope()
+    utc_now = NaiveDateTime.utc_now()
+
+    assert {:ok, _} = insert_request(scope)
+    session_id = scope |> insert_session(@submitted) |> inserted_id()
+    assert {:ok, _} = insert_audit(scope, session_id, %{action: "submitted", revision: 1})
+
+    stamps =
+      List.flatten(
+        Repo.query!("SELECT requested_at, inserted_at, updated_at FROM #{@requests}").rows ++
+          Repo.query!("SELECT inserted_at, updated_at FROM #{@sessions}").rows ++
+          Repo.query!("SELECT occurred_at, inserted_at FROM #{@audits}").rows
+      )
+
+    assert length(stamps) == 7
+
+    for stamp <- stamps do
+      assert abs(NaiveDateTime.diff(stamp, utc_now)) < 60
+    end
+  end
+
   test "Insight Sessions have the PRD's columns, types, nullability and defaults" do
     ts = "timestamp without time zone"
 
-    assert Repo.query!(
-             """
-             SELECT column_name::text, data_type::text, datetime_precision,
-                    is_nullable::text, column_default::text
-             FROM information_schema.columns
-             WHERE table_schema = 'public' AND table_name = $1
-             ORDER BY ordinal_position
-             """,
-             [@sessions]
-           ).rows == [
+    assert columns(@sessions) == [
              ["id", "bigint", nil, "NO", "nextval('ai_test_insight_sessions_id_seq'::regclass)"],
              ["student_id", "bigint", nil, "NO", nil],
              ["school_id", "bigint", nil, "NO", nil],
@@ -476,94 +507,30 @@ defmodule Dbservice.AiTestInsightsSchemaTest do
              ["insight_request_id", "bigint", nil, "YES", nil],
              ["revision", "integer", nil, "NO", "1"],
              ["submitted_at", ts, 0, "YES", nil],
-             ["inserted_at", ts, 0, "NO", "now()"],
-             ["updated_at", ts, 0, "NO", "now()"]
+             ["inserted_at", ts, 0, "NO", @utc_now],
+             ["updated_at", ts, 0, "NO", @utc_now]
            ]
   end
 
   test "Insight Sessions reference Student, School, Program, author and own-Student request" do
-    assert Repo.query!("""
-           SELECT constraint_record.conname::text,
-                  array(
-                    SELECT attribute.attname::text
-                    FROM unnest(constraint_record.conkey) WITH ORDINALITY AS key(attnum, position)
-                    JOIN pg_attribute AS attribute
-                      ON attribute.attrelid = constraint_record.conrelid
-                     AND attribute.attnum = key.attnum
-                    ORDER BY key.position
-                  ),
-                  referenced.relname::text,
-                  array(
-                    SELECT attribute.attname::text
-                    FROM unnest(constraint_record.confkey) WITH ORDINALITY AS key(attnum, position)
-                    JOIN pg_attribute AS attribute
-                      ON attribute.attrelid = constraint_record.confrelid
-                     AND attribute.attnum = key.attnum
-                    ORDER BY key.position
-                  ),
-                  constraint_record.confdeltype::text,
-                  constraint_record.confmatchtype::text
-           FROM pg_constraint AS constraint_record
-           JOIN pg_class AS referenced ON referenced.oid = constraint_record.confrelid
-           WHERE constraint_record.conrelid = 'public.ai_test_insight_sessions'::regclass
-             AND constraint_record.contype = 'f'
-           ORDER BY constraint_record.conname
-           """).rows == [
-             [
-               "ai_test_insight_sessions_author_user_id_fkey",
-               ["author_user_id"],
-               "user",
-               ["id"],
-               "a",
-               "s"
-             ],
-             [
+    assert foreign_keys(@sessions) == [
+             fk("ai_test_insight_sessions_author_user_id_fkey", ["author_user_id"], "user"),
+             fk(
                "ai_test_insight_sessions_insight_request_id_fkey",
                ["insight_request_id", "student_id"],
                "ai_test_insight_requests",
-               ["id", "student_id"],
-               "a",
-               "s"
-             ],
-             [
-               "ai_test_insight_sessions_program_id_fkey",
-               ["program_id"],
-               "program",
-               ["id"],
-               "a",
-               "s"
-             ],
-             [
-               "ai_test_insight_sessions_school_id_fkey",
-               ["school_id"],
-               "school",
-               ["id"],
-               "a",
-               "s"
-             ],
-             [
-               "ai_test_insight_sessions_student_id_fkey",
-               ["student_id"],
-               "student",
-               ["id"],
-               "a",
-               "s"
-             ]
+               ["id", "student_id"]
+             ),
+             fk("ai_test_insight_sessions_program_id_fkey", ["program_id"], "program"),
+             fk("ai_test_insight_sessions_school_id_fkey", ["school_id"], "school"),
+             fk("ai_test_insight_sessions_student_id_fkey", ["student_id"], "student")
            ]
   end
 
   test "Insight Sessions have the PRD's three indexes, including the draft predicate" do
     on = "ON public.ai_test_insight_sessions USING btree"
 
-    assert Repo.query!(
-             """
-             SELECT indexname::text, indexdef
-             FROM pg_indexes
-             WHERE schemaname = 'public' AND tablename = $1
-             ORDER BY indexname
-             """,
-             [@sessions]
-           ).rows == [
+    assert indexes(@sessions) == [
              [
                "ai_test_insight_sessions_pkey",
                "CREATE UNIQUE INDEX ai_test_insight_sessions_pkey #{on} (id)"
@@ -586,15 +553,10 @@ defmodule Dbservice.AiTestInsightsSchemaTest do
   end
 
   test "Insight Sessions have exactly the three named CHECK constraints" do
-    assert Repo.query!("""
-           SELECT conname::text
-           FROM pg_constraint
-           WHERE conrelid = 'public.ai_test_insight_sessions'::regclass AND contype = 'c'
-           ORDER BY conname
-           """).rows == [
-             ["ati_sessions_academic_year_check"],
-             ["ati_sessions_lifecycle_check"],
-             ["ati_sessions_revision_check"]
+    assert check_names(@sessions) == [
+             "ati_sessions_academic_year_check",
+             "ati_sessions_lifecycle_check",
+             "ati_sessions_revision_check"
            ]
   end
 
@@ -620,7 +582,7 @@ defmodule Dbservice.AiTestInsightsSchemaTest do
       assert {:ok, _} = insert_session(scope, %{author_user_id: other_author_id})
       assert {:ok, _} = insert_session(scope, %{student_id: scope.other_student_id})
 
-      assert {:ok, %{num_rows: 1}} = update_session(first_id, @submitted)
+      assert {:ok, %{num_rows: 1}} = update_row(@sessions, first_id, @submitted)
       assert {:ok, _} = insert_session(scope)
 
       assert Repo.query!(
@@ -670,7 +632,7 @@ defmodule Dbservice.AiTestInsightsSchemaTest do
         draft_id = scope |> insert_session() |> inserted_id()
 
         assert_constraint(:check_violation, "ati_sessions_lifecycle_check", fn ->
-          update_session(draft_id, attrs)
+          update_row(@sessions, draft_id, attrs)
         end)
 
         assert Repo.query!("SELECT state FROM #{@sessions}").rows == [["draft"]]
@@ -689,7 +651,7 @@ defmodule Dbservice.AiTestInsightsSchemaTest do
         draft_id = scope |> insert_session() |> inserted_id()
 
         assert_constraint(:check_violation, "ati_sessions_lifecycle_check", fn ->
-          update_session(draft_id, attrs)
+          update_row(@sessions, draft_id, attrs)
         end)
 
         assert Repo.query!("SELECT state FROM #{@sessions}").rows == [["draft"]]
@@ -702,7 +664,7 @@ defmodule Dbservice.AiTestInsightsSchemaTest do
 
       assert {:ok, _} = insert_session(scope, attrs)
       draft_id = scope |> insert_session(%{author_user_id: insert_user!()}) |> inserted_id()
-      assert {:ok, %{num_rows: 1}} = update_session(draft_id, attrs)
+      assert {:ok, %{num_rows: 1}} = update_row(@sessions, draft_id, attrs)
 
       assert Repo.query!("""
              SELECT state, session_date, submitted_at, areas_of_concern,
@@ -774,7 +736,8 @@ defmodule Dbservice.AiTestInsightsSchemaTest do
         Repo.query(
           """
           UPDATE #{@sessions}
-          SET areas_of_concern = $3, revision = revision + 1, updated_at = now()
+          SET areas_of_concern = $3, revision = revision + 1,
+              updated_at = now() AT TIME ZONE 'UTC'
           WHERE id = $1 AND revision = $2
           """,
           [id, revision, text]
@@ -829,7 +792,7 @@ defmodule Dbservice.AiTestInsightsSchemaTest do
       assert_constraint(
         :foreign_key_violation,
         "ai_test_insight_sessions_insight_request_id_fkey",
-        fn -> update_session(id, %{student_id: scope.other_student_id}) end
+        fn -> update_row(@sessions, id, %{student_id: scope.other_student_id}) end
       )
 
       assert Repo.query!("SELECT student_id FROM #{@sessions}").rows == [[scope.student_id]]
@@ -853,16 +816,7 @@ defmodule Dbservice.AiTestInsightsSchemaTest do
   test "Session Note audits have the PRD's columns, types, nullability and defaults" do
     ts = "timestamp without time zone"
 
-    assert Repo.query!(
-             """
-             SELECT column_name::text, data_type::text, datetime_precision,
-                    is_nullable::text, column_default::text
-             FROM information_schema.columns
-             WHERE table_schema = 'public' AND table_name = $1
-             ORDER BY ordinal_position
-             """,
-             [@audits]
-           ).rows == [
+    assert columns(@audits) == [
              [
                "id",
                "bigint",
@@ -874,54 +828,30 @@ defmodule Dbservice.AiTestInsightsSchemaTest do
              ["actor_user_id", "bigint", nil, "NO", nil],
              ["action", "text", nil, "NO", nil],
              ["revision", "integer", nil, "NO", nil],
-             ["occurred_at", ts, 0, "NO", "now()"],
-             ["inserted_at", ts, 0, "NO", "now()"]
+             ["occurred_at", ts, 0, "NO", @utc_now],
+             ["inserted_at", ts, 0, "NO", @utc_now]
            ]
   end
 
-  test "Session Note audits reference the session and the actor User with NO ACTION" do
-    assert Repo.query!(
-             """
-             SELECT constraint_record.conname::text, attribute.attname::text,
-                    referenced.relname::text, constraint_record.confdeltype::text
-             FROM pg_constraint AS constraint_record
-             JOIN pg_class AS relation ON relation.oid = constraint_record.conrelid
-             JOIN pg_class AS referenced ON referenced.oid = constraint_record.confrelid
-             JOIN pg_attribute AS attribute
-               ON attribute.attrelid = relation.oid
-              AND attribute.attnum = constraint_record.conkey[1]
-             WHERE relation.relname = $1 AND constraint_record.contype = 'f'
-             ORDER BY constraint_record.conname
-             """,
-             [@audits]
-           ).rows == [
-             [
+  test "Session Note audits reference the session and the actor User" do
+    assert foreign_keys(@audits) == [
+             fk(
                "ai_test_insight_session_note_audits_actor_user_id_fkey",
-               "actor_user_id",
-               "user",
-               "a"
-             ],
-             [
+               ["actor_user_id"],
+               "user"
+             ),
+             fk(
                "ai_test_insight_session_note_audits_session_id_fkey",
-               "session_id",
-               "ai_test_insight_sessions",
-               "a"
-             ]
+               ["session_id"],
+               "ai_test_insight_sessions"
+             )
            ]
   end
 
   test "Session Note audits have the PRD's two unique indexes, including the submit predicate" do
     on = "ON public.ai_test_insight_session_note_audits USING btree"
 
-    assert Repo.query!(
-             """
-             SELECT indexname::text, indexdef
-             FROM pg_indexes
-             WHERE schemaname = 'public' AND tablename = $1
-             ORDER BY indexname
-             """,
-             [@audits]
-           ).rows == [
+    assert indexes(@audits) == [
              [
                "ai_test_insight_session_note_audits_pkey",
                "CREATE UNIQUE INDEX ai_test_insight_session_note_audits_pkey #{on} (id)"
@@ -940,15 +870,9 @@ defmodule Dbservice.AiTestInsightsSchemaTest do
   end
 
   test "Session Note audits have exactly the two named CHECK constraints" do
-    assert Repo.query!("""
-           SELECT conname::text
-           FROM pg_constraint
-           WHERE conrelid = 'public.ai_test_insight_session_note_audits'::regclass
-             AND contype = 'c'
-           ORDER BY conname
-           """).rows == [
-             ["ati_session_note_audits_action_check"],
-             ["ati_session_note_audits_revision_check"]
+    assert check_names(@audits) == [
+             "ati_session_note_audits_action_check",
+             "ati_session_note_audits_revision_check"
            ]
   end
 
@@ -1159,15 +1083,6 @@ defmodule Dbservice.AiTestInsightsSchemaTest do
     )
   end
 
-  defp update_session(id, attrs) do
-    {columns, values} = attrs |> Enum.sort() |> Enum.unzip()
-
-    assignments =
-      columns |> Enum.with_index(2) |> Enum.map_join(", ", fn {c, i} -> "#{c} = $#{i}" end)
-
-    Repo.query("UPDATE #{@sessions} SET #{assignments} WHERE id = $1", [id | values])
-  end
-
   defp insert_scope do
     [[student_user_id], [other_student_user_id], [teacher_user_id]] =
       Repo.query!("""
@@ -1212,15 +1127,10 @@ defmodule Dbservice.AiTestInsightsSchemaTest do
   end
 
   defp insert_student! do
-    [[user_id]] =
-      Repo.query!(
-        "INSERT INTO \"user\" (inserted_at, updated_at) VALUES (now(), now()) RETURNING id"
-      ).rows
-
     [[student_id]] =
       Repo.query!(
         "INSERT INTO student (user_id, inserted_at, updated_at) VALUES ($1, now(), now()) RETURNING id",
-        [user_id]
+        [insert_user!()]
       ).rows
 
     student_id
@@ -1258,13 +1168,13 @@ defmodule Dbservice.AiTestInsightsSchemaTest do
     )
   end
 
-  defp update_request(id, attrs) do
+  defp update_row(table, id, attrs) do
     {columns, values} = attrs |> Enum.sort() |> Enum.unzip()
 
     assignments =
       columns |> Enum.with_index(2) |> Enum.map_join(", ", fn {c, i} -> "#{c} = $#{i}" end)
 
-    Repo.query("UPDATE #{@requests} SET #{assignments} WHERE id = $1", [id | values])
+    Repo.query("UPDATE #{table} SET #{assignments} WHERE id = $1", [id | values])
   end
 
   defp inserted_id({:ok, %{rows: [[id]]}}), do: id
@@ -1294,5 +1204,83 @@ defmodule Dbservice.AiTestInsightsSchemaTest do
   defp assert_constraint(code, constraint, query) do
     assert {:error, {:error, %Postgrex.Error{postgres: %{code: ^code, constraint: ^constraint}}}} =
              Repo.transaction(fn -> Repo.rollback(query.()) end, mode: :savepoint)
+  end
+
+  # Catalog readers, one per kind of object, shared by the three tables.
+  defp columns(table) do
+    Repo.query!(
+      """
+      SELECT column_name::text, data_type::text, datetime_precision,
+             is_nullable::text, column_default::text
+      FROM information_schema.columns
+      WHERE table_schema = 'public' AND table_name = $1
+      ORDER BY ordinal_position
+      """,
+      [table]
+    ).rows
+  end
+
+  # Every column of each key, in key order, so a composite key shows in full.
+  defp foreign_keys(table) do
+    Repo.query!(
+      """
+      SELECT constraint_record.conname::text,
+             array(
+               SELECT attribute.attname::text
+               FROM unnest(constraint_record.conkey) WITH ORDINALITY AS key(attnum, position)
+               JOIN pg_attribute AS attribute
+                 ON attribute.attrelid = constraint_record.conrelid
+                AND attribute.attnum = key.attnum
+               ORDER BY key.position
+             ),
+             referenced.relname::text,
+             array(
+               SELECT attribute.attname::text
+               FROM unnest(constraint_record.confkey) WITH ORDINALITY AS key(attnum, position)
+               JOIN pg_attribute AS attribute
+                 ON attribute.attrelid = constraint_record.confrelid
+                AND attribute.attnum = key.attnum
+               ORDER BY key.position
+             ),
+             constraint_record.confdeltype::text,
+             constraint_record.confmatchtype::text
+      FROM pg_constraint AS constraint_record
+      JOIN pg_class AS referenced ON referenced.oid = constraint_record.confrelid
+      WHERE constraint_record.conrelid = ('public.' || $1)::regclass
+        AND constraint_record.contype = 'f'
+      ORDER BY constraint_record.conname
+      """,
+      [table]
+    ).rows
+  end
+
+  # An expected foreign_keys/1 row: ON DELETE NO ACTION ("a") and MATCH SIMPLE ("s").
+  defp fk(name, columns, referenced_table, referenced_columns \\ ["id"]) do
+    [name, columns, referenced_table, referenced_columns, "a", "s"]
+  end
+
+  defp indexes(table) do
+    Repo.query!(
+      """
+      SELECT indexname::text, indexdef
+      FROM pg_indexes
+      WHERE schemaname = 'public' AND tablename = $1
+      ORDER BY indexname
+      """,
+      [table]
+    ).rows
+  end
+
+  defp check_names(table) do
+    Repo.query!(
+      """
+      SELECT conname::text
+      FROM pg_constraint
+      WHERE conrelid = ('public.' || $1)::regclass AND contype = 'c'
+      ORDER BY conname
+      """,
+      [table]
+    ).rows
+    |> List.flatten()
   end
 end

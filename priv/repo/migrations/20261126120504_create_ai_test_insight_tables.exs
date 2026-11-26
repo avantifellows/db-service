@@ -16,10 +16,17 @@ defmodule Dbservice.Repo.Migrations.CreateAiTestInsightTables do
   #   each submit and each later edit of Session Notes. Rows are append-only (trigger
   #   below). AI Mentorship Guide does not touch it.
   #
-  # Timestamps are `timestamp(0) without time zone` holding UTC. There is no
-  # `updated_at` trigger: writers set it in their own SQL, using the database
-  # `now()`.
+  # Timestamps are `timestamp(0) without time zone` holding UTC. The defaults say
+  # `now() AT TIME ZONE 'UTC'`, because a plain `now()` stores the connection's
+  # local time. There is no `updated_at` trigger: writers set `updated_at`, and
+  # every other time, in their own SQL with the same expression.
   def change do
+    # Target of the Insight Request's (inference_item_id, student_id) foreign key.
+    # The one change this migration makes to an AI Mentorship Guide table.
+    create unique_index(:acad_mentorship_inference_items, [:id, :student_id],
+             name: :am_items_id_student_unique
+           )
+
     create table(:ai_test_insight_requests) do
       add :request_key, :text, null: false
       add :student_id, references(:student, on_delete: :nothing), null: false
@@ -36,14 +43,21 @@ defmodule Dbservice.Repo.Migrations.CreateAiTestInsightTables do
       add :state, :text, null: false, default: "queued"
       add :outcome_code, :text
       # An FK from this LMS-owned table to an AI Mentorship Guide table, on purpose:
-      # the generator cannot delete an Item a Test Insight depends on.
-      add :inference_item_id, references(:acad_mentorship_inference_items, on_delete: :nothing)
+      # the generator cannot delete an Item a Test Insight depends on. The composite
+      # key, on am_items_id_student_unique, makes the Item belong to the same Student.
+      # MATCH SIMPLE (the default) lets a null inference_item_id pass.
+      add :inference_item_id,
+          references(:acad_mentorship_inference_items,
+            with: [student_id: :student_id],
+            on_delete: :nothing
+          )
+
       # The time the LMS's 20-minute stall rule counts from.
-      add :requested_at, :naive_datetime, null: false, default: fragment("now()")
+      add :requested_at, :naive_datetime, null: false, default: utc_now()
       add :started_at, :naive_datetime
       add :finished_at, :naive_datetime
 
-      timestamps(default: fragment("now()"), null: false)
+      timestamps(default: utc_now(), null: false)
     end
 
     # What each state requires. An unknown state matches no branch, so there is no
@@ -160,7 +174,7 @@ defmodule Dbservice.Repo.Migrations.CreateAiTestInsightTables do
       # First submit time; later edits do not change it.
       add :submitted_at, :naive_datetime
 
-      timestamps(default: fragment("now()"), null: false)
+      timestamps(default: utc_now(), null: false)
     end
 
     # A draft may be empty. A submitted session needs a date, a submit time and
@@ -220,10 +234,10 @@ defmodule Dbservice.Repo.Migrations.CreateAiTestInsightTables do
       add :action, :text, null: false
       # The session's revision after the action.
       add :revision, :integer, null: false
-      add :occurred_at, :naive_datetime, null: false, default: fragment("now()")
+      add :occurred_at, :naive_datetime, null: false, default: utc_now()
 
       # Rows never change, so there is no updated_at.
-      timestamps(default: fragment("now()"), null: false, updated_at: false)
+      timestamps(default: utc_now(), null: false, updated_at: false)
     end
 
     # The names the LMS already uses for Holistic notes.
@@ -275,4 +289,6 @@ defmodule Dbservice.Repo.Migrations.CreateAiTestInsightTables do
       "DROP TRIGGER ati_session_note_audits_immutable ON ai_test_insight_session_note_audits"
     )
   end
+
+  defp utc_now, do: fragment("(now() AT TIME ZONE 'UTC')")
 end

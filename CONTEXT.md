@@ -346,8 +346,9 @@ _Avoid_: Student Profile, Holistic questionnaire links
 - Visit Concern events are append-only (trigger) and records with events are never
   deleted; `etl-next` reaches Visit Concerns only through the db-service API.
 - An Insight Request's state and fields agree (database CHECK); an Item linked
-  from an Insight Request cannot be deleted. The LMS and AI Mentorship Guide reach
-  Insight Requests only over SQL; db-service has no API for them.
+  from an Insight Request belongs to the same Student and cannot be deleted. The
+  LMS and AI Mentorship Guide reach Insight Requests only over SQL; db-service has
+  no API for them.
 - A submitted Insight Session has a date, a submit time and non-blank Areas of
   concern and Immediate actions (database CHECK); a request named by an Insight
   Session cannot be deleted. The LMS reaches Insight Sessions only over SQL.
@@ -484,19 +485,24 @@ yet". Deploy schema before LMS.
 
 ### AI Test Insights (LMS #549)
 
-last_updated: 2026-11-26
+last_updated: 2026-11-27
 
 `20261126120504_create_ai_test_insight_tables` owns `ai_test_insight_requests`,
 `ai_test_insight_sessions` and `ai_test_insight_session_note_audits`, created in
 that order, then the audit trigger function and trigger, with no API, Ecto schema
-or context: db-service owns only the DDL. `af_lms` reads and writes all three
+or context: db-service owns only the DDL. It also adds one unique index,
+`am_items_id_student_unique` on (`id`, `student_id`), to AI Mentorship Guide's
+`acad_mentorship_inference_items`, as the target of the request's Item key. `af_lms` reads and writes all three
 tables directly; AI Mentorship Guide reads `ai_test_insight_requests` and updates a
 request's progress (state, Item link, times, outcome code) and touches no other LMS
-table. Rolling the migration back drops the trigger, the function and the three
-tables.
+table. Rolling the migration back drops the trigger, the function, the three
+tables and that index.
 Consumers: af_lms #549, #550 and #551, ai-mentorship-guide #135 (af_lms ADR 0015).
-Names use the `ati_` prefix; strings are `text` with CHECKs, not Postgres enums;
-timestamps are `timestamp(0)` without time zone holding UTC.
+CHECK constraints, indexes, the trigger and its function use the `ati_` prefix;
+foreign keys keep Ecto's default names. Strings are `text` with CHECKs, not
+Postgres enums. Timestamps are `timestamp(0)` without time zone holding UTC: the
+defaults are `now() AT TIME ZONE 'UTC'`, because a plain `now()` stores the
+connection's local time.
 
 - **Test Insight**: one AI-written document about one Student, generated from the
   tests a Teacher selected and the Student's earlier Session Notes.
@@ -534,15 +540,18 @@ Request invariants, enforced by the database:
   in the same transaction as the new insert.
 - One request per Item (`ati_requests_inference_item_unique`). The FK from this
   LMS-owned table to AI Mentorship Guide's `acad_mentorship_inference_items` is
-  intended: the generator cannot delete an Item a Test Insight depends on.
+  intended: the generator cannot delete an Item a Test Insight depends on. It is a
+  composite key on (`inference_item_id`, `student_id`), so the Item belongs to the
+  request's Student, and neither row can move to another Student while linked.
 - `selected_test_ids` is a non-empty array of non-empty strings; `notes_snapshot` is
   an array (default `[]`); `outcome_code` is snake_case, at most 64 characters, from
   a list the database does not restrict; `request_key` is unique, 1 to 64 letters,
   digits, `_` or `-`; `academic_year` is `YYYY-YYYY` with consecutive years.
 
 Left to the two writers: request immutability, state order, the notes copy's
-element shape and 5-session cap, time order (both should stamp times with the
-database `now()`), and setting `updated_at` (no trigger). A late generator result
+element shape and 5-session cap, time order (both should stamp times in UTC, in
+SQL with `now() AT TIME ZONE 'UTC'`, never a plain `now()`), and setting
+`updated_at` (no trigger). A late generator result
 may overwrite a request the LMS already marked `failed` unless its update says
 `WHERE state IN ('queued', 'running')`; the database allows either.
 
