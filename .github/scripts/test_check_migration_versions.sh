@@ -91,13 +91,15 @@ open_prs() { # JSON array, see the fake gh above
 blob() { git hash-object "$1"; }
 
 # run NAME EXPECTED_EXIT PATTERN... : runs the check, asserts exit status and
-# that the output contains every pattern.
+# that the output contains every pattern. The output is kept in $last_out.
+last_out=""
 run() {
   local name="$1" expected="$2"
   shift 2
   local out status=0
   out="$(cd "$REPO" && PATH="$WORK/bin:$PATH" BASE_REF=main GH_REPO=org/repo GITHUB_ACTIONS='' RETRY_DELAY=0 \
     "$SCRIPT" 2>&1)" || status=$?
+  last_out="$out"
   local ok=1
   [ "$status" = "$expected" ] || ok=0
   for pattern in "$@"; do
@@ -110,6 +112,17 @@ run() {
     failures=$((failures + 1))
     echo "FAIL - $name (exit $status, expected $expected)"
     printf '%s\n' "$out" | sed 's/^/       /'
+  fi
+}
+
+# refute NAME PATTERN : asserts the last run's output does not contain PATTERN.
+refute() {
+  if printf '%s\n' "$last_out" | grep -qF -- "$2"; then
+    failures=$((failures + 1))
+    echo "FAIL - $1 (output contains: $2)"
+  else
+    pass=$((pass + 1))
+    echo "ok   - $1"
   fi
 }
 
@@ -231,6 +244,80 @@ run "same file with different content warns" 0 \
 open_prs '[{"number": 900, "headRefName": "other", "isCrossRepository": false,
             "files": [{"path": "priv/repo/migrations/20261104101733_add_c.exs", "changeType": "ADDED"}]}]'
 run "same name in another PR warns" 0 "WARNING: $M/20261103120000_add_c.exs: PR #900 adds a migration with the same name"
+
+# --- order: an added migration newer than the base's newest passes ------------
+new_repo
+migration "$M/20261103093412_add_c.exs" AddC
+commit
+SKIP_OPEN_PRS=1 run "added migration newer than the base passes the order check" 0 \
+  "Checked 1 added migration(s) against the newest version in main (20261002120000)."
+
+# --- order: two added migrations, both newer, pass ----------------------------
+migration "$M/20261104101733_add_d.exs" AddD
+commit
+SKIP_OPEN_PRS=1 run "two added migrations, both newer, pass" 0 "Checked 2 added migration(s)"
+
+# --- order: an added migration older than the base's newest fails ------------
+new_repo
+migration "$M/20261001130000_add_c.exs" AddC
+commit
+order_error="ERROR: $M/20261001130000_add_c.exs: migration version 20261001130000 is older than $M/20261002120000_create_b.exs (version 20261002120000), the newest migration already in the base (main)."
+SKIP_OPEN_PRS=1 run "added migration older than the base's newest fails" 1 \
+  "$order_error" "plain 'mix ecto.migrate'" \
+  "Rename this file to a fresh timestamp newer than 20261002120000, from 'mix ecto.gen.migration' or 'date -u +%Y%m%d%H%M%S'." \
+  "Found 1 migration version problem(s)."
+run "order failure also fails with the open-PR comparison" 1 "$order_error" "Compared with 0 other open PR(s)" \
+  "Found 1 migration version problem(s)."
+out="$(cd "$REPO" && { GITHUB_ACTIONS=true SKIP_OPEN_PRS=1 BASE_REF=main "$SCRIPT" 2>&1 || true; })"
+if printf '%s\n' "$out" | grep -qF "::error file=$M/20261001130000_add_c.exs::migration version 20261001130000 is older than"; then
+  pass=$((pass + 1)); echo "ok   - order failure emits an ::error annotation on the added file"
+else
+  failures=$((failures + 1)); echo "FAIL - no order ::error annotation"; printf '%s\n' "$out"
+fi
+
+# --- order: one of two added migrations is older: only that one fails --------
+migration "$M/20261103093412_add_d.exs" AddD
+commit
+SKIP_OPEN_PRS=1 run "only the older of two added migrations fails" 1 "$order_error" "Found 1 migration version problem(s)."
+refute "the newer added migration is not flagged" "$M/20261103093412_add_d.exs:"
+
+# --- order: equal to the base's newest is one duplicate error, not two --------
+new_repo
+migration "$M/20261002120000_add_c.exs" AddC
+commit
+SKIP_OPEN_PRS=1 run "added migration equal to the base's newest fails once, as a duplicate" 1 \
+  "migration version 20261002120000 is also used by" "Found 1 migration version problem(s)."
+refute "a duplicate of the base's newest is not also reported as out of order" "is older than"
+
+# --- order: out-of-order history already in the base does not trip it --------
+new_repo
+git checkout -q main
+migration "$M/20261001150000_late_a.exs" LateA
+commit
+git checkout -q feature
+git reset -q --hard main
+migration "$M/20261103093412_add_c.exs" AddC
+commit
+SKIP_OPEN_PRS=1 run "out-of-order history in the base passes when the added file is newest" 0 \
+  "Checked 1 added migration(s) against the newest version in main (20261002120000)."
+
+# --- order: a merged migration moved to another path keeps its version -------
+new_repo
+mkdir -p "$M/archive"
+git mv "$M/20261001120000_create_a.exs" "$M/archive/20261001120000_create_a.exs"
+commit
+SKIP_OPEN_PRS=1 run "moving a merged migration is not out of order" 0 "Checked 1 added migration(s)"
+
+# --- order: a missing base skips the order check with SKIP_OPEN_PRS -----------
+new_repo
+migration "$M/20261001130000_add_c.exs" AddC
+commit
+out="$(cd "$REPO" && GITHUB_ACTIONS='' SKIP_OPEN_PRS=1 BASE_REF=no-such-ref "$SCRIPT" 2>&1)" && status=0 || status=$?
+if [ "$status" = 0 ] && printf '%s\n' "$out" | grep -qF "skipping the migration order check"; then
+  pass=$((pass + 1)); echo "ok   - missing base skips the order check"
+else
+  failures=$((failures + 1)); echo "FAIL - missing base (exit $status)"; printf '%s\n' "$out"
+fi
 
 # --- GitHub annotations in Actions --------------------------------------------
 new_repo

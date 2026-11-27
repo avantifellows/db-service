@@ -124,8 +124,11 @@ Migration versions: create migrations with `mix ecto.gen.migration`, not hand-pi
 round `...120000` timestamps. `schema_migrations` stores only the version, so when two
 files share one, a database that has run either silently skips the other (#792). The CI
 job `migration-versions` fails on a duplicate in the PR's merge tree, or on a version that
-another open PR to `main` also adds. Run it locally with
-`.github/scripts/check_migration_versions.sh`.
+another open PR to `main` also adds. It also fails when a migration the branch adds is not
+newer than the newest one already on `main`: prod runs a plain `mix ecto.migrate`, which
+also runs older pending versions, so it would run them in a different order than a fresh
+database or CI. If a newer one merged first, rename yours to a fresh timestamp. Run it
+locally with `.github/scripts/check_migration_versions.sh`.
 
 ## Environment Variables
 

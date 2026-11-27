@@ -1,6 +1,7 @@
 #!/usr/bin/env bash
 # Fail when an Ecto migration version is used twice: by two files in this tree,
-# or by this branch and another open PR to main.
+# or by this branch and another open PR to main. Also fail when a migration
+# this branch adds is not newer than every migration already in the base.
 #
 # schema_migrations records only the version. A database that has already run
 # one file with a version silently skips every other file with that version
@@ -8,6 +9,11 @@
 # only when both files are pending at once, which in practice means a fresh
 # database. Staging auto-deploys every PR to main, so two open PRs that pick the
 # same version leave one of them unapplied there (#792).
+#
+# Production runs a plain `mix ecto.migrate`, which also runs pending versions
+# older than ones it has already run. So a new migration with a version older
+# than the newest merged one runs on prod after that one, but before it on a
+# fresh database, in CI or on staging: the same migrations, in another order.
 #
 # Usage (from anywhere in the repo):
 #   .github/scripts/check_migration_versions.sh
@@ -26,7 +32,8 @@
 #   RETRY_DELAY     seconds between GitHub retries, times the attempt (default 3)
 #
 # Needs git, and gh for the open-PR comparison.
-# Exit status: 0 no collision, 1 collision found, 2 the check could not run.
+# Exit status: 0 no problem, 1 collision or out-of-order migration found,
+#              2 the check could not run.
 
 set -euo pipefail
 
@@ -81,9 +88,14 @@ tree="$(find "$MIGRATIONS_DIR" -type f -name '*.exs' | sort | parse_migrations)"
 # by that, and works without it when BASE_REF is missing.
 base_known=0
 base_paths=""
+base_tree=""
+added=""
 if git rev-parse --verify --quiet "$BASE_REF^{commit}" > /dev/null; then
   base_known=1
   base_paths="$(git ls-tree -r --name-only "$BASE_REF" -- "$MIGRATIONS_DIR")"
+  base_tree="$(printf '%s\n' "$base_paths" | parse_migrations)"
+  added="$(printf '%s\n' "$tree" | awk -F'\t' 'NR == FNR { base[$0] = 1; next } !($3 in base)' \
+    <(printf '%s\n' "$base_paths") - | grep . || true)"
 fi
 
 rename_new="to an unused timestamp from 'mix ecto.gen.migration' (not a round ...120000 one)"
@@ -120,19 +132,40 @@ done
 count="$(printf '%s\n' "$tree" | grep -c . || true)"
 echo "Checked $count migrations in $MIGRATIONS_DIR for duplicate versions and names."
 
+# 2. Every migration this branch adds must have a version newer than the newest
+#    one already in BASE_REF, since prod runs older pending versions after the
+#    newer ones it has run (see the top). Only added files are checked, so
+#    out-of-order history already in BASE_REF does not trip it. An added file
+#    whose version is already in BASE_REF is either a duplicate, reported by
+#    check 1, or a merged migration moved or renamed (its version has already
+#    run), so it is left out here. On a push to main this flags a merge that
+#    landed out of order.
+if [ "$base_known" = 0 ]; then
+  echo "Base ref '$BASE_REF' not found; skipping the migration order check."
+elif [ -n "$added" ] && [ -n "$base_tree" ]; then
+  newest="$(printf '%s\n' "$base_tree" | sort -t"$TAB" -k1,1n | tail -n 1)"
+  newest_version="$(cut -f1 <<< "$newest")"
+  newest_path="$(cut -f3 <<< "$newest")"
+  base_versions="$(printf '%s\n' "$base_tree" | cut -f1)"
+  while IFS="$TAB" read -r version _ path; do
+    grep -qxF "$version" <<< "$base_versions" && continue
+    if [ "$version" -le "$newest_version" ]; then
+      fail "$path" "migration version $version is older than $newest_path (version $newest_version), the newest migration already in the base ($BASE_REF). Production runs a plain 'mix ecto.migrate', which also runs pending versions older than ones it has already run, so prod would run this migration after that one while a fresh database, CI and staging run it before: the same migrations in a different order. Rename this file to a fresh timestamp newer than $newest_version, from 'mix ecto.gen.migration' or 'date -u +%Y%m%d%H%M%S'."
+    fi
+  done <<< "$added"
+  echo "Checked $(printf '%s\n' "$added" | grep -c .) added migration(s) against the newest version in $BASE_REF ($newest_version)."
+fi
+
 if [ "${SKIP_OPEN_PRS:-}" = 1 ]; then
   stop_if_errors
   echo "Skipping the open-PR comparison (SKIP_OPEN_PRS=1)."
   exit 0
 fi
 
-# 2. Migrations this branch adds must not share a version with migrations that
+# 3. Migrations this branch adds must not share a version with migrations that
 #    another open PR to TARGET_BRANCH adds.
 [ "$base_known" = 1 ] ||
   die "base ref '$BASE_REF' not found (fetch it, or set BASE_REF)"
-
-added="$(printf '%s\n' "$tree" | awk -F'\t' 'NR == FNR { base[$0] = 1; next } !($3 in base)' \
-  <(printf '%s\n' "$base_paths") - | grep . || true)"
 
 if [ -z "$added" ]; then
   echo "This branch adds no migrations relative to $BASE_REF; nothing to compare with open PRs."
