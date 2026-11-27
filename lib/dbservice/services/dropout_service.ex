@@ -391,8 +391,10 @@ defmodule Dbservice.Services.DropoutService do
            {:ok, enrollment, batch} <- validate_undo_target(student, audit),
            :ok <- validate_undo_school(student, audit),
            operation_time = NaiveDateTime.utc_now() |> NaiveDateTime.truncate(:second),
-           :ok <- restore_dropout(student, enrollment, batch, audit, operation_time),
-           {:ok, _audit} <- insert_undo_audit(student, audit, params, operation_time) do
+           {:ok, status_history} <-
+             restore_dropout(student, enrollment, batch, audit, operation_time),
+           {:ok, _audit} <-
+             insert_undo_audit(student, audit, params, operation_time, status_history) do
         Repo.get!(Dbservice.Users.Student, student.id)
       else
         {:error, reason} -> Repo.rollback(reason)
@@ -495,7 +497,7 @@ defmodule Dbservice.Services.DropoutService do
          :ok <-
            restore_global_enrollments(student, global_ids, dropout_status_id, operation_time),
          :ok <- restore_batch_group_user(student.user_id, batch.id) do
-      restore_student_status(student, audit, global_ids)
+      restore_student_status(student, audit, dropout_status_id, operation_time)
     else
       # Preserve a specific reason (e.g. an exclusive-enrollment conflict) so the
       # caller's transaction rolls back with a clear message instead of a 500.
@@ -548,24 +550,44 @@ defmodule Dbservice.Services.DropoutService do
   end
 
   defp do_restore_global_enrollments(student, enrollment_ids, dropout_status_id, operation_time) do
+    ended =
+      from(e in EnrollmentRecord,
+        where: [user_id: ^student.user_id, is_current: false],
+        where: e.id in ^enrollment_ids
+      )
+      |> Repo.all()
+
+    # Status rows describe past periods. Restore memberships, never those periods.
+    membership_ids = ended |> Enum.reject(&(&1.group_type == "status")) |> Enum.map(& &1.id)
+
     {restored, nil} =
       from(e in EnrollmentRecord,
-        where: e.user_id == ^student.user_id and e.id in ^enrollment_ids and e.is_current == false
+        where: [user_id: ^student.user_id, is_current: false],
+        where: e.id in ^membership_ids
       )
       |> Repo.update_all(set: [is_current: true, end_date: nil, updated_at: operation_time])
 
     {ended_dropout, nil} =
       from(e in EnrollmentRecord,
-        where:
-          e.id == ^dropout_status_id and e.user_id == ^student.user_id and e.is_current == true
+        where: [
+          id: ^dropout_status_id,
+          user_id: ^student.user_id,
+          group_type: "status",
+          is_current: true
+        ]
       )
       |> Repo.update_all(
-        set: [is_current: false, end_date: Date.utc_today(), updated_at: operation_time]
+        set: [
+          is_current: false,
+          end_date: NaiveDateTime.to_date(operation_time),
+          updated_at: operation_time
+        ]
       )
 
-    if restored == length(enrollment_ids) and ended_dropout == 1,
-      do: :ok,
-      else: {:error, "Failed to restore the student's previous enrollments"}
+    if length(ended) == length(enrollment_ids) and restored == length(membership_ids) and
+         ended_dropout == 1,
+       do: :ok,
+       else: {:error, "Failed to restore the student's previous enrollments"}
   end
 
   defp restore_batch_group_user(user_id, batch_id) do
@@ -587,18 +609,37 @@ defmodule Dbservice.Services.DropoutService do
     end
   end
 
-  defp restore_student_status(_student, _audit, []), do: :ok
+  defp restore_student_status(_student, _audit, nil, _operation_time), do: {:ok, nil}
 
-  defp restore_student_status(student, audit, _global_ids) do
+  defp restore_student_status(student, audit, _dropout_status_id, operation_time) do
     old_status = get_in(audit.changed_values, ["status", "old"])
+    ended_ids = get_in(audit.changed_values, ["ended_enrollment_ids", "old"]) || []
 
-    case Users.update_student(student, %{"status" => old_status}) do
-      {:ok, _} -> :ok
-      _ -> {:error, "Failed to restore student status"}
+    retained_status_ids =
+      from(e in EnrollmentRecord,
+        where: e.user_id == ^student.user_id and e.id in ^ended_ids and e.group_type == "status",
+        order_by: e.id,
+        select: e.id
+      )
+      |> Repo.all()
+
+    with {:ok, _} <- Users.update_student(student, %{"status" => old_status}),
+         {:ok, status_enrollment} <-
+           EnrollmentRecords.create_status_enrollment(
+             student.user_id,
+             old_status,
+             NaiveDateTime.to_date(operation_time),
+             get_in(audit.changed_values, ["academic_year", "new"]),
+             operation_time
+           ) do
+      {:ok, %{enrollment_id: status_enrollment.id, retained_ids: retained_status_ids}}
+    else
+      {:error, reason} when is_binary(reason) -> {:error, reason}
+      {:error, _} -> {:error, "Failed to restore student status"}
     end
   end
 
-  defp insert_undo_audit(student, dropout_audit, params, operation_time) do
+  defp insert_undo_audit(student, dropout_audit, params, operation_time, status_history) do
     LmsStudentWriteAudit.changeset(
       %LmsStudentWriteAudit{inserted_at: operation_time, updated_at: operation_time},
       %{
@@ -619,16 +660,33 @@ defmodule Dbservice.Services.DropoutService do
           "apaar_id" => student.apaar_id,
           "dropout_audit_id" => dropout_audit.id
         },
-        changed_values: %{
-          "batch_id" => %{
-            "old" => nil,
-            "new" => get_in(dropout_audit.changed_values, ["batch_id", "old"])
-          },
-          "status" => %{
-            "old" => student.status,
-            "new" => get_in(dropout_audit.changed_values, ["status", "old"])
-          }
-        }
+        created_values:
+          if(status_history,
+            do: %{"status_enrollment_id" => status_history.enrollment_id},
+            else: %{}
+          ),
+        changed_values:
+          Map.merge(
+            if(status_history,
+              do: %{
+                "retained_status_enrollment_ids" => %{
+                  "old" => status_history.retained_ids,
+                  "new" => status_history.retained_ids
+                }
+              },
+              else: %{}
+            ),
+            %{
+              "batch_id" => %{
+                "old" => nil,
+                "new" => get_in(dropout_audit.changed_values, ["batch_id", "old"])
+              },
+              "status" => %{
+                "old" => student.status,
+                "new" => get_in(dropout_audit.changed_values, ["status", "old"])
+              }
+            }
+          )
       }
     )
     |> Repo.insert()

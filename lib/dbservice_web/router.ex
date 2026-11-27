@@ -34,11 +34,12 @@ defmodule DbserviceWeb.Router do
     get("/templates/:type/download", TemplateController, :download_csv_template)
   end
 
-  # Protected endpoints (basic auth) for dropout, re-enrollment, auth group, product, program, batch imports
+  # Protected endpoints (basic auth) for dropout, archive, re-enrollment, auth group, product, program, batch imports
   scope "/", DbserviceWeb do
     pipe_through([:browser, :dashboard_auth])
 
     post("/imports/dropout", ImportController, :create_dropout_import)
+    post("/imports/archive", ImportController, :create_archive_import)
     post("/imports/re_enrollment", ImportController, :create_re_enrollment_import)
     post("/imports/student_enrollment", ImportController, :create_student_enrollment_import)
     post("/imports/auth_group", ImportController, :create_auth_group_import)
@@ -52,6 +53,12 @@ defmodule DbserviceWeb.Router do
       "/imports/batch_id_correction",
       ImportController,
       :create_batch_id_correction_import
+    )
+
+    post(
+      "/imports/blended_mentor_assignment",
+      ImportController,
+      :create_blended_mentor_assignment_import
     )
   end
 
@@ -107,6 +114,27 @@ defmodule DbserviceWeb.Router do
       "/holistic-mentorship/regeneration-requests/:request_key/status",
       HolisticMentorshipRegenerationRequestController,
       :update_status,
+      log: false
+    )
+
+    get(
+      "/blended-learning/transcription-requests/:request_key",
+      BlendedLearningTranscriptionRequestController,
+      :show,
+      log: false
+    )
+
+    post(
+      "/blended-learning/transcription-requests/:request_key/status",
+      BlendedLearningTranscriptionRequestController,
+      :update_status,
+      log: false
+    )
+
+    post(
+      "/blended-learning/transcription-requests/:request_key/draft",
+      BlendedLearningTranscriptionRequestController,
+      :submit_draft,
       log: false
     )
 
@@ -183,6 +211,7 @@ defmodule DbserviceWeb.Router do
     post("/resources/problems/batch", ResourceController, :create_problems_batch)
     patch("/resources/problems/batch", ResourceController, :update_problems_batch)
     get("/resource/subtypes/:type", ResourceController, :get_subtypes)
+    get("/resources/test-sequences", ResourceController, :test_sequences)
     get("/problems/search", ResourceController, :search_problems)
     post("/problems/similar-search", ResourceController, :similar_search)
 
@@ -204,10 +233,17 @@ defmodule DbserviceWeb.Router do
     get("/problems", ResourceController, :fetch_problems)
     resources("/test-rule", TestRuleController, except: [:new, :edit])
     resources("/alumni", AlumniController, except: [:new, :edit])
+    post("/alumni/:alumni_id/journey", AlumniJourneyController, :create)
 
     resources("/lms-student-document", LmsStudentDocumentController,
       only: [:index, :create, :show, :delete]
     )
+
+    get("/teacher-feedback-summary", TeacherFeedbackSummaryController, :index)
+    put("/teacher-feedback-summary/:session_pk", TeacherFeedbackSummaryController, :update)
+
+    get("/visit-concerns/pending-visits", VisitConcernController, :pending_visits)
+    put("/visit-concerns/visit-summary/:visit_id", VisitConcernController, :update_summary)
 
     post(
       "/lms/students/bulk-create-with-enrollments",

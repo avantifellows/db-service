@@ -132,6 +132,51 @@ defmodule Dbservice.EnrollmentRecords do
   end
 
   @doc """
+  Creates a status history row inside an existing transaction.
+  The caller must own a newly inserted Student or hold the Student row lock.
+  """
+  def create_status_enrollment(user_id, title, start_date, academic_year, operation_time) do
+    statuses =
+      from(s in Dbservice.Statuses.Status,
+        where: fragment("?::text = ?", s.title, ^title),
+        limit: 2
+      )
+      |> Repo.all()
+
+    current_status? =
+      Repo.exists?(
+        from(e in EnrollmentRecord,
+          where: e.user_id == ^user_id and e.group_type == "status" and e.is_current == true
+        )
+      )
+
+    cond do
+      statuses == [] ->
+        {:error, "The Student status is not configured"}
+
+      length(statuses) > 1 ->
+        {:error, "Multiple Student statuses are configured with the same title"}
+
+      current_status? ->
+        {:error, "Student already has a current status enrollment"}
+
+      true ->
+        [status] = statuses
+
+        %EnrollmentRecord{inserted_at: operation_time, updated_at: operation_time}
+        |> EnrollmentRecord.changeset(%{
+          user_id: user_id,
+          group_id: status.id,
+          group_type: "status",
+          start_date: start_date,
+          academic_year: academic_year,
+          is_current: true
+        })
+        |> Repo.insert()
+    end
+  end
+
+  @doc """
   Updates a enrollment_record.
 
   ## Examples

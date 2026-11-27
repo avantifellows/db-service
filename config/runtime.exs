@@ -3,6 +3,13 @@ import Dotenvy
 
 source(["config/.env", "config/.env.#{config_env()}", System.get_env()])
 
+# ExAws' built-in default is region: "us-east-1" and it does not consult
+# AWS_REGION on its own, so leaving this unset addresses the CSV import bucket
+# (ap-south-1) through the us-east-1 endpoint. S3 answers a cross-region request
+# with 301 PermanentRedirect, which reaches the user as
+# {:http_error, 301, "redirected"} on every import.
+config :ex_aws, region: env!("AWS_REGION", :string, "ap-south-1")
+
 if config_env() == :prod do
   config :dbservice, Dbservice.Repo,
     url: env!("DATABASE_URL", :string!),

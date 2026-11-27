@@ -73,6 +73,9 @@ Holistic Mentorship status/Grade/dropout cleanup remains transaction-coupled to
 canonical Student mutations through `Dbservice.Users.update_student/2`. Generic
 School/Program `Dbservice.EnrollmentRecords` CRUD must not query or mutate Holistic
 tables; AF LMS reconciles those eligibility changes before protected Holistic work.
+Blended Learning mentor mappings ride the same hook, but only for the terminal
+statuses (dropout, archived): Blended mentorship is owned by ops and is not
+Grade-scoped, so a Grade correction leaves the Blended mapping running.
 
 ### Revised NVS student writes
 
@@ -117,6 +120,16 @@ psql -d dbservice_dev -c 'CREATE EXTENSION "uuid-ossp";'
 
 Dev database: `dbservice_dev` (credentials default to postgres/postgres in `config/dev.exs`)
 
+Migration versions: create migrations with `mix ecto.gen.migration`, not hand-picked
+round `...120000` timestamps. `schema_migrations` stores only the version, so when two
+files share one, a database that has run either silently skips the other (#792). The CI
+job `migration-versions` fails on a duplicate in the PR's merge tree, or on a version that
+another open PR to `main` also adds. It also fails when a migration the branch adds is not
+newer than the newest one already on `main`: prod runs a plain `mix ecto.migrate`, which
+also runs older pending versions, so it would run them in a different order than a fresh
+database or CI. If a newer one merged first, rename yours to a fresh timestamp. Run it
+locally with `.github/scripts/check_migration_versions.sh`.
+
 ## Environment Variables
 
 Required in `config/.env`:
@@ -131,3 +144,13 @@ DASHBOARD_USER="admin"      # For protected routes
 DASHBOARD_PASS="password"
 PHX_HOST="your-domain.com"  # Production host
 ```
+
+### Dropout enrollment timestamp maintenance
+
+last_updated: 2026-09-16
+
+Every dropout/undo enrollment `update_all` must set `updated_at` to the shared
+operation timestamp captured after the Student lock. Preserve `inserted_at`.
+Use [the repair runbook](utils/dropout_timestamps/README.md) for historical
+records; repair defaults to read-only and requires separate approval of a
+bounded manifest before any production write.

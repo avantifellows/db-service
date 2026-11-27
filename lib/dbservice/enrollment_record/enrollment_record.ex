@@ -7,6 +7,7 @@ defmodule Dbservice.EnrollmentRecords.EnrollmentRecord do
 
   alias Dbservice.Users.User
   alias Dbservice.Subjects.Subject
+  alias Dbservice.Utils.AcademicYear
 
   schema "enrollment_record" do
     field :start_date, :date
@@ -84,8 +85,8 @@ defmodule Dbservice.EnrollmentRecords.EnrollmentRecord do
   # for well-formed, non-nil values.
   defp validate_consecutive_academic_year(changeset) do
     validate_change(changeset, :academic_year, fn :academic_year, value ->
-      case parse_academic_year(value) do
-        {start_year, end_year} when end_year != start_year + 1 ->
+      case AcademicYear.parse(value) do
+        {:ok, {start_year, end_year}} when end_year != start_year + 1 ->
           [academic_year: "must span consecutive years (e.g. 2026-2027)"]
 
         _ ->
@@ -93,15 +94,6 @@ defmodule Dbservice.EnrollmentRecords.EnrollmentRecord do
       end
     end)
   end
-
-  defp parse_academic_year(value) when is_binary(value) do
-    case Regex.run(~r/\A(\d{4})-(\d{4})\z/, value) do
-      [_, start_year, end_year] -> {String.to_integer(start_year), String.to_integer(end_year)}
-      _ -> :error
-    end
-  end
-
-  defp parse_academic_year(_value), do: :error
 
   defp validate_dates_of_enrollment(changeset) do
     if get_field(changeset, :start_date, :end_date) != nil do

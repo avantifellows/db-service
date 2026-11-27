@@ -65,10 +65,7 @@ defmodule DbserviceWeb.StudentExamRecordController do
   end
 
   def create(conn, params) do
-    case StudentExamRecords.get_student_exam_records_by_student_id_and_application_number(
-           params["student_id"],
-           params["application_number"]
-         ) do
+    case existing_record(params) do
       nil ->
         create_new_student_exam_record(conn, params)
 
@@ -76,6 +73,27 @@ defmodule DbserviceWeb.StudentExamRecordController do
         update_existing_student_exam_record(conn, existing_student_exam_record, params)
     end
   end
+
+  # Create doubles as an upsert on (student, application number), so without
+  # both there is nothing to look up. `Repo.get_by/2` raises on a nil
+  # comparison rather than returning nil, which would turn a missing required
+  # field into a 500 - so hand the params straight to the changeset, which
+  # answers 422 like any other invalid create.
+  defp existing_record(params) do
+    student_id = params["student_id"]
+    application_number = params["application_number"]
+
+    if present?(student_id) and present?(application_number) do
+      StudentExamRecords.get_student_exam_records_by_student_id_and_application_number(
+        student_id,
+        application_number
+      )
+    end
+  end
+
+  defp present?(nil), do: false
+  defp present?(value) when is_binary(value), do: String.trim(value) != ""
+  defp present?(_), do: true
 
   swagger_path :show do
     get("/api/student-exam-record/{recordId}")

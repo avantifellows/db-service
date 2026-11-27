@@ -33,8 +33,32 @@ defmodule DbserviceWeb.SwaggerSchema.Resource do
             skill_ids(:array, "Skill ids associated with the resource")
             teacher_id(:integer, "Teacher id associated with the resource")
             exam_ids(:array, "Exam ids associated with the resource")
+
+            topic_ids(
+              Schema.array(:integer),
+              "Every topic the resource is mapped to. A problem belongs to one chapter " <>
+                "but may be mapped to zero or more topics, including topics from other " <>
+                "chapters. On write this is the full desired set: topics not listed are " <>
+                "unmapped, and `[]` clears them all. Omit the key to leave the mapping " <>
+                "untouched (e.g. when moving a problem to another chapter).",
+              example: [616, 712]
+            )
+
+            topic_id(
+              :integer,
+              "Deprecated single-topic form, kept for the currently deployed CMS. On write " <>
+                "it sets the mapping to exactly this topic and must belong to the given " <>
+                "chapter; on read it is the first entry of topic_ids. Use topic_ids instead."
+            )
+
             cms_status(:string, "Status name from cms_status table. Also accepts cms_status_id.")
             cms_status_id(:integer, "cms_status.id value to set status directly")
+
+            inserted_at(
+              :string,
+              "Created timestamp. Read only: set by the server and ignored on create/update.",
+              format: "ISO-8601"
+            )
 
             paragraph(
               :string,
@@ -70,7 +94,8 @@ defmodule DbserviceWeb.SwaggerSchema.Resource do
             skill_ids: [1, 3, 7],
             teacher_id: 1,
             exam_ids: [1, 2, 3],
-            cms_status: "archived"
+            cms_status: "archived",
+            inserted_at: "2026-10-28T09:30:00"
           })
         end
     }
@@ -283,7 +308,32 @@ defmodule DbserviceWeb.SwaggerSchema.Resource do
             tag_ids(:array, "Tag ids associated with the resource")
             skill_ids(:array, "Skill ids associated with the resource")
             teacher_id(:integer, "Teacher id associated with the resource")
+
+            topic_ids(
+              Schema.array(:integer),
+              "Every topic the resource is mapped to. A problem belongs to one chapter " <>
+                "but may be mapped to zero or more topics, including topics from other " <>
+                "chapters. On write this is the full desired set: topics not listed are " <>
+                "unmapped, and `[]` clears them all. Omit the key to leave the mapping " <>
+                "untouched (e.g. when moving a problem to another chapter).",
+              example: [616, 712]
+            )
+
+            topic_id(
+              :integer,
+              "Deprecated single-topic form, kept for the currently deployed CMS. On write " <>
+                "it sets the mapping to exactly this topic and must belong to the given " <>
+                "chapter; on read it is the first entry of topic_ids. Use topic_ids instead."
+            )
+
             meta_data(:map, "Additional meta data for the session")
+
+            inserted_at(
+              :string,
+              "Created timestamp of the problem. Read only: set by the server and ignored " <>
+                "on create/update.",
+              format: "ISO-8601"
+            )
 
             lang_versions(
               Schema.array(:object),
@@ -304,6 +354,13 @@ defmodule DbserviceWeb.SwaggerSchema.Resource do
             grade_id(:integer, "Grade id associated with the resource")
             subject_id(:integer, "Subject id associated with the resource")
             concepts(:array, "Concepts associated with the resource")
+
+            tests(
+              Schema.array(:object),
+              "Tests this problem appears in, each with a test_id and test_code. " <>
+                "Always present; an empty array when the problem is in no test.",
+              example: [%{test_id: 12, test_code: "TEST_ABC"}]
+            )
           end
 
           example(%{
@@ -348,6 +405,7 @@ defmodule DbserviceWeb.SwaggerSchema.Resource do
             skill_ids: [1, 3, 7],
             teacher_id: 1,
             meta_data: %{difficulty: "medium"},
+            inserted_at: "2026-10-28T09:30:00",
             lang_versions: [
               %{lang_code: "en", meta_data: %{text: "What is 2+2?"}},
               %{lang_code: "hi", meta_data: %{text: "2+2 क्या है?"}}
@@ -363,7 +421,8 @@ defmodule DbserviceWeb.SwaggerSchema.Resource do
                 ],
                 topic_id: 5
               }
-            ]
+            ],
+            tests: [%{test_id: 12, test_code: "TEST_ABC"}]
           })
         end
     }
@@ -392,7 +451,21 @@ defmodule DbserviceWeb.SwaggerSchema.Resource do
 
             subject_id(:integer, "Target subject ID")
             chapter_id(:integer, "Target chapter ID")
-            topic_id(:integer, "Target topic ID")
+
+            topic_ids(
+              Schema.array(:integer),
+              "Full desired set of topics for every moved resource; `[]` clears them. " <>
+                "Topics need not belong to the target chapter. Omit the key (and topic_id) " <>
+                "to move the resources to the new chapter while keeping their current topics.",
+              example: [616, 712]
+            )
+
+            topic_id(
+              :integer,
+              "Deprecated single-topic form, kept for the currently deployed CMS. Must belong " <>
+                "to the target chapter. Use topic_ids instead."
+            )
+
             lang_code(:string, "Language code (e.g. en) for problem language")
           end
 
@@ -400,7 +473,7 @@ defmodule DbserviceWeb.SwaggerSchema.Resource do
             resource_ids: [5014, 5015],
             curriculum_grades: [%{curriculum_id: 3, grade_id: 4}],
             subject_id: 4,
-            topic_id: 616,
+            topic_ids: [616, 712],
             chapter_id: 220,
             lang_code: "en"
           })
@@ -552,21 +625,48 @@ defmodule DbserviceWeb.SwaggerSchema.Resource do
           properties do
             languages(
               Schema.array(:object),
-              "One entry per language: {lang_code, text}. text is raw meta_data.text (HTML/LaTeX)"
+              "One entry per language: {lang_code, text, options}. text is raw " <>
+                "meta_data.text (HTML/LaTeX). options is the optional list of raw " <>
+                "meta_data.options strings, in their original order; supply it and the " <>
+                "options are scored alongside the question, omit it and only the " <>
+                "question is scored"
+            )
+
+            curriculum_id(
+              :integer,
+              "Optional. Restrict matches to problems in this curriculum. " <>
+                "Omit to match across all curricula (deprecated fallback)",
+              required: false
             )
           end
 
           example(%{
+            curriculum_id: 9,
             languages: [
-              %{lang_code: "en", text: "<div>What is the value of \\(2+2\\)?</div>"},
-              %{lang_code: "hi", text: "<div>\\(2+2\\) का मान क्या है?</div>"}
+              %{
+                lang_code: "en",
+                text: "<div>What is the value of \\(2+2\\)?</div>",
+                options: ["<div>3</div>", "<div>4</div>", "<div>5</div>", "<div>6</div>"]
+              },
+              %{
+                lang_code: "hi",
+                text: "<div>\\(2+2\\) का मान क्या है?</div>",
+                options: ["<div>3</div>", "<div>4</div>", "<div>5</div>", "<div>6</div>"]
+              }
             ]
           })
         end,
       SimilarSearchResponse:
         swagger_schema do
           title("SimilarSearchResponse")
-          description("Near-duplicate matches (> 0.75), per language, sorted by score desc")
+
+          description(
+            "Near-duplicate matches (> 0.75), per language, sorted by score desc. " <>
+              "match_score is the question similarity, or the lower of the question " <>
+              "and options similarity when the request supplied options. Scoped to " <>
+              "curriculum_id when the request supplies it; archived problems are " <>
+              "always excluded"
+          )
 
           properties do
             problems(Schema.array(:object), "Matches: {id, code, lang_code, match_score}")

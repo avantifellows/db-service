@@ -61,10 +61,11 @@ defmodule DbserviceWeb.ImportLive.New do
   defp handle_save(%{"import" => import_params}, socket) do
     import_type = Map.get(import_params, "type", "")
 
-    # Protected import types require basic auth (dropout, re_enrollment,
+    # Protected import types require basic auth (dropout, archive, re_enrollment,
     # student_enrollment, auth_group, product, program, batch, school, ...)
     protected_import_config = %{
       "dropout" => "submit_dropout_import",
+      "archive" => "submit_archive_import",
       "re_enrollment" => "submit_re_enrollment_import",
       "student_enrollment" => "submit_student_enrollment_import",
       "auth_group_addition" => "submit_auth_group_import",
@@ -73,7 +74,8 @@ defmodule DbserviceWeb.ImportLive.New do
       "batch_addition" => "submit_batch_import",
       "school_addition" => "submit_school_import",
       "school_deletion" => "submit_school_deletion_import",
-      "batch_id_correction" => "submit_batch_id_correction_import"
+      "batch_id_correction" => "submit_batch_id_correction_import",
+      "blended_learning_mentor_assignment" => "submit_blended_mentor_assignment_import"
     }
 
     if Map.has_key?(protected_import_config, import_type) do
@@ -128,6 +130,7 @@ defmodule DbserviceWeb.ImportLive.New do
   end
 
   defp get_protected_import_url("dropout"), do: ~p"/imports/dropout"
+  defp get_protected_import_url("archive"), do: ~p"/imports/archive"
   defp get_protected_import_url("re_enrollment"), do: ~p"/imports/re_enrollment"
   defp get_protected_import_url("student_enrollment"), do: ~p"/imports/student_enrollment"
   defp get_protected_import_url("auth_group_addition"), do: ~p"/imports/auth_group"
@@ -137,6 +140,10 @@ defmodule DbserviceWeb.ImportLive.New do
   defp get_protected_import_url("school_addition"), do: ~p"/imports/school"
   defp get_protected_import_url("school_deletion"), do: ~p"/imports/school_deletion"
   defp get_protected_import_url("batch_id_correction"), do: ~p"/imports/batch_id_correction"
+
+  defp get_protected_import_url("blended_learning_mentor_assignment"),
+    do: ~p"/imports/blended_mentor_assignment"
+
   defp get_protected_import_url(_), do: ~p"/imports"
 
   def render(assigns) do
@@ -200,6 +207,7 @@ defmodule DbserviceWeb.ImportLive.New do
                     <option value="alumni_addition" selected={@form[:type].value == "alumni_addition"}>Alumni Addition</option>
                     <option value="batch_movement" selected={@form[:type].value == "batch_movement"}>Student Batch Movement</option>
                     <option value="dropout" selected={@form[:type].value == "dropout"}>Student Dropout</option>
+                    <option value="archive" selected={@form[:type].value == "archive"}>Student Archive</option>
                     <option value="re_enrollment" selected={@form[:type].value == "re_enrollment"}>Student Re-Enrollment After Dropout</option>
                     <option value="teacher_batch_assignment" selected={@form[:type].value == "teacher_batch_assignment"}>Teacher Batch Assignment</option>
                     <option value="batch_id_correction" selected={@form[:type].value == "batch_id_correction"}>Batch ID Correction</option>
@@ -208,6 +216,7 @@ defmodule DbserviceWeb.ImportLive.New do
                     <option value="student_school_movement" selected={@form[:type].value == "student_school_movement"}>Student School Movement</option>
                     <option value="update_incorrect_grade_to_correct_grade" selected={@form[:type].value == "update_incorrect_grade_to_correct_grade"}>Update Incorrect Grade to Correct Grade</option>
                     <option value="update_incorrect_auth_group_to_correct_auth_group" selected={@form[:type].value == "update_incorrect_auth_group_to_correct_auth_group"}>Update Incorrect Auth Group to Correct Auth Group</option>
+                    <option value="blended_learning_mentor_assignment" selected={@form[:type].value == "blended_learning_mentor_assignment"}>Blended Learning Mentor Assignment</option>
 
                   </select>
                 </div>

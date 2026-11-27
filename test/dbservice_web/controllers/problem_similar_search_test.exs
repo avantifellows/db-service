@@ -6,8 +6,11 @@ defmodule DbserviceWeb.ProblemSimilarSearchTest do
   """
   use DbserviceWeb.ConnCase
 
+  alias Dbservice.CmsStatuses
+  alias Dbservice.Curriculums
   alias Dbservice.Languages
   alias Dbservice.ProblemLanguages
+  alias Dbservice.ResourceCurriculums
   alias Dbservice.Resources
 
   # Long-ish stems so trigram scores are stable (calibrated: the near-duplicate
@@ -16,14 +19,53 @@ defmodule DbserviceWeb.ProblemSimilarSearchTest do
   @electric_air "the electric field associated with an electromagnetic wave travelling in air"
   @unrelated "photosynthesis converts carbon dioxide and water into glucose using sunlight"
 
+  # The pattern issue #777 is about: a stem that is shared verbatim by problems
+  # which are only told apart by their options.
+  @shared_stem "which of the following statements is correct about the given system"
+  @metal_options ["copper", "silver", "gold", "all of the above"]
+  @planet_options ["mercury", "venus", "jupiter", "none of the above"]
+
   defp language_fixture(code) do
     {:ok, language} = Languages.create_language(%{"name" => code, "code" => code})
     language
   end
 
-  defp problem_fixture do
-    {:ok, resource} = Resources.create_resource(%{"type" => "problem", "type_params" => %{}})
+  defp problem_fixture(attrs \\ %{}) do
+    {:ok, resource} =
+      Resources.create_resource(Map.merge(%{"type" => "problem", "type_params" => %{}}, attrs))
+
     resource
+  end
+
+  defp curriculum_fixture(code) do
+    {:ok, curriculum} = Curriculums.create_curriculum(%{"name" => code, "code" => code})
+    curriculum
+  end
+
+  # grade_id/subject_id are nullable and irrelevant to curriculum scoping, so the
+  # mapping is left at its minimum: a resource in a curriculum.
+  defp map_to_curriculum(resource, curriculum, difficulty_level \\ nil) do
+    {:ok, rc} =
+      ResourceCurriculums.create_resource_curriculum(%{
+        resource_id: resource.id,
+        curriculum_id: curriculum.id,
+        difficulty_level: difficulty_level
+      })
+
+    rc
+  end
+
+  # "archived" is seeded in some environments and not others; cms_status.name is
+  # uniquely indexed, so reuse the row when it is already there.
+  defp archived_status do
+    case CmsStatuses.get_cms_status_by_name("archived") do
+      nil ->
+        {:ok, status} = CmsStatuses.create_cms_status(%{"name" => "archived"})
+        status
+
+      status ->
+        status
+    end
   end
 
   # Creates a problem_lang row; question_plain_text is derived automatically from
@@ -40,9 +82,49 @@ defmodule DbserviceWeb.ProblemSimilarSearchTest do
     pl
   end
 
+  # Same, with answer options. options_plain_text is derived automatically from
+  # meta_data["options"] by the changeset, as question_plain_text is from
+  # meta_data["text"].
+  defp problem_lang_fixture(resource, language, text, options) do
+    {:ok, pl} =
+      ProblemLanguages.create_problem_language(%{
+        res_id: resource.id,
+        lang_id: language.id,
+        meta_data: %{
+          "text" => "<div>#{text}</div>",
+          "options" => Enum.map(options, &"<div>#{&1}</div>")
+        }
+      })
+
+    pl
+  end
+
   defp similar(conn, languages) do
     conn
     |> post(~p"/api/problems/similar-search", %{"languages" => languages})
+    |> json_response(200)
+  end
+
+  defp similar_with_options(conn, lang_code, text, options) do
+    conn
+    |> post(~p"/api/problems/similar-search", %{
+      "languages" => [
+        %{
+          "lang_code" => lang_code,
+          "text" => "<div>#{text}</div>",
+          "options" => Enum.map(options, &"<div>#{&1}</div>")
+        }
+      ]
+    })
+    |> json_response(200)
+  end
+
+  defp similar(conn, languages, curriculum_id) do
+    conn
+    |> post(~p"/api/problems/similar-search", %{
+      "languages" => languages,
+      "curriculum_id" => curriculum_id
+    })
     |> json_response(200)
   end
 
@@ -129,6 +211,351 @@ defmodule DbserviceWeb.ProblemSimilarSearchTest do
     test "400 when languages is missing", %{conn: conn} do
       conn = post(conn, ~p"/api/problems/similar-search", %{})
       assert json_response(conn, 400)["error"] =~ "languages"
+    end
+  end
+
+  describe "curriculum scoping (issue #745)" do
+    test "curriculum_id keeps matches inside that curriculum", %{conn: conn} do
+      en = language_fixture("c1e")
+      physics = curriculum_fixture("c1-physics")
+      chemistry = curriculum_fixture("c1-chemistry")
+
+      in_scope = problem_fixture()
+      out_of_scope = problem_fixture()
+      map_to_curriculum(in_scope, physics)
+      map_to_curriculum(out_of_scope, chemistry)
+
+      # Identical text in both curricula — only the requested one may come back.
+      problem_lang_fixture(in_scope, en, @electric_vacuum)
+      problem_lang_fixture(out_of_scope, en, @electric_vacuum)
+
+      body =
+        similar(
+          conn,
+          [%{"lang_code" => "c1e", "text" => "<div>#{@electric_vacuum}</div>"}],
+          physics.id
+        )
+
+      assert [match] = body["problems"]
+      assert match["id"] == in_scope.id
+    end
+
+    test "omitting curriculum_id still matches across curricula", %{conn: conn} do
+      en = language_fixture("c2e")
+      physics = curriculum_fixture("c2-physics")
+      chemistry = curriculum_fixture("c2-chemistry")
+
+      one = problem_fixture()
+      two = problem_fixture()
+      map_to_curriculum(one, physics)
+      map_to_curriculum(two, chemistry)
+      problem_lang_fixture(one, en, @electric_vacuum)
+      problem_lang_fixture(two, en, @electric_vacuum)
+
+      body = similar(conn, [%{"lang_code" => "c2e", "text" => "<div>#{@electric_vacuum}</div>"}])
+
+      ids = Enum.map(body["problems"], & &1["id"])
+      assert one.id in ids
+      assert two.id in ids
+    end
+
+    test "a problem mapped to the curriculum twice is returned once", %{conn: conn} do
+      en = language_fixture("c3e")
+      physics = curriculum_fixture("c3-physics")
+
+      problem = problem_fixture()
+      # Same curriculum, two mapping rows — a plain join would return it twice.
+      map_to_curriculum(problem, physics, "easy")
+      map_to_curriculum(problem, physics, "hard")
+      problem_lang_fixture(problem, en, @electric_vacuum)
+
+      body =
+        similar(
+          conn,
+          [%{"lang_code" => "c3e", "text" => "<div>#{@electric_vacuum}</div>"}],
+          physics.id
+        )
+
+      assert [match] = body["problems"]
+      assert match["id"] == problem.id
+    end
+
+    test "a problem in no curriculum is invisible to a scoped search", %{conn: conn} do
+      en = language_fixture("c4e")
+      physics = curriculum_fixture("c4-physics")
+
+      unmapped = problem_fixture()
+      problem_lang_fixture(unmapped, en, @electric_vacuum)
+
+      scoped =
+        similar(
+          conn,
+          [%{"lang_code" => "c4e", "text" => "<div>#{@electric_vacuum}</div>"}],
+          physics.id
+        )
+
+      assert scoped == %{"problems" => []}
+
+      # ...but the unscoped fallback still finds it.
+      unscoped =
+        similar(conn, [%{"lang_code" => "c4e", "text" => "<div>#{@electric_vacuum}</div>"}])
+
+      assert [%{"id" => id}] = unscoped["problems"]
+      assert id == unmapped.id
+    end
+
+    test "curriculum_id sent as a string is accepted", %{conn: conn} do
+      en = language_fixture("c5e")
+      physics = curriculum_fixture("c5-physics")
+
+      problem = problem_fixture()
+      map_to_curriculum(problem, physics)
+      problem_lang_fixture(problem, en, @electric_vacuum)
+
+      body =
+        similar(
+          conn,
+          [%{"lang_code" => "c5e", "text" => "<div>#{@electric_vacuum}</div>"}],
+          to_string(physics.id)
+        )
+
+      assert [%{"id" => id}] = body["problems"]
+      assert id == problem.id
+    end
+  end
+
+  describe "archived problems (issue #745)" do
+    test "an archived near-duplicate is not returned", %{conn: conn} do
+      en = language_fixture("a1e")
+      archived = problem_fixture(%{"cms_status_id" => archived_status().id})
+      problem_lang_fixture(archived, en, @electric_vacuum)
+
+      body = similar(conn, [%{"lang_code" => "a1e", "text" => "<div>#{@electric_vacuum}</div>"}])
+      assert body == %{"problems" => []}
+    end
+
+    test "an archived problem is excluded inside a curriculum too", %{conn: conn} do
+      en = language_fixture("a2e")
+      physics = curriculum_fixture("a2-physics")
+
+      archived = problem_fixture(%{"cms_status_id" => archived_status().id})
+      live = problem_fixture()
+      map_to_curriculum(archived, physics)
+      map_to_curriculum(live, physics)
+      problem_lang_fixture(archived, en, @electric_vacuum)
+      problem_lang_fixture(live, en, @electric_vacuum)
+
+      body =
+        similar(
+          conn,
+          [%{"lang_code" => "a2e", "text" => "<div>#{@electric_vacuum}</div>"}],
+          physics.id
+        )
+
+      assert [match] = body["problems"]
+      assert match["id"] == live.id
+    end
+
+    test "a problem with no cms_status is still matched", %{conn: conn} do
+      en = language_fixture("a3e")
+      # Force the "archived" row to exist, so the filter is actually applied.
+      archived_status()
+
+      problem = problem_fixture()
+      assert is_nil(problem.cms_status_id)
+      problem_lang_fixture(problem, en, @electric_vacuum)
+
+      body = similar(conn, [%{"lang_code" => "a3e", "text" => "<div>#{@electric_vacuum}</div>"}])
+
+      assert [%{"id" => id}] = body["problems"]
+      assert id == problem.id
+    end
+
+    test "a problem in a non-archived cms_status is still matched", %{conn: conn} do
+      en = language_fixture("a4e")
+      archived_status()
+      {:ok, live_status} = CmsStatuses.create_cms_status(%{"name" => "a4-in-review"})
+
+      problem = problem_fixture(%{"cms_status_id" => live_status.id})
+      problem_lang_fixture(problem, en, @electric_vacuum)
+
+      body = similar(conn, [%{"lang_code" => "a4e", "text" => "<div>#{@electric_vacuum}</div>"}])
+
+      assert [%{"id" => id}] = body["problems"]
+      assert id == problem.id
+    end
+
+    # --- answer options (issue #777) -------------------------------------
+    #
+    # The case the CMS complained about: a stem shared by many problems that are
+    # told apart only by their options. Question similarity alone scores these
+    # 1.0 and warns the editor about a problem that is not a duplicate.
+
+    test "a shared stem with different options is no longer a match", %{conn: conn} do
+      en = language_fixture("o1e")
+      stored = problem_fixture()
+      problem_lang_fixture(stored, en, @shared_stem, @metal_options)
+
+      body = similar_with_options(conn, "o1e", @shared_stem, @planet_options)
+
+      assert body == %{"problems" => []}
+    end
+
+    test "the same stem with the same options is still a match", %{conn: conn} do
+      en = language_fixture("o2e")
+      stored = problem_fixture()
+      problem_lang_fixture(stored, en, @shared_stem, @metal_options)
+
+      body = similar_with_options(conn, "o2e", @shared_stem, @metal_options)
+
+      assert [match] = body["problems"]
+      assert match["id"] == stored.id
+      assert match["match_score"] == 1.0
+    end
+
+    test "options in a different order still match - trigrams are a set", %{conn: conn} do
+      en = language_fixture("o3e")
+      stored = problem_fixture()
+      problem_lang_fixture(stored, en, @shared_stem, @metal_options)
+
+      body = similar_with_options(conn, "o3e", @shared_stem, Enum.reverse(@metal_options))
+
+      assert [match] = body["problems"]
+      assert match["id"] == stored.id
+      assert match["match_score"] > 0.75
+    end
+
+    test "match_score is the lower of the question and options similarity", %{conn: conn} do
+      en = language_fixture("o4e")
+      stored = problem_fixture()
+      problem_lang_fixture(stored, en, @electric_vacuum, @metal_options)
+
+      # Identical options (1.0), question only near-identical, so the question
+      # score is the binding one and the result equals the options-free score.
+      with_options = similar_with_options(conn, "o4e", @electric_air, @metal_options)
+
+      question_only =
+        similar(conn, [%{"lang_code" => "o4e", "text" => "<div>#{@electric_air}</div>"}])
+
+      assert [%{"match_score" => combined}] = with_options["problems"]
+      assert [%{"match_score" => question_score}] = question_only["problems"]
+      assert combined == question_score
+      assert combined < 1.0
+    end
+
+    test "sending options does not change results for callers that omit them", %{conn: conn} do
+      en = language_fixture("o5e")
+      stored = problem_fixture()
+      problem_lang_fixture(stored, en, @shared_stem, @metal_options)
+
+      # The pre-#777 request shape: the shared stem matches on the question
+      # alone, options and all.
+      body = similar(conn, [%{"lang_code" => "o5e", "text" => "<div>#{@shared_stem}</div>"}])
+
+      assert [match] = body["problems"]
+      assert match["id"] == stored.id
+      assert match["match_score"] == 1.0
+    end
+
+    test "an empty options list behaves as if options were omitted", %{conn: conn} do
+      en = language_fixture("o6e")
+      stored = problem_fixture()
+      problem_lang_fixture(stored, en, @shared_stem, @metal_options)
+
+      body = similar_with_options(conn, "o6e", @shared_stem, [])
+
+      assert [match] = body["problems"]
+      assert match["id"] == stored.id
+      assert match["match_score"] == 1.0
+    end
+
+    test "a candidate with no options at all is not a match for a problem that has them", %{
+      conn: conn
+    } do
+      en = language_fixture("o7e")
+      # A subjective problem: a request carrying options is for a different kind
+      # of problem, so a shared stem alone must not flag it (issue #777 review).
+      stored = problem_fixture()
+      problem_lang_fixture(stored, en, @shared_stem)
+
+      body = similar_with_options(conn, "o7e", @shared_stem, @planet_options)
+
+      assert body["problems"] == []
+    end
+
+    test "a candidate whose options are images is still scored on its question", %{conn: conn} do
+      en = language_fixture("o7i")
+      # The options exist but strip to nothing, so the stem is the only signal
+      # there is. Dropping these would let an editor re-create an image-option
+      # problem with no warning at all.
+      stored = problem_fixture()
+
+      {:ok, _pl} =
+        ProblemLanguages.create_problem_language(%{
+          res_id: stored.id,
+          lang_id: en.id,
+          meta_data: %{
+            "text" => "<div>#{@shared_stem}</div>",
+            "options" => ["<img src=\"a.png\">", "<img src=\"b.png\">"]
+          }
+        })
+
+      body = similar_with_options(conn, "o7i", @shared_stem, @planet_options)
+
+      assert [match] = body["problems"]
+      assert match["id"] == stored.id
+      assert match["match_score"] == 1.0
+    end
+
+    test "options are matched per language, like the question", %{conn: conn} do
+      en = language_fixture("o8e")
+      hi = language_fixture("o8h")
+      english = problem_fixture()
+      hindi = problem_fixture()
+      problem_lang_fixture(english, en, @shared_stem, @metal_options)
+      problem_lang_fixture(hindi, hi, @shared_stem, @metal_options)
+
+      body = similar_with_options(conn, "o8e", @shared_stem, @metal_options)
+
+      assert [match] = body["problems"]
+      assert match["id"] == english.id
+      assert match["lang_code"] == "o8e"
+    end
+
+    test "options HTML is stripped before comparing, like the question", %{conn: conn} do
+      en = language_fixture("o9e")
+      stored = problem_fixture()
+
+      {:ok, _} =
+        ProblemLanguages.create_problem_language(%{
+          res_id: stored.id,
+          lang_id: en.id,
+          meta_data: %{
+            "text" => "<div>#{@shared_stem}</div>",
+            "options" => Enum.map(@metal_options, &"<p><strong>#{&1}</strong></p>")
+          }
+        })
+
+      # Same options, wrapped in different markup: the stored and the queried
+      # options normalize to the same plain text, so this is still a 1.0 match.
+      body = similar_with_options(conn, "o9e", @shared_stem, @metal_options)
+
+      assert [match] = body["problems"]
+      assert match["id"] == stored.id
+      assert match["match_score"] == 1.0
+    end
+
+    test "the closest candidate on options wins when stems are identical", %{conn: conn} do
+      en = language_fixture("o10e")
+      same_options = problem_fixture()
+      other_options = problem_fixture()
+      problem_lang_fixture(same_options, en, @shared_stem, @metal_options)
+      problem_lang_fixture(other_options, en, @shared_stem, @planet_options)
+
+      body = similar_with_options(conn, "o10e", @shared_stem, @metal_options)
+
+      assert [match] = body["problems"]
+      assert match["id"] == same_options.id
     end
   end
 end

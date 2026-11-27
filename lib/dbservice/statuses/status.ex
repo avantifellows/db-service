@@ -8,7 +8,16 @@ defmodule Dbservice.Statuses.Status do
 
   schema "status" do
     field :title, Ecto.Enum,
-      values: [:registered, :enrolled, :active, :inactive, :at_risk, :graduated, :dropout]
+      values: [
+        :registered,
+        :enrolled,
+        :active,
+        :inactive,
+        :at_risk,
+        :graduated,
+        :dropout,
+        :archived
+      ]
 
     has_many :group, Group, foreign_key: :child_id, where: [type: "status"]
 

@@ -45,4 +45,18 @@ defmodule DbserviceWeb.ErrorJsonTest do
     assert DbserviceWeb.ErrorJSON.template_not_found("422.json", []) ==
              %{errors: %{detail: "Unprocessable Content"}}
   end
+
+  test "a malformed body outside the Visit Concern API gets the standard 400 shape",
+       %{conn: conn} do
+    assert {400, _headers, body} =
+             assert_error_sent(400, fn ->
+               conn
+               |> put_req_header("content-type", "application/json")
+               |> put("/api/school/1", ~s({"name": "trunc))
+             end)
+
+    assert Jason.decode!(body) == %{
+             "errors" => %{"detail" => "Bad Request", "message" => "malformed request body"}
+           }
+  end
 end

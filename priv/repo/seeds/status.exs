@@ -12,6 +12,9 @@ status_data = [
   },
   %{
     title: :dropout
+  },
+  %{
+    title: :archived
   }
 ]
 
