@@ -6,7 +6,9 @@ on:
 
 jobs:
   # Two migrations with one version: a database that has run one silently skips
-  # the other (#792). Runs in seconds, separately from verify.
+  # the other (#792). A new migration older than the base's newest runs on prod
+  # in a different order than on a fresh database. Runs in seconds, separately
+  # from verify.
   migration-versions:
     runs-on: ubuntu-latest
     timeout-minutes: 5
