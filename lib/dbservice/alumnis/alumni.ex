@@ -54,46 +54,54 @@ defmodule Dbservice.Alumnis.Alumni do
     timestamps()
   end
 
+  # Everything an alumnus answers about themselves: what a journey row snapshots.
+  @answer_fields [
+    :which_competitive_exam_did_you_appear_for,
+    :did_you_take_a_gap_year,
+    :why_did_you_take_a_gap_year,
+    :if_avanti_was_not_your_only_source_of_test_prep_coaching_then_what_other_resources_did_you_opt_for,
+    :start_year_ug,
+    :college_id_ug,
+    :degree_ug,
+    :branch_id_ug,
+    :year_of_graduation_ug,
+    :start_year_pg,
+    :college_id_pg,
+    :degree_pg,
+    :branch_id_pg,
+    :year_of_graduation_pg,
+    :past_internship_orgs,
+    :which_year_did_you_start_working,
+    :starting_ctc_ug_range,
+    :current_ctc,
+    :current_ctc_range,
+    :current_job_city,
+    :current_job_role,
+    :current_job_sector,
+    :current_org_name,
+    :years_of_experience,
+    :linkedin_profile_link,
+    :what_was_your_monthly_household_income_excluding_the_respondent_when_you_were_starting_your_first_job,
+    :ug_status,
+    :pg_status,
+    :employment_status,
+    :contact_status,
+    :current_status,
+    :scholarship_availed,
+    :skilling_programs
+  ]
+
+  def answer_fields, do: @answer_fields
+
   @doc false
   def changeset(alumni, attrs) do
     alumni
-    |> cast(attrs, [
-      :student_id,
-      :which_competitive_exam_did_you_appear_for,
-      :did_you_take_a_gap_year,
-      :why_did_you_take_a_gap_year,
-      :if_avanti_was_not_your_only_source_of_test_prep_coaching_then_what_other_resources_did_you_opt_for,
-      :start_year_ug,
-      :college_id_ug,
-      :degree_ug,
-      :branch_id_ug,
-      :year_of_graduation_ug,
-      :start_year_pg,
-      :college_id_pg,
-      :degree_pg,
-      :branch_id_pg,
-      :year_of_graduation_pg,
-      :past_internship_orgs,
-      :which_year_did_you_start_working,
-      :starting_ctc_ug_range,
-      :current_ctc,
-      :current_ctc_range,
-      :current_job_city,
-      :current_job_role,
-      :current_job_sector,
-      :current_org_name,
-      :years_of_experience,
-      :linkedin_profile_link,
-      :what_was_your_monthly_household_income_excluding_the_respondent_when_you_were_starting_your_first_job,
-      :ug_status,
-      :pg_status,
-      :employment_status,
-      :contact_status,
-      :current_status,
-      :scholarship_availed,
-      :skilling_programs
-    ])
+    |> cast(attrs, [:student_id | @answer_fields])
     |> validate_required([:student_id])
     |> unique_constraint(:student_id)
+    |> foreign_key_constraint(:college_id_ug)
+    |> foreign_key_constraint(:college_id_pg)
+    |> foreign_key_constraint(:branch_id_ug)
+    |> foreign_key_constraint(:branch_id_pg)
   end
 end

@@ -152,6 +152,27 @@ defmodule Dbservice.UsersTest do
       assert {:ok, %User{} = updated_user} = Users.update_group(user.id, [])
       assert Enum.empty?(updated_user.group)
     end
+
+    test "get_user_by_email/1 matches regardless of case and surrounding space" do
+      user = user_fixture(%{email: "Mentor.One@Example.org"})
+
+      assert Users.get_user_by_email("Mentor.One@Example.org").id == user.id
+      assert Users.get_user_by_email("mentor.one@example.org").id == user.id
+      assert Users.get_user_by_email("  mentor.one@example.org  ").id == user.id
+    end
+
+    test "get_user_by_email/1 returns nil for a blank or unknown email" do
+      assert Users.get_user_by_email("nobody@example.org") == nil
+      assert Users.get_user_by_email("   ") == nil
+      assert Users.get_user_by_email(nil) == nil
+    end
+
+    test "get_user_by_email/1 returns the earliest row when an email repeats" do
+      first = user_fixture(%{email: "shared@example.org"})
+      _second = user_fixture(%{email: "shared@example.org"})
+
+      assert Users.get_user_by_email("shared@example.org").id == first.id
+    end
   end
 
   describe "student" do
@@ -292,6 +313,216 @@ defmodule Dbservice.UsersTest do
       {_user, student} = student_fixture(%{pen_number: "12345678901"})
 
       assert {:ok, %Student{pen_number: nil}} = Users.update_student(student, %{pen_number: nil})
+    end
+
+    test "create_student/1 normalizes uniform sizes and blanks them to nil" do
+      assert {:ok, %Student{tshirt_size: "XXL", track_pant_size: nil}} =
+               Users.create_student(%{
+                 user_id: user_fixture().id,
+                 tshirt_size: " xxl ",
+                 track_pant_size: "  "
+               })
+    end
+
+    test "create_student/1 rejects a uniform size outside the range" do
+      for {field, value} <- [tshirt_size: "XXXXL", track_pant_size: "Medium"] do
+        assert {:error, changeset} =
+                 Users.create_student(%{field => value, :user_id => user_fixture().id})
+
+        assert {"Invalid uniform_size: " <> _, _} = changeset.errors[field]
+      end
+    end
+
+    test "create_student/1 canonicalizes Grade 10 school state spellings" do
+      for {given, canonical} <- [
+            {"madhya pradesh", "Madhya Pradesh"},
+            {"Pondicherry", "Puducherry"},
+            {"Jammu And Kashmir", "Jammu & Kashmir"},
+            {"Delhi (UT)", "Delhi"}
+          ] do
+        assert {:ok, %Student{g10_school_state: ^canonical}} =
+                 Users.create_student(%{user_id: user_fixture().id, g10_school_state: given})
+      end
+    end
+
+    test "create_student/1 rejects a state outside the 36 states and UTs" do
+      assert {:error, changeset} =
+               Users.create_student(%{user_id: user_fixture().id, g10_school_state: "Avanti"})
+
+      assert {"Invalid state: Avanti. Must be one of the 36 Indian states/UTs", _} =
+               changeset.errors[:g10_school_state]
+    end
+
+    test "create_student/1 trims the Grade 10 UDISE code and keeps its leading zeros" do
+      assert {:ok, %Student{g10_school_udise_code: "01234567890"}} =
+               Users.create_student(%{
+                 user_id: user_fixture().id,
+                 g10_school_udise_code: " 01234567890 "
+               })
+    end
+
+    test "create_student/1 rejects a Grade 10 UDISE code that is not 11 digits" do
+      for udise_code <- ["abc", "231201001", "231201001012"] do
+        assert {:error, changeset} =
+                 Users.create_student(%{
+                   user_id: user_fixture().id,
+                   g10_school_udise_code: udise_code
+                 })
+
+        assert {"must be exactly 11 digits", _} = changeset.errors[:g10_school_udise_code]
+      end
+    end
+
+    test "create_student/1 pads a 10-digit Grade 10 UDISE code back to 11" do
+      # A leading zero is lost whenever a code passes through a spreadsheet as a
+      # number; 6,620 of our own school rows are stored this way.
+      assert {:ok, %Student{g10_school_udise_code: "03020113003"}} =
+               Users.create_student(%{
+                 user_id: user_fixture().id,
+                 g10_school_state: "Punjab",
+                 g10_school_udise_code: "3020113003"
+               })
+    end
+
+    test "create_student/1 accepts the state spellings our own data contains" do
+      for {given, canonical} <- [
+            {"The Dadra And Nagar Haveli", "Dadra & Nagar Haveli & Daman & Diu"},
+            {"Gujrat", "Gujarat"},
+            {"Delhi NCR", "Delhi"},
+            {"Tamilnadu", "Tamil Nadu"},
+            {"Chhatisgarh", "Chhattisgarh"},
+            {"Andaman and Nicobar", "Andaman & Nicobar Islands"}
+          ] do
+        assert {:ok, %Student{g10_school_state: ^canonical}} =
+                 Users.create_student(%{user_id: user_fixture().id, g10_school_state: given})
+      end
+    end
+
+    test "create_student/1 rejects a Grade 10 school name longer than the column" do
+      # Devanagari: 100 graphemes but 200 codepoints, which varchar(150) counts.
+      long_name = String.duplicate("नी", 100)
+
+      assert {:error, changeset} =
+               Users.create_student(%{
+                 user_id: user_fixture().id,
+                 g10_school_name: long_name
+               })
+
+      assert {"should be at most %{count} character(s)", _} = changeset.errors[:g10_school_name]
+    end
+
+    test "create_student/1 stores the coaching fields and blanks them to nil" do
+      assert {:ok, %Student{mode_of_coaching: "Offline", coaching_name: nil}} =
+               Users.create_student(%{
+                 user_id: user_fixture().id,
+                 mode_of_coaching: "  Offline  ",
+                 coaching_name: "   "
+               })
+    end
+
+    test "create_student/1 rejects coaching fields longer than the column" do
+      # Devanagari: 40 graphemes but 80 codepoints, which varchar(50) counts.
+      long_value = String.duplicate("नी", 40)
+
+      for field <- [:mode_of_coaching, :coaching_name] do
+        assert {:error, changeset} =
+                 Users.create_student(%{field => long_value, :user_id => user_fixture().id})
+
+        assert {"should be at most %{count} character(s)", _} = changeset.errors[field]
+      end
+    end
+
+    test "update_student/2 clears the coaching fields" do
+      {_user, student} =
+        student_fixture(%{mode_of_coaching: "Online", coaching_name: "Allen Career Institute"})
+
+      assert {:ok, %Student{mode_of_coaching: nil, coaching_name: nil}} =
+               Users.update_student(student, %{mode_of_coaching: nil, coaching_name: nil})
+    end
+
+    test "update_student/2 reports a state change against the state, not the stored code" do
+      {_user, student} =
+        student_fixture(%{g10_school_state: "Bihar", g10_school_udise_code: "10120100101"})
+
+      assert {:error, changeset} =
+               Users.update_student(student, %{g10_school_state: "Madhya Pradesh"})
+
+      assert changeset.errors[:g10_school_udise_code] == nil
+
+      assert {"does not match the Grade 10 UDISE code, which starts with 10", _} =
+               changeset.errors[:g10_school_state]
+    end
+
+    test "update_student/2 leaves an untouched mismatched pair alone" do
+      # A backfill done in SQL can land a mismatched pair; an unrelated update
+      # should not be held hostage by it.
+      {_user, student} = student_fixture(%{g10_school_state: "Bihar"})
+
+      {1, _} =
+        Dbservice.Repo.update_all(
+          from(s in Student, where: s.id == ^student.id),
+          set: [g10_school_udise_code: "23120100101"]
+        )
+
+      student = Users.get_student!(student.id)
+
+      assert {:ok, %Student{father_name: "Updated"}} =
+               Users.update_student(student, %{father_name: "Updated"})
+    end
+
+    test "create_student/1 rejects a Grade 10 UDISE code whose prefix is not the state's" do
+      assert {:error, changeset} =
+               Users.create_student(%{
+                 user_id: user_fixture().id,
+                 g10_school_state: "Madhya Pradesh",
+                 g10_school_udise_code: "09120100101"
+               })
+
+      assert {"must start with 23 for Madhya Pradesh", _} =
+               changeset.errors[:g10_school_udise_code]
+    end
+
+    test "create_student/1 accepts a Grade 10 UDISE code matching the state" do
+      assert {:ok, %Student{}} =
+               Users.create_student(%{
+                 user_id: user_fixture().id,
+                 g10_school_state: "Madhya Pradesh",
+                 g10_school_udise_code: "23120100101"
+               })
+    end
+
+    test "create_student/1 accepts the pre-merger prefixes for Dadra & Nagar Haveli & Daman & Diu" do
+      for udise_code <- ["25120100101", "26120100101", "38120100101"] do
+        assert {:ok, %Student{}} =
+                 Users.create_student(%{
+                   user_id: user_fixture().id,
+                   g10_school_state: "Dadra & Nagar Haveli & Daman & Diu",
+                   g10_school_udise_code: udise_code
+                 })
+      end
+    end
+
+    test "create_student/1 accepts the Grade 10 state and UDISE code independently" do
+      assert {:ok, %Student{}} =
+               Users.create_student(%{user_id: user_fixture().id, g10_school_state: "Bihar"})
+
+      assert {:ok, %Student{}} =
+               Users.create_student(%{
+                 user_id: user_fixture().id,
+                 g10_school_udise_code: "10120100101"
+               })
+    end
+
+    test "update_student/2 checks a new Grade 10 UDISE code against the stored state" do
+      {_user, student} = student_fixture(%{g10_school_state: "Bihar"})
+
+      assert {:error, changeset} =
+               Users.update_student(student, %{g10_school_udise_code: "23120100101"})
+
+      assert {"must start with 10 for Bihar", _} = changeset.errors[:g10_school_udise_code]
+
+      assert {:ok, %Student{g10_school_udise_code: "10120100101"}} =
+               Users.update_student(student, %{g10_school_udise_code: "10120100101"})
     end
 
     test "PEN lookup is only enabled by get_student_by_id_pen_or_apaar_id/1" do
@@ -543,7 +774,7 @@ defmodule Dbservice.UsersTest do
       assert message =~ "APAAR ID"
     end
 
-    test "get_student_by_student_id returns earliest match without raising on duplicates" do
+    test "get_student_by_student_id reports ambiguity instead of guessing on duplicates" do
       setup_auth_group("AuthA")
       setup_auth_group("AuthB")
 
@@ -553,11 +784,52 @@ defmodule Dbservice.UsersTest do
       assert {:ok, %Student{} = second} =
                Users.create_or_update_student(student_params("S1", "AuthB"))
 
-      # Two rows now share student_id "S1"; the legacy single-id lookup must not raise
-      # Ecto.MultipleResultsError and should return the earliest-created row deterministically.
+      # Two rows now share student_id "S1". The unscoped lookup has nothing to pick between
+      # them with, so it must neither raise Ecto.MultipleResultsError nor silently return
+      # one of them - callers have to surface the ambiguity to the operator.
       assert first.id < second.id
+
+      assert {:error, {:ambiguous_student, :student_id, "S1"}} =
+               Users.get_student_by_student_id("S1")
+    end
+
+    test "get_student_by_student_id still resolves a unique id and a missing id" do
+      setup_auth_group("AuthA")
+
+      assert {:ok, %Student{} = only} =
+               Users.create_or_update_student(student_params("S1", "AuthA"))
+
       assert %Student{id: id} = Users.get_student_by_student_id("S1")
-      assert id == first.id
+      assert id == only.id
+      assert is_nil(Users.get_student_by_student_id("does-not-exist"))
+    end
+
+    test "get_student_by_id_or_apaar_id reports ambiguity and does not fall through to apaar_id" do
+      setup_auth_group("AuthA")
+      setup_auth_group("AuthB")
+
+      assert {:ok, %Student{}} =
+               Users.create_or_update_student(
+                 student_params("S1", "AuthA", %{"apaar_id" => "123456789012"})
+               )
+
+      assert {:ok, %Student{}} = Users.create_or_update_student(student_params("S1", "AuthB"))
+
+      # A shared student_id must stop the row, not quietly resolve via the apaar_id of
+      # whichever student happened to carry one.
+      assert {:error, {:ambiguous_student, :student_id, "S1"}} =
+               Users.get_student_by_id_or_apaar_id(%{
+                 "student_id" => "S1",
+                 "apaar_id" => "123456789012"
+               })
+    end
+
+    test "ambiguous_student_message names the columns that disambiguate" do
+      message = Users.ambiguous_student_message({:ambiguous_student, :student_id, "S1"})
+
+      assert message =~ "S1"
+      assert message =~ "auth_group"
+      assert message =~ "user_id"
     end
 
     test "get_student_by_student_id scopes to the auth group when one is supplied" do
@@ -658,6 +930,136 @@ defmodule Dbservice.UsersTest do
 
       assert Users.get_student_by_student_id_and_auth_group("S1", auth_a.id).apaar_id ==
                "111111111111"
+    end
+  end
+
+  describe "get_student_for_import/2" do
+    import Dbservice.UsersFixtures
+
+    test "resolves the student by user_id" do
+      {_user, student} = student_fixture(%{student_id: "IMP-001"})
+
+      assert {:ok, found} = Users.get_student_for_import(%{"user_id" => student.user_id})
+      assert found.id == student.id
+    end
+
+    test "accepts the user_id as the string a CSV row carries" do
+      {_user, student} = student_fixture(%{student_id: "IMP-002"})
+
+      assert {:ok, found} =
+               Users.get_student_for_import(%{"user_id" => " #{student.user_id} "})
+
+      assert found.id == student.id
+    end
+
+    test "picks the right student when two share a student_id" do
+      {_user_a, a} = student_fixture(%{student_id: "IMP-SHARED"})
+      {_user_b, b} = student_fixture(%{student_id: "IMP-SHARED"})
+
+      assert {:ok, found} =
+               Users.get_student_for_import(%{
+                 "user_id" => b.user_id,
+                 "student_id" => "IMP-SHARED"
+               })
+
+      assert found.id == b.id
+      refute found.id == a.id
+    end
+
+    test "fails a row with no user_id" do
+      assert {:error, message} = Users.get_student_for_import(%{"student_id" => "IMP-001"})
+      assert message =~ "user_id is required"
+    end
+
+    test "fails a row whose user_id is not a number" do
+      assert {:error, message} = Users.get_student_for_import(%{"user_id" => "not-a-number"})
+      assert message =~ "Invalid user_id"
+    end
+
+    test "fails a row whose user_id matches no student" do
+      assert {:error, "No student found for user_id 999999999."} =
+               Users.get_student_for_import(%{"user_id" => 999_999_999})
+    end
+
+    test "fails a row whose student_id belongs to a different student" do
+      {_user, student} = student_fixture(%{student_id: "IMP-REAL"})
+
+      assert {:error, message} =
+               Users.get_student_for_import(%{
+                 "user_id" => student.user_id,
+                 "student_id" => "IMP-OTHER"
+               })
+
+      assert message =~ "IMP-REAL"
+      assert message =~ "IMP-OTHER"
+    end
+
+    test "fails a row whose apaar_id belongs to a different student" do
+      {_user, student} = student_fixture(%{student_id: "IMP-AP", apaar_id: "111111111141"})
+
+      assert {:error, message} =
+               Users.get_student_for_import(%{
+                 "user_id" => student.user_id,
+                 "apaar_id" => "222222222242"
+               })
+
+      assert message =~ "222222222242"
+    end
+
+    test "fails a row whose apaar_id belongs to another student, even with none stored" do
+      # The row holds the proof that the user_id is wrong: that apaar_id is someone
+      # else's. Only an identifier db-service does not know at all is let through.
+      {_user, target} = student_fixture(%{student_id: "IMP-NONE", apaar_id: nil})
+
+      {_other_user, _other} =
+        student_fixture(%{student_id: "IMP-OWNER", apaar_id: "444444444454"})
+
+      assert {:error, message} =
+               Users.get_student_for_import(%{
+                 "user_id" => target.user_id,
+                 "apaar_id" => "444444444454"
+               })
+
+      assert message =~ "belongs to a different student"
+    end
+
+    test "does not treat a student with no apaar_id as a mismatch" do
+      # 92% of students have no apaar_id, while rows routinely carry one sourced
+      # outside db-service; a blank stored value is no evidence of a wrong user_id.
+      {_user, student} = student_fixture(%{student_id: "IMP-NO-APAAR", apaar_id: nil})
+
+      assert {:ok, found} =
+               Users.get_student_for_import(%{
+                 "user_id" => student.user_id,
+                 "apaar_id" => "333333333343"
+               })
+
+      assert found.id == student.id
+    end
+
+    test "ignores blank identifier columns" do
+      {_user, student} = student_fixture(%{student_id: "IMP-BLANK"})
+
+      assert {:ok, found} =
+               Users.get_student_for_import(%{
+                 "user_id" => student.user_id,
+                 "student_id" => "",
+                 "apaar_id" => nil
+               })
+
+      assert found.id == student.id
+    end
+
+    test "skips the cross-check when the columns are values being written" do
+      {_user, student} = student_fixture(%{student_id: "IMP-RENAME"})
+
+      assert {:ok, found} =
+               Users.get_student_for_import(
+                 %{"user_id" => student.user_id, "student_id" => "IMP-RENAMED"},
+                 cross_check: false
+               )
+
+      assert found.id == student.id
     end
   end
 

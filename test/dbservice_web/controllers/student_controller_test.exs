@@ -2,6 +2,8 @@ defmodule DbserviceWeb.StudentControllerTest do
   use DbserviceWeb.ConnCase
 
   import Dbservice.UsersFixtures
+  import Dbservice.AuthGroupsFixtures
+  import Dbservice.EnrollmentRecordFixtures
 
   @create_attrs %{
     category: "Gen",
@@ -75,6 +77,128 @@ defmodule DbserviceWeb.StudentControllerTest do
       assert Enum.any?(resp, fn s -> s["id"] == student.id end)
       found_student = Enum.find(resp, fn s -> s["id"] == student.id end)
       assert found_student["student_id"] == student.student_id
+    end
+  end
+
+  describe "index scoped to an auth group" do
+    setup do
+      auth_group = auth_group_fixture(%{name: "SCOPE_TEST_GROUP"})
+      {user, student} = student_fixture()
+
+      enrollment_record_fixture(%{
+        user_id: user.id,
+        group_type: "auth_group",
+        group_id: auth_group.id,
+        is_current: false
+      })
+
+      %{auth_group: auth_group, student: student}
+    end
+
+    test "skips a student whose only enrollment in the group is not current", %{
+      conn: conn,
+      auth_group: auth_group,
+      student: student
+    } do
+      conn =
+        get(conn, ~p"/api/student", %{
+          student_id: student.student_id,
+          auth_group_id: auth_group.id
+        })
+
+      assert json_response(conn, 200) == []
+    end
+
+    test "include_inactive counts a non-current enrollment once", %{
+      conn: conn,
+      auth_group: auth_group,
+      student: student
+    } do
+      conn =
+        get(conn, ~p"/api/student", %{
+          student_id: student.student_id,
+          auth_group_id: auth_group.id,
+          include_inactive: "true"
+        })
+
+      assert [%{"id" => id}] = json_response(conn, 200)
+      assert id == student.id
+    end
+
+    test "include_inactive still excludes students enrolled in another group", %{conn: conn} do
+      other = auth_group_fixture(%{name: "SCOPE_OTHER_GROUP"})
+      {_user, outsider} = student_fixture()
+
+      conn =
+        get(conn, ~p"/api/student", %{
+          student_id: outsider.student_id,
+          auth_group_id: other.id,
+          include_inactive: "true"
+        })
+
+      assert json_response(conn, 200) == []
+    end
+  end
+
+  describe "verify student" do
+    test "verifies the student when the student_id resolves to one student", %{conn: conn} do
+      {user, student} = student_fixture(%{student_id: "VERIFY-ONE"})
+
+      conn =
+        post(conn, ~p"/api/student/verify-student", %{
+          "student_id" => student.student_id,
+          "verification_params" => %{"first_name" => user.first_name}
+        })
+
+      assert %{"is_verified" => true} = json_response(conn, 200)
+    end
+
+    test "scopes by an auth group sent inside verification_params", %{conn: conn} do
+      auth_group = auth_group_fixture(%{name: "VERIFY_SCOPE_GROUP"})
+      {user_a, student_a} = student_fixture(%{student_id: "VERIFY-SCOPED"})
+      {_user_b, _student_b} = student_fixture(%{student_id: "VERIFY-SCOPED"})
+
+      enrollment_record_fixture(%{
+        user_id: student_a.user_id,
+        group_type: "auth_group",
+        group_id: auth_group.id,
+        is_current: true
+      })
+
+      group = Dbservice.Groups.get_group_by_child_id_and_type(auth_group.id, "auth_group")
+
+      {:ok, _group_user} =
+        Dbservice.GroupUsers.create_group_user(%{user_id: user_a.id, group_id: group.id})
+
+      conn =
+        post(conn, ~p"/api/student/verify-student", %{
+          "student_id" => "VERIFY-SCOPED",
+          "verification_params" => %{
+            "auth_group_id" => auth_group.id,
+            "first_name" => user_a.first_name
+          }
+        })
+
+      assert %{"is_verified" => true} = json_response(conn, 200)
+    end
+
+    test "answers 409 instead of crashing when the student_id matches two students", %{
+      conn: conn
+    } do
+      # No auth group travels with the verification params, so this lookup is
+      # unscoped: verifying against whichever student matched first would answer
+      # for the wrong person.
+      {_user_a, _a} = student_fixture(%{student_id: "VERIFY-SHARED"})
+      {_user_b, _b} = student_fixture(%{student_id: "VERIFY-SHARED"})
+
+      conn =
+        post(conn, ~p"/api/student/verify-student", %{
+          "student_id" => "VERIFY-SHARED",
+          "verification_params" => %{"first_name" => "some first name"}
+        })
+
+      assert %{"error" => message} = json_response(conn, 409)
+      assert message =~ "VERIFY-SHARED"
     end
   end
 

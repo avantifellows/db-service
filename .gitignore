@@ -26,6 +26,14 @@ dbservice-*.tar
 /config/.env
 /utils/.env
 
+# Terraform secret env files (TF_VAR_* for staging/prod). Never commit these.
+.terraform-dbservice-*.env
+**/.terraform-dbservice-*.env
+
+# Per-environment TF_DATA_DIR (keeps a prod init from clobbering staging's)
+**/.terraform-prod/
+**/.terraform-staging/
+
 # Ignore ETL flow key
 /config/etl-flow-key.json
 

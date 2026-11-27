@@ -96,9 +96,77 @@ defmodule Dbservice.DataImportTest do
                "Update Incorrect School to Correct School"
     end
 
+    test "formats the Blended Learning mentor assignment type" do
+      assert DataImport.format_type_name("blended_learning_mentor_assignment") ==
+               "Blended Learning Mentor Assignment"
+    end
+
     test "capitalizes unknown types" do
       assert DataImport.format_type_name("unknown_type") == "Unknown_type"
       assert DataImport.format_type_name("custom") == "Custom"
+    end
+  end
+
+  describe "generate_csv_template/1" do
+    # Header validation rejects a sheet with missing required or unknown columns,
+    # so the template is the contract for what the sheet may contain.
+    test "returns the Blended Learning mentor assignment columns" do
+      headers =
+        "blended_learning_mentor_assignment"
+        |> DataImport.generate_csv_template()
+        |> String.trim()
+        |> String.split(",")
+
+      assert headers == [
+               "academic_year",
+               "assigned_by_email",
+               "assignment_audit_reason",
+               "mentor_email",
+               "mentor_first_name",
+               "mentor_last_name",
+               "program_name",
+               "started_at",
+               "student_apaar_id",
+               "student_id"
+             ]
+    end
+
+    test "offers the school profile columns on the school addition template" do
+      headers =
+        "school_addition"
+        |> DataImport.generate_csv_template()
+        |> String.trim()
+        |> String.split(",")
+
+      profile_columns =
+        [
+          "school_email",
+          "principal_incharge_name",
+          "principal_incharge_contact",
+          "pmu_coordinator_name",
+          "pmu_coordinator_contact",
+          "school_support_status",
+          "school_residential_status",
+          "grades_offered",
+          "school_stream",
+          "school_notes"
+        ] ++ Enum.map(11..12, &"estimated_strength_grade_#{&1}")
+
+      for column <- profile_columns do
+        assert column in headers
+      end
+
+      # Strength is asked for 11 and 12 only; the other grades are covered by
+      # grades_offered.
+      for grade <- 6..10 do
+        refute "estimated_strength_grade_#{grade}" in headers
+      end
+
+      # They are optional, so a sheet that predates them still validates.
+      refute Enum.any?(
+               profile_columns,
+               &(&1 in Dbservice.Constants.Mappings.get_required_headers("school_addition"))
+             )
     end
   end
 

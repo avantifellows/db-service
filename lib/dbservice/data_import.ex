@@ -46,7 +46,11 @@ defmodule Dbservice.DataImport do
   def format_type_name("update_incorrect_auth_group_to_correct_auth_group"),
     do: "Update Incorrect Auth Group to Correct Auth Group"
 
+  def format_type_name("blended_learning_mentor_assignment"),
+    do: "Blended Learning Mentor Assignment"
+
   def format_type_name("dropout"), do: "Student Dropout"
+  def format_type_name("archive"), do: "Student Archive"
   def format_type_name("re_enrollment"), do: "Student Re-Enrollment After Dropout"
 
   def format_type_name(type), do: String.capitalize(type)
@@ -412,9 +416,25 @@ defmodule Dbservice.DataImport do
     extra_headers = normalized_headers -- all_headers
 
     if not Enum.empty?(missing_required) or not Enum.empty?(extra_headers) do
-      {:error, "Invalid format for #{sheet_type}"}
+      {:error,
+       "Invalid format for #{sheet_type}" <> header_problems(missing_required, extra_headers)}
     else
       :ok
+    end
+  end
+
+  # Ops get this message as a flash on a sheet they then have to fix, so it names the
+  # columns. Rollout of a newly required column (user_id) depends on it.
+  defp header_problems(missing_required, extra_headers) do
+    [
+      {"missing required column(s): ", missing_required},
+      {"unexpected column(s): ", extra_headers}
+    ]
+    |> Enum.reject(fn {_label, columns} -> columns == [] end)
+    |> Enum.map_join("; ", fn {label, columns} -> label <> Enum.join(columns, ", ") end)
+    |> case do
+      "" -> ""
+      problems -> " - " <> problems
     end
   end
 

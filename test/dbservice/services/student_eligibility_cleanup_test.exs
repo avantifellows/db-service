@@ -33,6 +33,148 @@ defmodule Dbservice.Services.StudentEligibilityCleanupTest do
              ]
   end
 
+  test "a dropout transition ends the Student's active Blended Mapping" do
+    scope = insert_mapping_scope()
+    blended_mapping_id = insert_blended_mapping(scope)
+
+    assert {:ok, updated_student} =
+             StudentUpdateService.update_student_with_user_data(scope.student, %{
+               "status" => "dropout"
+             })
+
+    assert updated_student.status == "dropout"
+
+    assert blended_end_state(blended_mapping_id) == [
+             [true, "db_service_student_eligibility", "student_dropout", nil, nil, nil]
+           ]
+
+    assert Repo.query!("SELECT count(*) FROM blended_learning_mentor_mentee_mappings").rows ==
+             [[1]]
+  end
+
+  test "the dropout service ends the Student's active Blended Mapping" do
+    scope = insert_mapping_scope()
+    blended_mapping_id = insert_blended_mapping(scope)
+    status_fixture(%{title: :dropout})
+
+    assert {:ok, updated_student} =
+             DropoutService.process_dropout(scope.student, ~D[2026-07-01], "2026-2027")
+
+    assert updated_student.status == "dropout"
+
+    assert blended_end_state(blended_mapping_id) == [
+             [true, "db_service_student_eligibility", "student_dropout", nil, nil, nil]
+           ]
+  end
+
+  test "an archive transition ends the Student's active Blended Mapping" do
+    scope = insert_mapping_scope()
+    blended_mapping_id = insert_blended_mapping(scope)
+
+    assert {:ok, _updated_student} =
+             StudentUpdateService.update_student_with_user_data(scope.student, %{
+               "status" => "archived"
+             })
+
+    assert blended_end_state(blended_mapping_id) == [
+             [true, "db_service_student_eligibility", "student_archived", nil, nil, nil]
+           ]
+  end
+
+  test "a future-dated Blended Mapping is ended at its own start date" do
+    scope = insert_mapping_scope()
+
+    started_at =
+      NaiveDateTime.utc_now() |> NaiveDateTime.add(30, :day) |> NaiveDateTime.truncate(:second)
+
+    blended_mapping_id = insert_blended_mapping(scope, started_at)
+
+    assert {:ok, _updated_student} =
+             StudentUpdateService.update_student_with_user_data(scope.student, %{
+               "status" => "dropout"
+             })
+
+    assert Repo.query!(
+             "SELECT ended_at FROM blended_learning_mentor_mentee_mappings WHERE id = $1",
+             [blended_mapping_id]
+           ).rows == [[started_at]]
+  end
+
+  test "a canonical Grade change leaves the active Blended Mapping in place" do
+    scope = insert_mapping_scope()
+    blended_mapping_id = insert_blended_mapping(scope)
+    old_grade_id = insert_grade(11)
+    new_grade_id = insert_grade(12)
+
+    Repo.query!("UPDATE student SET grade_id = $1 WHERE id = $2", [old_grade_id, scope.student.id])
+
+    student = Dbservice.Users.get_student!(scope.student.id)
+
+    assert {:ok, _updated_student} =
+             StudentUpdateService.update_student_with_user_data(student, %{
+               "grade_id" => new_grade_id
+             })
+
+    assert Repo.query!(
+             "SELECT ended_at FROM blended_learning_mentor_mentee_mappings WHERE id = $1",
+             [blended_mapping_id]
+           ).rows == [[nil]]
+
+    assert Repo.query!(
+             "SELECT end_reason FROM holistic_mentorship_mentor_mentee_mappings WHERE id = $1",
+             [scope.mapping_id]
+           ).rows == [["student_grade_changed"]]
+  end
+
+  test "unchanged eligibility leaves the active Blended Mapping unchanged" do
+    scope = insert_mapping_scope()
+    blended_mapping_id = insert_blended_mapping(scope)
+
+    assert {:ok, _updated_student} =
+             StudentUpdateService.update_student_with_user_data(scope.student, %{
+               "status" => "enrolled",
+               "father_name" => "Updated"
+             })
+
+    assert blended_end_state(blended_mapping_id) == [[false, nil, nil, nil, nil, nil]]
+  end
+
+  test "a Blended cleanup failure rolls back the dropout" do
+    scope = insert_mapping_scope()
+    blended_mapping_id = insert_blended_mapping(scope)
+    install_failing_blended_cleanup_trigger()
+
+    assert_raise Postgrex.Error, fn ->
+      StudentUpdateService.update_student_with_user_data(scope.student, %{"status" => "dropout"})
+    end
+
+    assert Dbservice.Users.get_student!(scope.student.id).status == "enrolled"
+    assert mapping_active?(scope.mapping_id)
+
+    assert Repo.query!(
+             "SELECT ended_at FROM blended_learning_mentor_mentee_mappings WHERE id = $1",
+             [blended_mapping_id]
+           ).rows == [[nil]]
+  end
+
+  test "an archive transition ends the Student's active Holistic Mapping" do
+    %{mapping_id: mapping_id, student: student} = insert_mapping_scope()
+
+    assert {:ok, updated_student} =
+             StudentUpdateService.update_student_with_user_data(student, %{"status" => "archived"})
+
+    assert updated_student.status == "archived"
+
+    assert Repo.query!(
+             """
+             SELECT ended_at IS NOT NULL, end_source, end_reason
+             FROM holistic_mentorship_mentor_mentee_mappings
+             WHERE id = $1
+             """,
+             [mapping_id]
+           ).rows == [[true, "db_service_student_eligibility", "student_archived"]]
+  end
+
   test "a canonical Grade change ends the Student's active Holistic Mapping" do
     %{mapping_id: mapping_id, student: student} = insert_mapping_scope()
     old_grade_id = insert_grade(11)
@@ -413,7 +555,42 @@ defmodule Dbservice.Services.StudentEligibilityCleanupTest do
         [student_id, mentor_user_id, school_id, program_id]
       ).rows
 
-    %{mapping_id: mapping_id, student: Dbservice.Users.get_student!(student_id)}
+    %{
+      mapping_id: mapping_id,
+      mentor_user_id: mentor_user_id,
+      program_id: program_id,
+      school_id: school_id,
+      student: Dbservice.Users.get_student!(student_id)
+    }
+  end
+
+  defp insert_blended_mapping(scope, started_at \\ nil) do
+    started_at = started_at || NaiveDateTime.utc_now() |> NaiveDateTime.truncate(:second)
+
+    [[id]] =
+      Repo.query!(
+        """
+        INSERT INTO blended_learning_mentor_mentee_mappings
+          (student_id, mentor_user_id, program_id, academic_year, started_at, assignment_source)
+        VALUES ($1, $2, $3, '2026-2027', $4, 'data_import')
+        RETURNING id
+        """,
+        [scope.student.id, scope.mentor_user_id, scope.program_id, started_at]
+      ).rows
+
+    id
+  end
+
+  defp blended_end_state(mapping_id) do
+    Repo.query!(
+      """
+      SELECT ended_at IS NOT NULL, end_source, end_reason, ended_by_user_id, ended_by_email,
+             end_audit_reason
+      FROM blended_learning_mentor_mentee_mappings
+      WHERE id = $1
+      """,
+      [mapping_id]
+    ).rows
   end
 
   defp insert_grade(number) do
@@ -448,6 +625,22 @@ defmodule Dbservice.Services.StudentEligibilityCleanupTest do
     CREATE TRIGGER fail_holistic_mapping_cleanup
     BEFORE UPDATE ON holistic_mentorship_mentor_mentee_mappings
     FOR EACH ROW EXECUTE FUNCTION pg_temp.fail_holistic_mapping_cleanup()
+    """)
+  end
+
+  defp install_failing_blended_cleanup_trigger do
+    Repo.query!("""
+    CREATE FUNCTION pg_temp.fail_blended_mapping_cleanup() RETURNS trigger AS $$
+    BEGIN
+      RAISE EXCEPTION 'forced blended cleanup failure';
+    END;
+    $$ LANGUAGE plpgsql
+    """)
+
+    Repo.query!("""
+    CREATE TRIGGER fail_blended_mapping_cleanup
+    BEFORE UPDATE ON blended_learning_mentor_mentee_mappings
+    FOR EACH ROW EXECUTE FUNCTION pg_temp.fail_blended_mapping_cleanup()
     """)
   end
 

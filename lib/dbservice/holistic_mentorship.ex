@@ -7,7 +7,7 @@ defmodule Dbservice.HolisticMentorship do
 
   @mapping_table "holistic_mentorship_mentor_mentee_mappings"
   @profile_program_ids [1, 74, 78, 88, 94, 99]
-  @eligibility_end_reasons ~w(student_dropout student_program_changed student_school_changed student_grade_changed)a
+  @eligibility_end_reasons ~w(student_dropout student_archived student_program_changed student_school_changed student_grade_changed)a
   @approved_profile_sources %{
     {"6a44a83d1184e717b920c499", "EnableStudents_6a44a83d1184e717b920c499", 11} => true,
     {"6a4deca8e030ebe34669fb0f", "EnableStudents_6a4deca8e030ebe34669fb0f", 12} => true,
@@ -1171,15 +1171,26 @@ defmodule Dbservice.HolisticMentorship do
         log: false
       ).rows
 
-    with :ok <- not_dropout(status),
+    with :ok <- not_terminal_status(status),
          :ok <- eligible_grade_number(grade_number),
          :ok <- consistent_grade(user_id, grade_id) do
       eligible_school(user_id)
     end
   end
 
-  defp not_dropout("dropout"), do: {:error, :dropout}
-  defp not_dropout(_status), do: :ok
+  # Archiving ends a student's active Mappings for the same eligibility reason a
+  # dropout does, so an archived Student must not be eligible to be re-mapped the
+  # next day.
+  #
+  # It reports the existing "dropout" reason code rather than a new one: etl-next
+  # validates preflight results against a fixed list of codes
+  # (orchestrator/flows/holistic_student_profiles_flow.py) and raises on anything
+  # else, so a new code would fail the whole run, not just the archived Student's
+  # record. Give archived its own code once etl-next and AF LMS know the value.
+  defp not_terminal_status(status) when status in ["dropout", "archived"],
+    do: {:error, :dropout}
+
+  defp not_terminal_status(_status), do: :ok
 
   defp eligible_grade_number(grade_number) when grade_number in [11, 12], do: :ok
   defp eligible_grade_number(_grade_number), do: {:error, :grade_ineligible}

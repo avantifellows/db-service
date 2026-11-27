@@ -96,6 +96,17 @@ defmodule DbserviceWeb.ProblemAllLanguagesTest do
     rt
   end
 
+  # The CMS reads only the leading YYYY-MM-DD of inserted_at, so assert on that
+  # prefix rather than the exact encoding (issue #836).
+  defp assert_created_date(entry, problem) do
+    assert is_binary(entry["inserted_at"])
+
+    assert String.starts_with?(
+             entry["inserted_at"],
+             problem.inserted_at |> NaiveDateTime.to_date() |> Date.to_iso8601()
+           )
+  end
+
   describe "GET /api/resource/problem/:problem_id/:curriculum_id" do
     test "returns the problem with all languages and no single-language fields", %{conn: conn} do
       en = language_fixture("aae", "AA EN")
@@ -509,6 +520,108 @@ defmodule DbserviceWeb.ProblemAllLanguagesTest do
       assert [entry] = body
       assert entry["id"] == problem.id
       assert entry["paragraph"] == %{"id" => paragraph.id, "body" => "Search passage body"}
+    end
+  end
+
+  # Issue #836: the CMS filters its per-chapter problem list by created date in
+  # the browser, so every endpoint that serializes a problem has to carry it.
+  # The CMS reads only the leading YYYY-MM-DD, hence the prefix assertion.
+  describe "inserted_at (created date, issue #836)" do
+    test "GET /api/problems returns it with and without lang_code", %{conn: conn} do
+      en = language_fixture("cae", "CA EN")
+      hi = language_fixture("cah", "CA HI")
+      curriculum = curriculum_fixture()
+      topic = topic_fixture()
+      problem = problem_fixture()
+      resource_curriculum_fixture(problem, curriculum)
+      resource_topic_fixture(problem, topic)
+
+      problem_language_fixture(problem, en, %{"text" => "created EN"})
+      problem_language_fixture(problem, hi, %{"text" => "created HI"})
+
+      all_langs =
+        conn
+        |> get(~p"/api/problems?topic_id=#{topic.id}&curriculum_id=#{curriculum.id}")
+        |> json_response(200)
+
+      assert [entry] = all_langs
+      assert_created_date(entry, problem)
+
+      single_lang =
+        conn
+        |> get(
+          ~p"/api/problems?topic_id=#{topic.id}&curriculum_id=#{curriculum.id}&lang_code=cae"
+        )
+        |> json_response(200)
+
+      assert [entry] = single_lang
+      assert_created_date(entry, problem)
+    end
+
+    test "GET /api/problems/search returns it", %{conn: conn} do
+      en = language_fixture("cbe", "CB EN")
+      curriculum = curriculum_fixture()
+      problem = problem_fixture()
+      resource_curriculum_fixture(problem, curriculum)
+
+      term = "zzcreatedtoken"
+      problem_language_fixture(problem, en, %{"text" => "english #{term}"})
+
+      body =
+        conn
+        |> get(~p"/api/problems/search?search=#{term}")
+        |> json_response(200)
+
+      assert [entry] = body
+      assert entry["id"] == problem.id
+      assert_created_date(entry, problem)
+    end
+
+    test "GET /api/resource/test/:id/problems returns it", %{conn: conn} do
+      en = language_fixture("cce", "CC EN")
+      curriculum = curriculum_fixture()
+      problem = problem_fixture()
+      resource_curriculum_fixture(problem, curriculum)
+      problem_language_fixture(problem, en, %{"text" => "test created"})
+
+      test = test_fixture([problem.id])
+
+      body =
+        conn
+        |> get(~p"/api/resource/test/#{test.id}/problems?curriculum_id=#{curriculum.id}")
+        |> json_response(200)
+
+      assert [entry] = body
+      assert entry["id"] == problem.id
+      assert_created_date(entry, problem)
+    end
+
+    test "GET /api/resource/problem/:problem_id returns it", %{conn: conn} do
+      en = language_fixture("cde", "CD EN")
+      curriculum = curriculum_fixture()
+      problem = problem_fixture()
+      resource_curriculum_fixture(problem, curriculum)
+      problem_language_fixture(problem, en, %{"text" => "by id created"})
+
+      body =
+        conn
+        |> get(~p"/api/resource/problem/#{problem.id}/#{curriculum.id}")
+        |> json_response(200)
+
+      assert body["id"] == problem.id
+      assert_created_date(body, problem)
+    end
+
+    test "GET /api/resource/:id returns it", %{conn: conn} do
+      problem = problem_fixture()
+
+      body =
+        conn
+        |> get(~p"/api/resource/#{problem.id}")
+        |> json_response(200)
+
+      assert body["id"] == problem.id
+      assert_created_date(body, problem)
     end
   end
 end

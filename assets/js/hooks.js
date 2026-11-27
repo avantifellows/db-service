@@ -73,6 +73,7 @@ const Hooks = {
 
       // Register for all protected import types (basic auth required)
       this.handleEvent("submit_dropout_import", submitAuthenticatedImport);
+      this.handleEvent("submit_archive_import", submitAuthenticatedImport);
       this.handleEvent("submit_re_enrollment_import", submitAuthenticatedImport);
       this.handleEvent("submit_student_enrollment_import", submitAuthenticatedImport);
       this.handleEvent("submit_auth_group_import", submitAuthenticatedImport);
@@ -82,6 +83,7 @@ const Hooks = {
       this.handleEvent("submit_school_import", submitAuthenticatedImport);
       this.handleEvent("submit_school_deletion_import", submitAuthenticatedImport);
       this.handleEvent("submit_batch_id_correction_import", submitAuthenticatedImport);
+      this.handleEvent("submit_blended_mentor_assignment_import", submitAuthenticatedImport);
     }
   }
 };

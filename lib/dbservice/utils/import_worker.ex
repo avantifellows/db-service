@@ -21,6 +21,7 @@ defmodule Dbservice.DataImport.ImportWorker do
   alias Dbservice.Users
   alias Dbservice.Grades
   alias Dbservice.Services.StudentUpdateService
+  alias Dbservice.Services.ArchiveService
   alias Dbservice.Services.DropoutService
   alias Dbservice.Services.ReEnrollmentService
   alias Dbservice.Services.EnrollmentService
@@ -102,7 +103,9 @@ defmodule Dbservice.DataImport.ImportWorker do
       "student_school_movement" => &process_school_movement_record/1,
       "update_incorrect_grade_to_correct_grade" => &process_grade_update_record/1,
       "update_incorrect_auth_group_to_correct_auth_group" => &process_auth_group_update_record/1,
+      "blended_learning_mentor_assignment" => &process_blended_mentor_assignment_record/1,
       "dropout" => &process_dropout_record/1,
+      "archive" => &process_archive_record/1,
       "re_enrollment" => &process_re_enrollment_record/1
     }
 
@@ -762,6 +765,9 @@ defmodule Dbservice.DataImport.ImportWorker do
       nil ->
         create_student_with_enrollments(record)
 
+      {:error, {:ambiguous_student, _, _} = reason} ->
+        {:error, Users.ambiguous_student_message(reason)}
+
       %Dbservice.Users.Student{} = existing_student ->
         {:error, build_student_exists_error_message(existing_student)}
     end
@@ -843,21 +849,11 @@ defmodule Dbservice.DataImport.ImportWorker do
   defp nil_or_empty?(value), do: is_nil(value) or value == ""
 
   defp process_student_update_record(record) do
-    # Accept either student_id or apaar_id (like addition and batch movement)
-    student_id = record["student_id"]
-    apaar_id = record["apaar_id"]
-
-    if (is_nil(student_id) or student_id == "") and (is_nil(apaar_id) or apaar_id == "") do
-      {:error, "Either student_id or apaar_id is required for student updates"}
-    else
-      case Users.get_student_by_id_or_apaar_id(record) do
-        nil ->
-          {:error,
-           "Student not found. student_id: #{record["student_id"]}, apaar_id: #{record["apaar_id"]}"}
-
-        student ->
-          StudentUpdateService.update_student_with_user_data(student, record)
-      end
+    # Keyed on user_id. No cross-check here: on this import student_id/apaar_id are
+    # columns the row writes (issue #641 guards them), not identifiers to verify.
+    case Users.get_student_for_import(record, cross_check: false) do
+      {:ok, student} -> StudentUpdateService.update_student_with_user_data(student, record)
+      {:error, message} -> {:error, message}
     end
   end
 
@@ -871,27 +867,20 @@ defmodule Dbservice.DataImport.ImportWorker do
   # (via a group_user row or a current enrollment record), it is a hard error so
   # already-enrolled students are surfaced rather than silently no-oped.
   defp process_student_enrollment_record(record) do
-    student_id = record["student_id"]
-    apaar_id = record["apaar_id"]
+    # Keyed on user_id; student_id/apaar_id are optional cross-checks.
+    case Users.get_student_for_import(record) do
+      {:error, message} ->
+        {:error, message}
 
-    if (is_nil(student_id) or student_id == "") and (is_nil(apaar_id) or apaar_id == "") do
-      {:error, "Either student_id or apaar_id is required for student enrollment"}
-    else
-      case Users.get_student_by_id_or_apaar_id(record) do
-        nil ->
-          {:error,
-           "Student not found. student_id: #{record["student_id"]}, apaar_id: #{record["apaar_id"]}"}
+      {:ok, student} ->
+        student = Dbservice.Repo.preload(student, [:user])
 
-        student ->
-          student = Dbservice.Repo.preload(student, [:user])
-
-          with :ok <- EnrollmentService.validate_row_memberships_absent(student.user.id, record),
-               {:ok, _} <- DataImport.StudentEnrollment.create_enrollments(student.user, record) do
-            {:ok, student}
-          else
-            {:error, reason} -> {:error, reason}
-          end
-      end
+        with :ok <- EnrollmentService.validate_row_memberships_absent(student.user.id, record),
+             {:ok, _} <- DataImport.StudentEnrollment.create_enrollments(student.user, record) do
+          {:ok, student}
+        else
+          {:error, reason} -> {:error, reason}
+        end
     end
   end
 
@@ -900,50 +889,33 @@ defmodule Dbservice.DataImport.ImportWorker do
   end
 
   defp process_dropout_record(record) do
-    # Accept either student_id or apaar_id (like batch movement)
-    student_id = record["student_id"]
-    apaar_id = record["apaar_id"]
+    # Keyed on user_id; student_id/apaar_id are optional cross-checks.
+    case Users.get_student_for_import(record) do
+      {:ok, student} ->
+        DropoutService.process_dropout(student, record["start_date"], record["academic_year"])
 
-    if (is_nil(student_id) or student_id == "") and (is_nil(apaar_id) or apaar_id == "") do
-      {:error, "Either student_id or apaar_id is required for dropout"}
-    else
-      process_dropout_for_student(record)
+      {:error, message} ->
+        {:error, message}
     end
   end
 
-  defp process_dropout_for_student(record) do
-    case Users.get_student_by_id_or_apaar_id(record) do
-      nil ->
-        {:error,
-         "Student not found. student_id: #{record["student_id"]}, apaar_id: #{record["apaar_id"]}"}
+  defp process_archive_record(record) do
+    # Keyed on user_id like every other lookup import; student_id/apaar_id are
+    # optional cross-checks.
+    case Users.get_student_for_import(record) do
+      {:ok, student} ->
+        ArchiveService.process_archive(student, record["start_date"], record["academic_year"])
 
-      student ->
-        start_date = record["start_date"]
-        academic_year = record["academic_year"]
-        DropoutService.process_dropout(student, start_date, academic_year)
+      {:error, message} ->
+        {:error, message}
     end
   end
 
   defp process_re_enrollment_record(record) do
-    # Accept either student_id or apaar_id
-    student_id = record["student_id"]
-    apaar_id = record["apaar_id"]
-
-    if (is_nil(student_id) or student_id == "") and (is_nil(apaar_id) or apaar_id == "") do
-      {:error, "Either student_id or apaar_id is required for re-enrollment"}
-    else
-      process_re_enrollment_for_student(record)
-    end
-  end
-
-  defp process_re_enrollment_for_student(record) do
-    case Users.get_student_by_id_or_apaar_id(record) do
-      nil ->
-        {:error,
-         "Student not found. student_id: #{record["student_id"]}, apaar_id: #{record["apaar_id"]}"}
-
-      student ->
-        ReEnrollmentService.process_re_enrollment(student, record)
+    # Keyed on user_id; student_id/apaar_id are optional cross-checks.
+    case Users.get_student_for_import(record) do
+      {:ok, student} -> ReEnrollmentService.process_re_enrollment(student, record)
+      {:error, message} -> {:error, message}
     end
   end
 
@@ -1443,6 +1415,49 @@ defmodule Dbservice.DataImport.ImportWorker do
     |> maybe_put_school("block_code", record["block_code"] |> trim_str())
     |> maybe_put_school("block_name", record["block_name"] |> trim_str())
     |> maybe_put_school("board", record["school_board"] |> trim_str())
+    |> put_school_profile_details(record)
+  end
+
+  # The field-visit half of the school record: who to call, how the engagement
+  # is going, which grades the school runs and how big they are. Every one is
+  # optional, so a sheet that predates these columns imports unchanged, and a
+  # column left blank on a row leaves the stored value alone rather than
+  # clearing it.
+  defp put_school_profile_details(attrs, record) do
+    attrs
+    |> maybe_put_school("school_email", record["school_email"] |> trim_str())
+    |> maybe_put_school(
+      "principal_incharge_name",
+      record["principal_incharge_name"] |> trim_str()
+    )
+    |> maybe_put_school(
+      "principal_incharge_contact",
+      record["principal_incharge_contact"] |> trim_str()
+    )
+    |> maybe_put_school("pmu_coordinator_name", record["pmu_coordinator_name"] |> trim_str())
+    |> maybe_put_school(
+      "pmu_coordinator_contact",
+      record["pmu_coordinator_contact"] |> trim_str()
+    )
+    |> maybe_put_school("school_support_status", record["school_support_status"] |> trim_str())
+    |> maybe_put_school(
+      "school_residential_status",
+      record["school_residential_status"] |> trim_str()
+    )
+    # Passed through as the sheet wrote it - "6,7,8,9,10" - and split by the
+    # School changeset, so the API and the sheet take the same two forms.
+    |> maybe_put_school("grades_offered", record["grades_offered"] |> trim_str())
+    # Likewise "Science, Commerce" in one cell, split by the School changeset.
+    |> maybe_put_school("school_stream", record["school_stream"] |> trim_str())
+    |> maybe_put_school(
+      "estimated_strength_grade_11",
+      record["estimated_strength_grade_11"] |> trim_str()
+    )
+    |> maybe_put_school(
+      "estimated_strength_grade_12",
+      record["estimated_strength_grade_12"] |> trim_str()
+    )
+    |> maybe_put_school("school_notes", record["school_notes"] |> trim_str())
   end
 
   # School imports create the school *as a user* too (School.user_id), matching the
@@ -1680,6 +1695,9 @@ defmodule Dbservice.DataImport.ImportWorker do
 
   defp get_or_create_student_pk(record, student_identifier) do
     case Users.get_student_by_student_id(student_identifier) do
+      {:error, {:ambiguous_student, _, _} = reason} ->
+        {:error, Users.ambiguous_student_message(reason)}
+
       nil ->
         case Users.create_student_with_user(record) do
           {:ok, %Dbservice.Users.Student{id: student_pk}} -> {:ok, student_pk}
@@ -1694,9 +1712,18 @@ defmodule Dbservice.DataImport.ImportWorker do
   defp create_or_update_alumni(student_pk, record) do
     attrs = Map.put(record, "student_id", student_pk)
 
+    journey = %{
+      "source" => "bulk_upload",
+      "actor_role" => "import",
+      "notes" => "alumni_addition import"
+    }
+
     case Dbservice.Alumnis.get_alumni_by_student_id(student_pk) do
-      nil -> Dbservice.Alumnis.create_alumni(attrs)
-      %Dbservice.Alumnis.Alumni{} = existing -> Dbservice.Alumnis.update_alumni(existing, attrs)
+      nil ->
+        Dbservice.Alumnis.create_alumni(attrs, journey)
+
+      %Dbservice.Alumnis.Alumni{} = existing ->
+        Dbservice.Alumnis.update_alumni(existing, attrs, journey)
     end
   end
 
@@ -1753,6 +1780,10 @@ defmodule Dbservice.DataImport.ImportWorker do
 
   defp process_auth_group_update_record(record) do
     DataImport.GroupUpdateProcessor.process_auth_group_update(record)
+  end
+
+  defp process_blended_mentor_assignment_record(record) do
+    DataImport.BlendedMentorAssignmentProcessor.process_mentor_assignment(record)
   end
 
   defp count_total_rows(filename, start_row) do

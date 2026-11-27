@@ -34,6 +34,29 @@ defmodule DbserviceWeb.ImportController do
     end
   end
 
+  def create_archive_import(conn, params) do
+    # Extract import params from nested "import" key
+    import_params =
+      params
+      |> Map.get("import", %{})
+      |> Map.put("type", "archive")
+
+    case DataImport.start_import(import_params) do
+      {:ok, _import} ->
+        conn
+        |> put_flash(
+          :info,
+          "Archive import queued successfully! Processing will begin shortly. Check the imports page for progress updates."
+        )
+        |> redirect(to: ~p"/imports")
+
+      {:error, reason} ->
+        conn
+        |> put_flash(:error, "Import failed: #{reason}")
+        |> redirect(to: ~p"/imports/new")
+    end
+  end
+
   def create_student_enrollment_import(conn, params) do
     # Extract import params from nested "import" key
     import_params =
@@ -202,6 +225,28 @@ defmodule DbserviceWeb.ImportController do
         |> put_flash(
           :info,
           "School deletion import queued successfully! Schools with mapped students will be skipped with an error. Check the imports page for progress updates."
+        )
+        |> redirect(to: ~p"/imports")
+
+      {:error, reason} ->
+        conn
+        |> put_flash(:error, "Import failed: #{reason}")
+        |> redirect(to: ~p"/imports/new")
+    end
+  end
+
+  def create_blended_mentor_assignment_import(conn, params) do
+    import_params =
+      params
+      |> Map.get("import", %{})
+      |> Map.put("type", "blended_learning_mentor_assignment")
+
+    case DataImport.start_import(import_params) do
+      {:ok, _import} ->
+        conn
+        |> put_flash(
+          :info,
+          "Blended Learning mentor assignment import queued successfully! Processing will begin shortly. Check the imports page for progress updates."
         )
         |> redirect(to: ~p"/imports")
 

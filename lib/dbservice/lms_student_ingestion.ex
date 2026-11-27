@@ -21,6 +21,7 @@ defmodule Dbservice.LmsStudentIngestion do
   alias Dbservice.Schools
   alias Dbservice.Users.Student
   alias Dbservice.Users.User
+  alias Dbservice.Utils.Util
 
   @action "student_bulk_create"
   @auth_group "EnableStudents"
@@ -46,8 +47,17 @@ defmodule Dbservice.LmsStudentIngestion do
     father_name
     phone
     student_id
+    tshirt_size
+    track_pant_size
   )
   @phone_restricted_row_keys ~w(pen_number g10_roll_no annual_family_income)
+  # Mirrors the student_tshirt_size_check / student_track_pant_size_check constraints. A
+  # blank size is "not collected yet", so only a present-but-unsupported value is rejected.
+  @uniform_size_fields ~w(tshirt_size track_pant_size)
+  @uniform_size_labels %{
+    "tshirt_size" => "T-shirt Size",
+    "track_pant_size" => "Track Pant Size"
+  }
   @empty_totals %{
     "created" => 0,
     "duplicate_in_file" => 0,
@@ -228,6 +238,7 @@ defmodule Dbservice.LmsStudentIngestion do
          :ok <- validate_academic_year(row),
          :ok <- validate_batch(row, program_id),
          :ok <- validate_phone_g10_board(row),
+         :ok <- validate_uniform_sizes(row),
          :ok <- validate_phone_profile(row),
          {:ok, _existing} <- validate_phone_identifier_match(row, school) do
       {:create, row}
@@ -286,6 +297,8 @@ defmodule Dbservice.LmsStudentIngestion do
       "stream" => stream,
       "father_name" => normalize_name(row["father_name"]),
       "g12_graduating_year" => graduating_year,
+      "tshirt_size" => row["tshirt_size"],
+      "track_pant_size" => row["track_pant_size"],
       "status" => "enrolled"
     })
   end
@@ -499,6 +512,7 @@ defmodule Dbservice.LmsStudentIngestion do
          :ok <- validate_pen(row),
          :ok <- validate_g10_board(row),
          :ok <- validate_g10_roll(row),
+         :ok <- validate_uniform_sizes(row),
          :ok <- validate_profile(row),
          :ok <- validate_identifier_match(row) do
       {:create, row}
@@ -655,6 +669,8 @@ defmodule Dbservice.LmsStudentIngestion do
       "father_name" => normalize_name(row["father_name"]),
       "annual_family_income" => row["annual_family_income"],
       "g12_graduating_year" => graduating_year,
+      "tshirt_size" => row["tshirt_size"],
+      "track_pant_size" => row["track_pant_size"],
       "status" => "enrolled"
     })
   end
@@ -840,6 +856,28 @@ defmodule Dbservice.LmsStudentIngestion do
       true ->
         :ok
     end
+  end
+
+  defp validate_uniform_sizes(row) do
+    Enum.reduce_while(@uniform_size_fields, :ok, fn field, _acc ->
+      case get_in(row, ["student", field]) do
+        value when value in [nil, ""] ->
+          {:cont, :ok}
+
+        value when is_binary(value) ->
+          if String.trim(value) in Util.valid_uniform_sizes(),
+            do: {:cont, :ok},
+            else: {:halt, {:error, uniform_size_error(field)}}
+
+        _ ->
+          {:halt, {:error, uniform_size_error(field)}}
+      end
+    end)
+  end
+
+  defp uniform_size_error(field) do
+    "#{@uniform_size_labels[field]} must be one of " <>
+      Enum.join(Util.valid_uniform_sizes(), ", ")
   end
 
   defp validate_gender(row) do

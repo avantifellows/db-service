@@ -79,23 +79,47 @@ defmodule Dbservice.Constants.Mappings do
     },
 
     # Student fields
+    # The lookup imports are keyed on user_id: it is the only student identifier that
+    # is unique on its own, where a student_id is unique only within an auth group.
+    "user_id" => %{
+      db_field: "user_id",
+      required: [
+        "student_update",
+        "student_enrollment",
+        "batch_movement",
+        "dropout",
+        "re_enrollment",
+        "update_incorrect_batch_id_to_correct_batch_id",
+        "update_incorrect_school_to_correct_school",
+        "update_incorrect_grade_to_correct_grade",
+        "update_incorrect_auth_group_to_correct_auth_group",
+        "student_school_movement",
+        "archive"
+      ],
+      optional: [],
+      type: :integer
+    },
+    # Optional on the lookup imports, where it is only a cross-check against the
+    # user_id's student; still the key for student addition, which has no user yet.
     "student_id" => %{
       db_field: "student_id",
       required: [
         "student",
         "alumni_addition",
-        "update_incorrect_batch_id_to_correct_batch_id",
-        "update_incorrect_school_to_correct_school",
-        "student_school_movement",
-        "update_incorrect_grade_to_correct_grade",
-        "update_incorrect_auth_group_to_correct_auth_group"
+        "blended_learning_mentor_assignment"
       ],
       optional: [
         "batch_movement",
         "student_update",
         "dropout",
+        "archive",
         "re_enrollment",
-        "student_enrollment"
+        "student_enrollment",
+        "update_incorrect_batch_id_to_correct_batch_id",
+        "update_incorrect_school_to_correct_school",
+        "update_incorrect_grade_to_correct_grade",
+        "update_incorrect_auth_group_to_correct_auth_group",
+        "student_school_movement"
       ],
       type: :string
     },
@@ -321,6 +345,48 @@ defmodule Dbservice.Constants.Mappings do
       optional: ["student_update"],
       type: :string
     },
+    "student_tshirt_size" => %{
+      db_field: "tshirt_size",
+      required: [],
+      optional: ["student", "student_update"],
+      type: :string
+    },
+    "student_track_pant_size" => %{
+      db_field: "track_pant_size",
+      required: [],
+      optional: ["student", "student_update"],
+      type: :string
+    },
+    "student_g10_school_state" => %{
+      db_field: "g10_school_state",
+      required: [],
+      optional: ["student", "student_update"],
+      type: :string
+    },
+    "student_g10_school_name" => %{
+      db_field: "g10_school_name",
+      required: [],
+      optional: ["student", "student_update"],
+      type: :string
+    },
+    "student_g10_school_udise_code" => %{
+      db_field: "g10_school_udise_code",
+      required: [],
+      optional: ["student", "student_update"],
+      type: :string
+    },
+    "student_mode_of_coaching" => %{
+      db_field: "mode_of_coaching",
+      required: [],
+      optional: ["student", "student_update"],
+      type: :string
+    },
+    "student_coaching_name" => %{
+      db_field: "coaching_name",
+      required: [],
+      optional: ["student", "student_update"],
+      type: :string
+    },
     "student_apaar_id" => %{
       db_field: "apaar_id",
       required: [],
@@ -329,6 +395,7 @@ defmodule Dbservice.Constants.Mappings do
         "student_update",
         "batch_movement",
         "dropout",
+        "archive",
         "alumni_addition",
         "re_enrollment",
         "update_incorrect_batch_id_to_correct_batch_id",
@@ -336,7 +403,8 @@ defmodule Dbservice.Constants.Mappings do
         "student_school_movement",
         "update_incorrect_grade_to_correct_grade",
         "update_incorrect_auth_group_to_correct_auth_group",
-        "student_enrollment"
+        "student_enrollment",
+        "blended_learning_mentor_assignment"
       ],
       type: :string
     },
@@ -371,9 +439,11 @@ defmodule Dbservice.Constants.Mappings do
         "teacher_addition",
         "teacher_batch_assignment",
         "dropout",
+        "archive",
         "re_enrollment",
         "student_enrollment",
-        "student_school_movement"
+        "student_school_movement",
+        "blended_learning_mentor_assignment"
       ],
       optional: ["school_addition"],
       type: :string
@@ -514,6 +584,82 @@ defmodule Dbservice.Constants.Mappings do
       optional: ["school_addition"],
       type: :string
     },
+    "school_email" => %{
+      db_field: "school_email",
+      required: [],
+      optional: ["school_addition"],
+      type: :string
+    },
+    "principal_incharge_name" => %{
+      db_field: "principal_incharge_name",
+      required: [],
+      optional: ["school_addition"],
+      type: :string
+    },
+    "principal_incharge_contact" => %{
+      db_field: "principal_incharge_contact",
+      required: [],
+      optional: ["school_addition"],
+      type: :string
+    },
+    "pmu_coordinator_name" => %{
+      db_field: "pmu_coordinator_name",
+      required: [],
+      optional: ["school_addition"],
+      type: :string
+    },
+    "pmu_coordinator_contact" => %{
+      db_field: "pmu_coordinator_contact",
+      required: [],
+      optional: ["school_addition"],
+      type: :string
+    },
+    "school_support_status" => %{
+      db_field: "school_support_status",
+      required: [],
+      optional: ["school_addition"],
+      type: :string
+    },
+    "school_residential_status" => %{
+      db_field: "school_residential_status",
+      required: [],
+      optional: ["school_addition"],
+      type: :string
+    },
+    # One cell listing the grades the school runs - "6,7,8,9,10". Typed as a
+    # string so the sheet value reaches the changeset intact; it splits it.
+    "grades_offered" => %{
+      db_field: "grades_offered",
+      required: [],
+      optional: ["school_addition"],
+      type: :string
+    },
+    # One cell listing the streams the school runs - "Science, Commerce".
+    # String for the same reason as grades_offered: the changeset splits it.
+    "school_stream" => %{
+      db_field: "school_stream",
+      required: [],
+      optional: ["school_addition"],
+      type: :string
+    },
+    "estimated_strength_grade_11" => %{
+      db_field: "estimated_strength_grade_11",
+      required: [],
+      optional: ["school_addition"],
+      type: :integer
+    },
+    "estimated_strength_grade_12" => %{
+      db_field: "estimated_strength_grade_12",
+      required: [],
+      optional: ["school_addition"],
+      type: :integer
+    },
+    "school_notes" => %{
+      db_field: "school_notes",
+      required: [],
+      optional: ["school_addition"],
+      type: :string
+    },
     "start_date" => %{
       db_field: "start_date",
       required: [
@@ -522,6 +668,7 @@ defmodule Dbservice.Constants.Mappings do
         "teacher_addition",
         "teacher_batch_assignment",
         "dropout",
+        "archive",
         "re_enrollment",
         "student_enrollment"
       ],
@@ -1048,6 +1195,52 @@ defmodule Dbservice.Constants.Mappings do
       db_field: "auth_group_name",
       required: ["update_incorrect_auth_group_to_correct_auth_group"],
       optional: [],
+      type: :string
+    },
+
+    # Blended Learning mentor assignment. The mentor is an ordinary user row:
+    # mentor_email identifies them, and the name columns are only read when no
+    # user has that email yet and one has to be created.
+    "program_name" => %{
+      db_field: "program_name",
+      required: ["blended_learning_mentor_assignment"],
+      optional: [],
+      type: :string
+    },
+    "mentor_email" => %{
+      db_field: "mentor_email",
+      required: ["blended_learning_mentor_assignment"],
+      optional: [],
+      type: :string
+    },
+    "mentor_first_name" => %{
+      db_field: "mentor_first_name",
+      required: [],
+      optional: ["blended_learning_mentor_assignment"],
+      type: :string
+    },
+    "mentor_last_name" => %{
+      db_field: "mentor_last_name",
+      required: [],
+      optional: ["blended_learning_mentor_assignment"],
+      type: :string
+    },
+    "assigned_by_email" => %{
+      db_field: "assigned_by_email",
+      required: ["blended_learning_mentor_assignment"],
+      optional: [],
+      type: :string
+    },
+    "started_at" => %{
+      db_field: "started_at",
+      required: [],
+      optional: ["blended_learning_mentor_assignment"],
+      type: :date
+    },
+    "assignment_audit_reason" => %{
+      db_field: "assignment_audit_reason",
+      required: [],
+      optional: ["blended_learning_mentor_assignment"],
       type: :string
     }
   }

@@ -1,0 +1,208 @@
+defmodule Dbservice.BlendedLearning do
+  @moduledoc """
+  Blended Learning mentor-mentee mappings.
+
+  Blended Learning has no teachers; mentorship is done by ops people. A mapping
+  records which mentor owns a student for an academic year, and mappings are
+  never deleted: a reassignment ends the running mapping and starts a new one,
+  so the history of who mentored whom survives. A student who drops out or is
+  archived has the running mapping ended the same way, from the canonical Student
+  update that changed the status.
+
+  Queries are schemaless, matching `Dbservice.HolisticMentorship`, since the
+  mapping tables have no Ecto schema.
+  """
+
+  import Ecto.Query
+
+  alias Dbservice.Repo
+
+  @mapping_table "blended_learning_mentor_mentee_mappings"
+  @data_import_source "data_import"
+  @reassignment_end_reason "mentor_reassigned"
+  @eligibility_end_source "db_service_student_eligibility"
+  @eligibility_end_reasons ~w(student_dropout student_archived)a
+
+  @doc """
+  Ends every running mapping for a student who has stopped being eligible.
+
+  Called from `Dbservice.Users.update_student/2`, inside that transaction, so a
+  student who drops out or is archived cannot be left on an ops mentor's running
+  roster. Only the terminal statuses end a mapping: Blended mentorship is not
+  Grade-scoped, so a Grade correction leaves the mentor in place.
+
+  The mapping is ended, never deleted, the same way a reassignment ends one. No
+  person did this, so `ended_by_user_id` and `ended_by_email` stay blank and
+  `end_source` records the system that acted. `blm_mappings_ended_by_check`
+  allows a blank ender only for this `end_source`.
+  """
+  def end_active_mappings(student_id, reason) when reason in @eligibility_end_reasons do
+    reason = Atom.to_string(reason)
+
+    {count, _} =
+      from(mapping in @mapping_table,
+        where: field(mapping, :student_id) == ^student_id and is_nil(field(mapping, :ended_at)),
+        update: [
+          set: [
+            # A mapping can be future-dated by the import sheet, and
+            # blm_mappings_lifecycle_check rejects ended_at < started_at; ending
+            # such a mapping at its own start date keeps the dropout from failing
+            # and records a mentorship that never ran.
+            #
+            # Truncated, not left to the timestamp(0) column, which rounds: 12:00:00.7
+            # would store 12:00:01 and overlap a mapping imported straight after with
+            # a started_at of 12:00:00 (imports truncate), which
+            # blm_mappings_no_overlapping_periods rejects.
+            ended_at:
+              fragment(
+                "greatest(date_trunc('second', timezone('UTC', now())), ?)",
+                mapping.started_at
+              ),
+            ended_by_user_id: nil,
+            ended_by_email: nil,
+            end_source: @eligibility_end_source,
+            end_reason: ^reason,
+            # updated_at is set by the blm_mappings_touch_updated_at trigger.
+            end_audit_reason: nil
+          ]
+        ]
+      )
+      |> Repo.update_all([])
+
+    {:ok, count}
+  end
+
+  def end_active_mappings(_student_id, _reason), do: {:error, :invalid_end_reason}
+
+  @doc """
+  Assigns a mentor to a student for an academic year.
+
+  Returns `{:ok, :assigned}` for a fresh mapping, `{:ok, :reassigned}` when a
+  different mentor was running and has been ended, and `{:ok, :unchanged}` when
+  the same mentor is already running (so re-running the same sheet is a no-op).
+
+  The running mapping is ended at the new mapping's `started_at`, leaving no gap
+  or overlap between the two periods. A nil `started_at` means now by the
+  database clock, the clock `end_active_mappings/2` ends mappings by, so a
+  student remapped straight after a dropout cannot start before the old
+  mapping ended just because the app's clock lags the database's.
+  """
+  def assign_mentor(attrs) do
+    Repo.transaction(fn -> do_assign_mentor(attrs) end)
+  rescue
+    error in Postgrex.Error -> {:error, database_error_message(error)}
+  end
+
+  defp do_assign_mentor(attrs) do
+    attrs = Map.put(attrs, :started_at, Map.get(attrs, :started_at) || database_now())
+    running = active_mapping(attrs.student_id, attrs.academic_year)
+
+    cond do
+      is_nil(running) ->
+        insert_mapping(attrs)
+        :assigned
+
+      running.mentor_user_id == attrs.mentor_user_id ->
+        :unchanged
+
+      true ->
+        reassign(running, attrs)
+    end
+  end
+
+  defp reassign(running, attrs) do
+    if NaiveDateTime.compare(attrs.started_at, running.started_at) == :lt do
+      Repo.rollback(
+        "started_at #{NaiveDateTime.to_string(attrs.started_at)} is before the running mapping's " <>
+          "started_at #{NaiveDateTime.to_string(running.started_at)}; a mentorship cannot start " <>
+          "before the one it replaces"
+      )
+    else
+      end_mapping(running, attrs)
+      insert_mapping(attrs)
+      :reassigned
+    end
+  end
+
+  # Locked so two concurrent imports cannot both end up inserting for the same
+  # student and academic year; a row that never existed is still guarded by
+  # blm_mappings_active_student_year_unique.
+  defp active_mapping(student_id, academic_year) do
+    from(mapping in @mapping_table,
+      where:
+        mapping.student_id == ^student_id and mapping.academic_year == ^academic_year and
+          is_nil(mapping.ended_at),
+      select: %{
+        id: mapping.id,
+        mentor_user_id: mapping.mentor_user_id,
+        started_at: mapping.started_at
+      },
+      lock: "FOR UPDATE"
+    )
+    |> Repo.one()
+  end
+
+  defp end_mapping(running, attrs) do
+    from(mapping in @mapping_table, where: mapping.id == ^running.id)
+    |> Repo.update_all(
+      set: [
+        ended_at: attrs.started_at,
+        ended_by_user_id: attrs.assigned_by_user_id,
+        ended_by_email: attrs.assigned_by_email,
+        end_source: @data_import_source,
+        end_reason: @reassignment_end_reason,
+        # updated_at is set by the blm_mappings_touch_updated_at trigger.
+        end_audit_reason: attrs.assignment_audit_reason
+      ]
+    )
+  end
+
+  defp insert_mapping(attrs) do
+    now = now()
+
+    Repo.insert_all(@mapping_table, [
+      %{
+        student_id: attrs.student_id,
+        mentor_user_id: attrs.mentor_user_id,
+        # Blended is not attached to a physical school; the column stays blank.
+        school_id: nil,
+        program_id: attrs.program_id,
+        academic_year: attrs.academic_year,
+        started_at: attrs.started_at,
+        assigned_by_user_id: attrs.assigned_by_user_id,
+        assigned_by_email: attrs.assigned_by_email,
+        assignment_source: @data_import_source,
+        assignment_audit_reason: attrs.assignment_audit_reason,
+        inserted_at: now,
+        updated_at: now
+      }
+    ])
+  end
+
+  defp now, do: NaiveDateTime.utc_now() |> NaiveDateTime.truncate(:second)
+
+  # Truncated like end_active_mappings/2's ended_at; the timestamp(0) column would round.
+  defp database_now do
+    %{rows: [[database_now]]} =
+      Repo.query!("SELECT date_trunc('second', timezone('UTC', now()))")
+
+    NaiveDateTime.truncate(database_now, :second)
+  end
+
+  defp database_error_message(%Postgrex.Error{postgres: %{constraint: constraint}})
+       when is_binary(constraint) do
+    case constraint do
+      "blm_mappings_active_student_year_unique" ->
+        "Student already has a running mentor mapping for this academic year"
+
+      "blm_mappings_no_overlapping_periods" ->
+        "this mentor mapping's period overlaps another mapping for the same student and " <>
+          "academic year"
+
+      other ->
+        "Mapping rejected by the database (#{other})"
+    end
+  end
+
+  defp database_error_message(error), do: Exception.message(error)
+end
