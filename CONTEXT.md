@@ -299,6 +299,15 @@ _Avoid_: Student Profile, Holistic questionnaire links
   the Conversation it was given on (same Student, `screener_used` true).
 - A Visit Concern or Visit Highlight belongs to one School code and has Mentions
   from many Visits; a Visit has at most one Visit Note Summary.
+- An Insight Request belongs to one Student, School, Program, Academic Year and
+  requesting User; a Student has many over time but at most one `queued` or
+  `running`, and an AI Mentorship Guide Item backs at most one Insight Request.
+- An Insight Session belongs to one Student, School, Program, Academic Year and
+  author User, and may name one Insight Request of the same Student; an author has
+  at most one draft per Student.
+- A Session Note audit belongs to one Insight Session and one actor User; a session
+  has at most one `submitted` audit and any number of `submitted_edited` audits,
+  one per revision.
 
 ## Invariants
 
@@ -336,6 +345,17 @@ _Avoid_: Student Profile, Holistic questionnaire links
   keys.
 - Visit Concern events are append-only (trigger) and records with events are never
   deleted; `etl-next` reaches Visit Concerns only through the db-service API.
+- An Insight Request's state and fields agree (database CHECK); an Item linked
+  from an Insight Request belongs to the same Student and cannot be deleted. The
+  LMS and AI Mentorship Guide reach Insight Requests only over SQL; db-service has
+  no API for them.
+- A submitted Insight Session has a date, a submit time and non-blank Areas of
+  concern and Immediate actions (database CHECK); a request named by an Insight
+  Session cannot be deleted. The LMS reaches Insight Sessions only over SQL.
+- Session Note audits are content-free and append-only (trigger); an Insight
+  Session with an audit row cannot be deleted, while a draft with none can. Draft
+  saves write no audit row. Rolling back the AI Test Insights migration drops the
+  trigger, its function and all three tables.
 
 ### Follow-up privacy erasure (LMS #412)
 
@@ -463,6 +483,122 @@ There is no data migration: the flow's first run is the backfill. Rollback drops
 trigger, the function and the tables; the LMS treats missing rows as "not summarised
 yet". Deploy schema before LMS.
 
+### AI Test Insights (LMS #549)
+
+last_updated: 2026-11-27
+
+`20261126120504_create_ai_test_insight_tables` owns `ai_test_insight_requests`,
+`ai_test_insight_sessions` and `ai_test_insight_session_note_audits`, created in
+that order, then the audit trigger function and trigger, with no API, Ecto schema
+or context: db-service owns only the DDL. It also adds one unique index,
+`am_items_id_student_unique` on (`id`, `student_id`), to AI Mentorship Guide's
+`acad_mentorship_inference_items`, as the target of the request's Item key. `af_lms` reads and writes all three
+tables directly; AI Mentorship Guide reads `ai_test_insight_requests` and updates a
+request's progress (state, Item link, times, outcome code) and touches no other LMS
+table. Rolling the migration back drops the trigger, the function, the three
+tables and that index.
+Consumers: af_lms #549, #550 and #551, ai-mentorship-guide #135 (af_lms ADR 0015).
+CHECK constraints, indexes, the trigger and its function use the `ati_` prefix;
+foreign keys keep Ecto's default names. Strings are `text` with CHECKs, not
+Postgres enums. Timestamps are `timestamp(0)` without time zone holding UTC: the
+defaults are `now() AT TIME ZONE 'UTC'`, because a plain `now()` stores the
+connection's local time.
+
+- **Test Insight**: one AI-written document about one Student, generated from the
+  tests a Teacher selected and the Student's earlier Session Notes.
+  _Avoid_: Report, Student Profile
+- **Insight Request**: one Teacher's ask for a Test Insight for one Student and one
+  chosen set of tests; it carries the progress of that run until the Test Insight
+  is ready or the run has failed. The row is the whole contract between the LMS and
+  AI Mentorship Guide: it also holds `notes_snapshot`, the copy of Session Notes
+  the generator reads, and `selected_test_ids`, the ticked tests newest first.
+  _Avoid_: job, regeneration request
+- **Insight Session**: one offline mentoring conversation between a Teacher and a
+  Student about test performance, recorded as one submitted set of Session Notes.
+  _Avoid_: Mentorship session, Conversation
+- **Session Notes**: the draft-to-submitted record of one Insight Session, written
+  by the Teacher who held it: Areas of concern, Immediate actions and optional
+  Other notes.
+  _Avoid_: Post-Session Notes, Follow-up Note
+- **Session Note audit**: one content-free row recording who submitted or later
+  edited an Insight Session's Session Notes, when, and the session revision after
+  that action.
+  _Avoid_: note history, note version
+
+Request invariants, enforced by the database:
+
+- One `queued` or `running` request per Student (`ati_requests_active_student_unique`);
+  a `completed`, `no_data` or `failed` request does not block the next one, and
+  earlier requests are kept, so "generate again" repeats are valid.
+- What each state requires (`ati_requests_lifecycle_check`): `queued` has no start,
+  finish, Item or outcome code; `running` has a start time, maybe an Item, no finish
+  and no code; `completed` has start, finish and Item and no code; `no_data` and
+  `failed` have a finish time and an outcome code. An unknown state matches no branch.
+- A request can become `failed` with no Item and no start time, so the LMS can close
+  a request the generator never finished. A stalled request still holds the
+  Student's running slot: before a retry the LMS sets it `failed` (e.g. `timed_out`)
+  in the same transaction as the new insert.
+- One request per Item (`ati_requests_inference_item_unique`). The FK from this
+  LMS-owned table to AI Mentorship Guide's `acad_mentorship_inference_items` is
+  intended: the generator cannot delete an Item a Test Insight depends on. It is a
+  composite key on (`inference_item_id`, `student_id`), so the Item belongs to the
+  request's Student, and neither row can move to another Student while linked.
+- `selected_test_ids` is a non-empty array of non-empty strings; `notes_snapshot` is
+  an array (default `[]`); `outcome_code` is snake_case, at most 64 characters, from
+  a list the database does not restrict; `request_key` is unique, 1 to 64 letters,
+  digits, `_` or `-`; `academic_year` is `YYYY-YYYY` with consecutive years.
+
+Left to the two writers: request immutability, state order, the notes copy's
+element shape and 5-session cap, time order (both should stamp times in UTC, in
+SQL with `now() AT TIME ZONE 'UTC'`, never a plain `now()`), and setting
+`updated_at` (no trigger). A late generator result
+may overwrite a request the LMS already marked `failed` unless its update says
+`WHERE state IN ('queued', 'running')`; the database allows either.
+
+Session invariants, enforced by the database:
+
+- One draft per author per Student (`ati_sessions_author_student_draft_unique`); once
+  it is submitted the author can start the next draft. Another author's draft for
+  the same Student is independent.
+- A draft may be empty. A submitted session needs `session_date`, `submitted_at`
+  (the first submit time; later edits keep it) and Areas of concern and Immediate
+  actions that are not null, empty or whitespace only; Other notes stays optional
+  (`ati_sessions_lifecycle_check`, which also rejects a draft with a submit time and
+  any unknown state). `revision` starts at 1 and stays above 0.
+- `insight_request_id` is optional; when set, the request belongs to the same
+  Student (composite FK on (`insight_request_id`, `student_id`)), and a request a
+  session names cannot be deleted.
+- Optimistic saves need no extra constraint: the LMS updates
+  `WHERE id = $1 AND revision = $2` and sets `revision = revision + 1`, so a stale
+  tab changes no row.
+
+Left to the LMS for sessions: the "not in the future" date rule (checked in India
+time, because the database clock is UTC and would wrongly reject a session entered
+between midnight and 05:30 India time), note length limits, and setting
+`updated_at` (no trigger).
+
+Session Note audit invariants, enforced by the database:
+
+- Audit rows are content-free: the session, the actor User, the action
+  (`submitted` or `submitted_edited`, `ati_session_note_audits_action_check`), the
+  session's revision after the action (above 0,
+  `ati_session_note_audits_revision_check`), `occurred_at` and `inserted_at`. No
+  note text, no reason, no before or after values and no `updated_at`.
+- One row per session and revision (`ati_session_note_audits_session_revision_unique`)
+  and at most one `submitted` row per session
+  (`ati_session_note_audits_one_submit_unique`); later edits add `submitted_edited`
+  rows.
+- Audit rows are append-only by trigger: `ati_session_note_audits_immutable` calls
+  `ati_protect_session_note_audits()`, which rejects every UPDATE and DELETE with
+  SQLSTATE 23514. There is no privacy erasure exception.
+- A session with an audit row cannot be deleted: the session FK does not cascade
+  and the audit row cannot be removed. This is how the database backs "submitted
+  notes are not deleted in v1". Draft saves write no audit row, so a draft with no
+  audit row can be deleted.
+
+Deploy order: this schema, then AI Mentorship Guide, then the LMS. There is no data
+migration.
+
 ## Example Dialogue
 
 > **ETL engineer:** "Can I publish this Profile using the business Student ID?"
@@ -486,6 +622,9 @@ yet". Deploy schema before LMS.
   currently active path rather than encode one historical workflow name.
 - "flag": a Blended Learning **Mentor Flag** is unrelated to Intervention
   Flags.
+- "session" now has three meanings in Main Postgres: the core `session` table,
+  `acad_mentorship_inference_sessions` (a generator run) and
+  `ai_test_insight_sessions` (an **Insight Session**).
 
 ### Missing initial enrolled status utility (2026-09-17)
 
